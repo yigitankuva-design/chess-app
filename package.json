@@ -1,0 +1,16 @@
+{
+  "name": "chess-app",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web",
+    "e2e"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "test:web": "npm --workspace apps/web run test",
+    "test:e2e": "npm --workspace e2e run test",
+    "lint": "npm --workspace apps/web run lint"
+  }
+}

@@ -39,3 +39,17 @@ coverage/
 *.db
 *.sqlite
 data/
+
+# Python venv (Windows)
+env/
+
+# Next.js
+.vercel/
+
+# Workspace
+*.tsbuildinfo
+next-env.d.ts
+
+# Playwright
+playwright-report/
+test-results/
