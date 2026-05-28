@@ -66,3 +66,32 @@ async def test_attempt_unknown_puzzle_404(client, seeded_puzzles):
         json={"success": False, "time_seconds": 5},
     )
     assert response.status_code == 404
+
+
+async def test_correct_attempt_creates_srs_card(client, seeded_puzzles, db):
+    from sqlalchemy import select as _select
+    from chess_api.models import SRSCard
+    token = await _parent_token(client)
+    pid = seeded_puzzles["puzzle_ids"][0]
+    await client.post(
+        f"/puzzles/{pid}/attempt",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"success": True, "time_seconds": 10},
+    )
+    cards = (await db.execute(_select(SRSCard).where(SRSCard.item_id == pid))).scalars().all()
+    assert len(cards) == 1
+    assert cards[0].item_type.value == "puzzle"
+
+
+async def test_failed_attempt_no_srs_card(client, seeded_puzzles, db):
+    from sqlalchemy import select as _select
+    from chess_api.models import SRSCard
+    token = await _parent_token(client)
+    pid = seeded_puzzles["puzzle_ids"][1]
+    await client.post(
+        f"/puzzles/{pid}/attempt",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"success": False, "time_seconds": 10},
+    )
+    cards = (await db.execute(_select(SRSCard).where(SRSCard.item_id == pid))).scalars().all()
+    assert len(cards) == 0
