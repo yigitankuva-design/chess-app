@@ -123,6 +123,8 @@ async def add_student(
     child = await db.get(ChildProfile, child_id)
     if not child:
         raise HTTPException(404, "Child not found")
+    if child.class_id is not None and child.class_id != class_id:
+        raise HTTPException(409, "Bu öğrenci zaten başka bir sınıfa kayıtlı")
     child.class_id = class_id
     await db.commit()
     return {"ok": True}

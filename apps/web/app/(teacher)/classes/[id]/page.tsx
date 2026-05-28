@@ -206,13 +206,13 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm">{s.display_name}</p>
                           {s.class_id && s.class_id !== classId && (
-                            <p className="text-xs text-amber-600">Başka sınıfta kayıtlı</p>
+                            <p className="text-xs text-amber-600">Başka sınıfta kayıtlı — önce o sınıftan çıkarılmalı</p>
                           )}
                           {s.class_id === classId && (
                             <p className="text-xs text-green-600">Zaten bu sınıfta</p>
                           )}
                         </div>
-                        {s.class_id !== classId && (
+                        {!s.class_id && (
                           <button
                             onClick={() => handleAdd(s.id)}
                             disabled={addingId === s.id}
