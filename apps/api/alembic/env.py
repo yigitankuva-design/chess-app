@@ -9,6 +9,8 @@ from chess_api.models import (  # noqa: F401
     Module, Lesson, LessonStep, LessonStepType,
     ChildLessonProgress, ChildLessonStepResult, LessonStatus,
     Puzzle, PuzzleTheme, ChildPuzzleAttempt, SRSCard, SRSItemType,
+    Game, GameMove, GameType, GameStatus, GameResult,
+    Badge, ChildBadge, Rank, ChildRank,
 )
 
 config = context.config

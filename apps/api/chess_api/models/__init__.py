@@ -8,10 +8,14 @@ from chess_api.models.progress import (
 from chess_api.models.puzzle import (
     Puzzle, PuzzleTheme, ChildPuzzleAttempt, SRSCard, SRSItemType,
 )
+from chess_api.models.game import Game, GameMove, GameType, GameStatus, GameResult
+from chess_api.models.gamification import Badge, ChildBadge, Rank, ChildRank
 
 __all__ = [
     "User", "UserRole", "ChildProfile", "Device",
     "Module", "Lesson", "LessonStep", "LessonStepType",
     "ChildLessonProgress", "ChildLessonStepResult", "LessonStatus",
     "Puzzle", "PuzzleTheme", "ChildPuzzleAttempt", "SRSCard", "SRSItemType",
+    "Game", "GameMove", "GameType", "GameStatus", "GameResult",
+    "Badge", "ChildBadge", "Rank", "ChildRank",
 ]
