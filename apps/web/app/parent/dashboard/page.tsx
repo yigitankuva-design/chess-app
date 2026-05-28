@@ -40,13 +40,15 @@ export default function ParentDashboardPage() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {children.map((c) => (
-              <div key={c.id} className="p-4 bg-white rounded-2xl shadow flex items-center gap-3">
-                <span className="text-4xl">{avatarEmoji(c.avatar)}</span>
-                <div>
-                  <p className="font-bold">{c.display_name}</p>
-                  <p className="text-sm opacity-60">{c.age} yaşında</p>
+              <Link key={c.id} href={`/parent/child/${c.id}`}>
+                <div className="p-4 bg-white rounded-2xl shadow flex items-center gap-3 cursor-pointer hover:shadow-lg transition-shadow">
+                  <span className="text-4xl">{avatarEmoji(c.avatar)}</span>
+                  <div>
+                    <p className="font-bold">{c.display_name}</p>
+                    <p className="text-sm opacity-60">{c.age} yaşında</p>
+                  </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 

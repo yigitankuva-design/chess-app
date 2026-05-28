@@ -1,6 +1,7 @@
 'use client';
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getToken } from '@/lib/auth-storage';
 import { LessonPlayer } from '@/components/LessonPlayer';
 import type { LessonStep } from '@/lib/stores/lesson-store';
 
@@ -33,13 +34,26 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   if (loading) return <main className="p-8">Yükleniyor...</main>;
   if (!lesson) return <main className="p-8">Ders bulunamadı.</main>;
 
+  const handleComplete = async () => {
+    const token = getToken();
+    try {
+      await fetch(`${API_BASE}/lessons/${lesson.id}/complete`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      // ignore
+    }
+    router.push(`/modules/${lesson.module_id}`);
+  };
+
   return (
     <main>
       <h1 className="text-2xl font-bold p-4 text-center">{lesson.title}</h1>
       <LessonPlayer
         lessonId={lesson.id}
         initialSteps={lesson.steps}
-        onComplete={() => router.push(`/modules/${lesson.module_id}`)}
+        onComplete={handleComplete}
       />
     </main>
   );
