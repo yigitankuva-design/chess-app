@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { BotGame } from '@/components/BotGame';
 
 const LEVELS = [
@@ -18,6 +19,12 @@ export default function PlayPage() {
     return (
       <main className="p-6 max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">Bota Karşı Oyna 🤖</h1>
+        <Link
+          href="/play/online"
+          className="block w-full mb-6 p-4 bg-green-500 text-white rounded-xl shadow hover:bg-green-600 transition text-lg font-medium flex items-center gap-3"
+        >
+          <span className="text-2xl">🤝</span> Arkadaşla Oyna (Online)
+        </Link>
         <p className="text-center opacity-75 mb-6">Zorluk seç:</p>
         <div className="grid grid-cols-1 gap-3">
           {LEVELS.map((lvl) => (
