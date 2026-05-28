@@ -420,58 +420,42 @@
     {
       "order": 9,
       "title": "Modül 1 Sınavı",
-      "estimated_minutes": 8,
+      "estimated_minutes": 5,
       "steps": [
         {
           "order": 1,
-          "type": "explanation",
+          "type": "quiz",
           "content": {
-            "title": "Hadi tekrar edelim!",
-            "body": "Modül 1'i bitirmek üzeresin. Birkaç soruyla öğrendiklerini test edelim.",
-            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
-          }
-        },
-        {
-          "order": 2,
-          "type": "inline_exercise",
-          "content": {
-            "title": "At hamlesi",
-            "body": "Atı g1'den f3'e sürükle.",
-            "fen": "8/8/8/8/8/8/8/6N1 w - - 0 1",
-            "task_type": "make_move"
+            "title": "Modül 1 Sınavı",
+            "questions": [
+              {
+                "prompt": "Satranç tahtasında kaç kare vardır?",
+                "options": ["32", "48", "64", "128"],
+                "correct_index": 2
+              },
+              {
+                "prompt": "Atın hareketi nasıldır?",
+                "options": ["L şekli (2 kare + 1 kare)", "Diyagonal", "Düz ileri", "Herhangi yön 1 kare"],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Hangi taş diagonal (çapraz) hareket eder?",
+                "options": ["Kale", "Fil", "Piyade", "Kral"],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Rok hamlesi hangi iki taş arasında yapılır?",
+                "options": ["Vezir ve Fil", "Kral ve Kale", "Kral ve At", "Kale ve Fil"],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Piyade başlangıç karesinden kaç kare ileri gidebilir?",
+                "options": ["Yalnızca 1", "1 veya 2", "2 veya 3", "İstediği kadar"],
+                "correct_index": 1
+              }
+            ]
           },
-          "correct_answer": {"from": "g1", "to": "f3"}
-        },
-        {
-          "order": 3,
-          "type": "inline_exercise",
-          "content": {
-            "title": "Fil hamlesi",
-            "body": "Fili c1'den g5'e sürükle.",
-            "fen": "8/8/8/8/8/8/8/2B5 w - - 0 1",
-            "task_type": "make_move"
-          },
-          "correct_answer": {"from": "c1", "to": "g5"}
-        },
-        {
-          "order": 4,
-          "type": "inline_exercise",
-          "content": {
-            "title": "Vezir hamlesi",
-            "body": "Veziri d1'den h5'e sürükle.",
-            "fen": "8/8/8/8/8/8/8/3Q4 w - - 0 1",
-            "task_type": "make_move"
-          },
-          "correct_answer": {"from": "d1", "to": "h5"}
-        },
-        {
-          "order": 5,
-          "type": "explanation",
-          "content": {
-            "title": "Modül 1 Tamamlandı!",
-            "body": "Tebrikler! Artık tüm taşları, nasıl hareket ettiklerini ve başlangıç dizilişini biliyorsun. Modül 2'de taşların değerlerini öğreneceğiz!",
-            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-          }
+          "correct_answer": {"correct_indexes": [2, 0, 1, 1, 1]}
         }
       ]
     }

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLessonStore, LessonStep } from '@/lib/stores/lesson-store';
 import { ExplanationStep } from './lesson-steps/ExplanationStep';
 import { InlineExerciseStep } from './lesson-steps/InlineExerciseStep';
+import { ModuleQuiz } from './ModuleQuiz';
 
 interface Props {
   lessonId: number;
@@ -65,6 +66,12 @@ export function LessonPlayer({ lessonId, initialSteps, onComplete }: Props) {
           lessonId={lessonId}
           content={currentStep.content_json as never}
           onContinue={advance}
+        />
+      )}
+      {currentStep.type === 'quiz' && (
+        <ModuleQuiz
+          questions={(currentStep.content_json as { questions: Array<{ prompt: string; options: string[]; correct_index: number }> }).questions}
+          onComplete={(_score, _max) => advance()}
         />
       )}
     </div>
