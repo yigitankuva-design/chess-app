@@ -60,7 +60,7 @@ async def create_class(
     cls = Class(
         teacher_user_id=current.id,
         name=payload.name,
-        join_code=secrets.token_urlsafe(4)[:8].upper(),
+        join_code=secrets.token_urlsafe(6)[:8].upper(),
     )
     db.add(cls)
     await db.commit()

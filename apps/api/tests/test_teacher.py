@@ -57,7 +57,7 @@ async def test_teacher_create_class(client):
     assert data["name"] == "Satranç A"
     assert "id" in data
     assert "join_code" in data
-    assert len(data["join_code"]) > 0
+    assert len(data["join_code"]) == 8
 
 
 @pytest.mark.asyncio
