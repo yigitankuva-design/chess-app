@@ -30,9 +30,7 @@ class ParentSurvey(Base):
     title: Mapped[str] = mapped_column(String(160))
     questions_json: Mapped[list] = mapped_column(JSON)
     created_by_teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    # NOTE: target_class_id is a plain nullable int for now; the `classes` table
-    # arrives in Plan 8, which will add the FK constraint via a migration.
-    target_class_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
