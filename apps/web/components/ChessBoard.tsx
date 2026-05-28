@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Chessboard } from 'react-chessboard';
+import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { useChessTheme } from '@/lib/chess-theme-context';
 import { buildSquareStyles } from '@/lib/chess-themes';
@@ -25,34 +26,91 @@ export function ChessBoard({
   onPieceDrop,
   boardOrientation = 'white',
   lastMove = null,
-  inCheck = false,
 }: ChessBoardProps) {
-  const [clickedSquare, setClickedSquare] = useState<Square | null>(null);
-  const { theme, themeId } = useChessTheme();
-  const [shaking, setShaking] = useState(false);
-  const [captureFlash, setCaptureFlash] = useState(false);
-  const prevFen = useRef(fen);
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+  const [validMoves, setValidMoves] = useState<Square[]>([]);
+  const { theme } = useChessTheme();
+  const scrollRef = useRef(0);
 
-  // Detect capture (piece count change) for arcade flash
+  // Clear selection when FEN changes (after a move)
   useEffect(() => {
-    if (themeId === 'arcade' && fen !== prevFen.current) {
-      const countPieces = (f: string) =>
-        f.split('').filter((c) => /[prnbqkPRNBQK]/.test(c)).length;
-      if (countPieces(fen) < countPieces(prevFen.current)) {
-        setCaptureFlash(true);
-        setTimeout(() => setCaptureFlash(false), 350);
+    setSelectedSquare(null);
+    setValidMoves([]);
+  }, [fen]);
+
+  // Save scroll position before any board interaction, restore after render
+  const saveScroll = useCallback(() => {
+    scrollRef.current = window.scrollY;
+  }, []);
+
+  const restoreScroll = useCallback(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollRef.current, behavior: 'instant' as ScrollBehavior });
+    });
+  }, []);
+
+  function getValidDestinations(square: Square, chessFen: string): Square[] {
+    try {
+      const chess = new Chess(chessFen);
+      return chess
+        .moves({ square, verbose: true })
+        .map((m) => m.to as Square);
+    } catch {
+      return [];
+    }
+  }
+
+  function getPieceColor(square: Square, chessFen: string): 'w' | 'b' | null {
+    try {
+      const chess = new Chess(chessFen);
+      const piece = chess.get(square);
+      return piece ? piece.color : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getTurnColor(chessFen: string): 'w' | 'b' {
+    try {
+      const chess = new Chess(chessFen);
+      return chess.turn();
+    } catch {
+      return 'w';
+    }
+  }
+
+  function handleSquareClick(square: Square) {
+    if (!interactive) return;
+    saveScroll();
+
+    const turn = getTurnColor(fen);
+
+    // If a piece is already selected and this square is a valid move → execute move
+    if (selectedSquare && validMoves.includes(square)) {
+      const success = onPieceDrop?.(selectedSquare, square) ?? false;
+      setSelectedSquare(null);
+      setValidMoves([]);
+      if (!success) {
+        restoreScroll();
       }
+      return;
     }
-    prevFen.current = fen;
-  }, [fen, themeId]);
 
-  // Screen shake on check
-  useEffect(() => {
-    if (inCheck && (themeId === 'arcade' || themeId === 'hologram')) {
-      setShaking(true);
-      setTimeout(() => setShaking(false), 500);
+    // Click on a piece of current turn color → select it
+    const pieceColor = getPieceColor(square, fen);
+    if (pieceColor === turn) {
+      setSelectedSquare(square);
+      setValidMoves(getValidDestinations(square, fen));
+      restoreScroll();
+      return;
     }
-  }, [inCheck, themeId]);
+
+    // Anything else → deselect
+    setSelectedSquare(null);
+    setValidMoves([]);
+    onSquareClick?.(square);
+    restoreScroll();
+  }
 
   // Build per-square style overrides
   const overrides: Record<string, CSSProperties> = {};
@@ -61,9 +119,9 @@ export function ChessBoard({
     overrides[sq] = { backgroundColor: theme.highlightColor };
   });
 
-  if (clickedSquare) {
-    overrides[clickedSquare] = {
-      ...overrides[clickedSquare],
+  if (selectedSquare) {
+    overrides[selectedSquare] = {
+      ...overrides[selectedSquare],
       backgroundColor: theme.selectedColor,
     };
   }
@@ -77,51 +135,44 @@ export function ChessBoard({
     });
   }
 
+  // Valid-move dot overlays — added as background gradients on top of square color
+  validMoves.forEach((sq) => {
+    const hasPiece = getPieceColor(sq, fen) !== null;
+    const base = overrides[sq]?.backgroundColor as string | undefined;
+    overrides[sq] = {
+      ...overrides[sq],
+      background: hasPiece
+        // Capture ring
+        ? `radial-gradient(circle, transparent 58%, rgba(0,0,0,0.2) 59%, rgba(0,0,0,0.2) 68%, transparent 69%) ${base ?? 'unset'}`
+        // Empty dot
+        : `radial-gradient(circle, rgba(0,0,0,0.22) 28%, transparent 29%)`,
+      cursor: 'pointer',
+    };
+  });
+
   const squareStyles = buildSquareStyles(theme, overrides);
 
-  const wrapperClasses = [
-    'aspect-square w-full max-w-[600px] mx-auto relative',
-    themeId === 'hologram' ? 'hologram-board' : '',
-    themeId === 'arcade' ? 'arcade-board' : '',
-    shaking ? 'board-shake' : '',
-    captureFlash ? 'capture-flash' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const wrapperStyle: CSSProperties = {};
-  if (theme.boardShadow) {
-    wrapperStyle.boxShadow = theme.boardShadow;
-    wrapperStyle.borderRadius = '4px';
-  }
-
   return (
-    <div className={wrapperClasses} style={wrapperStyle}>
-      {/* Hologram scan-line overlay */}
-      {themeId === 'hologram' && (
-        <div className="hologram-scanlines pointer-events-none" aria-hidden="true" />
-      )}
-      {/* Hologram corner decorations */}
-      {themeId === 'hologram' && (
-        <>
-          <div className="hologram-corner hologram-corner-tl" />
-          <div className="hologram-corner hologram-corner-tr" />
-          <div className="hologram-corner hologram-corner-bl" />
-          <div className="hologram-corner hologram-corner-br" />
-        </>
-      )}
+    <div
+      className="aspect-square w-full max-w-[600px] mx-auto relative"
+      style={{ touchAction: 'none', boxShadow: theme.boardShadow, borderRadius: theme.boardShadow ? '4px' : undefined }}
+      onPointerDown={saveScroll}
+    >
       <Chessboard
         options={{
           position: fen,
-          boardOrientation: boardOrientation,
+          boardOrientation,
           allowDragging: interactive,
           onPieceDrop: onPieceDrop
-            ? ({ sourceSquare, targetSquare }) =>
-                onPieceDrop(sourceSquare as Square, targetSquare as Square)
+            ? ({ sourceSquare, targetSquare }) => {
+                saveScroll();
+                const result = onPieceDrop(sourceSquare as Square, targetSquare as Square);
+                restoreScroll();
+                return result;
+              }
             : undefined,
           onSquareClick: ({ square }) => {
-            setClickedSquare(square as Square);
-            onSquareClick?.(square as Square);
+            handleSquareClick(square as Square);
           },
           squareStyles,
         }}

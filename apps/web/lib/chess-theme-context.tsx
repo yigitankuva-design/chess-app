@@ -32,11 +32,14 @@ export function ChessThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
     try {
-      const stored = localStorage.getItem('chess-theme') as ChessThemeId | null;
-      if (stored && getTheme(stored)) {
-        setThemeId(stored);
-        document.documentElement.setAttribute('data-chess-theme', stored);
-      } else {
+      const stored = localStorage.getItem('chess-theme');
+      const validIds: string[] = ['classic', 'night'];
+      const resolved = (stored && validIds.includes(stored) ? stored : DEFAULT_THEME_ID) as ChessThemeId;
+      if (resolved !== DEFAULT_THEME_ID || stored === DEFAULT_THEME_ID) {
+        setThemeId(resolved);
+      }
+      document.documentElement.setAttribute('data-chess-theme', resolved);
+      if (!stored || !validIds.includes(stored)) {
         document.documentElement.setAttribute('data-chess-theme', DEFAULT_THEME_ID);
       }
     } catch {

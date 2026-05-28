@@ -90,6 +90,63 @@ async def class_students(
     ]
 
 
+@router.get("/students/search")
+async def search_students(
+    q: str = "",
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search children by display_name (no class filter needed — teacher can add any child)."""
+    _ensure_teacher(current)
+    stmt = select(ChildProfile)
+    if q.strip():
+        stmt = stmt.where(ChildProfile.display_name.ilike(f"%{q.strip()}%"))
+    stmt = stmt.limit(20)
+    result = await db.execute(stmt)
+    return [
+        {"id": c.id, "display_name": c.display_name, "avatar": c.avatar, "class_id": c.class_id}
+        for c in result.scalars().all()
+    ]
+
+
+@router.post("/classes/{class_id}/students/{child_id}", status_code=200)
+async def add_student(
+    class_id: int,
+    child_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_teacher(current)
+    cls = await db.get(Class, class_id)
+    if not cls or cls.teacher_user_id != current.id:
+        raise HTTPException(403)
+    child = await db.get(ChildProfile, child_id)
+    if not child:
+        raise HTTPException(404, "Child not found")
+    child.class_id = class_id
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/classes/{class_id}/students/{child_id}", status_code=200)
+async def remove_student(
+    class_id: int,
+    child_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_teacher(current)
+    cls = await db.get(Class, class_id)
+    if not cls or cls.teacher_user_id != current.id:
+        raise HTTPException(403)
+    child = await db.get(ChildProfile, child_id)
+    if not child or child.class_id != class_id:
+        raise HTTPException(404, "Student not in this class")
+    child.class_id = None
+    await db.commit()
+    return {"ok": True}
+
+
 @router.post("/classes/{class_id}/assignments", status_code=201)
 async def create_assignment(
     class_id: int,

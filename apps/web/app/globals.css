@@ -67,120 +67,6 @@ body {
   --t-prog-fill: #759900;
 }
 
-[data-chess-theme='kids'] {
-  --t-bg:        #fff8f0;
-  --t-surface:   #ffffff;
-  --t-surface-2: #fff3e0;
-  --t-border:    #ffcc80;
-  --t-text-1:    #1a1a1a;
-  --t-text-2:    #7d5a40;
-  --t-accent:    #ff7043;
-  --t-accent-dk: #f4511e;
-  --t-accent-fg: #ffffff;
-  --t-nav-bg:    #bf360c;
-  --t-nav-text:  #ffccbc;
-  --t-nav-act:   #ffffff;
-  --t-ok-bg:     #e8f5e9;
-  --t-ok-bd:     #4caf50;
-  --t-ok-text:   #1b5e20;
-  --t-err-bg:    #fce4ec;
-  --t-err-bd:    #e91e63;
-  --t-err-text:  #880e4f;
-  --t-prog-bg:   #ffe0b2;
-  --t-prog-fill: #ff7043;
-}
-
-[data-chess-theme='purple'] {
-  --t-bg:        #1a0533;
-  --t-surface:   #2d0a50;
-  --t-surface-2: #3d1160;
-  --t-border:    #5a2080;
-  --t-text-1:    #e9d5f5;
-  --t-text-2:    #b08acf;
-  --t-accent:    #ce93d8;
-  --t-accent-dk: #ba68c8;
-  --t-accent-fg: #1a0533;
-  --t-nav-bg:    #0d0018;
-  --t-nav-text:  #9e6abf;
-  --t-nav-act:   #f3e5f5;
-  --t-ok-bg:     #1a3020;
-  --t-ok-bd:     #66bb6a;
-  --t-ok-text:   #a5d6a7;
-  --t-err-bg:    #300d15;
-  --t-err-bd:    #e57373;
-  --t-err-text:  #ef9a9a;
-  --t-prog-bg:   #3d1160;
-  --t-prog-fill: #ce93d8;
-}
-
-[data-chess-theme='premium'] {
-  --t-bg:        #0a0a0a;
-  --t-surface:   #141414;
-  --t-surface-2: #1e1e1e;
-  --t-border:    #2a2a2a;
-  --t-text-1:    #e8e8e8;
-  --t-text-2:    #909090;
-  --t-accent:    #c9a227;
-  --t-accent-dk: #e8b830;
-  --t-accent-fg: #0a0a0a;
-  --t-nav-bg:    #050505;
-  --t-nav-text:  #707070;
-  --t-nav-act:   #ffd700;
-  --t-ok-bg:     #141f00;
-  --t-ok-bd:     #c9a227;
-  --t-ok-text:   #ffe082;
-  --t-err-bg:    #1f0000;
-  --t-err-bd:    #e53e3e;
-  --t-err-text:  #f87171;
-  --t-prog-bg:   #2a2a2a;
-  --t-prog-fill: #c9a227;
-}
-
-[data-chess-theme='hologram'] {
-  --t-bg:        #000011;
-  --t-surface:   rgba(0,15,50,0.92);
-  --t-surface-2: rgba(0,30,80,0.75);
-  --t-border:    rgba(0,229,255,0.22);
-  --t-text-1:    #9ee8f2;
-  --t-text-2:    #4a8fa0;
-  --t-accent:    #00e5ff;
-  --t-accent-dk: #00b8d9;
-  --t-accent-fg: #000820;
-  --t-nav-bg:    rgba(0,5,20,0.96);
-  --t-nav-text:  #00a8c0;
-  --t-nav-act:   #00e5ff;
-  --t-ok-bg:     rgba(0,50,30,0.6);
-  --t-ok-bd:     #00e5ff;
-  --t-ok-text:   #80f0ff;
-  --t-err-bg:    rgba(50,0,20,0.6);
-  --t-err-bd:    #ff4081;
-  --t-err-text:  #ff80ab;
-  --t-prog-bg:   rgba(0,30,80,0.7);
-  --t-prog-fill: #00e5ff;
-}
-
-[data-chess-theme='arcade'] {
-  --t-bg:        #0a0a0a;
-  --t-surface:   #181818;
-  --t-surface-2: #222222;
-  --t-border:    rgba(255,87,34,0.35);
-  --t-text-1:    #fff9c4;
-  --t-text-2:    #ffa07a;
-  --t-accent:    #ff5722;
-  --t-accent-dk: #ff7043;
-  --t-accent-fg: #ffffff;
-  --t-nav-bg:    #050505;
-  --t-nav-text:  #ff7043;
-  --t-nav-act:   #fff9c4;
-  --t-ok-bg:     rgba(0,80,20,0.5);
-  --t-ok-bd:     rgba(102,187,106,0.7);
-  --t-ok-text:   #a5d6a7;
-  --t-err-bg:    rgba(80,10,0,0.6);
-  --t-err-bd:    rgba(255,87,34,0.8);
-  --t-err-text:  #ff8a65;
-  --t-prog-bg:   #222222;
-  --t-prog-fill: #ff5722;
-}
 
 /* ═══════════════════════════════════════════
    UTILITY CLASSES
@@ -385,68 +271,27 @@ body {
    BOARD ANIMATIONS
 ═══════════════════════════════════════════ */
 
-/* Hologram board */
-.hologram-board {
-  animation: holo-float 4s ease-in-out infinite;
-  position: relative;
-}
-@keyframes holo-float {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-5px); }
-}
-
-.hologram-scanlines {
+/* Move dot overlay (valid move hint) */
+.t-move-dot {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent, transparent 3px,
-    rgba(0,229,255,0.04) 3px, rgba(0,229,255,0.04) 4px
-  );
   pointer-events: none;
-  z-index: 10;
-  border-radius: 4px;
-  animation: scanscroll 8s linear infinite;
+  z-index: 2;
 }
-@keyframes scanscroll {
-  from { background-position: 0 0; }
-  to   { background-position: 0 80px; }
-}
-
-.hologram-corner { position: absolute; width: 14px; height: 14px; z-index: 11; border-color: rgba(0,229,255,0.8); }
-.hologram-corner-tl { top: -2px; left: -2px; border-top: 2px solid; border-left: 2px solid; }
-.hologram-corner-tr { top: -2px; right: -2px; border-top: 2px solid; border-right: 2px solid; }
-.hologram-corner-bl { bottom: -2px; left: -2px; border-bottom: 2px solid; border-left: 2px solid; }
-.hologram-corner-br { bottom: -2px; right: -2px; border-bottom: 2px solid; border-right: 2px solid; }
-
-/* Arcade capture flash */
-.arcade-board { position: relative; }
-.capture-flash::after {
+.t-move-dot::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(255,180,0,0.6) 0%, transparent 70%);
-  animation: cap-burst 0.35s ease-out forwards;
-  pointer-events: none;
-  z-index: 20;
-  border-radius: 4px;
+  background: radial-gradient(circle, rgba(0,0,0,0.22) 28%, transparent 29%);
 }
-@keyframes cap-burst {
-  0%   { opacity: 1; transform: scale(0.6); }
-  50%  { opacity: 0.8; transform: scale(1.1); }
-  100% { opacity: 0; transform: scale(1.4); }
-}
-
-/* Screen shake (check) */
-.board-shake {
-  animation: board-shake 0.5s cubic-bezier(0.36,0.07,0.19,0.97) both;
-}
-@keyframes board-shake {
-  10%,90%     { transform: translate3d(-2px,0,0); }
-  20%,80%     { transform: translate3d(4px,0,0); }
-  30%,50%,70% { transform: translate3d(-5px,0,0); }
-  40%,60%     { transform: translate3d(5px,0,0); }
-  100%        { transform: translate3d(0,0,0); }
+/* Capture hint: ring instead of dot */
+.t-move-cap::after {
+  background: radial-gradient(circle,
+    transparent 58%,
+    rgba(0,0,0,0.18) 59%,
+    rgba(0,0,0,0.18) 68%,
+    transparent 69%
+  );
 }
 
 /* ── Legacy aliases (backward compat) ── */
