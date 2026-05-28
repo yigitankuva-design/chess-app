@@ -12,7 +12,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 type Tab = 'students' | 'assignment' | 'leaderboard';
 
 interface Student { id: number; display_name: string; avatar: string; age: number; }
-interface SearchResult { id: number; display_name: string; avatar: string; class_id: number | null; }
+interface SearchResult { id: number; display_name: string; avatar: string; class_id: number | null; class_name: string | null; }
 interface LeaderboardEntry { child_id: number; display_name: string; avatar: string; xp_total: number; rank_name: string; }
 
 export default function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -30,6 +30,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
+  const [confirm, setConfirm] = useState<SearchResult | null>(null);
 
   const classId = parseInt(id);
 
@@ -77,16 +78,20 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  async function handleAdd(childId: number) {
-    setAddingId(childId);
+  async function handleAdd(student: SearchResult, force = false) {
+    // If student is in another class and not confirmed yet → show dialog
+    if (student.class_id && student.class_id !== classId && !force) {
+      setConfirm(student);
+      return;
+    }
+    setAddingId(student.id);
     try {
       const token = getToken()!;
-      await fetch(`${API_BASE}/teacher/classes/${classId}/students/${childId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const url = `${API_BASE}/teacher/classes/${classId}/students/${student.id}${force ? '?force=true' : ''}`;
+      await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       await loadStudents();
-      setSearchResults((prev) => prev.filter((s) => s.id !== childId));
+      setSearchResults((prev) => prev.filter((s) => s.id !== student.id));
+      setConfirm(null);
     } finally {
       setAddingId(null);
     }
@@ -206,15 +211,17 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm">{s.display_name}</p>
                           {s.class_id && s.class_id !== classId && (
-                            <p className="text-xs text-amber-600">Başka sınıfta kayıtlı — önce o sınıftan çıkarılmalı</p>
+                            <p className="text-xs text-amber-600">
+                              📌 {s.class_name ?? 'Başka sınıf'} sınıfında kayıtlı
+                            </p>
                           )}
                           {s.class_id === classId && (
                             <p className="text-xs text-green-600">Zaten bu sınıfta</p>
                           )}
                         </div>
-                        {!s.class_id && (
+                        {s.class_id !== classId && (
                           <button
-                            onClick={() => handleAdd(s.id)}
+                            onClick={() => handleAdd(s)}
                             disabled={addingId === s.id}
                             className="text-xs px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition disabled:opacity-50"
                           >
@@ -233,6 +240,34 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
           {tab === 'assignment' && <AssignmentForm classId={classId} />}
           {tab === 'leaderboard' && <Leaderboard entries={leaderboard} />}
         </>
+      )}
+      {/* Confirmation dialog */}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full space-y-4">
+            <h3 className="font-bold text-lg">Sınıf Transferi</h3>
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold">{confirm.display_name}</span>, şu anda{' '}
+              <span className="font-semibold text-amber-600">{confirm.class_name ?? 'başka bir sınıf'}</span> sınıfında
+              kayıtlıdır. Bu sınıfa eklemek istediğinizden emin misiniz?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirm(null)}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => handleAdd(confirm, true)}
+                disabled={addingId === confirm.id}
+                className="px-4 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50"
+              >
+                {addingId === confirm.id ? 'Ekleniyor...' : 'Evet, Ekle'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

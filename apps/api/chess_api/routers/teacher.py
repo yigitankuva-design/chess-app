@@ -96,16 +96,32 @@ async def search_students(
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search children by display_name (no class filter needed — teacher can add any child)."""
+    """Search children by display_name; include their current class name if enrolled."""
     _ensure_teacher(current)
     stmt = select(ChildProfile)
     if q.strip():
         stmt = stmt.where(ChildProfile.display_name.ilike(f"%{q.strip()}%"))
     stmt = stmt.limit(20)
     result = await db.execute(stmt)
+    children = result.scalars().all()
+
+    # Fetch class names for enrolled children
+    class_ids = {c.class_id for c in children if c.class_id is not None}
+    class_names: dict[int, str] = {}
+    if class_ids:
+        cls_result = await db.execute(select(Class).where(Class.id.in_(class_ids)))
+        for cls in cls_result.scalars().all():
+            class_names[cls.id] = cls.name
+
     return [
-        {"id": c.id, "display_name": c.display_name, "avatar": c.avatar, "class_id": c.class_id}
-        for c in result.scalars().all()
+        {
+            "id": c.id,
+            "display_name": c.display_name,
+            "avatar": c.avatar,
+            "class_id": c.class_id,
+            "class_name": class_names.get(c.class_id) if c.class_id else None,
+        }
+        for c in children
     ]
 
 
@@ -113,6 +129,7 @@ async def search_students(
 async def add_student(
     class_id: int,
     child_id: int,
+    force: bool = False,
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -123,7 +140,7 @@ async def add_student(
     child = await db.get(ChildProfile, child_id)
     if not child:
         raise HTTPException(404, "Child not found")
-    if child.class_id is not None and child.class_id != class_id:
+    if child.class_id is not None and child.class_id != class_id and not force:
         raise HTTPException(409, "Bu öğrenci zaten başka bir sınıfa kayıtlı")
     child.class_id = class_id
     await db.commit()
