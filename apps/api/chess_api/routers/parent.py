@@ -7,7 +7,7 @@ from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
 from chess_api.models import (
     User, UserRole, ChildProfile, ChildActivityLog, ChildLessonProgress, LessonStatus,
-    ChildBadge, ChildRank, Rank, ParentTimeLimit, ParentSurvey, ParentSurveyResponse,
+    ChildBadge, ChildRank, Rank, ParentTimeLimit, ParentSurvey, ParentSurveyResponse, Class,
 )
 
 router = APIRouter(prefix="/parent", tags=["parent"])
@@ -163,3 +163,24 @@ async def respond_survey(
     ))
     await db.commit()
     return {"submitted": True}
+
+
+@router.post("/children/{child_id}/join-class")
+async def join_class(
+    child_id: int,
+    join_code: str,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_parent(current)
+    child = await db.get(ChildProfile, child_id)
+    if not child or child.parent_user_id != current.id:
+        raise HTTPException(403)
+    cls_q = await db.execute(select(Class).where(Class.join_code == join_code.upper()))
+    cls = cls_q.scalar_one_or_none()
+    if not cls:
+        raise HTTPException(404, "Class not found")
+    child.class_id = cls.id
+    child.teacher_user_id = cls.teacher_user_id
+    await db.commit()
+    return {"joined": True, "class_name": cls.name}
