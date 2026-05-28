@@ -67,6 +67,413 @@
           }
         }
       ]
+    },
+    {
+      "order": 2,
+      "title": "Piyon (Pawn)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Piyon",
+            "body": "Piyon ileri doğru yürür. İlk hamlesinde 1 veya 2 kare gidebilir, sonra hep 1 kare. Geri gidemez!",
+            "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Piyon nasıl taş alır?",
+            "body": "Piyon düz yürür ama çapraz taş alır. Yandaki kareye değil, çaprazdaki düşman taşını alır.",
+            "fen": "8/8/8/8/3p4/4P3/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Piyonu oynat",
+            "body": "Beyaz piyonu e2'den e4'e (iki kare ileri) sürükle.",
+            "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e2", "to": "e4"}
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Taş al!",
+            "body": "Piyonla çaprazdaki siyah piyonu al (e3'ten d4'e).",
+            "fen": "8/8/8/8/3p4/4P3/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e3", "to": "d4"}
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Aferin!",
+            "body": "Piyonu öğrendin. Küçük ama önemli bir taş!",
+            "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Kale (Rook)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Kale",
+            "body": "Kale yatay ve dikey olarak istediği kadar kare gider. Köşeleri kullanır, çok güçlüdür.",
+            "fen": "8/8/8/8/4R3/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Kaleyi oynat",
+            "body": "Kaleyi e4'ten e8'e (yukarı) sürükle.",
+            "fen": "8/8/8/8/4R3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "e8"}
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Yana git",
+            "body": "Kaleyi e4'ten a4'e (sola) sürükle.",
+            "fen": "8/8/8/8/4R3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "a4"}
+        },
+        {
+          "order": 4,
+          "type": "explanation",
+          "content": {
+            "title": "Süper!",
+            "body": "Kale düz çizgilerin kralıdır.",
+            "fen": "8/8/8/8/4R3/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Fil (Bishop)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Fil",
+            "body": "Fil sadece çapraz gider. İstediği kadar kare gidebilir ama hep aynı renkteki karelerde kalır.",
+            "fen": "8/8/8/8/4B3/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Fili oynat",
+            "body": "Fili e4'ten h7'ye (çapraz) sürükle.",
+            "fen": "8/8/8/8/4B3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "h7"}
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Diğer çapraz",
+            "body": "Fili e4'ten a8'e sürükle.",
+            "fen": "8/8/8/8/4B3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "a8"}
+        },
+        {
+          "order": 4,
+          "type": "explanation",
+          "content": {
+            "title": "Harika!",
+            "body": "Fil çaprazların ustasıdır.",
+            "fen": "8/8/8/8/4B3/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "title": "At (Knight)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "At",
+            "body": "At 'L' şeklinde gider: iki kare bir yöne, bir kare yana. Tek taş olarak başka taşların üzerinden atlayabilir!",
+            "fen": "8/8/8/8/4N3/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Atı zıplat",
+            "body": "Atı e4'ten f6'ya (L şekli) sürükle.",
+            "fen": "8/8/8/8/4N3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "f6"}
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Başka L",
+            "body": "Atı e4'ten d2'ye sürükle.",
+            "fen": "8/8/8/8/4N3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "d2"}
+        },
+        {
+          "order": 4,
+          "type": "explanation",
+          "content": {
+            "title": "Müthiş!",
+            "body": "At, satrancın en oyuncu taşıdır. Üzerinden atlama yeteneği onu özel yapar.",
+            "fen": "8/8/8/8/4N3/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Vezir (Queen)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Vezir",
+            "body": "Vezir en güçlü taştır! Hem düz (kale gibi) hem çapraz (fil gibi) gidebilir. İstediği kadar kare.",
+            "fen": "8/8/8/8/4Q3/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Düz git",
+            "body": "Veziri e4'ten e1'e sürükle.",
+            "fen": "8/8/8/8/4Q3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "e1"}
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Çapraz git",
+            "body": "Veziri e4'ten a8'e (çapraz) sürükle.",
+            "fen": "8/8/8/8/4Q3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "a8"}
+        },
+        {
+          "order": 4,
+          "type": "explanation",
+          "content": {
+            "title": "Mükemmel!",
+            "body": "Vezir kraliçedir, en değerli ve en hareketli taş.",
+            "fen": "8/8/8/8/4Q3/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "title": "Şah (King)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Şah",
+            "body": "Şah en önemli taştır — onu kaybedersen oyun biter! Her yöne ama sadece BİR kare gider.",
+            "fen": "8/8/8/8/4K3/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahı oynat",
+            "body": "Şahı e4'ten e5'e (bir kare yukarı) sürükle.",
+            "fen": "8/8/8/8/4K3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "e5"}
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Çapraz bir kare",
+            "body": "Şahı e4'ten f5'e sürükle.",
+            "fen": "8/8/8/8/4K3/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e4", "to": "f5"}
+        },
+        {
+          "order": 4,
+          "type": "explanation",
+          "content": {
+            "title": "Aferin!",
+            "body": "Şahı korumak en önemli görevin. Yavaş ama kıymetli!",
+            "fen": "8/8/8/8/4K3/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "title": "Başlangıç dizilişi (Starting position)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Başlangıç dizilişi",
+            "body": "İşte satrancın başlangıç pozisyonu! Beyaz altta, siyah üstte. Her oyun böyle başlar.",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahı bul",
+            "body": "Beyaz şahı (kralı) bul ve tıkla. (İpucu: e1 karesinde)",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {"square": "e1"}
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Veziri bul",
+            "body": "Beyaz veziri bul ve tıkla. (d1 karesinde)",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {"square": "d1"}
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "İlk hamle",
+            "body": "Klasik bir açılış hamlesi yap: e2 piyonunu e4'e sürükle.",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "e2", "to": "e4"}
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Oyun başladı!",
+            "body": "Artık tüm taşları ve başlangıç dizilişini biliyorsun.",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "title": "Modül 1 Sınavı",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Hadi tekrar edelim!",
+            "body": "Modül 1'i bitirmek üzeresin. Birkaç soruyla öğrendiklerini test edelim.",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "inline_exercise",
+          "content": {
+            "title": "At hamlesi",
+            "body": "Atı g1'den f3'e sürükle.",
+            "fen": "8/8/8/8/8/8/8/6N1 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "g1", "to": "f3"}
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Fil hamlesi",
+            "body": "Fili c1'den g5'e sürükle.",
+            "fen": "8/8/8/8/8/8/8/2B5 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "c1", "to": "g5"}
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Vezir hamlesi",
+            "body": "Veziri d1'den h5'e sürükle.",
+            "fen": "8/8/8/8/8/8/8/3Q4 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {"from": "d1", "to": "h5"}
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Modül 1 Tamamlandı!",
+            "body": "Tebrikler! Artık tüm taşları, nasıl hareket ettiklerini ve başlangıç dizilişini biliyorsun. Modül 2'de taşların değerlerini öğreneceğiz!",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          }
+        }
+      ]
     }
   ]
 }
