@@ -1,14 +1,59 @@
 {
   "modules": [
-    {"order": 1, "name": "Satranç taşları ve hareketleri", "description": "Tahtayı, taşları ve özel hareketleri öğreniyoruz.", "icon": "pawn"},
-    {"order": 2, "name": "Taşların değerleri", "description": "Hangi taş daha kıymetli?", "icon": "balance"},
-    {"order": 3, "name": "Tehdit", "description": "Karşı tarafın taşlarını tehdit etmeyi öğreniyoruz.", "icon": "target"},
-    {"order": 4, "name": "Taş alma", "description": "Vuruş kuralları ve seçimi.", "icon": "capture"},
-    {"order": 5, "name": "Saldırı ve savunma yöntemleri", "description": "Hücum ve savunma prensipleri.", "icon": "shield"},
-    {"order": 6, "name": "Şah çekme", "description": "Rakibin şahını tehdit etmek.", "icon": "crown"},
-    {"order": 7, "name": "Şah çekme türleri", "description": "Açma şah, çiftli şah, vs.", "icon": "double-crown"},
-    {"order": 8, "name": "Şah tehdidinden korunma türleri", "description": "Kaç, blokla, al.", "icon": "block"},
-    {"order": 9, "name": "Mat ve temel mat türleri", "description": "Oyunu nasıl bitiririz.", "icon": "checkmate"}
+    {
+      "order": 1,
+      "name": "Satranç taşları ve hareketleri",
+      "description": "Tahtayı, taşları ve özel hareketleri öğreniyoruz.",
+      "icon": "pawn"
+    },
+    {
+      "order": 2,
+      "name": "Taşların değerleri",
+      "description": "Hangi taş daha kıymetli?",
+      "icon": "balance"
+    },
+    {
+      "order": 3,
+      "name": "Tehdit",
+      "description": "Karşı tarafın taşlarını tehdit etmeyi öğreniyoruz.",
+      "icon": "target"
+    },
+    {
+      "order": 4,
+      "name": "Taş alma",
+      "description": "Vuruş kuralları ve seçimi.",
+      "icon": "capture"
+    },
+    {
+      "order": 5,
+      "name": "Saldırı ve savunma yöntemleri",
+      "description": "Hücum ve savunma prensipleri.",
+      "icon": "shield"
+    },
+    {
+      "order": 6,
+      "name": "Şah çekme",
+      "description": "Rakibin şahını tehdit etmek.",
+      "icon": "crown"
+    },
+    {
+      "order": 7,
+      "name": "Şah çekme türleri",
+      "description": "Açma şah, çiftli şah, vs.",
+      "icon": "double-crown"
+    },
+    {
+      "order": 8,
+      "name": "Şah tehdidinden korunma türleri",
+      "description": "Kaç, blokla, al.",
+      "icon": "block"
+    },
+    {
+      "order": 9,
+      "name": "Mat ve temel mat türleri",
+      "description": "Oyunu nasıl bitiririz.",
+      "icon": "checkmate"
+    }
   ],
   "module_1_lessons": [
     {
@@ -44,7 +89,9 @@
             "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
             "task_type": "click_square"
           },
-          "correct_answer": {"square": "e4"}
+          "correct_answer": {
+            "square": "e4"
+          }
         },
         {
           "order": 4,
@@ -55,7 +102,9 @@
             "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
             "task_type": "click_square"
           },
-          "correct_answer": {"square": "c6"}
+          "correct_answer": {
+            "square": "c6"
+          }
         },
         {
           "order": 5,
@@ -100,7 +149,10 @@
             "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e2", "to": "e4"}
+          "correct_answer": {
+            "from": "e2",
+            "to": "e4"
+          }
         },
         {
           "order": 4,
@@ -111,7 +163,10 @@
             "fen": "8/8/8/8/3p4/4P3/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e3", "to": "d4"}
+          "correct_answer": {
+            "from": "e3",
+            "to": "d4"
+          }
         },
         {
           "order": 5,
@@ -147,7 +202,10 @@
             "fen": "8/8/8/8/4R3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "e8"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "e8"
+          }
         },
         {
           "order": 3,
@@ -158,7 +216,10 @@
             "fen": "8/8/8/8/4R3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "a4"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "a4"
+          }
         },
         {
           "order": 4,
@@ -194,7 +255,10 @@
             "fen": "8/8/8/8/4B3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "h7"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "h7"
+          }
         },
         {
           "order": 3,
@@ -205,7 +269,10 @@
             "fen": "8/8/8/8/4B3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "a8"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "a8"
+          }
         },
         {
           "order": 4,
@@ -241,7 +308,10 @@
             "fen": "8/8/8/8/4N3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "f6"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "f6"
+          }
         },
         {
           "order": 3,
@@ -252,7 +322,10 @@
             "fen": "8/8/8/8/4N3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "d2"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "d2"
+          }
         },
         {
           "order": 4,
@@ -288,7 +361,10 @@
             "fen": "8/8/8/8/4Q3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "e1"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "e1"
+          }
         },
         {
           "order": 3,
@@ -299,7 +375,10 @@
             "fen": "8/8/8/8/4Q3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "a8"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "a8"
+          }
         },
         {
           "order": 4,
@@ -335,7 +414,10 @@
             "fen": "8/8/8/8/4K3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "e5"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "e5"
+          }
         },
         {
           "order": 3,
@@ -346,7 +428,10 @@
             "fen": "8/8/8/8/4K3/8/8/8 w - - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e4", "to": "f5"}
+          "correct_answer": {
+            "from": "e4",
+            "to": "f5"
+          }
         },
         {
           "order": 4,
@@ -382,7 +467,9 @@
             "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             "task_type": "click_square"
           },
-          "correct_answer": {"square": "e1"}
+          "correct_answer": {
+            "square": "e1"
+          }
         },
         {
           "order": 3,
@@ -393,7 +480,9 @@
             "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             "task_type": "click_square"
           },
-          "correct_answer": {"square": "d1"}
+          "correct_answer": {
+            "square": "d1"
+          }
         },
         {
           "order": 4,
@@ -404,7 +493,10 @@
             "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             "task_type": "make_move"
           },
-          "correct_answer": {"from": "e2", "to": "e4"}
+          "correct_answer": {
+            "from": "e2",
+            "to": "e4"
+          }
         },
         {
           "order": 5,
@@ -430,32 +522,2153 @@
             "questions": [
               {
                 "prompt": "Satranç tahtasında kaç kare vardır?",
-                "options": ["32", "48", "64", "128"],
+                "options": [
+                  "32",
+                  "48",
+                  "64",
+                  "128"
+                ],
                 "correct_index": 2
               },
               {
                 "prompt": "Atın hareketi nasıldır?",
-                "options": ["L şekli (2 kare + 1 kare)", "Diyagonal", "Düz ileri", "Herhangi yön 1 kare"],
+                "options": [
+                  "L şekli (2 kare + 1 kare)",
+                  "Diyagonal",
+                  "Düz ileri",
+                  "Herhangi yön 1 kare"
+                ],
                 "correct_index": 0
               },
               {
                 "prompt": "Hangi taş diagonal (çapraz) hareket eder?",
-                "options": ["Kale", "Fil", "Piyade", "Kral"],
+                "options": [
+                  "Kale",
+                  "Fil",
+                  "Piyade",
+                  "Kral"
+                ],
                 "correct_index": 1
               },
               {
                 "prompt": "Rok hamlesi hangi iki taş arasında yapılır?",
-                "options": ["Vezir ve Fil", "Kral ve Kale", "Kral ve At", "Kale ve Fil"],
+                "options": [
+                  "Vezir ve Fil",
+                  "Kral ve Kale",
+                  "Kral ve At",
+                  "Kale ve Fil"
+                ],
                 "correct_index": 1
               },
               {
                 "prompt": "Piyade başlangıç karesinden kaç kare ileri gidebilir?",
-                "options": ["Yalnızca 1", "1 veya 2", "2 veya 3", "İstediği kadar"],
+                "options": [
+                  "Yalnızca 1",
+                  "1 veya 2",
+                  "2 veya 3",
+                  "İstediği kadar"
+                ],
                 "correct_index": 1
               }
             ]
           },
-          "correct_answer": {"correct_indexes": [2, 0, 1, 1, 1]}
+          "correct_answer": {
+            "correct_indexes": [
+              2,
+              0,
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_2_lessons": [
+    {
+      "order": 1,
+      "title": "Taşların puan değerleri",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Taşların değeri var",
+            "body": "Satrançta her taşın bir puan değeri vardır. Bu puanlar, hangi taşın daha güçlü olduğunu anlamamıza yardım eder. Değerli taşlarımızı korumalı, ucuz taşlarla rakibin değerli taşlarını almaya çalışmalıyız.",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Puanları öğrenelim",
+            "body": "Piyon = 1 puan, At = 3 puan, Fil = 3 puan, Kale = 5 puan, Vezir = 9 puan. Şah'ın puanı yoktur çünkü o paha biçilemez — onu kaybedersen oyun biter! İşte tahtada en değerli taş: Vezir.",
+            "fen": "8/8/8/3Q4/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Veziri bul",
+            "body": "En değerli taş olan Veziri bul ve üzerine tıkla.",
+            "fen": "8/8/8/3Q4/8/8/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "d5"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Kaleyi bul",
+            "body": "Burada bir Kale ve bir At var. Daha değerli olan Kaleyi (5 puan) bul ve tıkla.",
+            "fen": "8/8/8/3R4/8/5N2/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "d5"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Harika!",
+            "body": "Artık taşların puanlarını biliyorsun: Piyon 1, At ve Fil 3, Kale 5, Vezir 9. Bu puanlar oyun boyunca sana yol gösterecek!",
+            "fen": "8/8/8/3Q4/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Materyal sayma",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Materyal nedir?",
+            "body": "Materyal, tahtadaki taşlarının toplam puanıdır. Kendi taşlarının puanını topla, rakibin taşlarının puanını topla ve karşılaştır. Daha çok puanı olan taraf 'materyal olarak önde' demektir.",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Birlikte sayalım",
+            "body": "Burada Beyaz'ın bir Veziri (9) ve bir Kalesi (5) var = 14 puan. Siyah'ın bir Kalesi (5) ve bir Atı (3) var = 8 puan. Beyaz 14, Siyah 8 — yani Beyaz 6 puan önde!",
+            "fen": "8/4r3/8/2n5/8/8/4R3/3Q4 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Beyaz'ın güçlü taşını bul",
+            "body": "Beyaz'ın en değerli taşı olan Veziri bul ve tıkla.",
+            "fen": "8/4r3/8/2n5/8/8/4R3/3Q4 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "d1"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Siyah'ın kalesini bul",
+            "body": "Siyah'ın Kalesini (5 puan) bul ve tıkla.",
+            "fen": "8/4r3/8/2n5/8/8/4R3/3Q4 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "e7"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Aferin!",
+            "body": "Materyal saymayı öğrendin. Oyun sırasında hep aklından say: kim daha çok puana sahip? Önde olan kazanmaya daha yakındır.",
+            "fen": "8/4r3/8/2n5/8/8/4R3/3Q4 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Taş değişimi — kazançlı mı?",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Taş değişimi nedir?",
+            "body": "Bazen senin taşın rakibin taşını alır, rakip de seninkini geri alır. Buna 'değişim' denir. İyi bir değişimde sen daha değerli bir taş alırsın, ucuz bir taş verirsin.",
+            "fen": "8/8/8/3r4/8/8/8/3N4 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "İyi değişim, kötü değişim",
+            "body": "Atını (3 puan) verip Kale (5 puan) alırsan KAZANIRSIN — 2 puan kâr! Ama Kaleni (5) verip At (3) alırsan KAYBEDERSİN — 2 puan zarar. Veziri (9) bir At (3) için vermek çok kötüdür!",
+            "fen": "8/8/8/3r4/8/8/8/3N4 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Değerli taşı seç",
+            "body": "Atınla bir taş almak istiyorsun. Daha kârlı olduğu için rakip Kalenin durduğu d5 karesine tıkla.",
+            "fen": "8/8/8/3r4/8/8/8/3N4 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "d5"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Doğru hamle",
+            "body": "Atın c3'te, rakip Kale d5'te. At'ı c3'ten d5'e oynayarak Kaleyi al (3 puanla 5 puan kazan)!",
+            "fen": "8/8/8/3r4/8/2N5/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "c3",
+            "to": "d5"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Süper!",
+            "body": "Değerli taşı ucuz taşla almak en akıllı satranç hareketidir. Her zaman düşün: bu değişimde kazanıyor muyum, kaybediyor muyum?",
+            "fen": "8/8/8/3N4/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 2 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 2 Sınavı",
+            "questions": [
+              {
+                "prompt": "Vezirin puan değeri kaçtır?",
+                "options": [
+                  "3",
+                  "5",
+                  "9",
+                  "1"
+                ],
+                "correct_index": 2
+              },
+              {
+                "prompt": "Hangi iki taş aynı puana sahiptir?",
+                "options": [
+                  "At ve Fil (3'er)",
+                  "Kale ve Vezir",
+                  "Piyon ve At",
+                  "Fil ve Kale"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Kalenin puan değeri kaçtır?",
+                "options": [
+                  "3",
+                  "5",
+                  "9",
+                  "1"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Kaleni (5) verip rakibin Atını (3) almak nasıl bir değişimdir?",
+                "options": [
+                  "Kazançlı",
+                  "Zararlı",
+                  "Eşit",
+                  "Çok kazançlı"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Hangi taşın puanı yoktur çünkü paha biçilemez?",
+                "options": [
+                  "Vezir",
+                  "Kale",
+                  "Şah",
+                  "Fil"
+                ],
+                "correct_index": 2
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              2,
+              0,
+              1,
+              1,
+              2
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_3_lessons": [
+    {
+      "order": 1,
+      "title": "Tehdit nedir?",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Tehdit",
+            "body": "Tehdit, bir sonraki hamlede rakibin bir taşını alabileceğin anlamına gelir. Taşın, rakibin taşına ulaşabiliyorsa onu 'tehdit ediyorsun' demektir. Rakip dikkat etmezse o taşı kaybeder!",
+            "fen": "8/8/8/3r4/8/3R4/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Bir örnek",
+            "body": "Burada Beyaz Kale d3'te, Siyah Kale d5'te. Aynı sütunda oldukları için Beyaz Kale, Siyah Kaleyi tehdit ediyor. Sıra Beyaz'da olsaydı d5'e gidip onu alabilirdi.",
+            "fen": "8/8/8/3r4/8/3R4/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Tehdit edilen taşı bul",
+            "body": "Beyaz Kale hangi taşı tehdit ediyor? Tehdit altındaki siyah Kaleye tıkla.",
+            "fen": "8/8/8/3r4/8/3R4/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "d5"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Tehdidi gerçekleştir",
+            "body": "Beyaz Kale ile tehdit ettiğin Siyah Kaleyi al: Kaleyi d3'ten d5'e oynat.",
+            "fen": "8/8/8/3r4/8/3R4/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d3",
+            "to": "d5"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Çok iyi!",
+            "body": "Tehdit, satrancın temel silahıdır. Her hamlende düşün: hangi rakip taşını tehdit edebilirim? Ve rakip benim hangi taşımı tehdit ediyor?",
+            "fen": "8/8/8/3R4/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Tehdide karşılık vermek",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Tehdide cevap ver",
+            "body": "Rakip taşını tehdit ettiğinde panik yapma! Üç seçeneğin var: 1) Tehdit eden taşı AL, 2) Taşını güvenli bir kareye KAÇIR, 3) Taşını başka bir taşla KORU.",
+            "fen": "8/8/8/3q4/8/3N4/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Kaçmak en kolayı",
+            "body": "Burada Siyah Vezir, Beyaz Atı tehdit edebilir. En basit cevap: Atı tehlikeden uzak bir kareye götürmek. Atını güvenli bir kareye taşıyarak kurtarabilirsin.",
+            "fen": "8/8/8/3q4/8/3N4/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Tehdit edeni al",
+            "body": "Beyaz Kale d1'de, Siyah Kale d5'te ve senin taşını tehdit ediyor. Kale ile rakip Kaleyi al: d1'den d5'e oynat.",
+            "fen": "8/8/8/3r4/8/8/8/3R4 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d1",
+            "to": "d5"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Kaçır!",
+            "body": "Siyah Vezir d5'te Atını (d3) tehdit ediyor. Atını güvenli kareye kaçır: d3'ten f4'e oynat.",
+            "fen": "8/8/8/3q4/8/3N4/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d3",
+            "to": "f4"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Harika savunma!",
+            "body": "Tehdide üç şekilde cevap verebilirsin: al, kaç, koru. En iyisini seç ve taşlarını koru!",
+            "fen": "8/8/8/8/5N2/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Çift tehdit",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "İki taşı birden tehdit et",
+            "body": "Çift tehdit, tek bir taşla aynı anda iki rakip taşını tehdit etmektir. Rakip sadece bir taşını kurtarabilir, diğerini sen alırsın! Bu çok güçlü bir hücum fikridir.",
+            "fen": "2r5/8/8/8/3N4/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "At'ın çift tehdidi",
+            "body": "At, 'L' hareketiyle iki rakip taşı aynı anda tehdit edebilir. Atı doğru kareye getirdiğinde iki rakip taşı birden tehlikeye girer ve rakip sadece birini kurtarabilir.",
+            "fen": "2r5/8/8/8/3N4/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Çift tehdide yaklaş",
+            "body": "Atını d4'ten e6'ya oynat. At yeni karesinden c7 ve diğer kareleri kontrol eder, rakibe baskı yaparsın!",
+            "fen": "2r5/8/8/8/3N4/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d4",
+            "to": "e6"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Tehdit edilen taşı bul",
+            "body": "Beyaz Vezir d4'te. Hangi rakip taşı tehdit ediyor? d8'deki siyah Kaleye tıkla (aynı sütun).",
+            "fen": "3r4/8/8/8/3Q4/8/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "d8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Mükemmel!",
+            "body": "Çift tehdit ile rakibin iki taşını birden tehlikeye atarsın. Çatal (fork) bu fikrin en güzel örneğidir — bunu sonraki modüllerde daha çok göreceğiz!",
+            "fen": "8/8/8/8/3N4/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 3 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 3 Sınavı",
+            "questions": [
+              {
+                "prompt": "Tehdit ne demektir?",
+                "options": [
+                  "Bir sonraki hamlede rakip taşını alabilmek",
+                  "Şah çekmek",
+                  "Rok yapmak",
+                  "Piyonu terfi ettirmek"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Bir tehdide kaç farklı şekilde cevap verebilirsin?",
+                "options": [
+                  "Sadece 1 (kaçmak)",
+                  "3 (al, kaç, koru)",
+                  "2 (al, kaç)",
+                  "Hiçbiri"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Çift tehdit nedir?",
+                "options": [
+                  "İki hamlede tehdit",
+                  "Tek taşla iki rakip taşı tehdit etmek",
+                  "İki kez şah çekmek",
+                  "Rakibi iki kez tehdit etmek"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Çift tehditte rakip kaç taşını kurtarabilir?",
+                "options": [
+                  "İkisini de",
+                  "Sadece birini",
+                  "Hiçbirini",
+                  "Üçünü"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Aşağıdakilerden hangisi tehdide bir cevap DEĞİLDİR?",
+                "options": [
+                  "Tehdit eden taşı almak",
+                  "Taşı kaçırmak",
+                  "Taşı korumak",
+                  "Sırayı atlamak"
+                ],
+                "correct_index": 3
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              0,
+              1,
+              1,
+              1,
+              3
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_4_lessons": [
+    {
+      "order": 1,
+      "title": "Taş alma kuralları",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Taş nasıl alınır?",
+            "body": "Bir taşı almak için, taşını rakip taşının durduğu kareye götürürsün. Rakip taş tahtadan kalkar, senin taşın onun yerine geçer. Her taş kendi hareket kurallarına göre alır.",
+            "fen": "8/8/8/3p4/8/3R4/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Geçerken alma (En Passant)",
+            "body": "Piyon özel bir alış kuralına sahiptir: 'geçerken alma'. Rakip piyon iki kare ilerleyip senin piyonunun yanına gelirse, senin piyonun onu sanki bir kare ilerlemiş gibi çapraz alabilir. Ama bunu hemen bir sonraki hamlede yapmalısın!",
+            "fen": "8/8/8/3pP3/8/8/8/8 w - d6 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Kaleyle al",
+            "body": "Beyaz Kale d3'te, Siyah Piyon d5'te. Kale ile piyonu al: d3'ten d5'e oynat.",
+            "fen": "8/8/8/3p4/8/3R4/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d3",
+            "to": "d5"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Geçerken al",
+            "body": "Siyah piyon az önce d7'den d5'e geldi. Beyaz piyonun (e5) onu geçerken alabilir: e5'ten d6'ya oynat.",
+            "fen": "8/8/8/3pP3/8/8/8/8 w - d6 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e5",
+            "to": "d6"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Tebrikler!",
+            "body": "Artık taş almayı ve özel 'geçerken alma' kuralını biliyorsun. Geçerken alma nadir ama önemli bir kuraldır!",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Değerli taşı al, ucuz taşı bırak",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "En iyi alışı seç",
+            "body": "Bazen birden fazla taş alma fırsatın olur. O zaman en değerli olanı almalısın! Bir Vezir (9) ile bir Piyon (1) arasında seçim yaparsan, elbette Veziri alırsın.",
+            "fen": "8/8/1q3p2/8/8/8/8/3Q4 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Düşün ve seç",
+            "body": "Birden fazla rakip taşı alabiliyorsan, en değerli olanı tercih et. Vezir bir piyondan çok daha değerlidir, o yüzden Veziri almalısın!",
+            "fen": "8/8/1q3p2/8/8/8/8/3Q4 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Değerli olanı bul",
+            "body": "Tahtada bir Vezir ve bir Piyon var. Almak isteyeceğin daha değerli taşa, yani b6'daki Vezire tıkla.",
+            "fen": "8/8/1q3p2/8/8/8/8/3Q4 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "b6"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Veziri al!",
+            "body": "Beyaz Kale d1'de, Siyah Vezir d8'de. Kaleni d1'den d8'e götürerek değerli Veziri al.",
+            "fen": "3q4/8/8/8/8/8/8/3R4 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d1",
+            "to": "d8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Akıllıca!",
+            "body": "Birden fazla alış fırsatın olduğunda hep en değerli taşı al. Puanları hatırla: Vezir > Kale > At/Fil > Piyon.",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Korunan ve korumasız taşlar",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Korumalı taş tehlikeli olabilir",
+            "body": "Bir rakip taş başka bir taş tarafından korunuyorsa, onu almak riskli olabilir. Sen alırsan, rakip seni geri alır. Eğer sen daha değerli bir taş verirsen kaybedersin!",
+            "fen": "8/8/2p5/3p4/8/3R4/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Önce kontrol et",
+            "body": "Burada Siyah piyon d5'te, c6'daki siyah piyon onu koruyor. Bir taşı almadan önce hep sor: bu taş korunuyor mu? Korunuyorsa, değişim benim için kârlı mı?",
+            "fen": "8/8/2p5/3p4/8/3R4/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Güvenli alış",
+            "body": "Siyah piyon d5'te ve korumasız. Kaleni d3'ten d5'e götürerek onu güvenle al.",
+            "fen": "8/8/8/3p4/8/3R4/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d3",
+            "to": "d5"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Korunan taşı bul",
+            "body": "Bu pozisyonda d5'teki siyah piyon, c6'daki siyah piyon tarafından korunuyor. Koruyucu taşa, yani c6'daki piyona tıkla.",
+            "fen": "8/8/2p5/3p4/8/3R4/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "c6"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Dikkatli oyuncu!",
+            "body": "Bir taşı almadan önce hep onun korunup korunmadığını kontrol et. Korumasız taşları al, korunan taşları almadan önce iyi düşün!",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 4 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 4 Sınavı",
+            "questions": [
+              {
+                "prompt": "Bir taşı almak için ne yaparsın?",
+                "options": [
+                  "Taşının yanına gidersin",
+                  "Taşını rakip taşının durduğu kareye götürürsün",
+                  "Rakip taşı seçersin",
+                  "Sırayı atlarsın"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "'Geçerken alma' (En Passant) hangi taşa özeldir?",
+                "options": [
+                  "Kale",
+                  "Piyon",
+                  "At",
+                  "Vezir"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Bir Vezir ve bir Piyon alma fırsatın varsa hangisini alırsın?",
+                "options": [
+                  "Piyon",
+                  "Vezir",
+                  "Fark etmez",
+                  "İkisini de"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Korunan bir taşı almadan önce ne yapmalısın?",
+                "options": [
+                  "Hemen almalısın",
+                  "Değişimin kârlı olup olmadığını düşünmelisin",
+                  "Hiç almamalısın",
+                  "Şah çekmelisin"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Geçerken alma ne zaman yapılabilir?",
+                "options": [
+                  "İstediğin zaman",
+                  "Rakip piyon iki kare ilerledikten hemen sonra",
+                  "Oyunun sonunda",
+                  "Hiçbir zaman"
+                ],
+                "correct_index": 1
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_5_lessons": [
+    {
+      "order": 1,
+      "title": "Temel saldırı fikirleri",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Nasıl saldırılır?",
+            "body": "İyi bir saldırı için üç altın kural: 1) Merkezi (tahtanın ortasını) kontrol et, 2) Taşlarını geliştir (başlangıç karelerinden çıkar), 3) Kalelerini açık sütunlara yerleştir. Güçlü taşlar saldırı kazanır!",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Merkez güçtür",
+            "body": "Tahtanın ortasındaki kareler (d4, e4, d5, e5) çok önemlidir. Buradaki taşlar daha fazla kareyi kontrol eder. Bu yüzden oyuna genellikle merkez piyonlarını ileri sürerek başlarız.",
+            "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Merkezi tut",
+            "body": "Klasik bir merkez hamlesi yap: e2 piyonunu e4'e sürükle.",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e2",
+            "to": "e4"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Atı geliştir",
+            "body": "Atını geliştir: g1'deki Atı f3'e oynat. Bu, At'ı oyuna sokan harika bir gelişim hamlesidir.",
+            "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "g1",
+            "to": "f3"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "İyi başlangıç!",
+            "body": "Merkezi kontrol et, taşlarını geliştir. Bu prensipler her oyunun başında işine yarayacak!",
+            "fen": "rnbqkbnr/pppppppp/8/8/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Temel savunma fikirleri",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Nasıl savunulur?",
+            "body": "Savunma da saldırı kadar önemlidir! Tehdit edilen taşını koru veya kaçır. Şahını güvende tutmak için rok yap. Rakibin planlarını gör ve önceden hazırlık yap.",
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Rok ile şahı koru",
+            "body": "Rok, Şahını köşeye götürüp güvene alan özel bir hamledir. Şah ve Kale aynı anda hareket eder. Erken rok yapmak şahını korur ve Kaleni oyuna sokar.",
+            "fen": "rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahını güvene al",
+            "body": "Kısa rok yap: Şahını e1'den g1'e sürükle (rok hamlesi).",
+            "fen": "rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e1",
+            "to": "g1"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Tehdit edilen taşı kaçır",
+            "body": "Siyah Vezir d5'te senin Atını (d3) tehdit ediyor. Atını güvenli kareye kaçır: d3'ten b4'e oynat.",
+            "fen": "8/8/8/3q4/8/3N4/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d3",
+            "to": "b4"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Sağlam savunma!",
+            "body": "Şahını rokla güvene al, tehdit edilen taşlarını koru veya kaçır. İyi bir savunmacı kaybetmez!",
+            "fen": "rnbq1rk1/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 w - - 6 5"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Çatal (Fork)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Çatal nedir?",
+            "body": "Çatal (fork), tek bir taşın aynı anda iki veya daha fazla rakip taşı tehdit etmesidir. En sevilen çatal taşı At'tır çünkü L şeklindeki hareketiyle beklenmedik çatallar yapar. Rakip sadece bir taşını kurtarır!",
+            "fen": "8/3r1r2/8/4N3/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "At çatalı",
+            "body": "Burada Beyaz At e5'te ve iki Siyah Kaleyi (d7 ve f7) aynı anda tehdit ediyor! Bu mükemmel bir çatal. Siyah ne yaparsa yapsın bir Kale kaybedecek.",
+            "fen": "8/3r1r2/8/4N3/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Çatal kur",
+            "body": "Atını c4'ten e5'e oynat. Oradan iki Siyah Kaleyi (d7 ve f7) aynı anda çatallarsın!",
+            "fen": "8/3r1r2/8/8/2N5/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "c4",
+            "to": "e5"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Çatallanan taşı al",
+            "body": "Çatal kurdun! Şimdi bir Kaleyi al. Atını e5'ten d7'ye oynat ve Kaleyi kazan.",
+            "fen": "8/3r1r2/8/4N3/8/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e5",
+            "to": "d7"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Çatal ustası!",
+            "body": "Çatal, en güçlü taktiklerden biridir. Özellikle At çatallarına dikkat et — hem kendi çatallarını ara hem rakibin çatallarından kaçın!",
+            "fen": "8/3N1r2/8/8/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 5 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 5 Sınavı",
+            "questions": [
+              {
+                "prompt": "İyi bir saldırı için önemli olan hangisidir?",
+                "options": [
+                  "Merkezi kontrol etmek",
+                  "Hiç hamle yapmamak",
+                  "Sadece piyon oynamak",
+                  "Şahı ortaya çıkarmak"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Rok hamlesi ne işe yarar?",
+                "options": [
+                  "Vezir kazanır",
+                  "Şahı güvene alır ve Kaleyi geliştirir",
+                  "Piyonu terfi ettirir",
+                  "At çatalı yapar"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Çatal (fork) nedir?",
+                "options": [
+                  "Tek taşla iki rakip taşı aynı anda tehdit etmek",
+                  "İki kez şah çekmek",
+                  "Rok yapmak",
+                  "Piyonu ilerletmek"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Hangi taş çatal yapmakta en ünlüdür?",
+                "options": [
+                  "Piyon",
+                  "At",
+                  "Kale",
+                  "Şah"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Tehdit edilen bir taşı nasıl savunabilirsin?",
+                "options": [
+                  "Sadece şah çekerek",
+                  "Koruyarak veya kaçırarak",
+                  "Sırayı atlayarak",
+                  "Hiçbir şey yapamazsın"
+                ],
+                "correct_index": 1
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              0,
+              1,
+              0,
+              1,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_6_lessons": [
+    {
+      "order": 1,
+      "title": "Şah nedir?",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Şah çekmek",
+            "body": "Rakibin Şahını (kralını) bir taşınla tehdit edersen buna 'şah' denir. Şah çekmek, 'Dikkat et, Kralını alabilirim!' demektir. Rakip bu tehdidi hemen ortadan kaldırmak zorundadır.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Şahtayken zorunluluk",
+            "body": "Şah altındayken başka HİÇBİR hamle yapamazsın! Önce Şahını tehditten kurtarmalısın. Bu yüzden şah çekmek rakibi bir adım atmaya zorlar.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şah çeken taşı bul",
+            "body": "Beyaz Kale, Siyah Şaha şah çekiyor (aynı sütunda). Şah çeken Beyaz Kaleye tıkla.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "e1"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Tehdit altındaki Şah",
+            "body": "Tehdit altındaki Siyah Şaha tıkla.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "e8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Şahı anladın!",
+            "body": "Şah çekmek Kralı tehdit etmektir. Şah altındaki oyuncu başka hamle yapamaz — önce şahtan kurtulmalıdır!",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Şah nasıl çekilir?",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Şah çekme tekniği",
+            "body": "Şah çekmek için bir taşını, rakibin Şahını tehdit edecek bir kareye götürürsün. Vezir, Kale, Fil, At ve hatta Piyon bile şah çekebilir! Taşın hareket kurallarına göre Şaha ulaşmalı.",
+            "fen": "4k3/8/8/8/8/8/8/3Q4 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Vezir ile şah",
+            "body": "Vezir hem düz hem çapraz gittiği için şah çekmesi çok kolaydır. Burada Veziri Siyah Şahla aynı sütuna veya sıraya getirerek şah çekebilirsin.",
+            "fen": "4k3/8/8/8/8/8/8/3Q4 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şah çek!",
+            "body": "Vezirini d1'den d8'e götür — Vezir 8. sıraya gelir ve e8'deki Şaha aynı sırada şah çeker.",
+            "fen": "4k3/8/8/8/8/8/8/3Q4 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d1",
+            "to": "d8"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Kale ile şah",
+            "body": "Beyaz Kale a1'de, Siyah Şah e8'de. Kaleni e sütununa getir: a1'den e1'e oynat ve Şaha aynı sütunda şah çek.",
+            "fen": "4k3/8/8/8/8/8/8/R7 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "a1",
+            "to": "e1"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Şah çekiyorsun!",
+            "body": "Taşını Şahı tehdit eden bir kareye götürerek şah çekersin. Şah çekmek rakibi zorlar ve oyunu kontrol etmene yardım eder!",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Şahtan çıkma",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Şahtan nasıl kurtulurum?",
+            "body": "Şah altındayken üç yolla kurtulabilirsin: 1) Şahını başka kareye HAREKET ettir, 2) Araya bir taş koyarak BLOKE et, 3) Şah çeken taşı AL. Bunlardan birini yapamazsan... bu mat olabilir!",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Şahı hareket ettir",
+            "body": "En basit çözüm Şahını tehdit edilmeyen bir kareye taşımaktır. Burada Siyah Şah e8'de Kale tarafından şah çekiliyor. Şah yana kaçarak (d8 veya f8) kurtulabilir.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahı kaçır",
+            "body": "Siyah'sın, Şahın şah altında. Şahı e8'den d8'e kaçır (Kale e sütununda şah çekiyor).",
+            "fen": "4k3/8/8/8/8/8/8/4R3 b - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e8",
+            "to": "d8"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şah çeken taşı al",
+            "body": "Siyah'sın. Beyaz Kale e2'de Şahına (e1) şah çekiyor ama Şahın onu alabilir! Şahı e1'den e2'ye götürerek Kaleyi al.",
+            "fen": "8/8/8/8/8/8/4R3/4k3 b - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e1",
+            "to": "e2"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Kurtuldun!",
+            "body": "Şahtan üç şekilde kurtulursun: kaç, bloke et, al. Eğer hiçbiri olmazsa oyun biter — buna mat denir, onu son modülde öğreneceğiz!",
+            "fen": "8/8/8/8/8/8/8/4k3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 6 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 6 Sınavı",
+            "questions": [
+              {
+                "prompt": "Şah çekmek ne demektir?",
+                "options": [
+                  "Rakibin Şahını tehdit etmek",
+                  "Piyonu terfi ettirmek",
+                  "Rok yapmak",
+                  "Vezir almak"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Şah altındayken ne yapamazsın?",
+                "options": [
+                  "Şahı kaçırmak",
+                  "Başka bir taşla ilgisiz bir hamle yapmak",
+                  "Şah çeken taşı almak",
+                  "Araya taş koymak"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Şahtan kurtulmanın yollarından biri DEĞİLDİR:",
+                "options": [
+                  "Şahı hareket ettirmek",
+                  "Araya taş koyarak bloke etmek",
+                  "Şah çeken taşı almak",
+                  "Sırayı atlamak"
+                ],
+                "correct_index": 3
+              },
+              {
+                "prompt": "Hangi taşlar şah çekebilir?",
+                "options": [
+                  "Sadece Vezir",
+                  "Vezir, Kale, Fil, At ve Piyon",
+                  "Sadece Kale ve Vezir",
+                  "Sadece Şah"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Şah çekmek rakibi ne yapmaya zorlar?",
+                "options": [
+                  "İstifa etmeye",
+                  "Şah tehdidini hemen ortadan kaldırmaya",
+                  "Vezir vermeye",
+                  "Hiçbir şeye"
+                ],
+                "correct_index": 1
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              0,
+              1,
+              3,
+              1,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_7_lessons": [
+    {
+      "order": 1,
+      "title": "Açma şah (Discovered check)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Açma şah nedir?",
+            "body": "Açma şah, çok şaşırtıcı bir taktiktir! Önündeki bir taşını oynatırsın ve arkadaki taşın aniden Şaha şah çeker. Hareket eden taş başka bir iş yaparken, arkadaki taş şahı verir!",
+            "fen": "4k3/8/8/8/4N3/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Nasıl çalışır?",
+            "body": "Burada Beyaz Kale e1'de ve önünde Beyaz At e4'te. At yana giderse (e sütunundan çıkarsa) Kale aniden e8'deki Şaha şah çeker! At aynı zamanda başka bir taşı da tehdit edebilir.",
+            "fen": "4k3/8/8/8/4N3/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Açma şah yap",
+            "body": "Atını e4'ten d6'ya oynat. At yana gidince, arkadaki Kale e8'deki Şaha açma şah çeker!",
+            "fen": "4k3/8/8/8/4N3/8/8/4R3 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e4",
+            "to": "d6"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Açan taşı bul",
+            "body": "Bir açma şahta şahı asıl veren arkadaki taştır. Bu pozisyonda şahı verecek olan e1'deki Beyaz Kaleye tıkla.",
+            "fen": "4k3/8/8/8/4N3/8/8/4R3 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "e1"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Şaşırtıcı!",
+            "body": "Açma şah çok güçlüdür çünkü hareket eden taş serbestçe başka bir taşı alabilir veya tehdit edebilir — rakip şahla uğraşmak zorunda kalır!",
+            "fen": "8/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Çiftli şah (Double check)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Çiftli şah nedir?",
+            "body": "Çiftli şah, aynı anda İKİ taşın birden Şaha şah çekmesidir. Bu açma şahın daha güçlü halidir. İki tehdit birden olduğu için tek bir taşı alıp ya da araya taş koyarak kurtulmak işe yaramaz!",
+            "fen": "4k3/8/4N3/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Tek çare: Şahı kaçırmak",
+            "body": "Çiftli şahta iki taş aynı anda şah çektiği için, hem birini bloke etmek hem birini almak yetmez. Tek kurtuluş Şahı güvenli bir kareye HAREKET ettirmektir! Bu yüzden çiftli şah çok tehlikelidir.",
+            "fen": "4k3/8/4N3/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "At'ı bul",
+            "body": "Bu pozisyonda At e6'da. Çiftli şahı kuracak olan At'ın bulunduğu e6 karesine tıkla.",
+            "fen": "4k3/8/4N3/8/8/8/8/4R3 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "e6"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Çiftli şah kur",
+            "body": "Atını e6'dan c7'ye oynat — At c7'den Şaha şah verir ve aynı anda e1'deki Kale de e sütununu açar. İki taş birden şah çeker!",
+            "fen": "4k3/8/4N3/8/8/8/8/4R3 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e6",
+            "to": "c7"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "İki kat güçlü!",
+            "body": "Çiftli şahta rakip MUTLAKA Şahını oynatmak zorundadır. Bu yüzden çiftli şah, mat tuzaklarının en güçlü silahlarından biridir!",
+            "fen": "8/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Devamlı şah (Perpetual check)",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Devamlı şah nedir?",
+            "body": "Devamlı şah, rakibe sürekli şah çekerek oyunu berabere (remi) yapmaktır. Eğer kaybediyorsan ama rakibin Şahına durmadan şah çekebiliyorsan, oyun beraberlikle biter. Kaybetmekten kurtulmanın akıllı bir yolu!",
+            "fen": "6k1/5ppp/8/8/8/8/8/Q7 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Sonsuz döngü",
+            "body": "Vezir gibi güçlü bir taşla rakibin Şahını köşeye sıkıştırıp ileri-geri şah çekersin. Şah bir kareden diğerine kaçar ama kurtulamaz. Aynı pozisyon üç kez tekrar ederse oyun berabere biter!",
+            "fen": "6k1/5ppp/8/8/8/8/8/Q7 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şah çekmeye başla",
+            "body": "Vezirini a1'den d4'e oynat ve şah çekmek için yaklaş. Buradan Şahı sıkıştırmaya hazırlanırsın.",
+            "fen": "6k1/5ppp/8/8/8/8/8/Q7 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "a1",
+            "to": "d4"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahı sıkıştır",
+            "body": "Vezirini d4'ten d8'e götürerek g8'deki Şaha 8. sıradan şah çek.",
+            "fen": "6k1/5ppp/8/8/3Q4/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d4",
+            "to": "d8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Akıllıca beraberlik!",
+            "body": "Devamlı şah, kaybetmek üzereyken oyunu kurtarmanın harika bir yoludur. Bazen beraberlik, kaybetmekten çok daha iyidir!",
+            "fen": "6k1/5ppp/8/8/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 7 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 7 Sınavı",
+            "questions": [
+              {
+                "prompt": "Açma şah nasıl olur?",
+                "options": [
+                  "Bir taş oynar, arkasındaki taş şah çeker",
+                  "İki kez şah çekersin",
+                  "Şahı kaçırırsın",
+                  "Piyon terfi eder"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Çiftli şahtan kurtulmanın TEK yolu nedir?",
+                "options": [
+                  "Araya taş koymak",
+                  "Şah çeken taşlardan birini almak",
+                  "Şahı hareket ettirmek",
+                  "Şah çekmek"
+                ],
+                "correct_index": 2
+              },
+              {
+                "prompt": "Çiftli şahta kaç taş aynı anda şah çeker?",
+                "options": [
+                  "1",
+                  "2",
+                  "3",
+                  "4"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Devamlı şah neyle sonuçlanır?",
+                "options": [
+                  "Mat",
+                  "Beraberlik (remi)",
+                  "Vezir kaybı",
+                  "Rok"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Devamlı şah ne zaman işine yarar?",
+                "options": [
+                  "Kazanırken",
+                  "Kaybediyorken oyunu kurtarmak için",
+                  "Oyunun başında",
+                  "Hiçbir zaman"
+                ],
+                "correct_index": 1
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              0,
+              2,
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_8_lessons": [
+    {
+      "order": 1,
+      "title": "Şahtan kaçmak",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Şahı güvene taşı",
+            "body": "Şah altındayken kurtulmanın ilk ve en basit yolu Şahını tehdit edilmeyen boş bir kareye taşımaktır. Şahını kaçırırken, yeni karenin de güvenli olduğundan emin ol!",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Güvenli kareyi seç",
+            "body": "Şahını kaçırırken, hâlâ tehdit altında olan bir kareye gitme! Burada Siyah Şah e8'de, Kale e sütununda şah çekiyor. Şah e sütunundan çıkmalı: d8 veya f8 güvenlidir.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahı kaçır",
+            "body": "Siyah'sın, Şahın şah altında. Şahını e8'den f8'e güvenli kareye kaçır.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 b - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e8",
+            "to": "f8"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Doğru kareyi seç",
+            "body": "Siyah'sın, Kale e sütununda şah çekiyor. Şahını d8'e kaçırarak güvene al.",
+            "fen": "4k3/8/8/8/8/8/8/4R3 b - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e8",
+            "to": "d8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Güvendesin!",
+            "body": "Şahı kaçırmak en kolay savunmadır. Ama gittiğin karenin de güvenli olduğunu hep kontrol et!",
+            "fen": "8/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Şahı bloke etmek",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Araya taş koy",
+            "body": "Eğer şah çeken taş ile Şahın arasında boş kare varsa, araya bir taş koyarak şahı bloke edebilirsin. Bu, Kale, Fil ve Vezir gibi uzaktan şah çeken taşlara karşı işe yarar (At'a karşı işe yaramaz!).",
+            "fen": "4k3/8/r7/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Bloke örneği",
+            "body": "Burada Beyaz Kale e1'den Siyah Şaha (e8) şah çekiyor. Araları boş. Siyah, e sütunundaki bir kareye bir taş koyarsa şahı bloke eder ve Şahını kurtarır.",
+            "fen": "4k3/8/r7/8/8/8/8/4R3 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahı bloke et",
+            "body": "Siyah'sın. Beyaz Kale e1'den şah çekiyor. Siyah Kaleni a6'dan e6'ya koyarak şahı bloke et.",
+            "fen": "4k3/8/r7/8/8/8/8/4R3 b - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "a6",
+            "to": "e6"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Bloke karesini bul",
+            "body": "Şah çeken Kale ile Şah arasındaki boş bir kareye taş konur. Şahı bloke edebileceğin e6 karesine tıkla.",
+            "fen": "4k3/8/r7/8/8/8/8/4R3 b - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "e6"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Güzel blok!",
+            "body": "Araya taş koymak, uzaktan gelen şahları durdurmanın akıllı bir yoludur. Ama At ile çekilen şahı bloke EDEMEZSİN — çünkü At üzerinden atlar!",
+            "fen": "8/8/8/8/8/8/8/4R3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Şah çeken taşı almak",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Tehdidi yok et",
+            "body": "Şahtan kurtulmanın üçüncü yolu: şah çeken taşı almak! Eğer Şahın ya da başka bir taşın, şah çeken taşı alabiliyorsa, tehdit ortadan kalkar ve şahtan kurtulursun.",
+            "fen": "8/8/8/8/8/8/4r3/4K3 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Şah çeken taşı al",
+            "body": "Burada Siyah Kale e2'de Beyaz Şaha (e1) şah çekiyor. Ama Şah hemen yanındaki Kaleyi alabilir! Şah e1'den e2'ye giderek şah çeken Kaleyi yer.",
+            "fen": "8/8/8/8/8/8/4r3/4K3 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şahla al",
+            "body": "Beyaz'sın. Şahın e1'de, şah çeken Siyah Kale e2'de. Şahınla Kaleyi al: e1'den e2'ye oynat.",
+            "fen": "8/8/8/8/8/8/4r3/4K3 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "e1",
+            "to": "e2"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Başka taşla al",
+            "body": "Beyaz'sın. Siyah Kale e5'ten Şahına (e1) şah çekiyor. Kendi Kalenle (h5) şah çeken Kaleyi al: Kaleni h5'ten e5'e götür ve tehdidi yok et.",
+            "fen": "4k3/8/8/4r2R/8/8/8/4K3 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "h5",
+            "to": "e5"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Tehdit bitti!",
+            "body": "Şah çeken taşı almak, tehdidi tamamen yok eder. Şahtan kurtulmanın üç yolunu öğrendin: kaç, bloke et, al. Hiçbiri olmazsa... mat!",
+            "fen": "8/8/8/8/8/8/8/4K3 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 8 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 8 Sınavı",
+            "questions": [
+              {
+                "prompt": "Şahtan kurtulmanın üç yolu nedir?",
+                "options": [
+                  "Kaç, bloke et, al",
+                  "Şah çek, rok yap, terfi et",
+                  "Sadece kaçmak",
+                  "Vezir vermek"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Şahını kaçırırken nelere dikkat etmelisin?",
+                "options": [
+                  "Hiçbir şeye",
+                  "Gittiğin karenin güvenli olmasına",
+                  "En uzağa gitmeye",
+                  "Vezire yakın olmaya"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Hangi taşla çekilen şah BLOKE EDİLEMEZ?",
+                "options": [
+                  "Kale",
+                  "Fil",
+                  "At",
+                  "Vezir"
+                ],
+                "correct_index": 2
+              },
+              {
+                "prompt": "Şahı bloke etmek ne demektir?",
+                "options": [
+                  "Şahı kaçırmak",
+                  "Şah çeken taşla Şah arasına bir taş koymak",
+                  "Şah çeken taşı almak",
+                  "Şah çekmek"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Şah çeken taşı almak neyi sağlar?",
+                "options": [
+                  "Tehdidi yok eder",
+                  "Şahı tehlikeye atar",
+                  "Oyunu bitirir",
+                  "Hiçbir işe yaramaz"
+                ],
+                "correct_index": 0
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              0,
+              1,
+              2,
+              1,
+              0
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "module_9_lessons": [
+    {
+      "order": 1,
+      "title": "Mat nedir?",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Mat = Oyun bitti",
+            "body": "Mat (şah mat), satrancın amacıdır! Rakibin Şahı şah altındadır VE kaçacak hiçbir yeri yoktur: ne kaçabilir, ne bloke edebilir, ne de şah çeken taşı alabilir. Mat yapan oyunu kazanır!",
+            "fen": "R3k3/8/4K3/8/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Şah ile mat farkı",
+            "body": "Dikkat: Şah ile mat farklıdır! Şahta Şah kurtulabilir, matta kurtulamaz. Mat için iki şart gerekir: 1) Şah tehdit altında olmalı, 2) Hiçbir kurtuluş yolu kalmamalı.",
+            "fen": "R3k3/8/4K3/8/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Mat olan Şahı bul",
+            "body": "Bu pozisyonda Siyah Şah mat olmak üzere. Mat tehdidi altındaki Siyah Şaha (e8) tıkla.",
+            "fen": "R3k3/8/4K3/8/8/8/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "e8"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Mat eden taşı bul",
+            "body": "Bu pozisyonda mat edecek olan Beyaz Kaleye (a8) tıkla — Kale 8. sıradan şah çekiyor ve Beyaz Şah (e6) kaçış karelerini kapatıyor.",
+            "fen": "R3k3/8/4K3/8/8/8/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {
+            "square": "a8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Matı anladın!",
+            "body": "Mat, oyunu kazanmanın yoludur. Rakip Şahını şah altına al ve tüm kaçış yollarını kapat. İşte şimdi mat tekniklerini öğrenelim!",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Vezir + Kral matı",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Vezir ile mat",
+            "body": "Vezir, en kolay mat veren taştır! Vezir ve kendi Kralınla, rakibin Şahını tahtanın kenarına sıkıştırır ve mat edersin. Kendi Kralın rakip Şahın kaçış karelerini kapatmaya yardım eder.",
+            "fen": "4k3/8/4K3/4Q3/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Teknik",
+            "body": "Önce rakip Şahı Vezirinle kenara doğru it. Kendi Kralını yakına getir. Sonra Vezirinle son şahı çekersin — rakip Şah kaçamaz çünkü senin Kralın karşıdaki kareleri kontrol eder. İşte mat!",
+            "fen": "4k3/8/4K3/4Q3/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Tek hamlede mat!",
+            "body": "Beyaz Kral e6'da, Siyah Şah e8'de. Vezirini h4'ten h8'e götür — Vezir 8. sıradan şah çeker, kendi Kralın d7-e7-f7 kaçış karelerini tutuyor. Mat!",
+            "fen": "4k3/8/4K3/8/7Q/8/8/8 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "h4",
+            "to": "h8"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Bir mat daha",
+            "body": "Beyaz Kral f6'da, Siyah Şah f8'de. Vezirini d1'den d8'e oynat (8. sıradan şah, Şah kaçamaz). Mat!",
+            "fen": "5k2/8/5K2/8/8/8/8/3Q4 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "d1",
+            "to": "d8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Vezir matı tamam!",
+            "body": "Vezir + Kral matı en sık karşılaşacağın mat türüdür. Unutma: Vezir tek başına mat edemez, kendi Kralının yardımı şarttır!",
+            "fen": "8/8/8/8/8/8/8/3Q4 w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Kale + Kral matı",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Kale ile mat",
+            "body": "Kale + Kral matı da çok önemlidir! Kale rakip Şahı bir sıraya veya sütuna hapseder. Kendi Kralın karşıdan rakip Şahın kaçış karelerini kapatır. Bu mata 'merdiven matı' yöntemiyle de ulaşılır.",
+            "fen": "4k3/8/4K3/8/8/8/8/R7 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "İki Kralı karşı karşıya getir",
+            "body": "Kale matının sırrı: kendi Kralını rakip Şahın tam karşısına (bir kare boşlukla) getirmektir. Buna 'karşılıklı durma' denir. Sonra Kale ile şah çekersin ve rakip Şah kaçamaz!",
+            "fen": "4k3/8/4K3/8/8/8/8/R7 w - - 0 1"
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Kale ile mat et!",
+            "body": "Beyaz Kral e6'da Siyah Şahın (e8) karşısında. Kaleni a1'den a8'e götürerek mat et — Kale 8. sıradan şah çeker, Şah kaçamaz!",
+            "fen": "4k3/8/4K3/8/8/8/8/R7 w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "a1",
+            "to": "a8"
+          }
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Bir Kale matı daha",
+            "body": "Beyaz Kral c6'da Siyah Şahın (c8) karşısında. Kaleni h1'den h8'e götürerek mat et!",
+            "fen": "2k5/8/2K5/8/8/8/8/7R w - - 0 1",
+            "task_type": "make_move"
+          },
+          "correct_answer": {
+            "from": "h1",
+            "to": "h8"
+          }
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Kale matı tamam!",
+            "body": "Kale + Kral matını öğrendin! Bu matta kendi Kralının desteği çok önemli. İki Kralı karşı karşıya getir, sonra Kale ile son şahı çek!",
+            "fen": "8/8/8/8/8/8/8/7R w - - 0 1"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Modül 9 Sınavı",
+      "estimated_minutes": 5,
+      "steps": [
+        {
+          "order": 1,
+          "type": "quiz",
+          "content": {
+            "title": "Modül 9 Sınavı",
+            "questions": [
+              {
+                "prompt": "Mat nedir?",
+                "options": [
+                  "Şah tehdit altında ve kaçacak yeri yok",
+                  "Sadece şah çekmek",
+                  "Beraberlik",
+                  "Rok yapmak"
+                ],
+                "correct_index": 0
+              },
+              {
+                "prompt": "Şah ile mat arasındaki fark nedir?",
+                "options": [
+                  "Fark yoktur",
+                  "Şahta kurtulursun, matta kurtulamazsın",
+                  "Mat daha zayıftır",
+                  "Şah oyunu bitirir"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Vezir tek başına mat edebilir mi?",
+                "options": [
+                  "Evet, her zaman",
+                  "Hayır, kendi Kralının yardımı gerekir",
+                  "Sadece köşede",
+                  "Hiçbir zaman mat edemez"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Kale + Kral matında sır nedir?",
+                "options": [
+                  "Sadece Kaleyi oynatmak",
+                  "Kendi Kralını rakip Şahın karşısına getirmek",
+                  "Vezir kullanmak",
+                  "Şahı köşede tutmak"
+                ],
+                "correct_index": 1
+              },
+              {
+                "prompt": "Mat olunca oyun ne olur?",
+                "options": [
+                  "Devam eder",
+                  "Mat eden kazanır, oyun biter",
+                  "Berabere biter",
+                  "Yeniden başlar"
+                ],
+                "correct_index": 1
+              }
+            ]
+          },
+          "correct_answer": {
+            "correct_indexes": [
+              0,
+              1,
+              1,
+              1,
+              1
+            ]
+          }
         }
       ]
     }

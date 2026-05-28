@@ -1,4 +1,4 @@
-"""Seed all 9 modules and Module 1's lessons. Idempotent.
+"""Seed all 9 modules and every module's lessons (Modules 1-9). Idempotent.
 
 Run with: python -m scripts.seed_curriculum
 """
@@ -31,35 +31,45 @@ async def seed():
             ))
         await db.commit()
 
-        # Module 1 lessons
-        m1 = await db.execute(select(Module).where(Module.order_index == 1))
-        module_1 = m1.scalar_one()
-        for lesson_data in data["module_1_lessons"]:
-            existing = await db.execute(
-                select(Lesson).where(
-                    Lesson.module_id == module_1.id,
-                    Lesson.order_index == lesson_data["order"],
-                )
-            )
-            if existing.scalar_one_or_none():
+        # Lessons for every module (1-9). Each module's lessons live under the
+        # "module_<order>_lessons" key in the curriculum JSON.
+        for module_order in range(1, 10):
+            key = f"module_{module_order}_lessons"
+            if key not in data:
                 continue
-            lesson = Lesson(
-                module_id=module_1.id,
-                order_index=lesson_data["order"],
-                title=lesson_data["title"],
-                estimated_minutes=lesson_data.get("estimated_minutes", 10),
-            )
-            db.add(lesson)
-            await db.flush()
-            for step_data in lesson_data["steps"]:
-                db.add(LessonStep(
-                    lesson_id=lesson.id,
-                    order_index=step_data["order"],
-                    type=LessonStepType(step_data["type"]),
-                    content_json=step_data["content"],
-                    correct_answer_json=step_data.get("correct_answer"),
-                ))
-        await db.commit()
+            module_row = (
+                await db.execute(
+                    select(Module).where(Module.order_index == module_order)
+                )
+            ).scalar_one()
+            for lesson_data in data[key]:
+                existing = (
+                    await db.execute(
+                        select(Lesson).where(
+                            Lesson.module_id == module_row.id,
+                            Lesson.order_index == lesson_data["order"],
+                        )
+                    )
+                ).scalar_one_or_none()
+                if existing:
+                    continue
+                lesson = Lesson(
+                    module_id=module_row.id,
+                    order_index=lesson_data["order"],
+                    title=lesson_data["title"],
+                    estimated_minutes=lesson_data.get("estimated_minutes", 10),
+                )
+                db.add(lesson)
+                await db.flush()
+                for step_data in lesson_data["steps"]:
+                    db.add(LessonStep(
+                        lesson_id=lesson.id,
+                        order_index=step_data["order"],
+                        type=LessonStepType(step_data["type"]),
+                        content_json=step_data["content"],
+                        correct_answer_json=step_data.get("correct_answer"),
+                    ))
+            await db.commit()
         print("Seed completed.")
 
 
