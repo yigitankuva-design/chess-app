@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
-from chess_api.models import User
+from chess_api.models import User, ChildProfile
 from chess_api.services.jwt import decode_token, TokenInvalid
 
 bearer = HTTPBearer()
@@ -25,3 +25,20 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+async def get_current_child(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
+) -> ChildProfile:
+    try:
+        payload = decode_token(credentials.credentials)
+    except TokenInvalid:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    child_id = payload.get("child_profile_id")
+    if not child_id:
+        raise HTTPException(status_code=401, detail="Child token required")
+    child = await db.get(ChildProfile, child_id)
+    if not child:
+        raise HTTPException(status_code=401, detail="Child not found")
+    return child

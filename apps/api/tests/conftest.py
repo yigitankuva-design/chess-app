@@ -7,6 +7,8 @@ from chess_api.database import Base, get_db
 from chess_api.main import create_app
 
 
+
+
 # Use in-memory SQLite for tests
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -51,3 +53,26 @@ async def client(app):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def child_auth(client):
+    """Returns (child_token, child_id) via the full parent->child->device->pin flow."""
+    # 1. Parent signup
+    r = await client.post("/auth/parent/signup", json={
+        "email": "childauth@t.com", "password": "guvenli12345", "name": "Parent",
+    })
+    parent_token = r.json()["access_token"]
+    # 2. Create child
+    r = await client.post("/children", headers={"Authorization": f"Bearer {parent_token}"},
+                          json={"display_name": "Ali", "age": 10, "pin": "1234"})
+    child_id = r.json()["id"]
+    # 3. Register device
+    await client.post("/auth/device/register",
+                      headers={"Authorization": f"Bearer {parent_token}"},
+                      json={"device_fingerprint": "testdev", "name": "Test"})
+    # 4. Child PIN login
+    r = await client.post("/auth/child/pin", json={
+        "child_profile_id": child_id, "pin": "1234", "device_fingerprint": "testdev",
+    })
+    return r.json()["access_token"], child_id

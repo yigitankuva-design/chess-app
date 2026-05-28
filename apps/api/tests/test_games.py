@@ -28,15 +28,28 @@ def test_validate_detects_checkmate():
 
 # --- Endpoint tests ---
 
-async def _parent_token(client):
+async def test_start_bot_game_requires_child_token(client):
+    """A request with no token should be rejected."""
+    response = await client.post("/games/bot/start", json={"skill_level": 5})
+    assert response.status_code in (401, 403)
+
+
+async def test_parent_token_rejected_on_games(client):
+    """A parent token must be rejected with 401 (child token required)."""
     r = await client.post("/auth/parent/signup", json={
-        "email": "game@test.com", "password": "guvenliSifre1", "name": "GameParent",
+        "email": "gameparent@test.com", "password": "guvenliSifre1", "name": "GameParent",
     })
-    return r.json()["access_token"]
+    parent_token = r.json()["access_token"]
+    response = await client.post(
+        "/games/bot/start",
+        headers={"Authorization": f"Bearer {parent_token}"},
+        json={"skill_level": 5},
+    )
+    assert response.status_code == 401
 
 
-async def test_start_bot_game(client):
-    token = await _parent_token(client)
+async def test_start_bot_game(client, child_auth):
+    token, child_id = child_auth
     response = await client.post(
         "/games/bot/start",
         headers={"Authorization": f"Bearer {token}"},
@@ -49,8 +62,8 @@ async def test_start_bot_game(client):
     assert data["fen"] == INITIAL
 
 
-async def test_start_bot_game_invalid_skill(client):
-    token = await _parent_token(client)
+async def test_start_bot_game_invalid_skill(client, child_auth):
+    token, child_id = child_auth
     response = await client.post(
         "/games/bot/start",
         headers={"Authorization": f"Bearer {token}"},
@@ -59,8 +72,8 @@ async def test_start_bot_game_invalid_skill(client):
     assert response.status_code == 422
 
 
-async def test_make_legal_move(client):
-    token = await _parent_token(client)
+async def test_make_legal_move(client, child_auth):
+    token, child_id = child_auth
     start = await client.post("/games/bot/start",
                               headers={"Authorization": f"Bearer {token}"},
                               json={"skill_level": 3})
@@ -76,8 +89,8 @@ async def test_make_legal_move(client):
     assert "fen_after" in data
 
 
-async def test_make_illegal_move_rejected(client):
-    token = await _parent_token(client)
+async def test_make_illegal_move_rejected(client, child_auth):
+    token, child_id = child_auth
     start = await client.post("/games/bot/start",
                               headers={"Authorization": f"Bearer {token}"},
                               json={"skill_level": 3})

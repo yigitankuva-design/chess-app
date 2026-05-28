@@ -2,21 +2,21 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from chess_api.database import get_db
-from chess_api.dependencies.auth import get_current_user
-from chess_api.models import User, Badge, ChildBadge, Rank, ChildRank
+from chess_api.dependencies.auth import get_current_child
+from chess_api.models import ChildProfile, Badge, ChildBadge, Rank, ChildRank
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
 
 @router.get("/badges")
 async def list_badges(
-    current: User = Depends(get_current_user),
+    child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all badges with earned flag for current user."""
+    """List all badges with earned flag for current child."""
     all_badges = (await db.execute(select(Badge))).scalars().all()
     earned_q = await db.execute(
-        select(ChildBadge.badge_id).where(ChildBadge.child_id == current.id)
+        select(ChildBadge.badge_id).where(ChildBadge.child_id == child.id)
     )
     earned_ids = set(earned_q.scalars().all())
     return [
@@ -33,21 +33,21 @@ async def list_badges(
 
 @router.get("/me")
 async def my_progress(
-    current: User = Depends(get_current_user),
+    child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get current user's rank, XP, and badge progress."""
+    """Get current child's rank, XP, and badge progress."""
     cr = (await db.execute(
-        select(ChildRank).where(ChildRank.child_id == current.id)
+        select(ChildRank).where(ChildRank.child_id == child.id)
     )).scalar_one_or_none()
 
     earned_count = await db.scalar(
-        select(func.count(ChildBadge.id)).where(ChildBadge.child_id == current.id)
+        select(func.count(ChildBadge.id)).where(ChildBadge.child_id == child.id)
     )
     total_badges = await db.scalar(select(func.count(Badge.id)))
 
     if not cr:
-        # Default to first rank if user has no rank yet
+        # Default to first rank if child has no rank yet
         first = (await db.execute(
             select(Rank).order_by(Rank.order_index).limit(1)
         )).scalar_one_or_none()

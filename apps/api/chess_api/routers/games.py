@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from chess_api.database import get_db
-from chess_api.dependencies.auth import get_current_user
-from chess_api.models import User, Game, GameMove, GameType, GameStatus, GameResult
+from chess_api.dependencies.auth import get_current_child
+from chess_api.models import ChildProfile, Game, GameMove, GameType, GameStatus, GameResult
 from chess_api.schemas.game import (
     StartBotGameRequest, StartBotGameResponse, MakeMoveRequest, MoveResponse,
 )
@@ -19,12 +19,12 @@ INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 @router.post("/bot/start", response_model=StartBotGameResponse)
 async def start_bot_game(
     payload: StartBotGameRequest,
-    current: User = Depends(get_current_user),
+    child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
     if payload.skill_level < 0 or payload.skill_level > 20:
         raise HTTPException(status_code=422, detail="Skill must be 0-20")
-    game = Game(type=GameType.bot, white_child_id=current.id, black_bot_level=payload.skill_level)
+    game = Game(type=GameType.bot, white_child_id=child.id, black_bot_level=payload.skill_level)
     db.add(game)
     await db.commit()
     await db.refresh(game)
@@ -51,7 +51,7 @@ async def _next_ply(db: AsyncSession, game_id: int) -> int:
 async def make_move(
     game_id: int,
     payload: MakeMoveRequest,
-    current: User = Depends(get_current_user),
+    child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
     game = await db.get(Game, game_id)
@@ -66,7 +66,7 @@ async def make_move(
     ply = await _next_ply(db, game_id)
     db.add(GameMove(
         game_id=game_id, ply=ply, san=result["san"],
-        fen_after=result["fen_after"], by_child_id=current.id,
+        fen_after=result["fen_after"], by_child_id=child.id,
     ))
 
     # Determine if it was white's move (child) by checking the FEN we moved FROM
@@ -78,10 +78,10 @@ async def make_move(
             # Whoever just moved wins
             game.result = GameResult.white_wins if was_white_move else GameResult.black_wins
             # Award badges/XP only if the CHILD (white) delivered mate
-            if was_white_move and current.id == game.white_child_id:
-                await evaluate_event(db, current.id, BadgeEvent(type="first_mate"))
-                await add_xp(db, current.id, "bot_win")
-                await evaluate_event(db, current.id, BadgeEvent(type="bot_win"))
+            if was_white_move and child.id == game.white_child_id:
+                await evaluate_event(db, child.id, BadgeEvent(type="first_mate"))
+                await add_xp(db, child.id, "bot_win")
+                await evaluate_event(db, child.id, BadgeEvent(type="bot_win"))
         else:
             game.result = GameResult.draw
 

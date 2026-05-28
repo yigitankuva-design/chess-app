@@ -22,20 +22,24 @@ async def seeded_puzzles(db):
     return {"puzzle_ids": [p.id for p in puzzles]}
 
 
-async def _parent_token(client):
-    r = await client.post("/auth/parent/signup", json={
-        "email": "puz@t.com", "password": "guvenli12345", "name": "Parent",
-    })
-    return r.json()["access_token"]
-
-
 async def test_random_puzzle_requires_auth(client, seeded_puzzles):
     response = await client.get("/puzzles/random")
     assert response.status_code in (401, 403)
 
 
-async def test_random_puzzle_returns_puzzle(client, seeded_puzzles):
-    token = await _parent_token(client)
+async def test_parent_token_rejected_on_random_puzzle(client, seeded_puzzles):
+    """A parent token must be rejected on child-only endpoint."""
+    r = await client.post("/auth/parent/signup", json={
+        "email": "puzparent@t.com", "password": "guvenli12345", "name": "PuzParent",
+    })
+    parent_token = r.json()["access_token"]
+    response = await client.get("/puzzles/random",
+                                headers={"Authorization": f"Bearer {parent_token}"})
+    assert response.status_code == 401
+
+
+async def test_random_puzzle_returns_puzzle(client, seeded_puzzles, child_auth):
+    token, child_id = child_auth
     response = await client.get("/puzzles/random",
                                 headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
@@ -46,8 +50,8 @@ async def test_random_puzzle_returns_puzzle(client, seeded_puzzles):
     assert "Çatal" in data["themes"]
 
 
-async def test_record_attempt(client, seeded_puzzles):
-    token = await _parent_token(client)
+async def test_record_attempt(client, seeded_puzzles, child_auth):
+    token, child_id = child_auth
     pid = seeded_puzzles["puzzle_ids"][0]
     response = await client.post(
         f"/puzzles/{pid}/attempt",
@@ -58,8 +62,8 @@ async def test_record_attempt(client, seeded_puzzles):
     assert response.json()["accepted"] is True
 
 
-async def test_attempt_unknown_puzzle_404(client, seeded_puzzles):
-    token = await _parent_token(client)
+async def test_attempt_unknown_puzzle_404(client, seeded_puzzles, child_auth):
+    token, child_id = child_auth
     response = await client.post(
         "/puzzles/99999/attempt",
         headers={"Authorization": f"Bearer {token}"},
@@ -68,10 +72,10 @@ async def test_attempt_unknown_puzzle_404(client, seeded_puzzles):
     assert response.status_code == 404
 
 
-async def test_correct_attempt_creates_srs_card(client, seeded_puzzles, db):
+async def test_correct_attempt_creates_srs_card(client, seeded_puzzles, db, child_auth):
     from sqlalchemy import select as _select
     from chess_api.models import SRSCard
-    token = await _parent_token(client)
+    token, child_id = child_auth
     pid = seeded_puzzles["puzzle_ids"][0]
     await client.post(
         f"/puzzles/{pid}/attempt",
@@ -81,12 +85,14 @@ async def test_correct_attempt_creates_srs_card(client, seeded_puzzles, db):
     cards = (await db.execute(_select(SRSCard).where(SRSCard.item_id == pid))).scalars().all()
     assert len(cards) == 1
     assert cards[0].item_type.value == "puzzle"
+    # Confirm the card is owned by the real child_id (not a parent User.id)
+    assert cards[0].child_id == child_id
 
 
-async def test_failed_attempt_no_srs_card(client, seeded_puzzles, db):
+async def test_failed_attempt_no_srs_card(client, seeded_puzzles, db, child_auth):
     from sqlalchemy import select as _select
     from chess_api.models import SRSCard
-    token = await _parent_token(client)
+    token, child_id = child_auth
     pid = seeded_puzzles["puzzle_ids"][1]
     await client.post(
         f"/puzzles/{pid}/attempt",

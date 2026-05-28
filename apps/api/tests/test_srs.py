@@ -52,26 +52,24 @@ def test_due_at_is_in_future_on_correct():
 
 # ===== Endpoint Tests =====
 
-async def _parent_token_and_id(client):
-    r = await client.post("/auth/parent/signup", json={
-        "email": "srs@t.com", "password": "guvenli12345", "name": "SRS",
-    })
-    data = r.json()
-    return data["access_token"], data["user_id"]
+async def test_srs_due_requires_child_token(client):
+    """GET /srs/due without token should fail."""
+    response = await client.get("/srs/due")
+    assert response.status_code in (401, 403)
 
 
-async def test_due_endpoint_empty(client):
-    token, _ = await _parent_token_and_id(client)
+async def test_due_endpoint_empty(client, child_auth):
+    token, child_id = child_auth
     response = await client.get("/srs/due", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json() == []
 
 
-async def test_review_card_flow(client, db):
-    token, principal_id = await _parent_token_and_id(client)
-    # Seed a due card for this principal
+async def test_review_card_flow(client, db, child_auth):
+    token, child_id = child_auth
+    # Seed a due card for this child
     card = SRSCard(
-        child_id=principal_id, item_type=SRSItemType.puzzle, item_id=1,
+        child_id=child_id, item_type=SRSItemType.puzzle, item_id=1,
         due_at=datetime.utcnow() - timedelta(hours=1),
         interval_days=0.0, ease_factor=2.5, reps_count=0,
     )
