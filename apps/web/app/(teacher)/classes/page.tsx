@@ -14,17 +14,22 @@ export default function ClassesPage() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   async function load() {
     const token = getToken();
     if (!token) { router.push('/parent-login'); return; }
-    const res = await fetch(`${API_BASE}/teacher/classes`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      setClasses(await res.json());
+    try {
+      const res = await fetch(`${API_BASE}/teacher/classes`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setClasses(await res.json());
+      else setError('Sınıflar yüklenemedi');
+    } catch {
+      setError('Bağlantı hatası');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
@@ -32,6 +37,7 @@ export default function ClassesPage() {
   async function createClass() {
     if (!newName.trim()) return;
     const token = getToken();
+    if (!token) { router.push('/parent-login'); return; }
     const res = await fetch(`${API_BASE}/teacher/classes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -70,6 +76,7 @@ export default function ClassesPage() {
           </div>
         </div>
       )}
+      {error && <p className="text-red-600">{error}</p>}
       {loading ? (
         <p className="text-gray-500">Yükleniyor...</p>
       ) : classes.length === 0 ? (

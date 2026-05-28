@@ -20,6 +20,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   const [students, setStudents] = useState<Student[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const classId = parseInt(id);
 
@@ -29,13 +30,18 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
 
     async function loadAll() {
       const token = getToken()!;
-      const [studRes, lbRes] = await Promise.all([
-        fetch(`${API_BASE}/teacher/classes/${classId}/students`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/teacher/classes/${classId}/leaderboard`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      if (studRes.ok) setStudents(await studRes.json());
-      if (lbRes.ok) setLeaderboard(await lbRes.json());
-      setLoading(false);
+      try {
+        const [studRes, lbRes] = await Promise.all([
+          fetch(`${API_BASE}/teacher/classes/${classId}/students`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API_BASE}/teacher/classes/${classId}/leaderboard`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (studRes.ok) setStudents(await studRes.json());
+        if (lbRes.ok) setLeaderboard(await lbRes.json());
+        setLoading(false);
+      } catch {
+        setError('Veriler yüklenemedi');
+        setLoading(false);
+      }
     }
     loadAll();
   }, [classId, router]);
@@ -66,6 +72,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         ))}
       </div>
 
+      {error && <p className="text-red-600">{error}</p>}
       {loading ? (
         <p className="text-gray-500">Yükleniyor...</p>
       ) : (
