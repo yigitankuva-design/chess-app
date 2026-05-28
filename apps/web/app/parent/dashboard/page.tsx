@@ -26,7 +26,7 @@ export default function ParentDashboardPage() {
   }, [router]);
 
   return (
-    <main className="max-w-2xl mx-auto p-6">
+    <main id="main-content" className="max-w-2xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Çocuklarım</h1>
         <button onClick={() => { auth.logout(); router.push('/parent-login'); }} className="text-sm underline opacity-70">

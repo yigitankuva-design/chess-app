@@ -166,6 +166,7 @@ export default function ChildLoginPage() {
         </button>
         <button
           onClick={() => setPin(pin.slice(0, -1))}
+          aria-label="Son rakamı sil"
           className="p-4 text-xl bg-white rounded-xl shadow hover:bg-gray-50 transition"
         >
           ⌫

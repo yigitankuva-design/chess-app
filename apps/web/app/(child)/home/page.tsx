@@ -39,7 +39,7 @@ export default function ChildHomePage() {
   if (loading) return <main className="p-6">Yükleniyor...</main>;
 
   return (
-    <main className="p-6 max-w-4xl mx-auto">
+    <main id="main-content" className="p-6 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-8">Hadi Öğrenelim! 🎯</h1>
 
       {/* Feature Cards */}

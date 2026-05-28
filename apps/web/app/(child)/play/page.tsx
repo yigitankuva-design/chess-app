@@ -17,7 +17,7 @@ export default function PlayPage() {
 
   if (!selected) {
     return (
-      <main className="p-6 max-w-2xl mx-auto">
+      <main id="main-content" className="p-6 max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">Bota Karşı Oyna 🤖</h1>
         <Link
           href="/play/online"
