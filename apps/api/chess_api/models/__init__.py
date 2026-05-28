@@ -10,6 +10,9 @@ from chess_api.models.puzzle import (
 )
 from chess_api.models.game import Game, GameMove, GameType, GameStatus, GameResult
 from chess_api.models.gamification import Badge, ChildBadge, Rank, ChildRank
+from chess_api.models.parent import (
+    ParentTimeLimit, ChildActivityLog, ParentSurvey, ParentSurveyResponse,
+)
 
 __all__ = [
     "User", "UserRole", "ChildProfile", "Device",
@@ -18,4 +21,5 @@ __all__ = [
     "Puzzle", "PuzzleTheme", "ChildPuzzleAttempt", "SRSCard", "SRSItemType",
     "Game", "GameMove", "GameType", "GameStatus", "GameResult",
     "Badge", "ChildBadge", "Rank", "ChildRank",
+    "ParentTimeLimit", "ChildActivityLog", "ParentSurvey", "ParentSurveyResponse",
 ]

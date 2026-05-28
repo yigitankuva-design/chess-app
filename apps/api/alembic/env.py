@@ -11,6 +11,7 @@ from chess_api.models import (  # noqa: F401
     Puzzle, PuzzleTheme, ChildPuzzleAttempt, SRSCard, SRSItemType,
     Game, GameMove, GameType, GameStatus, GameResult,
     Badge, ChildBadge, Rank, ChildRank,
+    ParentTimeLimit, ChildActivityLog, ParentSurvey, ParentSurveyResponse,
 )
 
 config = context.config
