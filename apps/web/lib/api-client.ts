@@ -21,11 +21,52 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ===== Schemas =====
+
 export interface HealthResponse {
   status: string;
   service: string;
 }
 
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user_id: number;
+  role: 'parent' | 'teacher';
+  name: string;
+}
+
+export interface ParentSignupBody {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface LoginBody {
+  email: string;
+  password: string;
+}
+
+// ===== Client =====
+
 export const apiClient = {
   health: () => request<HealthResponse>('/health'),
+
+  parentSignup: (body: ParentSignupBody) =>
+    request<AuthResponse>('/auth/parent/signup', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  teacherSignup: (body: ParentSignupBody) =>
+    request<AuthResponse>('/auth/teacher/signup', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  login: (body: LoginBody) =>
+    request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
