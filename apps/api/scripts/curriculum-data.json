@@ -1,0 +1,72 @@
+{
+  "modules": [
+    {"order": 1, "name": "Satranç taşları ve hareketleri", "description": "Tahtayı, taşları ve özel hareketleri öğreniyoruz.", "icon": "pawn"},
+    {"order": 2, "name": "Taşların değerleri", "description": "Hangi taş daha kıymetli?", "icon": "balance"},
+    {"order": 3, "name": "Tehdit", "description": "Karşı tarafın taşlarını tehdit etmeyi öğreniyoruz.", "icon": "target"},
+    {"order": 4, "name": "Taş alma", "description": "Vuruş kuralları ve seçimi.", "icon": "capture"},
+    {"order": 5, "name": "Saldırı ve savunma yöntemleri", "description": "Hücum ve savunma prensipleri.", "icon": "shield"},
+    {"order": 6, "name": "Şah çekme", "description": "Rakibin şahını tehdit etmek.", "icon": "crown"},
+    {"order": 7, "name": "Şah çekme türleri", "description": "Açma şah, çiftli şah, vs.", "icon": "double-crown"},
+    {"order": 8, "name": "Şah tehdidinden korunma türleri", "description": "Kaç, blokla, al.", "icon": "block"},
+    {"order": 9, "name": "Mat ve temel mat türleri", "description": "Oyunu nasıl bitiririz.", "icon": "checkmate"}
+  ],
+  "module_1_lessons": [
+    {
+      "order": 1,
+      "title": "Satranç tahtası ve koordinatlar",
+      "estimated_minutes": 8,
+      "steps": [
+        {
+          "order": 1,
+          "type": "explanation",
+          "content": {
+            "title": "Satranç tahtası nedir?",
+            "body": "Satranç tahtası 8x8 = 64 kareden oluşur. Yarısı açık, yarısı koyu renktedir. Oyun bu 64 kare üzerinde oynanır.",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
+          }
+        },
+        {
+          "order": 2,
+          "type": "explanation",
+          "content": {
+            "title": "Karelerin isimleri",
+            "body": "Soldan sağa kolonlar a, b, c, d, e, f, g, h harfleriyle; aşağıdan yukarı sıralar 1'den 8'e kadar sayılarla adlandırılır. Yani her karenin bir adı vardır: örneğin e4, d5.",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+            "show_coordinates": true
+          }
+        },
+        {
+          "order": 3,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Şimdi sen dene!",
+            "body": "e4 karesini bul ve üzerine tıkla.",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {"square": "e4"}
+        },
+        {
+          "order": 4,
+          "type": "inline_exercise",
+          "content": {
+            "title": "Bir tane daha!",
+            "body": "c6 karesini bul ve tıkla.",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+            "task_type": "click_square"
+          },
+          "correct_answer": {"square": "c6"}
+        },
+        {
+          "order": 5,
+          "type": "explanation",
+          "content": {
+            "title": "Harika!",
+            "body": "Artık tahtadaki karelerin adlarını biliyorsun. Bu, satranç öğrenmenin ilk ve en önemli adımıdır. Sonraki derslerde taşları tanıyacağız!",
+            "fen": "8/8/8/8/8/8/8/8 w - - 0 1"
+          }
+        }
+      ]
+    }
+  ]
+}
