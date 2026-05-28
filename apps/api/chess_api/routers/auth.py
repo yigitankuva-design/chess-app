@@ -45,3 +45,15 @@ async def parent_signup(
         role=user.role,
         name=user.name,
     )
+
+
+@router.post("/login", response_model=AuthResponse)
+async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = encode_token({"user_id": user.id, "role": user.role.value})
+    return AuthResponse(
+        access_token=token, user_id=user.id, role=user.role, name=user.name,
+    )
