@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { XPBar } from '@/components/XPBar';
+import { AvatarSelector } from '@/components/AvatarSelector';
 import { getToken } from '@/lib/auth-storage';
+import { getSavedAvatar, saveAvatar, avatarEmoji } from '@/lib/avatars';
 
 interface Me {
   rank_name: string;
@@ -17,6 +19,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const [avatarId, setAvatarId] = useState('lion');
 
   useEffect(() => {
     const token = getToken();
@@ -31,6 +34,10 @@ export default function ProfilePage() {
       .catch(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    setAvatarId(getSavedAvatar());
+  }, []);
+
   if (loading) return <main className="p-6">Yükleniyor...</main>;
   if (!me)
     return (
@@ -42,7 +49,7 @@ export default function ProfilePage() {
       <h1 className="text-3xl font-bold">Profilim</h1>
       <div className="p-6 bg-white rounded-2xl shadow space-y-4">
         <div className="text-center">
-          <div className="text-5xl mb-2">♟️</div>
+          <div className="text-5xl mb-2">{avatarEmoji(avatarId)}</div>
           <p className="text-2xl font-bold">{me.rank_name}</p>
         </div>
         <XPBar
@@ -53,6 +60,16 @@ export default function ProfilePage() {
         <p className="text-center opacity-75">
           🏆 {me.badges_earned} / {me.badges_total} rozet
         </p>
+      </div>
+      <div className="p-6 bg-white rounded-2xl shadow">
+        <h2 className="font-bold mb-3">Avatarını seç</h2>
+        <AvatarSelector
+          value={avatarId}
+          onChange={(id) => {
+            setAvatarId(id);
+            saveAvatar(id);
+          }}
+        />
       </div>
     </main>
   );
