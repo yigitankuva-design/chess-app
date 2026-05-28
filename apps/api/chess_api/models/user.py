@@ -9,6 +9,7 @@ from chess_api.database import Base
 class UserRole(str, enum.Enum):
     parent = "parent"
     teacher = "teacher"
+    athlete = "athlete"
 
 
 class User(Base):

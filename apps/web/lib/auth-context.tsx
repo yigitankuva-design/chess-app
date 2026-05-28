@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getToken, saveToken, clearAuth } from './auth-storage';
 
-type Role = 'parent' | 'teacher' | 'child' | null;
+type Role = 'parent' | 'teacher' | 'child' | 'athlete' | null;
 
 interface AuthState {
   token: string | null;

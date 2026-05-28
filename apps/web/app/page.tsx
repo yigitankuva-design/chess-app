@@ -5,17 +5,27 @@ export default function HomePage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-8">
       <div className="text-center">
         <img src="/logo.jpeg" alt="BEA Logo" className="h-20 w-auto mx-auto mb-3" />
-        <h1 className="text-3xl font-bold mb-2">Çocuklar İçin Satranç</h1>
-        <p className="opacity-60">Oyna, öğren, ustalaş!</p>
+        <h1 className="text-2xl font-bold mb-1">AKADEMİ GELİŞİM SİSTEMİ</h1>
       </div>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        {/* Child */}
+
+        {/* Sporcu Girişi — 14 yaş altı (veli onaylı) */}
         <Link
           href="/child-login"
-          className="block text-center bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl text-lg font-bold shadow transition-colors"
+          className="block text-center bg-green-600 hover:bg-green-700 text-white py-3 rounded-2xl font-bold shadow transition-colors"
         >
-          🎮 Çocuk Girişi
+          🏅 Sporcu Girişi
+          <span className="block text-xs font-normal opacity-80 mt-0.5">14 Yaş Altı · Veli Onaylı</span>
+        </Link>
+
+        {/* Sporcu Girişi — 14+ yaş (bağımsız) */}
+        <Link
+          href="/athlete-login"
+          className="block text-center bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-bold shadow transition-colors"
+        >
+          🏆 Sporcu Girişi 14+
+          <span className="block text-xs font-normal opacity-80 mt-0.5">14 Yaş ve Üzeri · Bağımsız Kayıt</span>
         </Link>
 
         <div className="relative flex items-center gap-3 py-1">
@@ -41,6 +51,12 @@ export default function HomePage() {
         </Link>
 
         <div className="flex gap-2 pt-1">
+          <Link
+            href="/athlete-signup"
+            className="flex-1 text-center border border-emerald-400 text-emerald-700 py-2 rounded-lg text-sm hover:bg-emerald-50 transition-colors"
+          >
+            Sporcu Kaydı (14+)
+          </Link>
           <Link
             href="/parent-signup"
             className="flex-1 text-center border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:border-gray-400 transition-colors"

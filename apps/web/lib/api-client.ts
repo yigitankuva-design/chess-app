@@ -32,7 +32,7 @@ export interface AuthResponse {
   access_token: string;
   token_type: string;
   user_id: number;
-  role: 'parent' | 'teacher';
+  role: 'parent' | 'teacher' | 'athlete';
   name: string;
 }
 
