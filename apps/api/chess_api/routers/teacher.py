@@ -1,4 +1,5 @@
 import secrets
+import string
 from datetime import date as date_type
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,15 +8,17 @@ from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
 from chess_api.models import User, UserRole, Class, ClassAssignment, ChildProfile, ParentSurvey
 from chess_api.services.leaderboard import class_leaderboard
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+_ALPHABET = string.ascii_uppercase + string.digits
 
 
 class CreateClassRequest(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=80)
 
 
 class CreateAssignmentRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=120)
     description: str | None = None
     target_module_id: int | None = None
     target_lesson_id: int | None = None
@@ -23,7 +26,7 @@ class CreateAssignmentRequest(BaseModel):
 
 
 class CreateSurveyRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=160)
     questions: list[dict]
 
 
@@ -60,7 +63,7 @@ async def create_class(
     cls = Class(
         teacher_user_id=current.id,
         name=payload.name,
-        join_code=secrets.token_urlsafe(6)[:8].upper(),
+        join_code=''.join(secrets.choice(_ALPHABET) for _ in range(8)),
     )
     db.add(cls)
     await db.commit()
@@ -108,6 +111,7 @@ async def create_assignment(
     )
     db.add(assignment)
     await db.commit()
+    await db.refresh(assignment)
     return {"id": assignment.id}
 
 
@@ -132,6 +136,10 @@ async def create_survey(
     db: AsyncSession = Depends(get_db),
 ):
     _ensure_teacher(current)
+    if target_class_id is not None:
+        cls = await db.get(Class, target_class_id)
+        if not cls or cls.teacher_user_id != current.id:
+            raise HTTPException(403, "Not your class")
     survey = ParentSurvey(
         title=payload.title,
         questions_json=payload.questions,
