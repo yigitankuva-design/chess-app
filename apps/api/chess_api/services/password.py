@@ -15,3 +15,17 @@ def verify_password(plain: str, hashed: str) -> bool:
         return bcrypt.checkpw(plain.encode(), hashed.encode())
     except Exception:
         return False
+
+
+def hash_pin(pin: str) -> str:
+    """Hash a 4-digit PIN. Length is validated upstream by Pydantic."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pin.encode(), salt).decode()
+
+
+def verify_pin(plain: str, hashed: str) -> bool:
+    """Verify a PIN against its hash."""
+    try:
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
+    except Exception:
+        return False

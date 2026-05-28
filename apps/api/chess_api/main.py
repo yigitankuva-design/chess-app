@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from chess_api.settings import settings
-from chess_api.routers import health, auth as auth_router
+from chess_api.routers import health, auth as auth_router, children as children_router
 
 
 def create_app() -> FastAPI:
@@ -25,6 +25,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(auth_router.router)
+    app.include_router(children_router.router)
     return app
 
 
