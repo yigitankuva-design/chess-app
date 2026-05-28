@@ -48,3 +48,41 @@ async def test_cannot_access_other_parents_child(client):
     resp = await client.get(f"/parent/children/{cid1}/summary",
                             headers={"Authorization": f"Bearer {token2}"})
     assert resp.status_code == 403
+
+
+async def test_surveys_empty_initially(client):
+    token, _ = await _parent_with_child(client)
+    r = await client.get("/parent/surveys", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+async def test_respond_to_survey(client, db):
+    from chess_api.models import ParentSurvey
+    token, cid = await _parent_with_child(client)
+    # seed a survey directly
+    survey = ParentSurvey(title="Memnuniyet", questions_json=[{"q": "Beğendiniz mi?"}], created_by_teacher_id=1)
+    db.add(survey)
+    await db.commit()
+    await db.refresh(survey)
+
+    # appears in list
+    lst = await client.get("/parent/surveys", headers={"Authorization": f"Bearer {token}"})
+    assert any(s["id"] == survey.id for s in lst.json())
+
+    # respond
+    r = await client.post(f"/parent/surveys/{survey.id}/respond",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"answers": {"q1": "Evet"}, "child_id": cid})
+    assert r.status_code == 200
+    assert r.json()["submitted"] is True
+
+    # now excluded from list
+    lst2 = await client.get("/parent/surveys", headers={"Authorization": f"Bearer {token}"})
+    assert all(s["id"] != survey.id for s in lst2.json())
+
+    # duplicate response rejected
+    dup = await client.post(f"/parent/surveys/{survey.id}/respond",
+                            headers={"Authorization": f"Bearer {token}"},
+                            json={"answers": {"q1": "Evet"}})
+    assert dup.status_code == 409

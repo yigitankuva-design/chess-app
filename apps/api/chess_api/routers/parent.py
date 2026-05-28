@@ -7,7 +7,7 @@ from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
 from chess_api.models import (
     User, UserRole, ChildProfile, ChildActivityLog, ChildLessonProgress, LessonStatus,
-    ChildBadge, ChildRank, Rank, ParentTimeLimit,
+    ChildBadge, ChildRank, Rank, ParentTimeLimit, ParentSurvey, ParentSurveyResponse,
 )
 
 router = APIRouter(prefix="/parent", tags=["parent"])
@@ -27,6 +27,11 @@ async def _own_child(db: AsyncSession, parent: User, child_id: int) -> ChildProf
 
 class TimeLimitRequest(BaseModel):
     daily_minutes: int
+
+
+class SurveyResponseRequest(BaseModel):
+    answers: dict
+    child_id: int | None = None
 
 
 @router.get("/children")
@@ -114,3 +119,47 @@ async def set_time_limit(
         db.add(ParentTimeLimit(child_id=child_id, daily_minutes_limit=payload.daily_minutes))
     await db.commit()
     return {"daily_minutes": payload.daily_minutes}
+
+
+@router.get("/surveys")
+async def list_surveys(current: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """List all surveys (V1: global; class-targeting filtering arrives in Plan 8).
+
+    Excludes surveys this parent already responded to.
+    """
+    _ensure_parent(current)
+    responded = (await db.execute(
+        select(ParentSurveyResponse.survey_id).where(ParentSurveyResponse.parent_user_id == current.id)
+    )).scalars().all()
+    responded_ids = set(responded)
+    surveys = (await db.execute(select(ParentSurvey))).scalars().all()
+    return [
+        {"id": s.id, "title": s.title, "questions": s.questions_json}
+        for s in surveys if s.id not in responded_ids
+    ]
+
+
+@router.post("/surveys/{survey_id}/respond")
+async def respond_survey(
+    survey_id: int, payload: SurveyResponseRequest,
+    current: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    _ensure_parent(current)
+    survey = await db.get(ParentSurvey, survey_id)
+    if not survey:
+        raise HTTPException(status_code=404, detail="Survey not found")
+    # prevent duplicate response
+    existing = (await db.execute(
+        select(ParentSurveyResponse).where(
+            ParentSurveyResponse.survey_id == survey_id,
+            ParentSurveyResponse.parent_user_id == current.id,
+        )
+    )).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="Already responded")
+    db.add(ParentSurveyResponse(
+        survey_id=survey_id, parent_user_id=current.id,
+        child_id=payload.child_id, answers_json=payload.answers,
+    ))
+    await db.commit()
+    return {"submitted": True}
