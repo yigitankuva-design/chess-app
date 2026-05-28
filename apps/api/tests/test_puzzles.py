@@ -1,0 +1,68 @@
+import pytest_asyncio
+from chess_api.models import Puzzle, PuzzleTheme
+
+
+@pytest_asyncio.fixture
+async def seeded_puzzles(db):
+    theme_fork = PuzzleTheme(slug="fork", name_tr="Çatal", description_tr=None)
+    theme_mate = PuzzleTheme(slug="mateIn1", name_tr="Tek hamlede mat", description_tr=None)
+    db.add_all([theme_fork, theme_mate])
+    await db.flush()
+
+    puzzles = []
+    for i in range(5):
+        p = Puzzle(
+            lichess_id=f"P{i}", fen="6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
+            moves_json=["e1e8"], rating=800 + i * 10, popularity=90, module_id=None,
+        )
+        p.themes.append(theme_fork)
+        puzzles.append(p)
+    db.add_all(puzzles)
+    await db.commit()
+    return {"puzzle_ids": [p.id for p in puzzles]}
+
+
+async def _parent_token(client):
+    r = await client.post("/auth/parent/signup", json={
+        "email": "puz@t.com", "password": "guvenli12345", "name": "Parent",
+    })
+    return r.json()["access_token"]
+
+
+async def test_random_puzzle_requires_auth(client, seeded_puzzles):
+    response = await client.get("/puzzles/random")
+    assert response.status_code in (401, 403)
+
+
+async def test_random_puzzle_returns_puzzle(client, seeded_puzzles):
+    token = await _parent_token(client)
+    response = await client.get("/puzzles/random",
+                                headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "fen" in data
+    assert "moves" in data
+    assert isinstance(data["themes"], list)
+    assert "Çatal" in data["themes"]
+
+
+async def test_record_attempt(client, seeded_puzzles):
+    token = await _parent_token(client)
+    pid = seeded_puzzles["puzzle_ids"][0]
+    response = await client.post(
+        f"/puzzles/{pid}/attempt",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"success": True, "time_seconds": 12, "moves_attempted": ["e1e8"]},
+    )
+    assert response.status_code == 200
+    assert response.json()["accepted"] is True
+
+
+async def test_attempt_unknown_puzzle_404(client, seeded_puzzles):
+    token = await _parent_token(client)
+    response = await client.post(
+        "/puzzles/99999/attempt",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"success": False, "time_seconds": 5},
+    )
+    assert response.status_code == 404
