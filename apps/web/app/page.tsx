@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-8">
       <div className="text-center">
-        <div className="text-5xl mb-3">♟️</div>
+        <img src="/logo.jpeg" alt="BEA Logo" className="h-20 w-auto mx-auto mb-3" />
         <h1 className="text-3xl font-bold mb-2">Çocuklar İçin Satranç</h1>
         <p className="opacity-60">Oyna, öğren, ustalaş!</p>
       </div>
