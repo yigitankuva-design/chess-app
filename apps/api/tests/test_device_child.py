@@ -66,3 +66,24 @@ async def test_child_pin_login_untrusted_device(client):
         "device_fingerprint": "unknown_device",
     })
     assert response.status_code == 403
+
+
+async def test_device_children_lists_for_trusted_device(client):
+    parent_token, child_id = await _setup_parent_with_child(client)
+    await client.post(
+        "/auth/device/register",
+        headers={"Authorization": f"Bearer {parent_token}"},
+        json={"device_fingerprint": "listdev", "name": "Test"},
+    )
+    r = await client.get("/auth/device/children", params={"device_fingerprint": "listdev"})
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 1
+    assert data[0]["id"] == child_id
+    assert "pin_hash" not in data[0]
+
+
+async def test_device_children_empty_for_unknown_device(client):
+    r = await client.get("/auth/device/children", params={"device_fingerprint": "nope"})
+    assert r.status_code == 200
+    assert r.json() == []

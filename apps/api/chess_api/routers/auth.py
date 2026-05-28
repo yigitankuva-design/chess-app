@@ -149,6 +149,27 @@ async def register_device(
     return {"registered": True, "already_trusted": False}
 
 
+@router.get("/device/children")
+async def device_children(device_fingerprint: str, db: AsyncSession = Depends(get_db)):
+    """List child profiles available on a trusted device (no auth — fingerprint is the key).
+
+    Returns [] for unknown/untrusted devices. Never exposes pin_hash.
+    """
+    device_result = await db.execute(
+        select(Device).where(Device.device_fingerprint == device_fingerprint)
+    )
+    device = device_result.scalar_one_or_none()
+    if not device:
+        return []
+    children = (await db.execute(
+        select(ChildProfile).where(ChildProfile.parent_user_id == device.parent_user_id)
+    )).scalars().all()
+    return [
+        {"id": c.id, "display_name": c.display_name, "avatar": c.avatar, "age": c.age}
+        for c in children
+    ]
+
+
 @router.post("/child/pin")
 async def child_pin_login(
     payload: ChildPinLoginRequest,
