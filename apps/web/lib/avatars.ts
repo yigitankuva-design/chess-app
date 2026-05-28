@@ -7,7 +7,7 @@ export interface AvatarOption {
 export const AVATARS: AvatarOption[] = [
   // Kız karakterler
   { id: 'girl',       emoji: '👧', label: 'Kız' },
-  { id: 'girl_star',  emoji: '🧒‍♀️', label: 'Kahraman' },
+  { id: 'girl_star',  emoji: '🦸', label: 'Kahraman' },
   { id: 'princess',   emoji: '👸', label: 'Prenses' },
   // Erkek karakterler
   { id: 'boy',        emoji: '👦', label: 'Erkek' },

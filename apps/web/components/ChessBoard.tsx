@@ -31,6 +31,7 @@ export function ChessBoard({
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const { theme } = useChessTheme();
   const scrollRef = useRef(0);
+  const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clear selection when FEN changes (after a move)
   useEffect(() => {
@@ -38,15 +39,25 @@ export function ChessBoard({
     setValidMoves([]);
   }, [fen]);
 
-  // Save scroll position before any board interaction, restore after render
+  // Lock the scroll position for `ms` ms — any scroll event during that window is cancelled
+  const lockScroll = useCallback((ms = 300) => {
+    const y = window.scrollY;
+    scrollRef.current = y;
+    if (scrollLockRef.current) clearTimeout(scrollLockRef.current);
+    const handler = () => { window.scrollTo(0, y); };
+    window.addEventListener('scroll', handler, { passive: true });
+    scrollLockRef.current = setTimeout(() => {
+      window.removeEventListener('scroll', handler);
+    }, ms);
+  }, []);
+
   const saveScroll = useCallback(() => {
     scrollRef.current = window.scrollY;
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const restoreScroll = useCallback(() => {
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: scrollRef.current, behavior: 'instant' as ScrollBehavior });
-    });
+    window.scrollTo(0, scrollRef.current);
   }, []);
 
   function getValidDestinations(square: Square, chessFen: string): Square[] {
@@ -81,18 +92,15 @@ export function ChessBoard({
 
   function handleSquareClick(square: Square) {
     if (!interactive) return;
-    saveScroll();
+    lockScroll();
 
     const turn = getTurnColor(fen);
 
     // If a piece is already selected and this square is a valid move → execute move
     if (selectedSquare && validMoves.includes(square)) {
-      const success = onPieceDrop?.(selectedSquare, square) ?? false;
+      onPieceDrop?.(selectedSquare, square);
       setSelectedSquare(null);
       setValidMoves([]);
-      if (!success) {
-        restoreScroll();
-      }
       return;
     }
 
@@ -101,7 +109,6 @@ export function ChessBoard({
     if (pieceColor === turn) {
       setSelectedSquare(square);
       setValidMoves(getValidDestinations(square, fen));
-      restoreScroll();
       return;
     }
 
@@ -109,7 +116,6 @@ export function ChessBoard({
     setSelectedSquare(null);
     setValidMoves([]);
     onSquareClick?.(square);
-    restoreScroll();
   }
 
   // Build per-square style overrides
@@ -156,19 +162,17 @@ export function ChessBoard({
     <div
       className="aspect-square w-full max-w-[600px] mx-auto relative"
       style={{ touchAction: 'none', boxShadow: theme.boardShadow, borderRadius: theme.boardShadow ? '4px' : undefined }}
-      onPointerDown={saveScroll}
+      onPointerDown={() => lockScroll(400)}
     >
       <Chessboard
         options={{
           position: fen,
           boardOrientation,
           allowDragging: interactive,
-          onPieceDrop: onPieceDrop
+              onPieceDrop: onPieceDrop
             ? ({ sourceSquare, targetSquare }) => {
-                saveScroll();
-                const result = onPieceDrop(sourceSquare as Square, targetSquare as Square);
-                restoreScroll();
-                return result;
+                lockScroll(400);
+                return onPieceDrop(sourceSquare as Square, targetSquare as Square);
               }
             : undefined,
           onSquareClick: ({ square }) => {
