@@ -1,16 +1,67 @@
 'use client';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getToken } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
+import { avatarEmoji } from '@/lib/avatars';
 
-export default function ParentDashboardPlaceholder() {
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+interface Child { id: number; display_name: string; age: number; avatar: string; }
+
+export default function ParentDashboardPage() {
+  const router = useRouter();
   const auth = useAuth();
+  const [children, setChildren] = useState<Child[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) { router.push('/parent-login'); return; }
+    fetch(`${API_BASE}/children`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { setChildren(Array.isArray(d) ? d : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [router]);
+
   return (
-    <main className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">Hoş geldin{auth.userId ? `, kullanıcı #${auth.userId}` : ''}</h1>
-      <p className="opacity-75">Veli panel sürümleri Plan 7&apos;de gelir. Şu an sadece auth çalıştığı görünüyor.</p>
-      <button
-        onClick={auth.logout}
-        className="mt-6 px-4 py-2 border rounded"
-      >Çıkış yap</button>
+    <main className="max-w-2xl mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Çocuklarım</h1>
+        <button onClick={() => { auth.logout(); router.push('/parent-login'); }} className="text-sm underline opacity-70">
+          Çıkış
+        </button>
+      </div>
+
+      {loading ? (
+        <p>Yükleniyor...</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {children.map((c) => (
+              <div key={c.id} className="p-4 bg-white rounded-2xl shadow flex items-center gap-3">
+                <span className="text-4xl">{avatarEmoji(c.avatar)}</span>
+                <div>
+                  <p className="font-bold">{c.display_name}</p>
+                  <p className="text-sm opacity-60">{c.age} yaşında</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Link href="/parent/add-child" className="block text-center bg-blue-600 text-white py-3 rounded-lg">
+              + Çocuk Ekle
+            </Link>
+            {children.length > 0 && (
+              <Link href="/child-login" className="block text-center bg-green-600 text-white py-3 rounded-lg">
+                🎮 Çocuk Moduna Geç
+              </Link>
+            )}
+          </div>
+        </>
+      )}
     </main>
   );
 }
