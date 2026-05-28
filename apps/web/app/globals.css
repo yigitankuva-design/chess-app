@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base colours ─── */
 :root {
   --background: 250 250 250;
   --foreground: 17 17 17;
@@ -17,4 +18,282 @@
 body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHESS THEME SYSTEM
+   Applied via data-chess-theme on <html>
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Theme: Classic ── */
+[data-chess-theme='classic'] .chess-page-bg {
+  background: linear-gradient(135deg, #1a2e1a 0%, #2e4a2e 100%);
+}
+[data-chess-theme='classic'] .chess-card {
+  background: rgba(255, 255, 255, 0.97);
+  color: #1a1a1a;
+}
+[data-chess-theme='classic'] .chess-accent {
+  color: #2e7d32;
+}
+[data-chess-theme='classic'] .chess-btn {
+  background: #2e7d32;
+  color: #fff;
+}
+[data-chess-theme='classic'] .chess-btn:hover {
+  background: #388e3c;
+}
+
+/* ── Theme: Night ── */
+[data-chess-theme='night'] .chess-page-bg {
+  background: linear-gradient(135deg, #262421 0%, #1a1814 100%);
+}
+[data-chess-theme='night'] .chess-card {
+  background: rgba(40, 38, 36, 0.97);
+  color: #dee3e6;
+  border: 1px solid rgba(107, 79, 160, 0.3);
+}
+[data-chess-theme='night'] .chess-accent {
+  color: #9c6fd4;
+}
+[data-chess-theme='night'] .chess-btn {
+  background: #6b4fa0;
+  color: #fff;
+}
+[data-chess-theme='night'] .chess-btn:hover {
+  background: #7b5fb0;
+}
+
+/* ── Theme: Kids ── */
+[data-chess-theme='kids'] .chess-page-bg {
+  background: linear-gradient(135deg, #e65100 0%, #bf360c 50%, #f57f17 100%);
+}
+[data-chess-theme='kids'] .chess-card {
+  background: rgba(255, 253, 231, 0.97);
+  color: #1a1a1a;
+  border: 2px solid #ffab40;
+}
+[data-chess-theme='kids'] .chess-accent {
+  color: #e65100;
+}
+[data-chess-theme='kids'] .chess-btn {
+  background: #ff7043;
+  color: #fff;
+}
+[data-chess-theme='kids'] .chess-btn:hover {
+  background: #ff5722;
+}
+
+/* ── Theme: Purple ── */
+[data-chess-theme='purple'] .chess-page-bg {
+  background: linear-gradient(135deg, #1a0533 0%, #2d0a50 50%, #1a0533 100%);
+}
+[data-chess-theme='purple'] .chess-card {
+  background: rgba(26, 5, 51, 0.97);
+  color: #ede7f6;
+  border: 1px solid rgba(142, 36, 170, 0.4);
+  box-shadow: 0 4px 20px rgba(142, 36, 170, 0.2);
+}
+[data-chess-theme='purple'] .chess-accent {
+  color: #ce93d8;
+}
+[data-chess-theme='purple'] .chess-btn {
+  background: #8e24aa;
+  color: #fff;
+}
+[data-chess-theme='purple'] .chess-btn:hover {
+  background: #9c27b0;
+}
+
+/* ── Theme: Premium ── */
+[data-chess-theme='premium'] .chess-page-bg {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+}
+[data-chess-theme='premium'] .chess-card {
+  background: rgba(15, 15, 15, 0.97);
+  color: #eeeeee;
+  border: 1px solid rgba(184, 134, 11, 0.4);
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.1);
+}
+[data-chess-theme='premium'] .chess-accent {
+  color: #ffd700;
+}
+[data-chess-theme='premium'] .chess-btn {
+  background: linear-gradient(135deg, #b8860b, #ffd700);
+  color: #0a0a0a;
+  font-weight: 700;
+}
+[data-chess-theme='premium'] .chess-btn:hover {
+  background: linear-gradient(135deg, #d4a017, #ffe040);
+}
+
+/* ── Theme: Hologram ── */
+[data-chess-theme='hologram'] .chess-page-bg {
+  background: linear-gradient(135deg, #000011 0%, #000833 50%, #000011 100%);
+}
+[data-chess-theme='hologram'] .chess-card {
+  background: rgba(0, 10, 40, 0.95);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 229, 255, 0.15), inset 0 1px 0 rgba(0, 229, 255, 0.1);
+}
+[data-chess-theme='hologram'] .chess-accent {
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+}
+[data-chess-theme='hologram'] .chess-btn {
+  background: transparent;
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.6);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+[data-chess-theme='hologram'] .chess-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+/* ── Theme: Arcade ── */
+[data-chess-theme='arcade'] .chess-page-bg {
+  background: #121212;
+}
+[data-chess-theme='arcade'] .chess-card {
+  background: rgba(18, 18, 18, 0.97);
+  color: #fff9c4;
+  border: 2px solid rgba(255, 87, 34, 0.5);
+  box-shadow: 0 0 16px rgba(255, 87, 34, 0.25);
+}
+[data-chess-theme='arcade'] .chess-accent {
+  color: #ff8a65;
+  text-shadow: 0 0 8px rgba(255, 87, 34, 0.5);
+}
+[data-chess-theme='arcade'] .chess-btn {
+  background: linear-gradient(135deg, #ff5722, #ff8a65);
+  color: #fff;
+  font-weight: 700;
+}
+[data-chess-theme='arcade'] .chess-btn:hover {
+  background: linear-gradient(135deg, #ff7043, #ffa07a);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HOLOGRAM BOARD EFFECTS
+═══════════════════════════════════════════════════════════════ */
+
+.hologram-board {
+  animation: hologram-float 4s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes hologram-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* Scan-line overlay */
+.hologram-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 229, 255, 0.04) 3px,
+    rgba(0, 229, 255, 0.04) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 4px;
+  animation: scanlines-scroll 8s linear infinite;
+}
+
+@keyframes scanlines-scroll {
+  from { background-position: 0 0; }
+  to   { background-position: 0 80px; }
+}
+
+/* Corner bracket decorations */
+.hologram-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 11;
+  border-color: rgba(0, 229, 255, 0.8);
+}
+.hologram-corner-tl { top: -2px; left: -2px; border-top: 2px solid; border-left: 2px solid; }
+.hologram-corner-tr { top: -2px; right: -2px; border-top: 2px solid; border-right: 2px solid; }
+.hologram-corner-bl { bottom: -2px; left: -2px; border-bottom: 2px solid; border-left: 2px solid; }
+.hologram-corner-br { bottom: -2px; right: -2px; border-bottom: 2px solid; border-right: 2px solid; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ARCADE BOARD EFFECTS
+═══════════════════════════════════════════════════════════════ */
+
+.arcade-board {
+  position: relative;
+}
+
+/* Piece bounce — applied to piece container via JS-added class */
+@keyframes piece-bounce {
+  0%   { transform: translateY(-12px) scale(1.15); }
+  60%  { transform: translateY(3px) scale(0.95); }
+  80%  { transform: translateY(-4px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* Capture flash overlay */
+.capture-flash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 180, 0, 0.6) 0%, transparent 70%);
+  animation: capture-burst 0.35s ease-out forwards;
+  pointer-events: none;
+  z-index: 20;
+  border-radius: 4px;
+}
+
+@keyframes capture-burst {
+  0%   { opacity: 1; transform: scale(0.6); }
+  50%  { opacity: 0.8; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHARED ANIMATIONS
+═══════════════════════════════════════════════════════════════ */
+
+/* Screen shake — check animation */
+.board-shake {
+  animation: board-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes board-shake {
+  10%, 90%  { transform: translate3d(-2px, 0, 0); }
+  20%, 80%  { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60%  { transform: translate3d(6px, 0, 0); }
+  100%      { transform: translate3d(0, 0, 0); }
+}
+
+/* Smooth theme transition for page-level elements */
+.chess-page-bg,
+.chess-card {
+  transition: background 0.4s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Accessible focus ring */
+.chess-btn {
+  border-radius: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+.chess-btn:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 2px;
 }
