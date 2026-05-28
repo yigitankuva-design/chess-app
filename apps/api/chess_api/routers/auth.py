@@ -9,6 +9,7 @@ from chess_api.schemas.auth import (
 )
 from chess_api.services.password import hash_password, verify_password
 from chess_api.services.jwt import encode_token
+from chess_api.services.email import send_verification_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -37,7 +38,12 @@ async def parent_signup(
     await db.commit()
     await db.refresh(user)
 
-    # Email sending added in Task 7
+    try:
+        await send_verification_email(user.email, user.email_verification_token, user.name)
+    except Exception:
+        import logging
+        logging.exception("Failed to send verification email (signup continues)")
+
     token = encode_token({"user_id": user.id, "role": user.role.value})
     return AuthResponse(
         access_token=token,
@@ -57,3 +63,17 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     return AuthResponse(
         access_token=token, user_id=user.id, role=user.role, name=user.name,
     )
+
+
+@router.post("/verify-email")
+async def verify_email(payload: EmailVerifyRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(User).where(User.email_verification_token == payload.token)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Invalid token")
+    user.email_verified = True
+    user.email_verification_token = None
+    await db.commit()
+    return {"verified": True}

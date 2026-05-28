@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     LOG_LEVEL: str = "INFO"
+    SENDGRID_API_KEY: str = ""
+    MAIL_FROM: str = "no-reply@chess-app.local"
     CORS_ORIGINS: str = "http://localhost:3000"
     ENV: str = "development"
 
