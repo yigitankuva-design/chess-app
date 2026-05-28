@@ -11,11 +11,24 @@ _engine = None
 _session_factory = None
 
 
+def _async_db_url(url: str) -> str:
+    """Force asyncpg driver if DATABASE_URL came in without one.
+
+    Railway PG plugin sets DATABASE_URL=postgresql://... (sync). Our async engine
+    needs postgresql+asyncpg://... — convert it transparently.
+    """
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    return url
+
+
 def get_engine():
     global _engine
     if _engine is None:
         _engine = create_async_engine(
-            settings().DATABASE_URL,
+            _async_db_url(settings().DATABASE_URL),
             echo=False,
             pool_pre_ping=True,
         )
