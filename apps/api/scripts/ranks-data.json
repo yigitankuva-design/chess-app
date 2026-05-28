@@ -1,0 +1,8 @@
+[
+  {"order": 1, "name_tr": "Piyon", "xp_required": 0, "icon": "rank-pawn"},
+  {"order": 2, "name_tr": "At", "xp_required": 200, "icon": "rank-knight"},
+  {"order": 3, "name_tr": "Fil", "xp_required": 500, "icon": "rank-bishop"},
+  {"order": 4, "name_tr": "Kale", "xp_required": 1000, "icon": "rank-rook"},
+  {"order": 5, "name_tr": "Vezir", "xp_required": 2000, "icon": "rank-queen"},
+  {"order": 6, "name_tr": "Şah", "xp_required": 4000, "icon": "rank-king"}
+]
