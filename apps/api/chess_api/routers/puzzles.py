@@ -10,6 +10,8 @@ from chess_api.schemas.puzzle import (
     PuzzleResponse, PuzzleAttemptRequest, PuzzleAttemptResponse,
 )
 from chess_api.services.puzzle_selection import select_puzzle_for_child
+from chess_api.services.activity_logger import log_activity
+from chess_api.services.time_limit_check import check_time_limit
 
 router = APIRouter(prefix="/puzzles", tags=["puzzles"])
 
@@ -20,6 +22,10 @@ async def random_puzzle(
     child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
+    status = await check_time_limit(db, child.id)
+    if not status["allowed"]:
+        raise HTTPException(status_code=429, detail=f"Günlük süre doldu ({status['used_minutes']}/{status['limit_minutes']} dk)")
+
     puzzle = await select_puzzle_for_child(db, child.id, module_id=module_id)
     if not puzzle:
         raise HTTPException(status_code=404, detail="No suitable puzzle found")
@@ -85,4 +91,8 @@ async def record_attempt(
             ))
 
     await db.commit()
+
+    if payload.success:
+        await log_activity(db, child.id, time_seconds=payload.time_seconds, puzzles=1)
+
     return PuzzleAttemptResponse(accepted=True)

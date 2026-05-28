@@ -10,6 +10,8 @@ from chess_api.schemas.game import (
 from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
+from chess_api.services.activity_logger import log_activity
+from chess_api.services.time_limit_check import check_time_limit
 
 router = APIRouter(prefix="/games", tags=["games"])
 
@@ -24,6 +26,11 @@ async def start_bot_game(
 ):
     if payload.skill_level < 0 or payload.skill_level > 20:
         raise HTTPException(status_code=422, detail="Skill must be 0-20")
+
+    status = await check_time_limit(db, child.id)
+    if not status["allowed"]:
+        raise HTTPException(status_code=429, detail=f"Günlük süre doldu ({status['used_minutes']}/{status['limit_minutes']} dk)")
+
     game = Game(type=GameType.bot, white_child_id=child.id, black_bot_level=payload.skill_level)
     db.add(game)
     await db.commit()
@@ -86,6 +93,10 @@ async def make_move(
             game.result = GameResult.draw
 
     await db.commit()
+
+    if result["is_game_over"]:
+        await log_activity(db, child.id, games=1)
+
     return MoveResponse(
         accepted=True,
         fen_after=result["fen_after"],
