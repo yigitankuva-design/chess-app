@@ -3,13 +3,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from chess_api.database import get_db
-from chess_api.models import User, UserRole
+from chess_api.models import User, UserRole, Device, ChildProfile
 from chess_api.schemas.auth import (
     ParentSignupRequest, LoginRequest, AuthResponse, EmailVerifyRequest,
+    DeviceRegisterRequest, ChildPinLoginRequest,
 )
-from chess_api.services.password import hash_password, verify_password
+from chess_api.services.password import hash_password, verify_password, verify_pin
 from chess_api.services.jwt import encode_token
 from chess_api.services.email import send_verification_email
+from chess_api.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -116,3 +118,68 @@ async def verify_email(payload: EmailVerifyRequest, db: AsyncSession = Depends(g
     user.email_verification_token = None
     await db.commit()
     return {"verified": True}
+
+
+@router.post("/device/register", status_code=201)
+async def register_device(
+    payload: DeviceRegisterRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current.role != UserRole.parent:
+        raise HTTPException(status_code=403, detail="Parents only")
+
+    # Idempotent: if same fingerprint already trusted by this parent, return success
+    existing = await db.execute(
+        select(Device).where(
+            Device.device_fingerprint == payload.device_fingerprint,
+            Device.parent_user_id == current.id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        return {"registered": True, "already_trusted": True}
+
+    device = Device(
+        parent_user_id=current.id,
+        device_fingerprint=payload.device_fingerprint,
+        name=payload.name,
+    )
+    db.add(device)
+    await db.commit()
+    return {"registered": True, "already_trusted": False}
+
+
+@router.post("/child/pin")
+async def child_pin_login(
+    payload: ChildPinLoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    child = await db.get(ChildProfile, payload.child_profile_id)
+    if not child:
+        raise HTTPException(status_code=404, detail="Child not found")
+
+    # Verify device is trusted by this child's parent
+    device_result = await db.execute(
+        select(Device).where(
+            Device.device_fingerprint == payload.device_fingerprint,
+            Device.parent_user_id == child.parent_user_id,
+        )
+    )
+    device = device_result.scalar_one_or_none()
+    if not device:
+        raise HTTPException(status_code=403, detail="Untrusted device")
+
+    if not verify_pin(payload.pin, child.pin_hash):
+        raise HTTPException(status_code=401, detail="Invalid PIN")
+
+    token = encode_token({
+        "child_profile_id": child.id,
+        "parent_user_id": child.parent_user_id,
+        "role": "child",
+    })
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "child_profile_id": child.id,
+        "display_name": child.display_name,
+    }
