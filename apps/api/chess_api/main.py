@@ -34,6 +34,16 @@ def create_app() -> FastAPI:
     app.include_router(daily_router.router)
     app.include_router(live_game_router.router)
     app.include_router(parent_router.router)
+
+    @app.on_event("startup")
+    async def _start_scheduler():
+        if settings().ENV == "production":
+            try:
+                from chess_api.workers.weekly_email_job import start_scheduler
+                start_scheduler()
+            except Exception:
+                logging.exception("Failed to start weekly scheduler")
+
     return app
 
 
