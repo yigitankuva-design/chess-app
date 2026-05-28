@@ -4,7 +4,11 @@ from alembic import context
 
 from chess_api.database import Base
 from chess_api.settings import settings as app_settings
-from chess_api.models import User, ChildProfile, Device  # noqa: F401
+from chess_api.models import (  # noqa: F401
+    User, UserRole, ChildProfile, Device,
+    Module, Lesson, LessonStep, LessonStepType,
+    ChildLessonProgress, ChildLessonStepResult, LessonStatus,
+)
 
 config = context.config
 
