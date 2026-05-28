@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "chess.js": "^1.4.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
+    "react-chessboard": "^5.10.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.76.1",
     "zod": "^4.4.3"
