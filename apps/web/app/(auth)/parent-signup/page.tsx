@@ -44,7 +44,7 @@ export default function ParentSignupPage() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <h1 className="text-3xl font-bold mb-6">Veli Kayıt</h1>
+      <h1 className="text-3xl font-bold mb-6">Üye Kaydı</h1>
 
       <div>
         <input

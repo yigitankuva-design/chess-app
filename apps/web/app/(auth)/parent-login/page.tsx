@@ -44,14 +44,14 @@ function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="text-center mb-6">
-        <div className="text-4xl mb-2">{isTeacher ? '🎓' : '👨‍👩‍👧'}</div>
+        <div className="text-4xl mb-2">{isTeacher ? '🎓' : '👤'}</div>
         <h1 className="text-2xl font-bold">
-          {isTeacher ? 'Öğretmen Girişi' : 'Veli Girişi'}
+          {isTeacher ? 'Öğretmen Girişi' : 'Üye Girişi'}
         </h1>
         <p className="text-sm opacity-60 mt-1">
           {isTeacher
             ? 'Sınıflarınızı yönetmek için giriş yapın'
-            : 'Çocuğunuzun gelişimini takip edin'}
+            : 'Hesabınıza giriş yapın'}
         </p>
       </div>
 
