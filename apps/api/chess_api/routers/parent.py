@@ -1,13 +1,14 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete as sql_delete
 from pydantic import BaseModel
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
 from chess_api.models import (
     User, UserRole, ChildProfile, ChildActivityLog, ChildLessonProgress, LessonStatus,
     ChildBadge, ChildRank, Rank, ParentTimeLimit, ParentSurvey, ParentSurveyResponse, Class,
+    ChildLessonStepResult, ChildPuzzleAttempt, SRSCard, Game, GameMove,
 )
 
 router = APIRouter(prefix="/parent", tags=["parent"])
@@ -184,3 +185,54 @@ async def join_class(
     child.teacher_user_id = cls.teacher_user_id
     await db.commit()
     return {"joined": True, "class_name": cls.name}
+
+
+@router.delete("/children/{child_id}")
+async def delete_child(
+    child_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_parent(current)
+    child = await db.get(ChildProfile, child_id)
+    if not child or child.parent_user_id != current.id:
+        raise HTTPException(403)
+
+    # Get child's lesson progress IDs first (needed for step results)
+    progress_ids = (await db.execute(
+        select(ChildLessonProgress.id).where(ChildLessonProgress.child_id == child_id)
+    )).scalars().all()
+
+    if progress_ids:
+        await db.execute(
+            sql_delete(ChildLessonStepResult).where(
+                ChildLessonStepResult.lesson_progress_id.in_(progress_ids)
+            )
+        )
+
+    # Get child's game IDs (for cascading game move deletes)
+    game_ids = (await db.execute(
+        select(Game.id).where(
+            (Game.white_child_id == child_id) | (Game.black_child_id == child_id)
+        )
+    )).scalars().all()
+
+    if game_ids:
+        await db.execute(sql_delete(GameMove).where(GameMove.game_id.in_(game_ids)))
+        await db.execute(sql_delete(Game).where(Game.id.in_(game_ids)))
+
+    # Delete remaining child-related records
+    await db.execute(sql_delete(ChildLessonProgress).where(ChildLessonProgress.child_id == child_id))
+    await db.execute(sql_delete(ChildPuzzleAttempt).where(ChildPuzzleAttempt.child_id == child_id))
+    await db.execute(sql_delete(SRSCard).where(SRSCard.child_id == child_id))
+    await db.execute(sql_delete(ChildBadge).where(ChildBadge.child_id == child_id))
+    await db.execute(sql_delete(ChildRank).where(ChildRank.child_id == child_id))
+    await db.execute(sql_delete(ChildActivityLog).where(ChildActivityLog.child_id == child_id))
+    await db.execute(sql_delete(ParentTimeLimit).where(ParentTimeLimit.child_id == child_id))
+    await db.execute(
+        sql_delete(ParentSurveyResponse).where(ParentSurveyResponse.child_id == child_id)
+    )
+
+    await db.delete(child)
+    await db.commit()
+    return {"deleted": True}

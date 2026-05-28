@@ -86,3 +86,40 @@ async def test_respond_to_survey(client, db):
                             headers={"Authorization": f"Bearer {token}"},
                             json={"answers": {"q1": "Evet"}})
     assert dup.status_code == 409
+
+
+async def test_delete_child(client, child_auth):
+    child_token, child_id = child_auth
+    # Get parent token using the credentials set up by child_auth fixture
+    r = await client.post("/auth/login", json={"email": "childauth@t.com", "password": "guvenli12345"})
+    parent_token = r.json()["access_token"]
+
+    # Delete the child
+    r = await client.delete(
+        f"/parent/children/{child_id}",
+        headers={"Authorization": f"Bearer {parent_token}"},
+    )
+    assert r.status_code == 200
+    assert r.json()["deleted"] is True
+
+    # Child should no longer appear in parent's children list
+    r = await client.get(
+        "/parent/children",
+        headers={"Authorization": f"Bearer {parent_token}"},
+    )
+    children = r.json()
+    assert not any(c["id"] == child_id for c in children)
+
+
+async def test_delete_child_forbidden_for_other_parent(client, child_auth):
+    _, child_id = child_auth
+    # Second parent tries to delete first parent's child
+    r = await client.post("/auth/parent/signup", json={
+        "email": "hacker@t.com", "password": "guvenli12345", "name": "Hacker",
+    })
+    token2 = r.json()["access_token"]
+    r = await client.delete(
+        f"/parent/children/{child_id}",
+        headers={"Authorization": f"Bearer {token2}"},
+    )
+    assert r.status_code == 403

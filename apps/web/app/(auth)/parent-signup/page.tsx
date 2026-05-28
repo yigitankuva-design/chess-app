@@ -12,6 +12,7 @@ const schema = z.object({
   email: z.string().email('Geçerli e-posta gir'),
   password: z.string().min(8, 'Şifre en az 8 karakter'),
   name: z.string().min(2, 'İsim gerekli'),
+  kvkk_consent: z.boolean().refine(v => v === true, 'KVKK onayı gerekli'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -27,7 +28,9 @@ export default function ParentSignupPage() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      const res = await apiClient.parentSignup(data);
+      const { kvkk_consent, ...apiData } = data;
+      void kvkk_consent; // frontend-only field
+      const res = await apiClient.parentSignup(apiData);
       auth.login(res.access_token, res.role, res.user_id);
       router.push('/parent/dashboard');
     } catch (e) {
@@ -71,6 +74,20 @@ export default function ParentSignupPage() {
         />
         {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password.message}</p>}
       </div>
+
+      <div className="flex items-start gap-2">
+        <input
+          id="kvkk-consent"
+          type="checkbox"
+          {...register('kvkk_consent')}
+          className="mt-1 h-4 w-4"
+        />
+        <label htmlFor="kvkk-consent" className="text-sm text-gray-600">
+          <Link href="/privacy" target="_blank" className="text-blue-600 underline">Gizlilik Politikası</Link>&apos;nı ve{' '}
+          <Link href="/terms" target="_blank" className="text-blue-600 underline">Kullanım Şartları</Link>&apos;nı okudum, kabul ediyorum. *
+        </label>
+      </div>
+      {errors.kvkk_consent && <p className="text-red-600 text-sm">{errors.kvkk_consent.message}</p>}
 
       {error && <p className="text-red-600">{error}</p>}
 
