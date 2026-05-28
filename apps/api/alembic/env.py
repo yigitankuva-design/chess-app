@@ -8,6 +8,7 @@ from chess_api.models import (  # noqa: F401
     User, UserRole, ChildProfile, Device,
     Module, Lesson, LessonStep, LessonStepType,
     ChildLessonProgress, ChildLessonStepResult, LessonStatus,
+    Puzzle, PuzzleTheme, ChildPuzzleAttempt, SRSCard, SRSItemType,
 )
 
 config = context.config

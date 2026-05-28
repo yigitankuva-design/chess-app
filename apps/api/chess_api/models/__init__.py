@@ -5,9 +5,13 @@ from chess_api.models.module import Module, Lesson, LessonStep, LessonStepType
 from chess_api.models.progress import (
     ChildLessonProgress, ChildLessonStepResult, LessonStatus,
 )
+from chess_api.models.puzzle import (
+    Puzzle, PuzzleTheme, ChildPuzzleAttempt, SRSCard, SRSItemType,
+)
 
 __all__ = [
     "User", "UserRole", "ChildProfile", "Device",
     "Module", "Lesson", "LessonStep", "LessonStepType",
     "ChildLessonProgress", "ChildLessonStepResult", "LessonStatus",
+    "Puzzle", "PuzzleTheme", "ChildPuzzleAttempt", "SRSCard", "SRSItemType",
 ]
