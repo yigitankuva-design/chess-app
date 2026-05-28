@@ -31,13 +31,8 @@ export default function PuzzlePage() {
         setLoading(false);
         return;
       }
-      if (!res.ok) {
-        setError('Şu an uygun puzzle bulunamadı.');
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      setPuzzle(data);
+      if (!res.ok) { setError('Uygun bulmaca bulunamadı.'); setLoading(false); return; }
+      setPuzzle(await res.json());
     } catch {
       setError('Bir hata oluştu.');
     } finally {
@@ -47,13 +42,28 @@ export default function PuzzlePage() {
 
   useEffect(() => { loadPuzzle(); }, [loadPuzzle]);
 
-  if (loading) return <main className="p-8">Yükleniyor...</main>;
-  if (error) return <main className="p-8 text-center"><p className="text-lg">{error}</p></main>;
-  if (!puzzle) return <main className="p-8">Puzzle yok.</main>;
+  if (loading) {
+    return (
+      <main className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-3">
+        <div className="t-skel h-6 w-1/2 mx-auto" />
+        <div className="t-skel aspect-square max-w-sm mx-auto rounded-lg" />
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="px-4 pt-8 pb-12 max-w-2xl mx-auto text-center space-y-4">
+        <p className="t-err p-4">{error}</p>
+        <button onClick={loadPuzzle} className="t-btn">Tekrar Dene</button>
+      </main>
+    );
+  }
+
+  if (!puzzle) return null;
 
   return (
-    <main>
-      <h1 className="text-2xl font-bold text-center p-4">Bulmaca 🧩</h1>
+    <main className="pb-12">
       <PuzzleSolver
         key={puzzle.id}
         puzzleId={puzzle.id}

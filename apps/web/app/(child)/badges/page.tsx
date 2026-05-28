@@ -22,39 +22,35 @@ export default function BadgesPage() {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        setBadges(Array.isArray(d) ? d : []);
-        setLoading(false);
-      })
+      .then((d) => { setBadges(Array.isArray(d) ? d : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
-
-  if (loading) return <main className="p-6">Yükleniyor...</main>;
 
   const earnedCount = badges.filter((b) => b.earned).length;
 
   return (
-    <main className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">Rozetlerim 🏆</h1>
-      <p className="opacity-75 mb-6">
-        {earnedCount} / {badges.length} rozet kazanıldı
-      </p>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {badges.map((b) => (
-          <div
-            key={b.slug}
-            className={`p-4 rounded-2xl text-center border transition ${
-              b.earned
-                ? 'bg-yellow-50 border-yellow-300'
-                : 'bg-gray-100 border-gray-200 opacity-50'
-            }`}
-          >
-            <div className="text-4xl mb-2">{b.earned ? '🏆' : '🔒'}</div>
-            <p className="font-bold text-sm">{b.name_tr}</p>
-            <p className="text-xs opacity-75 mt-1">{b.description_tr}</p>
-          </div>
-        ))}
+    <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto">
+      <div className="mb-5">
+        <p className="text-xs font-semibold t-muted uppercase tracking-widest">
+          {loading ? '...' : `${earnedCount} / ${badges.length} kazanıldı`}
+        </p>
       </div>
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3">
+          {[1,2,3,4,5,6].map((i) => <div key={i} className="t-skel h-28" />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {badges.map((b) => (
+            <div key={b.slug} className={`t-card p-4 text-center ${!b.earned ? 'opacity-40' : ''}`}>
+              <div className="text-3xl mb-2">{b.earned ? (b.icon || '🏆') : '🔒'}</div>
+              <p className="font-semibold text-sm leading-tight">{b.name_tr}</p>
+              <p className="text-xs t-muted mt-1 leading-snug">{b.description_tr}</p>
+              {b.earned && <span className="mt-2 inline-block t-tag-ac">Kazanıldı</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }

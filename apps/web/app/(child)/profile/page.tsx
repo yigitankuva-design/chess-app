@@ -5,7 +5,6 @@ import { AvatarSelector } from '@/components/AvatarSelector';
 import { ChessThemeSelector } from '@/components/ChessThemeSelector';
 import { getToken } from '@/lib/auth-storage';
 import { getSavedAvatar, saveAvatar, avatarEmoji } from '@/lib/avatars';
-import { useChessTheme } from '@/lib/chess-theme-context';
 
 interface Me {
   rank_name: string;
@@ -22,7 +21,6 @@ export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [avatarId, setAvatarId] = useState('lion');
-  const { themeId } = useChessTheme();
 
   useEffect(() => {
     const token = getToken();
@@ -30,10 +28,7 @@ export default function ProfilePage() {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setMe(d);
-        setLoading(false);
-      })
+      .then((d) => { setMe(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
@@ -41,45 +36,46 @@ export default function ProfilePage() {
     setAvatarId(getSavedAvatar());
   }, []);
 
-  const isDark = ['night', 'purple', 'premium', 'hologram', 'arcade'].includes(themeId);
-
-  const cardClass = isDark
-    ? 'chess-card p-6 rounded-2xl shadow-lg space-y-4'
-    : 'p-6 bg-white rounded-2xl shadow space-y-4';
-
-  const headingClass = isDark ? 'text-3xl font-bold chess-accent' : 'text-3xl font-bold';
-
-  if (loading) return <main className="p-6">Yükleniyor...</main>;
-  if (!me)
+  if (loading) {
     return (
-      <main className="p-6">Profil yüklenemedi. Giriş yaptın mı?</main>
+      <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-4">
+        <div className="t-skel h-32 rounded-2xl" />
+        <div className="t-skel h-24 rounded-2xl" />
+        <div className="t-skel h-48 rounded-2xl" />
+      </main>
     );
+  }
+
+  if (!me) {
+    return (
+      <main className="px-4 pt-8 pb-12 max-w-xl mx-auto text-center">
+        <p className="t-muted">Profil yüklenemedi. Giriş yaptın mı?</p>
+      </main>
+    );
+  }
 
   return (
-    <main className="p-6 max-w-xl mx-auto space-y-6">
-      <h1 className={headingClass}>Profilim</h1>
+    <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-4">
 
       {/* Stats card */}
-      <div className={cardClass}>
-        <div className="text-center">
+      <div className="t-card p-5 space-y-4">
+        <div className="text-center space-y-1">
           <div className="text-5xl mb-2">{avatarEmoji(avatarId)}</div>
-          <p className="text-2xl font-bold">{me.rank_name}</p>
+          <p className="text-xl font-bold">{me.rank_name}</p>
+          <p className="text-sm t-muted">🏆 {me.badges_earned} / {me.badges_total} rozet</p>
         </div>
         <XPBar
           currentXP={me.xp_total}
           rankName={me.rank_name}
           nextRankXP={me.next_rank_xp}
         />
-        <p className="text-center opacity-75">
-          🏆 {me.badges_earned} / {me.badges_total} rozet
-        </p>
       </div>
 
       {/* Avatar selector */}
-      <div className={isDark ? 'chess-card p-6 rounded-2xl shadow-lg' : 'p-6 bg-white rounded-2xl shadow'}>
-        <h2 className={`font-bold mb-3 ${isDark ? 'chess-accent' : ''}`}>
+      <div className="t-card p-5">
+        <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-3">
           Avatarını seç
-        </h2>
+        </p>
         <AvatarSelector
           value={avatarId}
           onChange={(id) => {
@@ -90,9 +86,10 @@ export default function ProfilePage() {
       </div>
 
       {/* Theme selector */}
-      <div className={isDark ? 'chess-card p-6 rounded-2xl shadow-lg' : 'p-6 bg-white rounded-2xl shadow'}>
+      <div className="t-card p-5">
         <ChessThemeSelector />
       </div>
+
     </main>
   );
 }

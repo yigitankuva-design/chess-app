@@ -18,20 +18,17 @@ export function ExplanationStep({ content, onContinue }: Props) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-5"
     >
-      {content.title && <h2 className="text-2xl font-bold">{content.title}</h2>}
-      {content.body && <p className="text-lg leading-relaxed">{content.body}</p>}
+      {content.title && <h2 className="text-xl font-bold">{content.title}</h2>}
+      {content.body && <p className="text-base leading-relaxed t-muted">{content.body}</p>}
       {content.fen && (
         <ChessBoard
           fen={content.fen}
           highlightSquares={(content.highlight_squares || []) as Square[]}
         />
       )}
-      <button
-        onClick={onContinue}
-        className="w-full bg-blue-600 text-white py-3 rounded-lg text-lg font-medium hover:bg-blue-700 transition"
-      >
+      <button onClick={onContinue} className="t-btn w-full py-3 text-base font-medium">
         Devam →
       </button>
     </motion.div>

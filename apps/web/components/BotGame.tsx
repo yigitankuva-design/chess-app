@@ -69,7 +69,6 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
     const chess = chessRef.current;
     setStatus('over');
     if (chess.isCheckmate()) {
-      // side to move is checkmated; if it's black's turn, white (child) won
       const childWon = chess.turn() === 'b';
       setResultText(childWon ? '🎉 Kazandın! Mat!' : '😔 Bot kazandı.');
       onGameEnd(childWon ? 'win' : 'loss');
@@ -91,12 +90,10 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
     if (!move) return false;
     setFen(chess.fen());
 
-    // Fire-and-forget async work after confirming the move is valid
     void (async () => {
       await persistMove(`${from}${to}`);
       if (chess.isGameOver()) { finish(); return; }
 
-      // Bot replies
       setThinking(true);
       const botUci = await engineRef.current!.bestMove(chess.fen(), depth);
       if (botUci && botUci !== '(none)') {
@@ -113,14 +110,27 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
     return true;
   }
 
-  if (status === 'loading') return <div className="p-8 text-center">Bot hazırlanıyor... 🤖</div>;
+  if (status === 'loading') {
+    return (
+      <div className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-3">
+        <div className="t-skel h-5 w-40 mx-auto" />
+        <div className="t-skel aspect-square max-w-sm mx-auto rounded-lg" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto p-4">
-      {thinking && <p className="text-blue-600 text-center">Bot düşünüyor... 🤔</p>}
+    <div className="max-w-2xl mx-auto px-4">
+      {thinking && (
+        <p className="t-muted text-center text-sm mb-3 animate-pulse">
+          🤖 Bot düşünüyor...
+        </p>
+      )}
       <ChessBoard fen={fen} interactive={status === 'playing' && !thinking} onPieceDrop={handleDrop} />
       {status === 'over' && (
-        <div className="p-4 bg-blue-100 rounded-lg text-center text-xl font-bold">{resultText}</div>
+        <div className="mt-4 t-ok p-4 text-center text-lg font-bold">
+          {resultText}
+        </div>
       )}
     </div>
   );

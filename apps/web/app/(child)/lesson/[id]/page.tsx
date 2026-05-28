@@ -24,15 +24,26 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     fetch(`${API_BASE}/lessons/${id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        setLesson(data);
-        setLoading(false);
-      })
+      .then((data) => { setLesson(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <main className="p-8">Yükleniyor...</main>;
-  if (!lesson) return <main className="p-8">Ders bulunamadı.</main>;
+  if (loading) {
+    return (
+      <main className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-3">
+        <div className="t-skel h-8 w-3/4 mx-auto" />
+        <div className="t-skel h-64" />
+      </main>
+    );
+  }
+
+  if (!lesson) {
+    return (
+      <main className="px-4 pt-8 pb-12 max-w-2xl mx-auto text-center">
+        <p className="t-muted">Ders bulunamadı.</p>
+      </main>
+    );
+  }
 
   const handleComplete = async () => {
     const token = getToken();
@@ -41,15 +52,15 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     router.push(`/modules/${lesson.module_id}`);
   };
 
   return (
-    <main>
-      <h1 className="text-2xl font-bold p-4 text-center">{lesson.title}</h1>
+    <main className="pb-12">
+      <p className="text-center text-sm font-semibold t-muted px-4 pt-3 pb-1">
+        {lesson.title}
+      </p>
       <LessonPlayer
         lessonId={lesson.id}
         initialSteps={lesson.steps}

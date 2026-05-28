@@ -13,7 +13,8 @@ function MiniBoard({ lightSquare, darkSquare }: { lightSquare: string; darkSquar
 
   return (
     <div
-      className="grid grid-cols-4 w-14 h-14 rounded overflow-hidden shadow-inner flex-shrink-0"
+      className="grid grid-cols-4 w-14 h-14 rounded overflow-hidden flex-shrink-0"
+      style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
       aria-hidden="true"
     >
       {cells.map((bg, i) => (
@@ -28,7 +29,9 @@ export function ChessThemeSelector() {
 
   return (
     <div className="space-y-2">
-      <h2 className="font-bold text-lg mb-3">🎨 Tahta Teması</h2>
+      <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-3">
+        🎨 Tahta Teması
+      </p>
       <div className="grid gap-2">
         {CHESS_THEMES.map((t) => {
           const active = t.id === themeId;
@@ -37,12 +40,10 @@ export function ChessThemeSelector() {
               key={t.id}
               onClick={() => setTheme(t.id as ChessThemeId)}
               className={[
-                'flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left w-full',
-                'hover:scale-[1.01] active:scale-[0.99]',
-                active
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md'
-                  : 'border-transparent bg-gray-50 dark:bg-gray-800 hover:border-gray-300',
+                't-card-i flex items-center gap-3 px-3 py-3 transition-all text-left w-full',
+                active ? 'ring-2' : '',
               ].join(' ')}
+              style={active ? { '--tw-ring-color': 'var(--t-accent)' } as React.CSSProperties : {}}
               aria-pressed={active}
             >
               <MiniBoard lightSquare={t.lightSquare} darkSquare={t.darkSquare} />
@@ -51,14 +52,12 @@ export function ChessThemeSelector() {
                   <span className="text-xl">{t.emoji}</span>
                   <span className="font-semibold text-sm">{t.name}</span>
                   {active && (
-                    <span className="ml-auto text-blue-500 text-xs font-medium bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded-full">
+                    <span className="ml-auto t-tag-ac text-xs px-2 py-0.5">
                       Aktif
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                  {t.description}
-                </p>
+                <p className="text-xs t-muted mt-0.5 truncate">{t.description}</p>
               </div>
             </button>
           );

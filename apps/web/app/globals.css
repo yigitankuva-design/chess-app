@@ -1,299 +1,456 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Base colours ─── */
-:root {
-  --background: 250 250 250;
-  --foreground: 17 17 17;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 17 17 17;
-    --foreground: 250 250 250;
-  }
-}
-
+/* ─────────────────────────────────────────────
+   BASE
+───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
-  color: rgb(var(--foreground));
-  background: rgb(var(--background));
-  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   CHESS THEME SYSTEM
+/* ═══════════════════════════════════════════
+   THEME CSS VARIABLES
    Applied via data-chess-theme on <html>
-═══════════════════════════════════════════════════════════════ */
+   :root = Classic (default before JS runs)
+═══════════════════════════════════════════ */
 
-/* ── Theme: Classic ── */
-[data-chess-theme='classic'] .chess-page-bg {
-  background: linear-gradient(135deg, #1a2e1a 0%, #2e4a2e 100%);
-}
-[data-chess-theme='classic'] .chess-card {
-  background: rgba(255, 255, 255, 0.97);
-  color: #1a1a1a;
-}
-[data-chess-theme='classic'] .chess-accent {
-  color: #2e7d32;
-}
-[data-chess-theme='classic'] .chess-btn {
-  background: #2e7d32;
-  color: #fff;
-}
-[data-chess-theme='classic'] .chess-btn:hover {
-  background: #388e3c;
-}
-
-/* ── Theme: Night ── */
-[data-chess-theme='night'] .chess-page-bg {
-  background: linear-gradient(135deg, #262421 0%, #1a1814 100%);
-}
-[data-chess-theme='night'] .chess-card {
-  background: rgba(40, 38, 36, 0.97);
-  color: #dee3e6;
-  border: 1px solid rgba(107, 79, 160, 0.3);
-}
-[data-chess-theme='night'] .chess-accent {
-  color: #9c6fd4;
-}
-[data-chess-theme='night'] .chess-btn {
-  background: #6b4fa0;
-  color: #fff;
-}
-[data-chess-theme='night'] .chess-btn:hover {
-  background: #7b5fb0;
+:root,
+[data-chess-theme='classic'] {
+  --t-bg:        #f5f0eb;
+  --t-surface:   #ffffff;
+  --t-surface-2: #f0ede8;
+  --t-border:    #e2ddd5;
+  --t-text-1:    #2c2924;
+  --t-text-2:    #716760;
+  --t-accent:    #759900;
+  --t-accent-dk: #638500;
+  --t-accent-fg: #ffffff;
+  --t-nav-bg:    #2f2b28;
+  --t-nav-text:  #a09890;
+  --t-nav-act:   #f0ede8;
+  --t-ok-bg:     #f0f9e8;
+  --t-ok-bd:     #759900;
+  --t-ok-text:   #3d5c00;
+  --t-err-bg:    #fff0f0;
+  --t-err-bd:    #d93030;
+  --t-err-text:  #c03030;
+  --t-prog-bg:   #e2ddd5;
+  --t-prog-fill: #759900;
 }
 
-/* ── Theme: Kids ── */
-[data-chess-theme='kids'] .chess-page-bg {
-  background: linear-gradient(135deg, #e65100 0%, #bf360c 50%, #f57f17 100%);
-}
-[data-chess-theme='kids'] .chess-card {
-  background: rgba(255, 253, 231, 0.97);
-  color: #1a1a1a;
-  border: 2px solid #ffab40;
-}
-[data-chess-theme='kids'] .chess-accent {
-  color: #e65100;
-}
-[data-chess-theme='kids'] .chess-btn {
-  background: #ff7043;
-  color: #fff;
-}
-[data-chess-theme='kids'] .chess-btn:hover {
-  background: #ff5722;
-}
-
-/* ── Theme: Purple ── */
-[data-chess-theme='purple'] .chess-page-bg {
-  background: linear-gradient(135deg, #1a0533 0%, #2d0a50 50%, #1a0533 100%);
-}
-[data-chess-theme='purple'] .chess-card {
-  background: rgba(26, 5, 51, 0.97);
-  color: #ede7f6;
-  border: 1px solid rgba(142, 36, 170, 0.4);
-  box-shadow: 0 4px 20px rgba(142, 36, 170, 0.2);
-}
-[data-chess-theme='purple'] .chess-accent {
-  color: #ce93d8;
-}
-[data-chess-theme='purple'] .chess-btn {
-  background: #8e24aa;
-  color: #fff;
-}
-[data-chess-theme='purple'] .chess-btn:hover {
-  background: #9c27b0;
+[data-chess-theme='night'] {
+  --t-bg:        #161512;
+  --t-surface:   #262421;
+  --t-surface-2: #302e2c;
+  --t-border:    #3a3836;
+  --t-text-1:    #babab8;
+  --t-text-2:    #7a7472;
+  --t-accent:    #759900;
+  --t-accent-dk: #849e0d;
+  --t-accent-fg: #ffffff;
+  --t-nav-bg:    #0f0d0b;
+  --t-nav-text:  #6a6866;
+  --t-nav-act:   #e8e6e4;
+  --t-ok-bg:     #1a2e0d;
+  --t-ok-bd:     #759900;
+  --t-ok-text:   #a8cc40;
+  --t-err-bg:    #2e0d0d;
+  --t-err-bd:    #c03030;
+  --t-err-text:  #f87171;
+  --t-prog-bg:   #3a3836;
+  --t-prog-fill: #759900;
 }
 
-/* ── Theme: Premium ── */
-[data-chess-theme='premium'] .chess-page-bg {
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-}
-[data-chess-theme='premium'] .chess-card {
-  background: rgba(15, 15, 15, 0.97);
-  color: #eeeeee;
-  border: 1px solid rgba(184, 134, 11, 0.4);
-  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.1);
-}
-[data-chess-theme='premium'] .chess-accent {
-  color: #ffd700;
-}
-[data-chess-theme='premium'] .chess-btn {
-  background: linear-gradient(135deg, #b8860b, #ffd700);
-  color: #0a0a0a;
-  font-weight: 700;
-}
-[data-chess-theme='premium'] .chess-btn:hover {
-  background: linear-gradient(135deg, #d4a017, #ffe040);
+[data-chess-theme='kids'] {
+  --t-bg:        #fff8f0;
+  --t-surface:   #ffffff;
+  --t-surface-2: #fff3e0;
+  --t-border:    #ffcc80;
+  --t-text-1:    #1a1a1a;
+  --t-text-2:    #7d5a40;
+  --t-accent:    #ff7043;
+  --t-accent-dk: #f4511e;
+  --t-accent-fg: #ffffff;
+  --t-nav-bg:    #bf360c;
+  --t-nav-text:  #ffccbc;
+  --t-nav-act:   #ffffff;
+  --t-ok-bg:     #e8f5e9;
+  --t-ok-bd:     #4caf50;
+  --t-ok-text:   #1b5e20;
+  --t-err-bg:    #fce4ec;
+  --t-err-bd:    #e91e63;
+  --t-err-text:  #880e4f;
+  --t-prog-bg:   #ffe0b2;
+  --t-prog-fill: #ff7043;
 }
 
-/* ── Theme: Hologram ── */
-[data-chess-theme='hologram'] .chess-page-bg {
-  background: linear-gradient(135deg, #000011 0%, #000833 50%, #000011 100%);
+[data-chess-theme='purple'] {
+  --t-bg:        #1a0533;
+  --t-surface:   #2d0a50;
+  --t-surface-2: #3d1160;
+  --t-border:    #5a2080;
+  --t-text-1:    #e9d5f5;
+  --t-text-2:    #b08acf;
+  --t-accent:    #ce93d8;
+  --t-accent-dk: #ba68c8;
+  --t-accent-fg: #1a0533;
+  --t-nav-bg:    #0d0018;
+  --t-nav-text:  #9e6abf;
+  --t-nav-act:   #f3e5f5;
+  --t-ok-bg:     #1a3020;
+  --t-ok-bd:     #66bb6a;
+  --t-ok-text:   #a5d6a7;
+  --t-err-bg:    #300d15;
+  --t-err-bd:    #e57373;
+  --t-err-text:  #ef9a9a;
+  --t-prog-bg:   #3d1160;
+  --t-prog-fill: #ce93d8;
 }
-[data-chess-theme='hologram'] .chess-card {
-  background: rgba(0, 10, 40, 0.95);
-  color: #00e5ff;
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  box-shadow: 0 4px 24px rgba(0, 229, 255, 0.15), inset 0 1px 0 rgba(0, 229, 255, 0.1);
+
+[data-chess-theme='premium'] {
+  --t-bg:        #0a0a0a;
+  --t-surface:   #141414;
+  --t-surface-2: #1e1e1e;
+  --t-border:    #2a2a2a;
+  --t-text-1:    #e8e8e8;
+  --t-text-2:    #909090;
+  --t-accent:    #c9a227;
+  --t-accent-dk: #e8b830;
+  --t-accent-fg: #0a0a0a;
+  --t-nav-bg:    #050505;
+  --t-nav-text:  #707070;
+  --t-nav-act:   #ffd700;
+  --t-ok-bg:     #141f00;
+  --t-ok-bd:     #c9a227;
+  --t-ok-text:   #ffe082;
+  --t-err-bg:    #1f0000;
+  --t-err-bd:    #e53e3e;
+  --t-err-text:  #f87171;
+  --t-prog-bg:   #2a2a2a;
+  --t-prog-fill: #c9a227;
 }
-[data-chess-theme='hologram'] .chess-accent {
-  color: #00e5ff;
-  text-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+
+[data-chess-theme='hologram'] {
+  --t-bg:        #000011;
+  --t-surface:   rgba(0,15,50,0.92);
+  --t-surface-2: rgba(0,30,80,0.75);
+  --t-border:    rgba(0,229,255,0.22);
+  --t-text-1:    #9ee8f2;
+  --t-text-2:    #4a8fa0;
+  --t-accent:    #00e5ff;
+  --t-accent-dk: #00b8d9;
+  --t-accent-fg: #000820;
+  --t-nav-bg:    rgba(0,5,20,0.96);
+  --t-nav-text:  #00a8c0;
+  --t-nav-act:   #00e5ff;
+  --t-ok-bg:     rgba(0,50,30,0.6);
+  --t-ok-bd:     #00e5ff;
+  --t-ok-text:   #80f0ff;
+  --t-err-bg:    rgba(50,0,20,0.6);
+  --t-err-bd:    #ff4081;
+  --t-err-text:  #ff80ab;
+  --t-prog-bg:   rgba(0,30,80,0.7);
+  --t-prog-fill: #00e5ff;
 }
-[data-chess-theme='hologram'] .chess-btn {
+
+[data-chess-theme='arcade'] {
+  --t-bg:        #0a0a0a;
+  --t-surface:   #181818;
+  --t-surface-2: #222222;
+  --t-border:    rgba(255,87,34,0.35);
+  --t-text-1:    #fff9c4;
+  --t-text-2:    #ffa07a;
+  --t-accent:    #ff5722;
+  --t-accent-dk: #ff7043;
+  --t-accent-fg: #ffffff;
+  --t-nav-bg:    #050505;
+  --t-nav-text:  #ff7043;
+  --t-nav-act:   #fff9c4;
+  --t-ok-bg:     rgba(0,80,20,0.5);
+  --t-ok-bd:     rgba(102,187,106,0.7);
+  --t-ok-text:   #a5d6a7;
+  --t-err-bg:    rgba(80,10,0,0.6);
+  --t-err-bd:    rgba(255,87,34,0.8);
+  --t-err-text:  #ff8a65;
+  --t-prog-bg:   #222222;
+  --t-prog-fill: #ff5722;
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY CLASSES
+═══════════════════════════════════════════ */
+
+/* Page shell */
+.t-page {
+  background: var(--t-bg);
+  color: var(--t-text-1);
+  transition: background-color 0.3s ease, color 0.2s ease;
+}
+
+/* Cards */
+.t-card {
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: 8px;
+  color: var(--t-text-1);
+  transition: background-color 0.25s ease, border-color 0.2s ease;
+}
+
+/* Interactive card — hover lift + accent border */
+.t-card-i {
+  display: block;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: 8px;
+  color: var(--t-text-1);
+  text-decoration: none;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.t-card-i:hover {
+  transform: translateY(-2px);
+  border-color: var(--t-accent);
+  box-shadow: 0 4px 18px rgba(0,0,0,0.13);
+}
+.t-card-i:active { transform: translateY(0); }
+
+/* Secondary surface */
+.t-s2 {
+  background: var(--t-surface-2);
+  border-radius: 6px;
+}
+
+/* Text helpers */
+.t-text  { color: var(--t-text-1); }
+.t-muted { color: var(--t-text-2); }
+.t-ac    { color: var(--t-accent); }
+
+/* Nav */
+.t-nav {
+  background: var(--t-nav-bg);
+  border-bottom: 1px solid var(--t-border);
+  transition: background-color 0.3s ease;
+}
+
+/* Divider */
+.t-line {
+  border: none;
+  border-top: 1px solid var(--t-border);
+  margin: 0;
+}
+
+/* Primary button */
+.t-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: var(--t-accent);
+  color: var(--t-accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 0.65rem 1.3rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+.t-btn:hover  { background: var(--t-accent-dk); }
+.t-btn:active { transform: scale(0.97); }
+.t-btn:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 3px; }
+
+/* Ghost button */
+.t-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   background: transparent;
-  color: #00e5ff;
-  border: 1px solid rgba(0, 229, 255, 0.6);
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+  color: var(--t-text-2);
+  border: 1px solid var(--t-border);
+  border-radius: 6px;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-[data-chess-theme='hologram'] .chess-btn:hover {
-  background: rgba(0, 229, 255, 0.1);
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
-}
-
-/* ── Theme: Arcade ── */
-[data-chess-theme='arcade'] .chess-page-bg {
-  background: #121212;
-}
-[data-chess-theme='arcade'] .chess-card {
-  background: rgba(18, 18, 18, 0.97);
-  color: #fff9c4;
-  border: 2px solid rgba(255, 87, 34, 0.5);
-  box-shadow: 0 0 16px rgba(255, 87, 34, 0.25);
-}
-[data-chess-theme='arcade'] .chess-accent {
-  color: #ff8a65;
-  text-shadow: 0 0 8px rgba(255, 87, 34, 0.5);
-}
-[data-chess-theme='arcade'] .chess-btn {
-  background: linear-gradient(135deg, #ff5722, #ff8a65);
-  color: #fff;
-  font-weight: 700;
-}
-[data-chess-theme='arcade'] .chess-btn:hover {
-  background: linear-gradient(135deg, #ff7043, #ffa07a);
+.t-btn-ghost:hover {
+  border-color: var(--t-accent);
+  color: var(--t-accent);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   HOLOGRAM BOARD EFFECTS
-═══════════════════════════════════════════════════════════════ */
+/* Feature card (home page 3×2 grid) */
+.t-feat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  color: var(--t-text-1);
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+  min-height: 90px;
+}
+.t-feat:hover {
+  border-color: var(--t-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+.t-feat:active { transform: translateY(0); }
 
+/* Tag/badge pill */
+.t-tag {
+  display: inline-flex;
+  align-items: center;
+  background: var(--t-surface-2);
+  color: var(--t-text-2);
+  border: 1px solid var(--t-border);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+.t-tag-ac {
+  display: inline-flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--t-accent) 12%, transparent);
+  color: var(--t-accent);
+  border: 1px solid color-mix(in srgb, var(--t-accent) 28%, transparent);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+/* Progress bar */
+.t-prog-track {
+  background: var(--t-prog-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 7px;
+}
+.t-prog-fill {
+  height: 100%;
+  background: var(--t-prog-fill);
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+/* Feedback states */
+.t-ok {
+  background: var(--t-ok-bg);
+  border: 1px solid var(--t-ok-bd);
+  color: var(--t-ok-text);
+  border-radius: 8px;
+}
+.t-err {
+  background: var(--t-err-bg);
+  border: 1px solid var(--t-err-bd);
+  color: var(--t-err-text);
+  border-radius: 8px;
+}
+
+/* Skeleton loader */
+.t-skel {
+  background: linear-gradient(90deg,
+    var(--t-surface-2) 25%,
+    var(--t-border) 50%,
+    var(--t-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ═══════════════════════════════════════════
+   BOARD ANIMATIONS
+═══════════════════════════════════════════ */
+
+/* Hologram board */
 .hologram-board {
-  animation: hologram-float 4s ease-in-out infinite;
+  animation: holo-float 4s ease-in-out infinite;
   position: relative;
 }
-
-@keyframes hologram-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+@keyframes holo-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-5px); }
 }
 
-/* Scan-line overlay */
 .hologram-scanlines {
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(
     0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 229, 255, 0.04) 3px,
-    rgba(0, 229, 255, 0.04) 4px
+    transparent, transparent 3px,
+    rgba(0,229,255,0.04) 3px, rgba(0,229,255,0.04) 4px
   );
   pointer-events: none;
   z-index: 10;
   border-radius: 4px;
-  animation: scanlines-scroll 8s linear infinite;
+  animation: scanscroll 8s linear infinite;
 }
-
-@keyframes scanlines-scroll {
+@keyframes scanscroll {
   from { background-position: 0 0; }
   to   { background-position: 0 80px; }
 }
 
-/* Corner bracket decorations */
-.hologram-corner {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  z-index: 11;
-  border-color: rgba(0, 229, 255, 0.8);
-}
+.hologram-corner { position: absolute; width: 14px; height: 14px; z-index: 11; border-color: rgba(0,229,255,0.8); }
 .hologram-corner-tl { top: -2px; left: -2px; border-top: 2px solid; border-left: 2px solid; }
 .hologram-corner-tr { top: -2px; right: -2px; border-top: 2px solid; border-right: 2px solid; }
 .hologram-corner-bl { bottom: -2px; left: -2px; border-bottom: 2px solid; border-left: 2px solid; }
 .hologram-corner-br { bottom: -2px; right: -2px; border-bottom: 2px solid; border-right: 2px solid; }
 
-/* ═══════════════════════════════════════════════════════════════
-   ARCADE BOARD EFFECTS
-═══════════════════════════════════════════════════════════════ */
-
-.arcade-board {
-  position: relative;
-}
-
-/* Piece bounce — applied to piece container via JS-added class */
-@keyframes piece-bounce {
-  0%   { transform: translateY(-12px) scale(1.15); }
-  60%  { transform: translateY(3px) scale(0.95); }
-  80%  { transform: translateY(-4px) scale(1.05); }
-  100% { transform: translateY(0) scale(1); }
-}
-
-/* Capture flash overlay */
+/* Arcade capture flash */
+.arcade-board { position: relative; }
 .capture-flash::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(255, 180, 0, 0.6) 0%, transparent 70%);
-  animation: capture-burst 0.35s ease-out forwards;
+  background: radial-gradient(circle, rgba(255,180,0,0.6) 0%, transparent 70%);
+  animation: cap-burst 0.35s ease-out forwards;
   pointer-events: none;
   z-index: 20;
   border-radius: 4px;
 }
-
-@keyframes capture-burst {
+@keyframes cap-burst {
   0%   { opacity: 1; transform: scale(0.6); }
   50%  { opacity: 0.8; transform: scale(1.1); }
   100% { opacity: 0; transform: scale(1.4); }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SHARED ANIMATIONS
-═══════════════════════════════════════════════════════════════ */
-
-/* Screen shake — check animation */
+/* Screen shake (check) */
 .board-shake {
-  animation: board-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  animation: board-shake 0.5s cubic-bezier(0.36,0.07,0.19,0.97) both;
 }
-
 @keyframes board-shake {
-  10%, 90%  { transform: translate3d(-2px, 0, 0); }
-  20%, 80%  { transform: translate3d(4px, 0, 0); }
-  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
-  40%, 60%  { transform: translate3d(6px, 0, 0); }
-  100%      { transform: translate3d(0, 0, 0); }
+  10%,90%     { transform: translate3d(-2px,0,0); }
+  20%,80%     { transform: translate3d(4px,0,0); }
+  30%,50%,70% { transform: translate3d(-5px,0,0); }
+  40%,60%     { transform: translate3d(5px,0,0); }
+  100%        { transform: translate3d(0,0,0); }
 }
 
-/* Smooth theme transition for page-level elements */
-.chess-page-bg,
-.chess-card {
-  transition: background 0.4s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Accessible focus ring */
-.chess-btn {
-  border-radius: 0.75rem;
-  padding: 0.625rem 1.25rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border: none;
-}
-.chess-btn:focus-visible {
-  outline: 3px solid rgba(59, 130, 246, 0.8);
-  outline-offset: 2px;
-}
+/* ── Legacy aliases (backward compat) ── */
+.chess-page-bg { background: var(--t-bg); }
+.chess-card    { background: var(--t-surface); border: 1px solid var(--t-border); border-radius: 8px; }
+.chess-accent  { color: var(--t-accent); }
+.chess-btn     { background: var(--t-accent); color: var(--t-accent-fg); border-radius: 6px; padding: 0.65rem 1.3rem; font-weight: 600; }

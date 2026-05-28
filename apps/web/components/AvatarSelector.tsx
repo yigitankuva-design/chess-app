@@ -8,19 +8,22 @@ interface Props {
 
 export function AvatarSelector({ value, onChange }: Props) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
       {AVATARS.map((a) => (
         <button
           key={a.id}
           type="button"
           onClick={() => onChange(a.id)}
           aria-label={a.label}
-          className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition ${
-            value === a.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-          }`}
+          aria-pressed={value === a.id}
+          className={[
+            't-card-i flex flex-col items-center gap-1 p-3 transition-all',
+            value === a.id ? 'ring-2' : '',
+          ].join(' ')}
+          style={value === a.id ? { '--tw-ring-color': 'var(--t-accent)' } as React.CSSProperties : {}}
         >
           <span className="text-4xl">{a.emoji}</span>
-          <span className="text-xs opacity-75">{a.label}</span>
+          <span className="text-xs t-muted">{a.label}</span>
         </button>
       ))}
     </div>

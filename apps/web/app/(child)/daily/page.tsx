@@ -21,35 +21,36 @@ export default function DailyPage() {
   useEffect(() => {
     const token = getToken();
     fetch(`${API_BASE}/daily/puzzle`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => (r.ok ? r.json() : { available: false }))
-      .then((d) => {
-        setDaily(d);
-        setLoading(false);
-      })
-      .catch(() => {
-        setDaily({ available: false });
-        setLoading(false);
-      });
+      .then((d) => { setDaily(d); setLoading(false); })
+      .catch(() => { setDaily({ available: false }); setLoading(false); });
   }, []);
 
-  if (loading) return <main className="p-8">Yükleniyor...</main>;
-  if (!daily || !daily.available) {
+  if (loading) {
     return (
-      <main className="p-8 text-center">
-        <p className="text-lg">Bugünün bulmacası henüz hazır değil.</p>
+      <main className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-3">
+        <div className="t-skel h-6 w-1/2 mx-auto" />
+        <div className="t-skel aspect-square max-w-sm mx-auto rounded-lg" />
+      </main>
+    );
+  }
+
+  if (!daily?.available) {
+    return (
+      <main className="px-4 pt-8 pb-12 max-w-2xl mx-auto text-center">
+        <p className="t-muted">Bugünün bulmacası henüz hazır değil.</p>
       </main>
     );
   }
 
   return (
-    <main>
-      <h1 className="text-2xl font-bold text-center p-4">Günün Bulmacası 📅</h1>
+    <main className="pb-12">
       {solved && (
-        <p className="text-center text-green-700 font-bold mb-4">
-          Bugünün bulmacasını çözdün! 🎉 Yarın yenisi gelecek.
-        </p>
+        <div className="t-ok mx-4 mt-3 p-3 text-center text-sm font-semibold">
+          🎉 Bugünün bulmacasını çözdün! Yarın yenisi gelecek.
+        </div>
       )}
       <PuzzleSolver
         puzzleId={daily.puzzle_id!}

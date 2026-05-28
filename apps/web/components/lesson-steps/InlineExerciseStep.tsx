@@ -60,10 +60,10 @@ export function InlineExerciseStep({ stepId, lessonId, content, onContinue }: Pr
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold mb-2">{content.title || 'Şimdi sen dene!'}</h2>
-        {content.body && <p className="text-lg">{content.body}</p>}
+        <h2 className="text-xl font-bold mb-2">{content.title || 'Şimdi sen dene!'}</h2>
+        {content.body && <p className="text-base t-muted">{content.body}</p>}
       </div>
 
       {content.fen && (
@@ -78,21 +78,21 @@ export function InlineExerciseStep({ stepId, lessonId, content, onContinue }: Pr
       <AnimatePresence>
         {feedback === 'correct' && (
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="p-4 bg-green-100 border border-green-400 rounded-lg text-green-800 text-lg"
+            className="t-ok p-4 font-semibold"
           >
             ✓ Doğru! Harika!
           </motion.div>
         )}
         {feedback === 'wrong' && (
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="p-4 bg-red-100 border border-red-400 rounded-lg text-red-800 text-lg flex items-center justify-between"
+            className="t-err p-4 flex items-center justify-between"
           >
-            <span>Yanlış, tekrar dene</span>
-            <button onClick={() => setFeedback(null)} className="underline font-medium">
+            <span className="font-medium">Yanlış, tekrar dene</span>
+            <button onClick={() => setFeedback(null)} className="text-xs underline opacity-80 hover:opacity-100">
               Tekrar dene
             </button>
           </motion.div>
@@ -100,10 +100,7 @@ export function InlineExerciseStep({ stepId, lessonId, content, onContinue }: Pr
       </AnimatePresence>
 
       {feedback === 'correct' && (
-        <button
-          onClick={onContinue}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg text-lg font-medium hover:bg-blue-700 transition"
-        >
+        <button onClick={onContinue} className="t-btn w-full py-3 text-base font-medium">
           Devam →
         </button>
       )}

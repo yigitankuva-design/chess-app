@@ -9,16 +9,16 @@ export function XPBar({ currentXP, rankName, nextRankXP }: Props) {
   const progress = Math.min(100, (currentXP / denom) * 100);
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div className="flex justify-between text-sm">
-        <span className="font-bold">{rankName}</span>
-        <span className="opacity-75">
+        <span className="font-semibold">{rankName}</span>
+        <span className="t-muted text-xs">
           {currentXP} / {nextRankXP} XP
         </span>
       </div>
-      <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+      <div className="t-prog-track">
         <div
-          className="h-full bg-gradient-to-r from-blue-400 to-purple-500 transition-all"
+          className="t-prog-fill transition-all duration-500"
           style={{ width: `${progress}%` }}
         />
       </div>

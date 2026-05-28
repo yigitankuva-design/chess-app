@@ -30,25 +30,20 @@ export default function SRSPage() {
   const getHeaders = useCallback(() => {
     const token = getToken();
     const h: Record<string, string> = {};
-    if (token) {
-      h.Authorization = `Bearer ${token}`;
-    }
+    if (token) h.Authorization = `Bearer ${token}`;
     return h;
   }, []);
 
-  // Load due cards once
   useEffect(() => {
     fetch(`${API_BASE}/srs/due`, { headers: getHeaders() })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: SRSCard[]) => {
-        const puzzleCards = data.filter((c) => c.item_type === 'puzzle');
-        setCards(puzzleCards);
+        setCards(data.filter((c) => c.item_type === 'puzzle'));
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [getHeaders]);
 
-  // Load the current card's puzzle
   useEffect(() => {
     if (cards.length === 0 || index >= cards.length) return;
     const card = cards[index];
@@ -73,23 +68,56 @@ export default function SRSPage() {
     }
   }
 
-  if (loading) return <main className="p-8">Yükleniyor...</main>;
-  if (done) return <main className="p-8 text-center text-2xl">🎉 Bugünlük tekrar bitti!</main>;
-  if (cards.length === 0) {
+  if (loading) {
     return (
-      <main className="p-8 text-center">
-        <p className="text-lg">Bugün tekrar edilecek bir şey yok. 👍</p>
-        <p className="opacity-75 mt-2">Ders çözüp puzzle yaptıkça burası dolar.</p>
+      <main className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-3">
+        <div className="t-skel h-6 w-1/3 mx-auto" />
+        <div className="t-skel aspect-square max-w-sm mx-auto rounded-lg" />
       </main>
     );
   }
-  if (!puzzle) return <main className="p-8">Tekrar yükleniyor...</main>;
+
+  if (done) {
+    return (
+      <main className="px-4 pt-12 pb-12 max-w-2xl mx-auto text-center space-y-3">
+        <div className="text-5xl">🎉</div>
+        <p className="font-bold text-lg">Bugünlük tekrar bitti!</p>
+        <p className="t-muted text-sm">Harika iş! Yarın yeni kartlar seni bekleyecek.</p>
+      </main>
+    );
+  }
+
+  if (cards.length === 0) {
+    return (
+      <main className="px-4 pt-12 pb-12 max-w-2xl mx-auto text-center space-y-2">
+        <div className="text-4xl">👍</div>
+        <p className="font-semibold">Bugün tekrar edilecek bir şey yok.</p>
+        <p className="t-muted text-sm">Ders çözüp puzzle yaptıkça burası dolar.</p>
+      </main>
+    );
+  }
+
+  if (!puzzle) {
+    return (
+      <main className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-3">
+        <div className="t-skel h-6 w-1/3 mx-auto" />
+        <div className="t-skel aspect-square max-w-sm mx-auto rounded-lg" />
+      </main>
+    );
+  }
 
   return (
-    <main>
-      <h1 className="text-2xl font-bold text-center p-4">
-        Tekrar 🔁 ({index + 1}/{cards.length})
-      </h1>
+    <main className="pb-12">
+      <div className="px-4 pt-3 pb-1 max-w-2xl mx-auto flex items-center justify-between">
+        <p className="text-xs font-semibold t-muted uppercase tracking-widest">Tekrar 🔁</p>
+        <p className="text-xs font-semibold t-muted">{index + 1} / {cards.length}</p>
+      </div>
+      <div className="t-prog-track mx-4 mb-3 max-w-2xl" style={{ maxWidth: '42rem' }}>
+        <div
+          className="t-prog-fill transition-all"
+          style={{ width: `${((index + 1) / cards.length) * 100}%` }}
+        />
+      </div>
       <PuzzleSolver
         key={puzzle.id}
         puzzleId={puzzle.id}

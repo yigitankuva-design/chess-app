@@ -30,7 +30,6 @@ export function LiveGame({ gameId, myColor }: Props) {
     };
     const t = msg?.type;
     if (t === 'move_made') {
-      // Apply if it's the opponent's move (ours already applied locally)
       const chess = chessRef.current;
       if (msg.fen_after && chess.fen() !== msg.fen_after) {
         try { chess.load(msg.fen_after); setFen(msg.fen_after); } catch { /* ignore */ }
@@ -47,7 +46,6 @@ export function LiveGame({ gameId, myColor }: Props) {
     } else if (t === 'opponent_disconnected') {
       setInfo('Rakip bağlantısı koptu.');
     } else if (t === 'invalid_move') {
-      // revert to server-trusted state
       setFen(chessRef.current.fen());
     } else if (t === 'draw_offered') {
       setDrawOffered(true);
@@ -69,35 +67,39 @@ export function LiveGame({ gameId, myColor }: Props) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-4">
+    <div className="max-w-2xl mx-auto px-4 space-y-3">
       <ChessBoard fen={fen} interactive={status === 'active'} onPieceDrop={handleDrop} boardOrientation={myColor} />
       {drawOffered && status === 'active' && (
-        <div className="p-3 bg-yellow-100 rounded-lg flex items-center justify-between">
-          <span>Rakip beraberlik teklif etti</span>
+        <div className="t-ok p-3 flex items-center justify-between">
+          <span className="text-sm">Rakip beraberlik teklif etti</span>
           <button
             onClick={() => { send({ type: 'accept_draw' }); setDrawOffered(false); }}
-            className="underline font-medium"
+            className="text-xs underline font-medium"
           >
             Kabul et
           </button>
         </div>
       )}
       {status === 'over' ? (
-        <div className="p-4 bg-blue-100 rounded-lg text-center text-xl font-bold">{info}</div>
+        <div className="t-ok p-4 text-center font-bold">{info}</div>
       ) : (
         <div className="flex gap-2 justify-center">
-          <button onClick={() => send({ type: 'offer_draw' })} className="px-4 py-2 border rounded">
+          <button
+            onClick={() => send({ type: 'offer_draw' })}
+            className="t-btn-ghost px-4 py-2 text-sm"
+          >
             Beraberlik teklif et
           </button>
           <button
             onClick={() => { if (confirm('Teslim olmak istiyor musun?')) send({ type: 'resign' }); }}
-            className="px-4 py-2 bg-red-500 text-white rounded"
+            className="t-btn px-4 py-2 text-sm"
+            style={{ background: 'var(--t-err-bg, #ef4444)', color: '#fff' }}
           >
             Teslim ol
           </button>
         </div>
       )}
-      {info && status === 'active' && <p className="text-center opacity-75">{info}</p>}
+      {info && status === 'active' && <p className="text-center text-sm t-muted">{info}</p>}
     </div>
   );
 }

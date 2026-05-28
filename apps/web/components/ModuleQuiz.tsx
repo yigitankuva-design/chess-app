@@ -34,25 +34,39 @@ export function ModuleQuiz({ questions, onComplete }: Props) {
 
   if (submitted) {
     return (
-      <div className="space-y-6">
-        <div className="text-center p-6 bg-blue-50 rounded-xl">
-          <div className="text-5xl mb-3">{score === questions.length ? '🏆' : score >= questions.length / 2 ? '⭐' : '📚'}</div>
-          <h2 className="text-2xl font-bold mb-2">Sınav Bitti!</h2>
-          <p className="text-lg">{questions.length} sorudan <strong>{score}</strong> doğru</p>
-        </div>
-        {questions.map((q, i) => (
-          <div key={i} className={`p-4 rounded-lg border-2 ${answers[i] === q.correct_index ? 'border-green-400 bg-green-50' : 'border-red-300 bg-red-50'}`}>
-            <p className="font-medium mb-2">Soru {i + 1}: {q.prompt}</p>
-            {q.options.map((opt, oi) => (
-              <p key={oi} className={`text-sm py-1 px-2 rounded ${oi === q.correct_index ? 'text-green-700 font-bold' : oi === answers[i] ? 'text-red-600' : ''}`}>
-                {oi === q.correct_index ? '✓ ' : oi === answers[i] ? '✗ ' : '  '}{opt}
-              </p>
-            ))}
+      <div className="space-y-4">
+        <div className="t-ok p-5 text-center">
+          <div className="text-5xl mb-3">
+            {score === questions.length ? '🏆' : score >= questions.length / 2 ? '⭐' : '📚'}
           </div>
-        ))}
+          <h2 className="text-xl font-bold mb-1">Sınav Bitti!</h2>
+          <p className="t-muted text-sm">{questions.length} sorudan <strong>{score}</strong> doğru</p>
+        </div>
+        {questions.map((q, i) => {
+          const correct = answers[i] === q.correct_index;
+          return (
+            <div
+              key={i}
+              className={correct ? 't-ok p-4' : 't-err p-4'}
+            >
+              <p className="font-medium text-sm mb-2">Soru {i + 1}: {q.prompt}</p>
+              {q.options.map((opt, oi) => (
+                <p
+                  key={oi}
+                  className={[
+                    'text-xs py-0.5 px-1 rounded',
+                    oi === q.correct_index ? 'font-bold t-ac' : oi === answers[i] ? 'opacity-60 line-through' : 'opacity-50',
+                  ].join(' ')}
+                >
+                  {oi === q.correct_index ? '✓ ' : oi === answers[i] ? '✗ ' : '  '}{opt}
+                </p>
+              ))}
+            </div>
+          );
+        })}
         <button
           onClick={() => onComplete(score, questions.length)}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg text-lg font-medium"
+          className="t-btn w-full py-3 text-base font-medium"
         >
           Devam et
         </button>
@@ -61,21 +75,21 @@ export function ModuleQuiz({ questions, onComplete }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Modül Sınavı</h2>
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">Modül Sınavı</h2>
       {questions.map((q, i) => (
-        <div key={i} className="p-4 bg-white rounded-lg shadow">
-          <p className="font-medium mb-3">Soru {i + 1}: {q.prompt}</p>
+        <div key={i} className="t-card p-4">
+          <p className="font-semibold text-sm mb-3">Soru {i + 1}: {q.prompt}</p>
           <div className="space-y-2">
             {q.options.map((opt, oi) => (
               <button
                 key={oi}
                 onClick={() => answer(i, oi)}
-                className={`block w-full text-left p-3 rounded border transition-colors ${
-                  answers[i] === oi
-                    ? 'bg-blue-200 border-blue-500'
-                    : 'border-gray-300 hover:bg-gray-50'
-                }`}
+                className={[
+                  't-card-i w-full text-left px-3 py-2.5 text-sm transition-all',
+                  answers[i] === oi ? 'ring-2' : '',
+                ].join(' ')}
+                style={answers[i] === oi ? { '--tw-ring-color': 'var(--t-accent)' } as React.CSSProperties : {}}
               >
                 {opt}
               </button>
@@ -86,7 +100,7 @@ export function ModuleQuiz({ questions, onComplete }: Props) {
       <button
         onClick={submit}
         disabled={!allAnswered}
-        className="w-full bg-green-600 disabled:opacity-50 text-white py-3 rounded-lg text-lg font-medium"
+        className="t-btn w-full py-3 text-base font-medium disabled:opacity-50"
       >
         {allAnswered ? 'Sınavı Bitir' : `Kalan soru: ${answers.filter(a => a === -1).length}`}
       </button>

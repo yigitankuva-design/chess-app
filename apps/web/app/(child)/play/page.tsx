@@ -4,12 +4,19 @@ import Link from 'next/link';
 import { BotGame } from '@/components/BotGame';
 
 const LEVELS = [
-  { label: 'Çok Kolay', skill: 0, depth: 1, emoji: '🐣' },
-  { label: 'Kolay', skill: 3, depth: 4, emoji: '🙂' },
-  { label: 'Orta', skill: 8, depth: 8, emoji: '😎' },
-  { label: 'Zor', skill: 14, depth: 10, emoji: '🔥' },
-  { label: 'Çok Zor', skill: 20, depth: 12, emoji: '👑' },
+  { label: 'Çok Kolay', skill: 0,  depth: 1,  emoji: '🐣' },
+  { label: 'Kolay',     skill: 3,  depth: 4,  emoji: '🙂' },
+  { label: 'Orta',      skill: 8,  depth: 8,  emoji: '😎' },
+  { label: 'Zor',       skill: 14, depth: 10, emoji: '🔥' },
+  { label: 'Çok Zor',   skill: 20, depth: 12, emoji: '👑' },
 ];
+
+const ChevronRight = () => (
+  <svg className="flex-shrink-0 t-muted" width="16" height="16" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 18l6-6-6-6"/>
+  </svg>
+);
 
 export default function PlayPage() {
   const [selected, setSelected] = useState<typeof LEVELS[number] | null>(null);
@@ -17,44 +24,65 @@ export default function PlayPage() {
 
   if (!selected) {
     return (
-      <main id="main-content" className="p-6 max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Bota Karşı Oyna 🤖</h1>
-        <Link
-          href="/play/online"
-          className="block w-full mb-6 p-4 bg-green-500 text-white rounded-xl shadow hover:bg-green-600 transition text-lg font-medium flex items-center gap-3"
-        >
-          <span className="text-2xl">🤝</span> Arkadaşla Oyna (Online)
+      <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
+
+        {/* Online */}
+        <Link href="/play/online" className="t-card-i flex items-center gap-4 px-4 py-4">
+          <span className="text-2xl">🤝</span>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Arkadaşla Oyna</p>
+            <p className="text-xs t-muted mt-0.5">Çevrimiçi eşleşme</p>
+          </div>
+          <ChevronRight />
         </Link>
-        <p className="text-center opacity-75 mb-6">Zorluk seç:</p>
-        <div className="grid grid-cols-1 gap-3">
+
+        <hr className="t-line" />
+
+        <p className="text-xs font-semibold t-muted uppercase tracking-widest pt-1">
+          Bota Karşı — Zorluk Seç
+        </p>
+
+        <div className="space-y-2">
           {LEVELS.map((lvl) => (
             <button
               key={lvl.skill}
               onClick={() => setSelected(lvl)}
-              className="p-4 bg-white rounded-xl shadow hover:shadow-lg transition text-lg font-medium flex items-center gap-3"
+              className="t-card-i w-full flex items-center gap-4 px-4 py-3 text-left"
             >
-              <span className="text-2xl">{lvl.emoji}</span> {lvl.label}
+              <span className="text-xl w-7 text-center">{lvl.emoji}</span>
+              <span className="font-medium text-sm flex-1">{lvl.label}</span>
+              <ChevronRight />
             </button>
           ))}
         </div>
+
       </main>
     );
   }
 
   return (
-    <main>
-      <div className="flex items-center justify-between p-4 max-w-2xl mx-auto">
-        <h1 className="text-xl font-bold">{selected.emoji} {selected.label} bot</h1>
-        <button onClick={() => setSelected(null)} className="text-blue-600 underline text-sm">Zorluk değiştir</button>
+    <main className="pb-12">
+      <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
+        <p className="font-semibold text-sm">
+          {selected.emoji} Bot — {selected.label}
+        </p>
+        <button
+          onClick={() => setSelected(null)}
+          className="t-btn-ghost text-xs px-3 py-1.5"
+        >
+          Zorluk değiştir
+        </button>
       </div>
+
       <BotGame
         key={gameKey}
         skillLevel={selected.skill}
         depth={selected.depth}
-        onGameEnd={() => { /* result shown in BotGame; could offer rematch */ }}
+        onGameEnd={() => {}}
       />
+
       <div className="text-center mt-4">
-        <button onClick={() => setGameKey((k) => k + 1)} className="px-4 py-2 border rounded-lg">
+        <button onClick={() => setGameKey((k) => k + 1)} className="t-btn-ghost px-5 py-2">
           Yeni Oyun
         </button>
       </div>

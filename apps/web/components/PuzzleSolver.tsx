@@ -19,12 +19,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export function PuzzleSolver({ puzzleId, fen, solutionMoves, themes, onComplete }: Props) {
   const chessRef = useRef(new Chess(fen));
   const [displayFen, setDisplayFen] = useState(fen);
-  const [moveIndex, setMoveIndex] = useState(1); // player must play moves[1] first
+  const [moveIndex, setMoveIndex] = useState(1);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
   const [recorded, setRecorded] = useState(false);
 
-  // On mount: auto-play opponent setup move (moves[0])
   useEffect(() => {
     const chess = new Chess(fen);
     chessRef.current = chess;
@@ -60,7 +59,6 @@ export function PuzzleSolver({ puzzleId, fen, solutionMoves, themes, onComplete 
     if (!expected) return false;
     const userUci = `${from}${to}`;
 
-    // Compare ignoring promotion char (expected may be 'e7e8q')
     if (userUci === expected.slice(0, 4)) {
       const chess = chessRef.current;
       try {
@@ -78,7 +76,6 @@ export function PuzzleSolver({ puzzleId, fen, solutionMoves, themes, onComplete 
         return true;
       }
 
-      // Auto-play opponent reply
       setTimeout(() => {
         const reply = solutionMoves[nextIdx];
         try {
@@ -110,13 +107,15 @@ export function PuzzleSolver({ puzzleId, fen, solutionMoves, themes, onComplete 
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 p-4">
-      <div className="flex gap-2 flex-wrap">
-        {themes.map((t) => (
-          <span key={t} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{t}</span>
-        ))}
-      </div>
-      <p className="text-lg opacity-75">
+    <div className="max-w-2xl mx-auto px-4 pb-4 space-y-3">
+      {themes.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap pt-2">
+          {themes.map((t) => (
+            <span key={t} className="t-tag">{t}</span>
+          ))}
+        </div>
+      )}
+      <p className="text-sm t-muted">
         {orientation === 'white' ? 'Beyaz' : 'Siyah'} oynar — en iyi hamleyi bul!
       </p>
       <ChessBoard
@@ -127,16 +126,24 @@ export function PuzzleSolver({ puzzleId, fen, solutionMoves, themes, onComplete 
       />
       <AnimatePresence>
         {feedback === 'correct' && (
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="p-4 bg-green-100 border border-green-400 rounded-lg text-green-800 text-lg">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="t-ok p-4 text-center font-semibold"
+          >
             ✓ Süper! Çözdün!
           </motion.div>
         )}
         {feedback === 'wrong' && (
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="p-4 bg-red-100 border border-red-400 rounded-lg text-red-800 text-lg flex items-center justify-between">
-            <span>Olmadı, tekrar dene</span>
-            <button onClick={retry} className="underline font-medium">Baştan</button>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="t-err p-4 flex items-center justify-between"
+          >
+            <span className="font-medium">Olmadı, tekrar dene</span>
+            <button onClick={retry} className="text-xs underline opacity-80 hover:opacity-100">
+              Baştan
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

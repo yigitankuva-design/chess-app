@@ -21,18 +21,21 @@ export function LessonPlayer({ lessonId, initialSteps, onComplete }: Props) {
   }, [lessonId, initialSteps, setLesson]);
 
   if (!initialized || steps.length === 0) {
-    return <div className="p-8 text-center">Yükleniyor...</div>;
+    return (
+      <div className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-3">
+        <div className="t-skel h-3 rounded-full" />
+        <div className="t-skel h-40 rounded-xl" />
+        <div className="t-skel h-32 rounded-xl" />
+      </div>
+    );
   }
 
   if (currentStepIndex >= steps.length) {
     return (
-      <div className="p-8 text-center space-y-4">
+      <div className="px-4 pt-12 pb-12 max-w-2xl mx-auto text-center space-y-4">
         <div className="text-5xl">🎉</div>
-        <h2 className="text-2xl font-bold">Dersi tamamladın!</h2>
-        <button
-          onClick={onComplete}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg text-lg"
-        >
+        <h2 className="text-xl font-bold">Dersi tamamladın!</h2>
+        <button onClick={onComplete} className="t-btn px-6 py-3">
           Devam et
         </button>
       </div>
@@ -43,37 +46,41 @@ export function LessonPlayer({ lessonId, initialSteps, onComplete }: Props) {
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <div className="mb-4 bg-gray-200 rounded-full h-2">
-        <div
-          className="bg-blue-600 h-2 rounded-full transition-all"
-          style={{ width: `${progress}%` }}
-        />
+    <div className="max-w-2xl mx-auto px-4">
+      <div className="flex items-center gap-3 py-3">
+        <div className="flex-1 t-prog-track">
+          <div
+            className="t-prog-fill transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-xs t-muted flex-shrink-0">
+          {currentStepIndex + 1} / {steps.length}
+        </span>
       </div>
-      <p className="text-sm opacity-75 mb-6">
-        Adım {currentStepIndex + 1} / {steps.length}
-      </p>
 
-      {currentStep.type === 'explanation' && (
-        <ExplanationStep
-          content={currentStep.content_json as never}
-          onContinue={advance}
-        />
-      )}
-      {currentStep.type === 'inline_exercise' && (
-        <InlineExerciseStep
-          stepId={currentStep.id}
-          lessonId={lessonId}
-          content={currentStep.content_json as never}
-          onContinue={advance}
-        />
-      )}
-      {currentStep.type === 'quiz' && (
-        <ModuleQuiz
-          questions={(currentStep.content_json as { questions: Array<{ prompt: string; options: string[]; correct_index: number }> }).questions}
-          onComplete={(_score, _max) => advance()}
-        />
-      )}
+      <div className="pb-8">
+        {currentStep.type === 'explanation' && (
+          <ExplanationStep
+            content={currentStep.content_json as never}
+            onContinue={advance}
+          />
+        )}
+        {currentStep.type === 'inline_exercise' && (
+          <InlineExerciseStep
+            stepId={currentStep.id}
+            lessonId={lessonId}
+            content={currentStep.content_json as never}
+            onContinue={advance}
+          />
+        )}
+        {currentStep.type === 'quiz' && (
+          <ModuleQuiz
+            questions={(currentStep.content_json as { questions: Array<{ prompt: string; options: string[]; correct_index: number }> }).questions}
+            onComplete={(_score, _max) => advance()}
+          />
+        )}
+      </div>
     </div>
   );
 }
