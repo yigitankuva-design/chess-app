@@ -17,6 +17,6 @@ class ChildProfile(Base):
     teacher_user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id"), nullable=True, index=True
     )
-    class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id"), nullable=True, index=True)
+    class_id: Mapped[Optional[int]] = mapped_column(ForeignKey("classes.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_active_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

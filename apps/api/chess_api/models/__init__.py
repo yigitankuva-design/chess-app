@@ -10,10 +10,10 @@ from chess_api.models.puzzle import (
 )
 from chess_api.models.game import Game, GameMove, GameType, GameStatus, GameResult
 from chess_api.models.gamification import Badge, ChildBadge, Rank, ChildRank
+from chess_api.models.class_ import Class, ClassAssignment
 from chess_api.models.parent import (
     ParentTimeLimit, ChildActivityLog, ParentSurvey, ParentSurveyResponse,
 )
-from chess_api.models.class_ import Class, ClassAssignment
 
 __all__ = [
     "User", "UserRole", "ChildProfile", "Device",

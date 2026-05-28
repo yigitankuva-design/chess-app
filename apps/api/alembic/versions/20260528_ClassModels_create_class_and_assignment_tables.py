@@ -30,7 +30,6 @@ def upgrade() -> None:
         sa.UniqueConstraint('join_code')
     )
     op.create_index(op.f('ix_classes_teacher_user_id'), 'classes', ['teacher_user_id'], unique=False)
-    op.create_index(op.f('ix_classes_join_code'), 'classes', ['join_code'], unique=True)
 
     # Create class_assignments table
     op.create_table(
@@ -87,6 +86,5 @@ def downgrade() -> None:
     op.drop_table('class_assignments')
 
     # Drop classes table
-    op.drop_index(op.f('ix_classes_join_code'), table_name='classes')
     op.drop_index(op.f('ix_classes_teacher_user_id'), table_name='classes')
     op.drop_table('classes')
