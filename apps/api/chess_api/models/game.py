@@ -27,7 +27,10 @@ class Game(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     type: Mapped[GameType] = mapped_column(Enum(GameType))
     status: Mapped[GameStatus] = mapped_column(Enum(GameStatus), default=GameStatus.active)
-    result: Mapped[GameResult | None] = mapped_column(Enum(GameResult), nullable=True)
+    result: Mapped[GameResult | None] = mapped_column(
+        Enum(GameResult, name="gameresult", values_callable=lambda e: [m.value for m in e]),
+        nullable=True,
+    )
     white_child_id: Mapped[int | None] = mapped_column(ForeignKey("child_profiles.id"), nullable=True, index=True)
     black_child_id: Mapped[int | None] = mapped_column(ForeignKey("child_profiles.id"), nullable=True, index=True)
     black_bot_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
