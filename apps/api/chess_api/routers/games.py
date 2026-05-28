@@ -1,0 +1,108 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from chess_api.database import get_db
+from chess_api.dependencies.auth import get_current_user
+from chess_api.models import User, Game, GameMove, GameType, GameStatus, GameResult
+from chess_api.schemas.game import (
+    StartBotGameRequest, StartBotGameResponse, MakeMoveRequest, MoveResponse,
+)
+from chess_api.services.game_validation import validate_move
+from chess_api.services.badge_engine import evaluate_event, BadgeEvent
+from chess_api.services.rank_engine import add_xp
+
+router = APIRouter(prefix="/games", tags=["games"])
+
+INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+
+@router.post("/bot/start", response_model=StartBotGameResponse)
+async def start_bot_game(
+    payload: StartBotGameRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if payload.skill_level < 0 or payload.skill_level > 20:
+        raise HTTPException(status_code=422, detail="Skill must be 0-20")
+    game = Game(type=GameType.bot, white_child_id=current.id, black_bot_level=payload.skill_level)
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+    return StartBotGameResponse(game_id=game.id, fen=INITIAL_FEN, your_color="white")
+
+
+async def _current_fen(db: AsyncSession, game_id: int) -> str:
+    last = (await db.execute(
+        select(GameMove).where(GameMove.game_id == game_id)
+        .order_by(GameMove.ply.desc()).limit(1)
+    )).scalar_one_or_none()
+    return last.fen_after if last else INITIAL_FEN
+
+
+async def _next_ply(db: AsyncSession, game_id: int) -> int:
+    last = (await db.execute(
+        select(GameMove).where(GameMove.game_id == game_id)
+        .order_by(GameMove.ply.desc()).limit(1)
+    )).scalar_one_or_none()
+    return (last.ply + 1) if last else 1
+
+
+@router.post("/{game_id}/move", response_model=MoveResponse)
+async def make_move(
+    game_id: int,
+    payload: MakeMoveRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    game = await db.get(Game, game_id)
+    if not game or game.status != GameStatus.active:
+        raise HTTPException(status_code=400, detail="Game not active")
+
+    current_fen = await _current_fen(db, game_id)
+    result = validate_move(current_fen, payload.move_uci)
+    if not result:
+        return MoveResponse(accepted=False, game_status=game.status, result=game.result)
+
+    ply = await _next_ply(db, game_id)
+    db.add(GameMove(
+        game_id=game_id, ply=ply, san=result["san"],
+        fen_after=result["fen_after"], by_child_id=current.id,
+    ))
+
+    # Determine if it was white's move (child) by checking the FEN we moved FROM
+    was_white_move = current_fen.split()[1] == "w"
+
+    if result["is_game_over"]:
+        game.status = GameStatus.finished
+        if result["is_checkmate"]:
+            # Whoever just moved wins
+            game.result = GameResult.white_wins if was_white_move else GameResult.black_wins
+            # Award badges/XP only if the CHILD (white) delivered mate
+            if was_white_move and current.id == game.white_child_id:
+                await evaluate_event(db, current.id, BadgeEvent(type="first_mate"))
+                await add_xp(db, current.id, "bot_win")
+                await evaluate_event(db, current.id, BadgeEvent(type="bot_win"))
+        else:
+            game.result = GameResult.draw
+
+    await db.commit()
+    return MoveResponse(
+        accepted=True,
+        fen_after=result["fen_after"],
+        is_checkmate=result["is_checkmate"],
+        is_stalemate=result["is_stalemate"],
+        game_status=game.status,
+        result=game.result,
+    )
+
+
+@router.get("/{game_id}")
+async def game_detail(game_id: int, db: AsyncSession = Depends(get_db)):
+    game = await db.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404)
+    return {
+        "id": game.id, "type": game.type.value, "status": game.status.value,
+        "white_child_id": game.white_child_id, "black_child_id": game.black_child_id,
+        "result": game.result.value if game.result else None,
+    }
