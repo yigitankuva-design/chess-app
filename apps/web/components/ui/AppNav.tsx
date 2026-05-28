@@ -11,7 +11,7 @@ interface NavConfig {
 
 function getConfig(pathname: string): NavConfig {
   if (pathname === '/home')
-    return { title: '♟ Satranç', back: null, rightHref: '/profile', rightIcon: 'profile' };
+    return { title: '', back: null, rightHref: '/profile', rightIcon: 'profile' };
   if (pathname.startsWith('/lesson/'))
     return { title: 'Ders', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/modules/'))
@@ -32,7 +32,7 @@ function getConfig(pathname: string): NavConfig {
     return { title: 'Rozetler', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/profile'))
     return { title: 'Profil', back: '/home', rightHref: '/home', rightIcon: 'home' };
-  return { title: '♟ Satranç', back: null, rightHref: '/profile', rightIcon: 'profile' };
+  return { title: '', back: null, rightHref: '/profile', rightIcon: 'profile' };
 }
 
 const IconChevronLeft = () => (
@@ -83,12 +83,26 @@ export function AppNav() {
       </div>
 
       {/* Center title */}
-      <p
-        className="flex-1 text-center text-sm font-semibold tracking-wide truncate"
-        style={navActiveStyle}
-      >
-        {title}
-      </p>
+      <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+        {title === '' ? (
+          <>
+            <img src="/logo.jpeg" alt="BEA Logo" className="h-6 w-auto flex-shrink-0" />
+            <span
+              className="text-sm font-bold tracking-wide truncate"
+              style={navActiveStyle}
+            >
+              Akademi Gelişim Sistemi
+            </span>
+          </>
+        ) : (
+          <p
+            className="text-sm font-semibold tracking-wide truncate"
+            style={navActiveStyle}
+          >
+            {title}
+          </p>
+        )}
+      </div>
 
       {/* Right */}
       <div className="w-9 flex items-center justify-end flex-shrink-0">
