@@ -28,7 +28,7 @@ export default function ParentLoginPage() {
     try {
       const res = await apiClient.login(data);
       auth.login(res.access_token, res.role, res.user_id);
-      router.push('/parent/dashboard');
+      router.push(res.role === 'teacher' ? '/classes' : '/parent/dashboard');
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setError('E-posta veya şifre yanlış');
@@ -40,7 +40,8 @@ export default function ParentLoginPage() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <h1 className="text-3xl font-bold mb-6">Veli Giriş</h1>
+      <h1 className="text-3xl font-bold mb-4">Giriş Yap</h1>
+      <p className="text-sm opacity-60 mb-6">Veli veya öğretmen hesabıyla giriş yapabilirsiniz</p>
 
       <input
         {...register('email')}
@@ -67,7 +68,10 @@ export default function ParentLoginPage() {
       </button>
 
       <p className="text-center text-sm opacity-75">
-        Hesabın yok mu? <Link href="/parent-signup" className="underline">Kayıt ol</Link>
+        Veli hesabı yok mu? <Link href="/parent-signup" className="underline">Kayıt ol</Link>
+      </p>
+      <p className="text-center text-sm opacity-75">
+        Öğretmen misiniz? <Link href="/teacher-signup" className="underline">Öğretmen hesabı aç</Link>
       </p>
     </form>
   );
