@@ -121,11 +121,13 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto px-4">
-      {thinking && (
-        <p className="t-muted text-center text-sm mb-3 animate-pulse">
-          🤖 Bot düşünüyor...
-        </p>
-      )}
+      <div className="h-7 flex items-center justify-center mb-2">
+        {thinking && (
+          <p className="t-muted text-center text-sm animate-pulse">
+            🤖 Bot düşünüyor...
+          </p>
+        )}
+      </div>
       <ChessBoard fen={fen} interactive={status === 'playing' && !thinking} onPieceDrop={handleDrop} />
       {status === 'over' && (
         <div className="mt-4 t-ok p-4 text-center text-lg font-bold">
