@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from chess_api.settings import settings
-from chess_api.routers import health, auth as auth_router, children as children_router, lessons as lessons_router, puzzles as puzzles_router, srs as srs_router, games as games_router
+from chess_api.routers import health, auth as auth_router, children as children_router, lessons as lessons_router, puzzles as puzzles_router, srs as srs_router, games as games_router, gamification as gamification_router
 
 
 def create_app() -> FastAPI:
@@ -30,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(puzzles_router.router)
     app.include_router(srs_router.router)
     app.include_router(games_router.router)
+    app.include_router(gamification_router.router)
     return app
 
 
