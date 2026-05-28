@@ -10,10 +10,8 @@ const LEVELS = [
 ];
 
 const FEATURES = [
-  { href: '/play',    emoji: '🎮', label: 'Oyna'     },
-  { href: '/puzzle',  emoji: '🧩', label: 'Bulmaca'  },
-  { href: '/badges',  emoji: '🏆', label: 'Rozetler' },
-  { href: '/profile', emoji: '👤', label: 'Profil'   },
+  { href: '/puzzle', emoji: '🧩', label: 'Bulmaca'  },
+  { href: '/badges', emoji: '🏆', label: 'Rozetler' },
 ];
 
 export default function ChildHomePage() {
@@ -64,7 +62,7 @@ export default function ChildHomePage() {
         )}
 
         {/* Remaining features */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {FEATURES.map((f) => (
             <Link key={f.href} href={f.href} className="t-feat">
               <span className="text-3xl leading-none">{f.emoji}</span>
