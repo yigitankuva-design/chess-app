@@ -1,6 +1,6 @@
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
-sqlalchemy==2.0.36
+sqlalchemy==2.0.50
 alembic==1.13.3
 asyncpg==0.31.0
 psycopg2-binary==2.9.12
@@ -14,6 +14,7 @@ python-chess==1.2.0
 redis==5.2.0
 httpx==0.27.2
 fastapi-mail==1.4.1
+aiosqlite==0.20.0
 
 # Dev
 pytest==8.3.3
