@@ -13,7 +13,8 @@ interface StepContent {
   title?: string;
   body?: string;
   quiz?: Quiz;
-  board_exercise?: BoardExerciseConfig;
+  board_exercise?: BoardExerciseConfig;   // legacy single
+  board_exercises?: BoardExerciseConfig[]; // new: array of 10
 }
 interface Step {
   id: number;
@@ -97,6 +98,15 @@ function InlineQuiz({ quiz, done, onCorrect }: { quiz: Quiz; done: boolean; onCo
     </div>
   );
 }
+
+// ─── Done circle ──────────────────────────────────────────────────────────────
+const DoneCircle = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
+    <circle cx="9" cy="9" r="8" fill="white" stroke="black" strokeWidth="1.5" />
+    <path d="M5 9.5L7.5 12L13 6" stroke="#16a34a" strokeWidth="2.5"
+      strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const ChevronDown = ({ open }: { open: boolean }) => (
@@ -246,12 +256,7 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
                         : `~${l.estimated_minutes} dakika`}
                     </p>
                   </div>
-                  {lessonDone && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                      style={{ background: '#dcfce7', color: '#15803d' }}>
-                      ✓
-                    </span>
-                  )}
+                  {lessonDone && <DoneCircle />}
                   <ChevronDown open={isOpen} />
                 </button>
 
@@ -299,9 +304,7 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
                                 }}>
                                   {content.title || `Konu ${step.order_index}`}
                                 </span>
-                                {stepDone && (
-                                  <span className="text-xs flex-shrink-0" style={{ color: '#16a34a' }}>✓</span>
-                                )}
+                                {stepDone && <DoneCircle />}
                               </button>
 
                               {/* Expanded step content */}
@@ -312,22 +315,25 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
                                       {content.body}
                                     </p>
                                   )}
-                                  {/* Board exercise takes priority over text quiz */}
-                                  {content.board_exercise && (
+                                  {/* Board exercises (array) takes priority */}
+                                  {(content.board_exercises || content.board_exercise) && (
                                     <BoardExercise
-                                      exercise={content.board_exercise}
+                                      exercises={
+                                        content.board_exercises ??
+                                        (content.board_exercise ? [content.board_exercise] : [])
+                                      }
                                       done={stepDone}
                                       onCorrect={() => markStepDone(l.id, step.id, steps)}
                                     />
                                   )}
-                                  {!content.board_exercise && content.quiz && (
+                                  {!content.board_exercises && !content.board_exercise && content.quiz && (
                                     <InlineQuiz
                                       quiz={content.quiz}
                                       done={stepDone}
                                       onCorrect={() => markStepDone(l.id, step.id, steps)}
                                     />
                                   )}
-                                  {!content.board_exercise && !content.quiz && !stepDone && (
+                                  {!content.board_exercises && !content.board_exercise && !content.quiz && !stepDone && (
                                     <button
                                       onClick={() => markStepDone(l.id, step.id, steps)}
                                       className="mt-3 text-sm px-4 py-2 rounded-lg font-medium"

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
 
@@ -39,90 +39,155 @@ export interface IdentifyPieceEx {
 export type BoardExerciseConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;
 
 interface Props {
-  exercise: BoardExerciseConfig;
+  exercises: BoardExerciseConfig[];
   done: boolean;
   onCorrect: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Returns true if the square is a dark square in standard chess.
- *  Formula: (fileIndex + rank) % 2 === 1  where a=0 … h=7, rank 1-8.
- *  a1 = dark, h1 = light (white's bottom-right is always light). */
+/** True when sq is a standard chess dark square (a1 = dark, h1 = light). */
 function isDarkSquare(sq: string): boolean {
-  const file = sq.charCodeAt(0) - 97; // 'a'→0 … 'h'→7
-  const rank = parseInt(sq[1], 10);   // '1'→1 … '8'→8
+  const file = sq.charCodeAt(0) - 97; // a=0 … h=7
+  const rank = parseInt(sq[1], 10);   // 1–8
   return (file + rank) % 2 === 1;
 }
 
-/** For click_square exercises that list ALL 32 dark (or light) squares,
- *  sanity-check: if the first target_square is actually a LIGHT square,
- *  the DB data is inverted — flip the check. */
+/** Handles inverted DB data: if stored list contains known light squares, flip. */
 function isTargetSquare(sq: string, targets: string[]): boolean {
   if (targets.length === 0) return false;
-  // Detect inversion: if the stored targets contain known-light squares (h1)
-  const dbIsInverted = targets.includes('h1') || targets.includes('a2') || targets.includes('b1');
-  if (dbIsInverted) {
-    // DB has light squares as "targets" for a dark-square exercise → correct on-the-fly
-    return isDarkSquare(sq);
-  }
-  return targets.includes(sq);
+  const dbInverted = targets.includes('h1') || targets.includes('a2') || targets.includes('b1');
+  return dbInverted ? isDarkSquare(sq) : targets.includes(sq);
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+/** Play a short tone via Web Audio API based on piece type. */
+function playPieceSound(pieceType?: string | null) {
+  if (!pieceType) return;
+  try {
+    const Ctx = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
+      || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const freqMap: Record<string, number> = { P:440, N:523, B:587, R:659, Q:784, K:880 };
+    const letter = pieceType.slice(-1).toUpperCase();
+    osc.frequency.value = freqMap[letter] ?? 440;
+    osc.type = 'triangle';
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.22);
+    setTimeout(() => ctx.close(), 600);
+  } catch { /* silent */ }
+}
 
-export function BoardExercise({ exercise, done, onCorrect }: Props) {
+// ─── Progress dots ────────────────────────────────────────────────────────────
+function ProgressDots({ total, current, doneCount }: { total: number; current: number; doneCount: number }) {
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {Array.from({ length: total }, (_, i) => (
+        <span
+          key={i}
+          style={{
+            display: 'inline-block',
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: i < doneCount
+              ? '#16a34a'        // completed
+              : i === current
+              ? 'var(--t-accent)' // current
+              : 'var(--t-border)', // future
+            transition: 'background 0.2s',
+          }}
+        />
+      ))}
+      <span className="text-xs ml-1" style={{ color: 'var(--t-muted)' }}>
+        {doneCount}/{total}
+      </span>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export function BoardExercise({ exercises, done, onCorrect }: Props) {
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [doneCount, setDoneCount] = useState(done ? exercises.length : 0);
   const [status, setStatus] = useState<'idle' | 'success' | 'fail'>(done ? 'success' : 'idle');
   const [feedback, setFeedback] = useState('');
-  const [selected, setSelected] = useState<string | null>(null); // for move_piece: first click
+  const [selected, setSelected] = useState<string | null>(null);
+  const [showNext, setShowNext] = useState(false);
 
-  const succeed = () => {
+  const exercise = exercises[currentIdx] ?? exercises[0];
+  const total = exercises.length;
+
+  // Reset per-exercise state when index changes
+  useEffect(() => {
+    if (done) return;
+    setStatus('idle');
+    setFeedback('');
+    setSelected(null);
+    setShowNext(false);
+  }, [currentIdx, done]);
+
+  const succeed = (piece?: string | null) => {
+    if (piece) playPieceSound(piece);
     setStatus('success');
     setSelected(null);
-    if (!done) onCorrect();
+    const next = doneCount + 1;
+    setDoneCount(next);
+    if (next >= total) {
+      if (!done) onCorrect();
+    } else {
+      setShowNext(true);
+    }
   };
 
   const fail = (msg: string) => {
     setStatus('fail');
     setFeedback(msg);
     setSelected(null);
-    setTimeout(() => setStatus('idle'), 2000);
+    setTimeout(() => setStatus('idle'), 1800);
   };
 
-  // ── Square style map ──────────────────────────────────────────────────────
+  const goNext = () => {
+    setCurrentIdx((i) => Math.min(i + 1, total - 1));
+    setShowNext(false);
+  };
+
+  // ── Square styles ──────────────────────────────────────────────────────────
   const styles: Record<string, CSSProperties> = {};
 
-  if (status !== 'success') {
-    // Hint squares — gold overlay
+  if (status !== 'success' || showNext) {
     if (exercise.type !== 'identify_piece') {
       (exercise.hint_squares ?? []).forEach((sq) => {
         styles[sq] = { backgroundColor: 'rgba(255,200,0,0.50)' };
       });
     }
-    // Identify piece — highlight the piece
     if (exercise.type === 'identify_piece') {
       styles[exercise.highlight_square] = { backgroundColor: 'rgba(255,200,0,0.65)' };
     }
-    // Selected piece (move_piece first-click) — blue overlay
     if (selected) {
       styles[selected] = { backgroundColor: 'rgba(80,160,255,0.65)', cursor: 'pointer' };
     }
   }
 
-  if (status === 'success') {
-    // Green tint on success
-    if (exercise.type === 'move_piece') {
-      exercise.target_squares.forEach((sq) => {
-        styles[sq] = { backgroundColor: 'rgba(100,220,100,0.45)' };
-      });
-    }
+  if (status === 'success' && exercise.type === 'move_piece') {
+    exercise.target_squares.forEach((sq) => {
+      styles[sq] = { backgroundColor: 'rgba(100,220,100,0.45)' };
+    });
   }
 
-  // ── Click handler ─────────────────────────────────────────────────────────
-  const onSquareClick = ({ square }: { square: string }) => {
+  // ── Click handler ──────────────────────────────────────────────────────────
+  const onSquareClick = ({ square, piece }: { square: string; piece: { pieceType: string } | null }) => {
     if (status === 'success') return;
 
     if (exercise.type === 'click_square') {
+      if (piece) playPieceSound(piece.pieceType);
       if (isTargetSquare(square, exercise.target_squares)) {
         succeed();
       } else {
@@ -133,24 +198,49 @@ export function BoardExercise({ exercise, done, onCorrect }: Props) {
 
     if (exercise.type === 'move_piece') {
       if (!selected) {
-        if (square === exercise.piece_square) setSelected(square);
+        if (square === exercise.piece_square) {
+          setSelected(square);
+          if (piece) playPieceSound(piece.pieceType);
+        }
         return;
       }
       if (square === exercise.piece_square) {
-        setSelected(null); // deselect
+        setSelected(null);
         return;
       }
       if (exercise.target_squares.includes(square)) {
-        succeed();
+        succeed(piece?.pieceType);
       } else {
-        fail(exercise.fail_msg ?? 'Yanlış kare! Taşı sarı karelerden birine taşı.');
+        fail(exercise.fail_msg ?? 'Yanlış kare! Altın renkli kareye taşı.');
       }
     }
   };
 
+  // ── If all done and no more exercises ──────────────────────────────────────
+  if (done && !showNext) {
+    return (
+      <div className="mt-2 pt-3 space-y-2" style={{ borderTop: '1px solid var(--t-border)' }}>
+        <div className="flex items-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold"
+          style={{ background: '#dcfce7', color: '#15803d' }}>
+          ✓ Tüm egzersizler tamamlandı!
+        </div>
+      </div>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3 mt-2 pt-3" style={{ borderTop: '1px solid var(--t-border)' }}>
+
+      {/* Progress */}
+      <div className="flex items-center justify-between">
+        <ProgressDots total={total} current={currentIdx} doneCount={doneCount} />
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
+          Soru {currentIdx + 1}/{total}
+        </span>
+      </div>
+
       {/* Instruction */}
       <p className="text-sm font-semibold">{exercise.instruction}</p>
 
@@ -204,6 +294,16 @@ export function BoardExercise({ exercise, done, onCorrect }: Props) {
           style={{ background: '#fee2e2', color: '#b91c1c' }}>
           ✗ {feedback}
         </div>
+      )}
+
+      {/* Next exercise button */}
+      {showNext && doneCount < total && (
+        <button
+          onClick={goNext}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+          style={{ background: 'var(--t-accent)', color: '#fff' }}>
+          Sonraki Soru →
+        </button>
       )}
     </div>
   );
