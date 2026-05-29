@@ -27,14 +27,13 @@ function getCtx(): AudioContext | null {
   return ctx;
 }
 
-// ── Optional real recordings (auto-used if present) ──────────────────────────
+// ── Real recordings (auto-used if present) ───────────────────────────────────
+// Knight = real horse neigh (public domain), Bishop = real elephant trumpet
+// (CC0), both from Wikimedia Commons. Other pieces use synthesis below. To add
+// real recordings for them, drop e.g. /sounds/rook.mp3 here.
 const FILES: Record<string, string> = {
-  P: '/sounds/pawn.mp3',
-  N: '/sounds/knight.mp3',
-  B: '/sounds/bishop.mp3',
-  R: '/sounds/rook.mp3',
-  Q: '/sounds/queen.mp3',
-  K: '/sounds/king.mp3',
+  N: '/sounds/knight.mp3',  // 🐴 At  — gerçek at kişnemesi (Wiehern.ogg, PD)
+  B: '/sounds/bishop.mp3',  // 🐘 Fil — gerçek fil borusu (Elephant trumpeting, CC0)
 };
 const audioEl: Record<string, HTMLAudioElement> = {};
 const fileReady: Record<string, boolean> = {};
