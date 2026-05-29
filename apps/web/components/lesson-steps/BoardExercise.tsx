@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
+import { playPieceSound } from '@/lib/sounds/pieceSounds';
 
 // ─── Exercise config types ────────────────────────────────────────────────────
 
@@ -58,30 +59,6 @@ function isTargetSquare(sq: string, targets: string[]): boolean {
   if (targets.length === 0) return false;
   const dbInverted = targets.includes('h1') || targets.includes('a2') || targets.includes('b1');
   return dbInverted ? isDarkSquare(sq) : targets.includes(sq);
-}
-
-/** Play a short tone via Web Audio API based on piece type. */
-function playPieceSound(pieceType?: string | null) {
-  if (!pieceType) return;
-  try {
-    const Ctx = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
-      || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    const freqMap: Record<string, number> = { P:440, N:523, B:587, R:659, Q:784, K:880 };
-    const letter = pieceType.slice(-1).toUpperCase();
-    osc.frequency.value = freqMap[letter] ?? 440;
-    osc.type = 'triangle';
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.22);
-    setTimeout(() => ctx.close(), 600);
-  } catch { /* silent */ }
 }
 
 // ─── Progress dots ────────────────────────────────────────────────────────────
