@@ -18,6 +18,12 @@ def upgrade() -> None:
     op.execute("DELETE FROM lesson_steps")
     op.execute("DELETE FROM lessons")
 
+    # NULL out puzzles referencing old modules (order_index > 4)
+    op.execute("""
+        UPDATE puzzles SET module_id = NULL
+        WHERE module_id IN (SELECT id FROM modules WHERE order_index > 4)
+    """)
+
     # Remove old modules beyond the 4 levels (added back by old seed script)
     op.execute("DELETE FROM modules WHERE order_index > 4")
 
