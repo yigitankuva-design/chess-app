@@ -62,7 +62,7 @@ export default function PlayPage() {
         <hr className="t-line" />
 
         <p className="text-xs font-semibold t-muted uppercase tracking-widest pt-1">
-          Bota Karşı — Zorluk Seç
+          Bota Karşı Oyna — Zorluk ve Zaman Temposu Seç
         </p>
 
         <div className="space-y-2">

@@ -1,5 +1,5 @@
 'use client';
-import { use, useEffect, useState, useCallback } from 'react';
+import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
 
@@ -197,22 +197,61 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
     });
   }, []);
 
-  const toggleLesson = useCallback(async (lessonId: number) => {
+  const loadSteps = useCallback(async (lessonId: number) => {
+    setStepsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/lessons/${lessonId}`);
+      const data = await res.json();
+      setLessonSteps((prev) => ({ ...prev, [lessonId]: data.steps || [] }));
+    } catch {
+      setLessonSteps((prev) => ({ ...prev, [lessonId]: [] }));
+    }
+    setStepsLoading(false);
+  }, []);
+
+  const toggleLesson = useCallback(async (lesson: LessonSummary) => {
+    const lessonId = lesson.id;
     if (expandedLesson === lessonId) { setExpandedLesson(null); setExpandedStep(null); return; }
     setExpandedLesson(lessonId);
     setExpandedStep(null);
-    if (!lessonSteps[lessonId]) {
-      setStepsLoading(true);
-      try {
-        const res = await fetch(`${API_BASE}/lessons/${lessonId}`);
-        const data = await res.json();
-        setLessonSteps((prev) => ({ ...prev, [lessonId]: data.steps || [] }));
-      } catch {
-        setLessonSteps((prev) => ({ ...prev, [lessonId]: [] }));
-      }
-      setStepsLoading(false);
+    // Remember as the last opened lesson (for "restart last lesson" shortcut)
+    try {
+      localStorage.setItem('bea_last_lesson', JSON.stringify({
+        moduleId: Number(id), lessonId, title: lesson.title, orderIndex: lesson.order_index,
+      }));
+    } catch { /* ignore */ }
+    if (!lessonSteps[lessonId]) await loadSteps(lessonId);
+  }, [expandedLesson, lessonSteps, id, loadSteps]);
+
+  // Restart-last-lesson deep link: ?restart={lessonId} clears that lesson's
+  // progress and auto-opens it from the start.
+  const restartHandled = useRef(false);
+  useEffect(() => {
+    if (restartHandled.current || !hydrated || lessons.length === 0) return;
+    const restartId = new URLSearchParams(window.location.search).get('restart');
+    if (!restartId) return;
+    restartHandled.current = true;
+    const lid = Number(restartId);
+
+    // Wipe this lesson's step + lesson completion keys
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)!;
+      if (k.startsWith(`bea_s_${lid}_`) || k === `bea_l_${lid}`) toRemove.push(k);
     }
-  }, [expandedLesson, lessonSteps]);
+    toRemove.forEach((k) => localStorage.removeItem(k));
+    setDoneSteps((prev) => {
+      const next = new Set(prev);
+      [...next].forEach((key) => { if (key.startsWith(`${lid}_`)) next.delete(key); });
+      return next;
+    });
+    setDoneLessons((prev) => { const n = new Set(prev); n.delete(lid); return n; });
+
+    // Open it
+    setExpandedLesson(lid);
+    setExpandedStep(null);
+    if (!lessonSteps[lid]) void loadSteps(lid);
+  }, [hydrated, lessons, lessonSteps, loadSteps]);
 
   const toggleStep = (accessible: boolean, stepId: number) => {
     if (!accessible) return;
@@ -239,7 +278,7 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
                 style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}>
 
                 {/* ── Lesson accordion header ── */}
-                <button onClick={() => toggleLesson(l.id)}
+                <button onClick={() => toggleLesson(l)}
                   className="w-full flex items-center gap-3 px-4 py-4 text-left transition-colors"
                   style={isOpen ? { background: 'color-mix(in srgb, var(--t-accent) 6%, transparent)' } : {}}>
                   <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold"
