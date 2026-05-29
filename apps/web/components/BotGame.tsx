@@ -6,15 +6,46 @@ import { ChessBoard } from './ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { getToken } from '@/lib/auth-storage';
 
+export interface TimeControl {
+  base: number;       // seconds on the clock at start
+  increment: number;  // seconds added after each move
+  label: string;      // e.g. "5+3"
+}
+
 interface Props {
   skillLevel: number;
   depth: number;
+  timeControl?: TimeControl | null;
   onGameEnd: (result: 'win' | 'loss' | 'draw') => void;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function Clock({ seconds, active, label }: { seconds: number; active: boolean; label: string }) {
+  const low = seconds <= 15;
+  return (
+    <div className="flex items-center justify-between px-4 py-2 rounded-xl"
+      style={{
+        background: active ? 'var(--t-accent)' : 'var(--t-surface-2)',
+        color: active ? '#fff' : low ? '#dc2626' : 'var(--t-text)',
+        border: '1px solid var(--t-border)',
+        transition: 'background 0.2s',
+      }}>
+      <span className="text-xs font-medium opacity-80">{label}</span>
+      <span className="text-lg font-bold tabular-nums" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        {fmtTime(seconds)}
+      </span>
+    </div>
+  );
+}
+
+export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
   const chessRef = useRef(new Chess());
   const engineRef = useRef<StockfishEngine | null>(null);
   const gameIdRef = useRef<number | null>(null);
@@ -23,6 +54,11 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
   const [resultText, setResultText] = useState<string>('');
 
+  const tc = timeControl ?? null;
+  const [whiteTime, setWhiteTime] = useState(tc ? tc.base : 0);
+  const [blackTime, setBlackTime] = useState(tc ? tc.base : 0);
+
+  // ── Engine + backend game setup ──────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -42,7 +78,7 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
           const data = await res.json();
           gameIdRef.current = data.game_id;
         }
-      } catch { /* offline OK — bot still works locally */ }
+      } catch { /* offline OK */ }
 
       if (!cancelled) setStatus('playing');
     })();
@@ -51,6 +87,31 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
       engineRef.current?.destroy();
     };
   }, [skillLevel]);
+
+  // ── Clock tick ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!tc || status !== 'playing') return;
+    const id = setInterval(() => {
+      const turn = chessRef.current.turn();
+      if (turn === 'w') setWhiteTime((t) => Math.max(0, t - 1));
+      else setBlackTime((t) => Math.max(0, t - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [tc, status]);
+
+  // ── Flag (time-out) detection ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!tc || status !== 'playing') return;
+    if (whiteTime <= 0) {
+      setStatus('over');
+      setResultText('⏰ Süren bitti — Bot kazandı.');
+      onGameEnd('loss');
+    } else if (blackTime <= 0) {
+      setStatus('over');
+      setResultText('⏰ Botun süresi bitti — Kazandın! 🎉');
+      onGameEnd('win');
+    }
+  }, [whiteTime, blackTime, status, tc, onGameEnd]);
 
   async function persistMove(uci: string) {
     const gid = gameIdRef.current;
@@ -89,6 +150,7 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
     }
     if (!move) return false;
     setFen(chess.fen());
+    if (tc) setWhiteTime((t) => t + tc.increment); // increment after child's move
 
     void (async () => {
       await persistMove(`${from}${to}`);
@@ -100,6 +162,7 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
         try {
           chess.move({ from: botUci.slice(0, 2) as Square, to: botUci.slice(2, 4) as Square, promotion: 'q' });
           setFen(chess.fen());
+          if (tc) setBlackTime((t) => t + tc.increment); // increment after bot's move
           await persistMove(botUci);
         } catch { /* ignore */ }
       }
@@ -119,8 +182,17 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
     );
   }
 
+  const childTurn = chessRef.current.turn() === 'w';
+
   return (
     <div className="max-w-2xl mx-auto px-4">
+      {/* Bot clock (top) */}
+      {tc && (
+        <div className="max-w-sm mx-auto mb-2">
+          <Clock seconds={blackTime} active={!childTurn && status === 'playing'} label="🤖 Bot" />
+        </div>
+      )}
+
       <div className="h-7 flex items-center justify-center mb-2">
         {thinking && (
           <p className="t-muted text-center text-sm animate-pulse">
@@ -128,7 +200,16 @@ export function BotGame({ skillLevel, depth, onGameEnd }: Props) {
           </p>
         )}
       </div>
+
       <ChessBoard fen={fen} interactive={status === 'playing' && !thinking} onPieceDrop={handleDrop} />
+
+      {/* Child clock (bottom) */}
+      {tc && (
+        <div className="max-w-sm mx-auto mt-2">
+          <Clock seconds={whiteTime} active={childTurn && status === 'playing'} label="🧒 Sen" />
+        </div>
+      )}
+
       {status === 'over' && (
         <div className="mt-4 t-ok p-4 text-center text-lg font-bold">
           {resultText}
