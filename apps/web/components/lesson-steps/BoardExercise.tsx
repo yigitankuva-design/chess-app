@@ -44,6 +44,31 @@ interface Props {
   onCorrect: () => void;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Returns true if the square is a dark square in standard chess.
+ *  Formula: (fileIndex + rank) % 2 === 1  where a=0 … h=7, rank 1-8.
+ *  a1 = dark, h1 = light (white's bottom-right is always light). */
+function isDarkSquare(sq: string): boolean {
+  const file = sq.charCodeAt(0) - 97; // 'a'→0 … 'h'→7
+  const rank = parseInt(sq[1], 10);   // '1'→1 … '8'→8
+  return (file + rank) % 2 === 1;
+}
+
+/** For click_square exercises that list ALL 32 dark (or light) squares,
+ *  sanity-check: if the first target_square is actually a LIGHT square,
+ *  the DB data is inverted — flip the check. */
+function isTargetSquare(sq: string, targets: string[]): boolean {
+  if (targets.length === 0) return false;
+  // Detect inversion: if the stored targets contain known-light squares (h1)
+  const dbIsInverted = targets.includes('h1') || targets.includes('a2') || targets.includes('b1');
+  if (dbIsInverted) {
+    // DB has light squares as "targets" for a dark-square exercise → correct on-the-fly
+    return isDarkSquare(sq);
+  }
+  return targets.includes(sq);
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function BoardExercise({ exercise, done, onCorrect }: Props) {
@@ -98,7 +123,7 @@ export function BoardExercise({ exercise, done, onCorrect }: Props) {
     if (status === 'success') return;
 
     if (exercise.type === 'click_square') {
-      if (exercise.target_squares.includes(square)) {
+      if (isTargetSquare(square, exercise.target_squares)) {
         succeed();
       } else {
         fail(exercise.fail_msg ?? 'Yanlış kare! Tekrar dene.');
