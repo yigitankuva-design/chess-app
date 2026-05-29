@@ -1,5 +1,7 @@
 'use client';
 import { use, useEffect, useState, useCallback } from 'react';
+import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
+import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Quiz {
@@ -11,6 +13,7 @@ interface StepContent {
   title?: string;
   body?: string;
   quiz?: Quiz;
+  board_exercise?: BoardExerciseConfig;
 }
 interface Step {
   id: number;
@@ -309,14 +312,22 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
                                       {content.body}
                                     </p>
                                   )}
-                                  {content.quiz && (
+                                  {/* Board exercise takes priority over text quiz */}
+                                  {content.board_exercise && (
+                                    <BoardExercise
+                                      exercise={content.board_exercise}
+                                      done={stepDone}
+                                      onCorrect={() => markStepDone(l.id, step.id, steps)}
+                                    />
+                                  )}
+                                  {!content.board_exercise && content.quiz && (
                                     <InlineQuiz
                                       quiz={content.quiz}
                                       done={stepDone}
                                       onCorrect={() => markStepDone(l.id, step.id, steps)}
                                     />
                                   )}
-                                  {!content.quiz && !stepDone && (
+                                  {!content.board_exercise && !content.quiz && !stepDone && (
                                     <button
                                       onClick={() => markStepDone(l.id, step.id, steps)}
                                       className="mt-3 text-sm px-4 py-2 rounded-lg font-medium"
