@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
-from chess_api.models import User, UserRole, ChildProfile
-from chess_api.models.module import Module, Lesson
+from chess_api.models import User, UserRole, ChildProfile, ParentSurveyResponse, Device
+from chess_api.models.module import Module, Lesson, LessonStep
 from chess_api.models.progress import ChildLessonProgress, LessonStatus
 from chess_api.dependencies.auth import get_current_user
 from chess_api.services.password import hash_password
+from chess_api.services.child_deletion import delete_child_cascade
 from chess_api.schemas.auth import (
     AdminParentSummary, AdminParentDetail, AdminChildSummary,
     AdminOverview, AdminModuleSummary, AdminResetPasswordRequest,
+    AdminLessonSummary,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -114,6 +116,31 @@ async def content(
     return out
 
 
+@router.get("/modules/{module_id}/lessons", response_model=list[AdminLessonSummary])
+async def module_lessons(
+    module_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    module = await db.get(Module, module_id)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    lessons = (await db.execute(
+        select(Lesson).where(Lesson.module_id == module_id).order_by(Lesson.order_index)
+    )).scalars().all()
+    out = []
+    for les in lessons:
+        sc = (await db.execute(
+            select(func.count(LessonStep.id)).where(LessonStep.lesson_id == les.id)
+        )).scalar_one()
+        out.append(AdminLessonSummary(
+            id=les.id, order_index=les.order_index, title=les.title,
+            estimated_minutes=les.estimated_minutes, step_count=sc,
+        ))
+    return out
+
+
 @router.post("/parents/{parent_id}/reset-password")
 async def reset_parent_password(
     parent_id: int,
@@ -140,11 +167,18 @@ async def delete_parent(
     p = await db.get(User, parent_id)
     if not p or p.role != UserRole.parent:
         raise HTTPException(status_code=404, detail="Parent not found")
+
+    # Her çocuğu bağımlı kayıtlarıyla FK-güvenli sil
     children = (await db.execute(
         select(ChildProfile).where(ChildProfile.parent_user_id == parent_id)
     )).scalars().all()
     for c in children:
-        await db.delete(c)
+        await delete_child_cascade(db, c)
+
+    # Parent'a doğrudan bağlı kayıtlar (child'lar silindikten sonra)
+    await db.execute(delete(ParentSurveyResponse).where(ParentSurveyResponse.parent_user_id == parent_id))
+    await db.execute(delete(Device).where(Device.parent_user_id == parent_id))
+
     await db.delete(p)
     await db.commit()
     return {"deleted": True}

@@ -96,3 +96,11 @@ class AdminModuleSummary(BaseModel):
     order_index: int
     name: str
     lesson_count: int
+
+
+class AdminLessonSummary(BaseModel):
+    id: int
+    order_index: int
+    title: str
+    estimated_minutes: int
+    step_count: int
