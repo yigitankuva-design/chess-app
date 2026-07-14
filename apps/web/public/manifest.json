@@ -1,6 +1,6 @@
 {
   "name": "Çocuklar İçin Satranç",
-  "short_name": "ÇİS",
+  "short_name": "BSA",
   "description": "Çocuklar için satranç öğretim uygulaması",
   "start_url": "/",
   "display": "standalone",
