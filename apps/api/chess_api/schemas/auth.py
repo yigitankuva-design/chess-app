@@ -7,6 +7,11 @@ class ParentSignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     name: str = Field(min_length=2, max_length=120)
+    athlete_name: str | None = Field(default=None, min_length=2, max_length=80)
+
+
+class AthleteCreateRequest(BaseModel):
+    full_name: str = Field(min_length=2, max_length=80)
 
 
 class LoginRequest(BaseModel):

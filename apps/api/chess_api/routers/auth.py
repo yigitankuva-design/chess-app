@@ -7,8 +7,9 @@ from chess_api.models import User, UserRole, Device, ChildProfile
 from chess_api.schemas.auth import (
     ParentSignupRequest, LoginRequest, AuthResponse, EmailVerifyRequest,
     DeviceRegisterRequest, ChildPinLoginRequest, ChildEnterRequest,
+    AthleteCreateRequest,
 )
-from chess_api.services.password import hash_password, verify_password, verify_pin
+from chess_api.services.password import hash_password, verify_password, verify_pin, hash_pin
 from chess_api.services.jwt import encode_token
 from chess_api.services.email import send_verification_email
 from chess_api.dependencies.auth import get_current_user
@@ -39,6 +40,18 @@ async def parent_signup(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    # Sporcu adı verildiyse profil oluştur (yaş/PIN varsayılan)
+    if payload.athlete_name:
+        athlete = ChildProfile(
+            parent_user_id=user.id,
+            display_name=payload.athlete_name,
+            age=10,
+            avatar="default",
+            pin_hash=hash_pin(f"{secrets.randbelow(9000) + 1000}"),
+        )
+        db.add(athlete)
+        await db.commit()
 
     try:
         await send_verification_email(user.email, user.email_verification_token, user.name)
@@ -277,3 +290,57 @@ async def child_enter(
         "child_profile_id": child.id,
         "display_name": child.display_name,
     }
+
+
+def _athlete_token(child: ChildProfile) -> dict:
+    token = encode_token({
+        "child_profile_id": child.id,
+        "parent_user_id": child.parent_user_id,
+        "role": "child",
+    })
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "child_profile_id": child.id,
+        "display_name": child.display_name,
+    }
+
+
+@router.post("/athlete/session")
+async def athlete_session(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Veli token'ı ile hesabın (en eski) sporcusu için child oturumu. PIN yok."""
+    if current.role != UserRole.parent:
+        raise HTTPException(status_code=403, detail="Parents only")
+    child = (await db.execute(
+        select(ChildProfile)
+        .where(ChildProfile.parent_user_id == current.id)
+        .order_by(ChildProfile.id.asc())
+    )).scalars().first()
+    if not child:
+        raise HTTPException(status_code=404, detail="No athlete")
+    return _athlete_token(child)
+
+
+@router.post("/athlete/create", status_code=201)
+async def athlete_create(
+    payload: AthleteCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Veli token'ı ile sporcu profili oluşturur (yaş/PIN varsayılan) ve oturum döner."""
+    if current.role != UserRole.parent:
+        raise HTTPException(status_code=403, detail="Parents only")
+    child = ChildProfile(
+        parent_user_id=current.id,
+        display_name=payload.full_name,
+        age=10,
+        avatar="default",
+        pin_hash=hash_pin(f"{secrets.randbelow(9000) + 1000}"),
+    )
+    db.add(child)
+    await db.commit()
+    await db.refresh(child)
+    return _athlete_token(child)
