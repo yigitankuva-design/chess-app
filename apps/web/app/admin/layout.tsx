@@ -6,7 +6,6 @@ import { getToken } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
 
 const NAV = [
-  { href: '/admin', label: 'Genel Bakış' },
   { href: '/admin/parents', label: 'Kullanıcılar' },
   { href: '/admin/content', label: 'İçerik' },
 ];
