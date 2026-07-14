@@ -36,7 +36,7 @@ export default function AdminParentsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Veliler</h1>
+      <h1 className="text-2xl font-bold mb-6">Kullanıcılar</h1>
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -44,7 +44,7 @@ export default function AdminParentsPage() {
         className="w-full max-w-sm p-2 border rounded mb-4"
       />
       {filtered.length === 0 ? (
-        <p className="opacity-60">Veli bulunamadı.</p>
+        <p className="opacity-60">Kullanıcı bulunamadı.</p>
       ) : (
         <div className="bg-white rounded-2xl shadow divide-y">
           {filtered.map((p) => (

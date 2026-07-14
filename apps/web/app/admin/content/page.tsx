@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -28,12 +29,16 @@ export default function AdminContentPage() {
       ) : (
         <div className="bg-white rounded-2xl shadow divide-y">
           {rows.map((m) => (
-            <div key={m.id} className="flex items-center justify-between p-4">
+            <Link
+              key={m.id}
+              href={`/admin/content/${m.id}`}
+              className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+            >
               <div>
                 <p className="font-semibold">{m.order_index}. {m.name}</p>
               </div>
-              <span className="text-sm opacity-60">{m.lesson_count} ders</span>
-            </div>
+              <span className="text-sm opacity-60">{m.lesson_count} ders →</span>
+            </Link>
           ))}
         </div>
       )}
