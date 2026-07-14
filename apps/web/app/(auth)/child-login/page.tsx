@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { getDeviceFingerprint } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
 import { avatarEmoji } from '@/lib/avatars';
+import { apiClient, ApiError } from '@/lib/api-client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -19,9 +20,8 @@ export default function ChildLoginPage() {
   const auth = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Child | null>(null);
-  const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [enteringId, setEnteringId] = useState<number | null>(null);
 
   useEffect(() => {
     const fp = getDeviceFingerprint();
@@ -34,53 +34,28 @@ export default function ChildLoginPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  async function submitPin(fullPin: string) {
-    if (!selected) return;
+  async function enterChild(c: Child) {
     setError(null);
+    setEnteringId(c.id);
     try {
-      const res = await fetch(`${API_BASE}/auth/child/pin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          child_profile_id: selected.id,
-          pin: fullPin,
-          device_fingerprint: getDeviceFingerprint(),
-        }),
+      const data = await apiClient.childEnter({
+        child_profile_id: c.id,
+        device_fingerprint: getDeviceFingerprint(),
       });
-      if (res.status === 401) {
-        setError('Yanlış PIN, tekrar dene');
-        setPin('');
-        return;
-      }
-      if (res.status === 403) {
-        setError('Bu cihaz tanımlı değil. Veli girişinden ekleyin.');
-        setPin('');
-        return;
-      }
-      if (!res.ok) {
-        setError('Giriş başarısız');
-        setPin('');
-        return;
-      }
-      const data = await res.json();
       auth.login(data.access_token, 'child', data.child_profile_id);
       router.push('/home');
-    } catch {
-      setError('Bir hata oluştu');
-      setPin('');
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) {
+        setError('Bu cihaz tanımlı değil. Veli girişinden ekleyin.');
+      } else {
+        setError('Giriş başarısız, tekrar dene');
+      }
+      setEnteringId(null);
     }
-  }
-
-  function pressDigit(d: string) {
-    if (pin.length >= 4) return;
-    const next = pin + d;
-    setPin(next);
-    if (next.length === 4) submitPin(next);
   }
 
   if (loading) return <p className="text-center">Yükleniyor...</p>;
 
-  // No children on this device
   if (children.length === 0) {
     return (
       <div className="text-center space-y-4">
@@ -96,81 +71,23 @@ export default function ChildLoginPage() {
     );
   }
 
-  // Profile picker
-  if (!selected) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-center">Kim oynuyor?</h1>
-        <div className="grid grid-cols-2 gap-4">
-          {children.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => {
-                setSelected(c);
-                setPin('');
-                setError(null);
-              }}
-              className="flex flex-col items-center gap-2 p-6 bg-white rounded-2xl shadow hover:shadow-lg transition"
-            >
-              <span className="text-5xl">{avatarEmoji(c.avatar)}</span>
-              <span className="font-bold">{c.display_name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // PIN pad
   return (
-    <div className="space-y-6 text-center">
-      <button
-        onClick={() => {
-          setSelected(null);
-          setPin('');
-          setError(null);
-        }}
-        className="text-sm underline opacity-70 hover:opacity-100 transition"
-      >
-        ← Geri
-      </button>
-      <div>
-        <div className="text-5xl mb-2">{avatarEmoji(selected.avatar)}</div>
-        <h1 className="text-xl font-bold">{selected.display_name}, PIN&apos;ini gir</h1>
-      </div>
-      <div className="flex justify-center gap-3">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className={`w-5 h-5 rounded-full ${i < pin.length ? 'bg-blue-600' : 'bg-gray-300'}`}
-          />
-        ))}
-      </div>
-      {error && <p className="text-red-600 font-medium">{error}</p>}
-      <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
-        {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-center">Kim oynuyor?</h1>
+      {error && <p className="text-red-600 font-medium text-center">{error}</p>}
+      <div className="grid grid-cols-2 gap-4">
+        {children.map((c) => (
           <button
-            key={d}
-            onClick={() => pressDigit(d)}
-            className="p-4 text-2xl font-bold bg-white rounded-xl shadow hover:bg-gray-50 transition"
+            key={c.id}
+            onClick={() => enterChild(c)}
+            disabled={enteringId !== null}
+            className="flex flex-col items-center gap-2 p-6 bg-white rounded-2xl shadow hover:shadow-lg transition disabled:opacity-50"
           >
-            {d}
+            <span className="text-5xl">{avatarEmoji(c.avatar)}</span>
+            <span className="font-bold">{c.display_name}</span>
+            {enteringId === c.id && <span className="text-xs opacity-60">Giriliyor...</span>}
           </button>
         ))}
-        <div />
-        <button
-          onClick={() => pressDigit('0')}
-          className="p-4 text-2xl font-bold bg-white rounded-xl shadow hover:bg-gray-50 transition"
-        >
-          0
-        </button>
-        <button
-          onClick={() => setPin(pin.slice(0, -1))}
-          aria-label="Son rakamı sil"
-          className="p-4 text-xl bg-white rounded-xl shadow hover:bg-gray-50 transition"
-        >
-          ⌫
-        </button>
       </div>
     </div>
   );

@@ -69,4 +69,10 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  childEnter: (body: { child_profile_id: number; device_fingerprint: string }) =>
+    request<{ access_token: string; child_profile_id: number; display_name: string }>(
+      '/auth/child/enter',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
 };
