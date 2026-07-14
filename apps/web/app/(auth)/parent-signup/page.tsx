@@ -7,13 +7,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
+import { saveAthleteName } from '@/lib/auth-storage';
 
 const schema = z.object({
   role: z.enum(['parent', 'teacher']),
   email: z.string().email('Geçerli e-posta gir'),
   password: z.string().min(8, 'Şifre en az 8 karakter'),
   name: z.string().min(2, 'İsim gerekli'),
+  athlete_name: z.string().optional(),
   kvkk_consent: z.boolean().refine(v => v === true, 'KVKK onayı gerekli'),
+}).superRefine((val, ctx) => {
+  if (val.role === 'parent' && (!val.athlete_name || val.athlete_name.trim().length < 2)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['athlete_name'], message: 'Sporcu adı soyadı gerekli' });
+  }
 });
 
 type FormData = z.infer<typeof schema>;
@@ -30,13 +36,20 @@ export default function SignupPage() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      const { kvkk_consent, role, ...apiData } = data;
+      const { kvkk_consent, role, athlete_name, ...base } = data;
       void kvkk_consent; // frontend-only field
-      const res = role === 'teacher'
-        ? await apiClient.teacherSignup(apiData)
-        : await apiClient.parentSignup(apiData);
+      if (role === 'teacher') {
+        const res = await apiClient.teacherSignup(base);
+        auth.login(res.access_token, res.role, res.user_id);
+        router.push('/classes');
+        return;
+      }
+      const res = await apiClient.parentSignup({ ...base, athlete_name: athlete_name?.trim() });
       auth.login(res.access_token, res.role, res.user_id);
-      router.push(role === 'teacher' ? '/classes' : '/parent/dashboard');
+      const ath = await apiClient.athleteSession();
+      auth.login(ath.access_token, 'child', ath.child_profile_id);
+      saveAthleteName(ath.display_name);
+      router.push('/home');
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         setError('Bu e-posta zaten kayıtlı');
@@ -74,11 +87,22 @@ export default function SignupPage() {
       <div>
         <input
           {...register('name')}
-          placeholder="Adınız"
+          placeholder="Adınız (veli/vasi)"
           className="neon-input"
         />
         {errors.name && <p className="text-rose-400 text-sm mt-1">{errors.name.message}</p>}
       </div>
+
+      {role === 'parent' && (
+        <div>
+          <input
+            {...register('athlete_name')}
+            placeholder="Sporcu Adı Soyadı"
+            className="neon-input"
+          />
+          {errors.athlete_name && <p className="text-rose-400 text-sm mt-1">{errors.athlete_name.message}</p>}
+        </div>
+      )}
 
       <div>
         <input

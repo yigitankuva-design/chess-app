@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
+import { saveAthleteName } from '@/lib/auth-storage';
 
 const schema = z.object({
   email: z.string().email(),
@@ -28,7 +29,23 @@ export default function HomePage() {
     try {
       const res = await apiClient.login(data);
       auth.login(res.access_token, res.role, res.user_id);
-      router.push(res.role === 'teacher' ? '/admin' : '/parent/dashboard');
+      if (res.role === 'teacher') {
+        router.push('/admin');
+        return;
+      }
+      // Veli: hesap token'ı kaydedildi; sporcu oturumuna geç
+      try {
+        const ath = await apiClient.athleteSession();
+        auth.login(ath.access_token, 'child', ath.child_profile_id);
+        saveAthleteName(ath.display_name);
+        router.push('/home');
+      } catch (se) {
+        if (se instanceof ApiError && se.status === 404) {
+          router.push('/athlete-setup');
+        } else {
+          setError('Sporcu oturumu açılamadı');
+        }
+      }
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setError('E-posta veya şifre yanlış');

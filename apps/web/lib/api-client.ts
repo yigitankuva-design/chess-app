@@ -1,3 +1,5 @@
+import { getToken } from './auth-storage';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export class ApiError extends Error {
@@ -40,6 +42,7 @@ export interface ParentSignupBody {
   email: string;
   password: string;
   name: string;
+  athlete_name?: string;
 }
 
 export interface LoginBody {
@@ -74,5 +77,17 @@ export const apiClient = {
     request<{ access_token: string; child_profile_id: number; display_name: string }>(
       '/auth/child/enter',
       { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  athleteSession: () =>
+    request<{ access_token: string; child_profile_id: number; display_name: string }>(
+      '/auth/athlete/session',
+      { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` } },
+    ),
+
+  athleteCreate: (body: { full_name: string }) =>
+    request<{ access_token: string; child_profile_id: number; display_name: string }>(
+      '/auth/athlete/create',
+      { method: 'POST', body: JSON.stringify(body), headers: { Authorization: `Bearer ${getToken()}` } },
     ),
 };

@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'chess_app_token';
 const FINGERPRINT_KEY = 'chess_app_device_fp';
+const ATHLETE_NAME_KEY = 'bea_athlete_name';
 
 
 export function saveToken(token: string): void {
@@ -17,6 +18,19 @@ export function getToken(): string | null {
 export function clearAuth(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ATHLETE_NAME_KEY);
+}
+
+
+export function saveAthleteName(name: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(ATHLETE_NAME_KEY, name);
+}
+
+
+export function getAthleteName(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(ATHLETE_NAME_KEY);
 }
 
 

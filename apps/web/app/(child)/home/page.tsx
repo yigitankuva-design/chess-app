@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getAthleteName } from '@/lib/auth-storage';
 
 interface LastLesson { moduleId: number; lessonId: number; title: string; orderIndex: number; }
 
@@ -19,16 +20,27 @@ const FEATURES = [
 export default function ChildHomePage() {
   const [showLevels, setShowLevels] = useState(false);
   const [lastLesson, setLastLesson] = useState<LastLesson | null>(null);
+  const [athleteName, setAthleteName] = useState<string | null>(null);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem('bea_last_lesson');
       if (raw) setLastLesson(JSON.parse(raw));
     } catch { /* ignore */ }
+    setAthleteName(getAthleteName());
   }, []);
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-8">
+      {athleteName && (
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🏅</span>
+          <div>
+            <p className="text-xs t-muted uppercase tracking-widest">Sporcu</p>
+            <p className="text-lg font-bold">{athleteName}</p>
+          </div>
+        </div>
+      )}
       <section aria-label="Hızlı Erişim">
         <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-3">
           Hızlı Erişim
