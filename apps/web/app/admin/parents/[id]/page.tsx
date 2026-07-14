@@ -9,6 +9,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 interface ChildRow { id: number; display_name: string; age: number; avatar: string; completed_lessons: number; }
 interface ParentDetail { id: number; name: string; email: string; created_at: string; children: ChildRow[]; }
 
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })
+    + ' · ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function AdminParentDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -74,6 +81,16 @@ export default function AdminParentDetailPage() {
       <div className="neon-card neon-cyan p-6 mb-5">
         <h1 className="text-2xl font-bold n-text">{data.name}</h1>
         <p className="n-muted">{data.email}</p>
+        <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="n-muted text-xs block">Üyelik tarihi</span>
+            <span className="n-text">{formatDateTime(data.created_at)}</span>
+          </div>
+          <div>
+            <span className="n-muted text-xs block">Sporcu / çocuk sayısı</span>
+            <span className="n-text">{data.children.length}</span>
+          </div>
+        </div>
       </div>
 
       <div className="neon-card neon-purple p-6 mb-5">

@@ -63,6 +63,7 @@ export default function AdminParentsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold n-text truncate">{p.name}</p>
                   <p className="text-sm n-muted truncate">{p.email}</p>
+                  <p className="text-xs n-muted mt-0.5">Üyelik: {formatDate(p.created_at)}</p>
                 </div>
                 <span className={`neon-pill ${accent}`}>{p.child_count} çocuk</span>
               </Link>
@@ -72,6 +73,12 @@ export default function AdminParentsPage() {
       )}
     </div>
   );
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 function initials(name: string): string {
