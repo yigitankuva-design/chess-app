@@ -4,7 +4,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="space-y-6 text-center">
       <div>
-        <img src="/logo.jpeg" alt="Bozüyük Satranç Akademisi Logo" className="h-16 w-auto mx-auto mb-3" />
+        <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-16 w-auto mx-auto mb-3" />
         <h1 className="text-2xl font-bold">Şifremi Unuttum</h1>
       </div>
 

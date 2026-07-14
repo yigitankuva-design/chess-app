@@ -49,7 +49,7 @@ export default function SignupPage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="text-center mb-6">
-        <img src="/logo.jpeg" alt="Bozüyük Satranç Akademisi Logo" className="h-16 w-auto mx-auto mb-3" />
+        <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-16 w-auto mx-auto mb-3" />
         <h1 className="text-2xl font-bold">Kayıt Ol</h1>
       </div>
 
