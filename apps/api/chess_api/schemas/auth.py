@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 from chess_api.models.user import UserRole
 
@@ -54,3 +55,44 @@ class ChildPinLoginRequest(BaseModel):
 class ChildEnterRequest(BaseModel):
     child_profile_id: int
     device_fingerprint: str
+
+
+class AdminResetPasswordRequest(BaseModel):
+    new_password: str = Field(min_length=8)
+
+
+class AdminParentSummary(BaseModel):
+    id: int
+    name: str
+    email: str
+    created_at: datetime
+    child_count: int
+
+
+class AdminChildSummary(BaseModel):
+    id: int
+    display_name: str
+    age: int
+    avatar: str
+    completed_lessons: int
+
+
+class AdminParentDetail(BaseModel):
+    id: int
+    name: str
+    email: str
+    created_at: datetime
+    children: list[AdminChildSummary]
+
+
+class AdminOverview(BaseModel):
+    total_parents: int
+    total_children: int
+    total_teachers: int
+
+
+class AdminModuleSummary(BaseModel):
+    id: int
+    order_index: int
+    name: str
+    lesson_count: int
