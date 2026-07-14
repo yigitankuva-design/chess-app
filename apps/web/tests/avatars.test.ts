@@ -4,16 +4,16 @@ import { avatarEmoji, getSavedAvatar, saveAvatar, DEFAULT_AVATAR_ID, AVATARS } f
 describe('avatars', () => {
   beforeEach(() => localStorage.clear());
 
-  it('has 6 avatar options', () => {
-    expect(AVATARS.length).toBe(6);
+  it('has 12 avatar options', () => {
+    expect(AVATARS.length).toBe(12);
   });
 
   it('avatarEmoji returns emoji for known id', () => {
-    expect(avatarEmoji('fox')).toBe('🦊');
+    expect(avatarEmoji('knight')).toBe('🤴');
   });
 
   it('avatarEmoji falls back for unknown id', () => {
-    expect(avatarEmoji('nonexistent')).toBe('🦁');
+    expect(avatarEmoji('nonexistent')).toBe('👧');
   });
 
   it('save and get avatar roundtrip', () => {
