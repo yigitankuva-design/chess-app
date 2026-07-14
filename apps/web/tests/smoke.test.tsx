@@ -5,7 +5,7 @@ describe('HomePage', () => {
   it('renders the welcome heading', () => {
     render(<HomePage />);
     expect(
-      screen.getByRole('heading', { name: /Çocuklar İçin Satranç/i })
+      screen.getByRole('heading', { name: /Bozüyük Satranç Akademisi/i })
     ).toBeInTheDocument();
   });
 });
