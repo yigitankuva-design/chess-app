@@ -86,12 +86,12 @@ export function AppNav() {
       <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
         {title === '' ? (
           <>
-            <img src="/logo.jpeg" alt="BEA Logo" className="h-6 w-auto flex-shrink-0" />
+            <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-6 w-auto flex-shrink-0" />
             <span
               className="text-sm font-bold tracking-wide truncate"
               style={navActiveStyle}
             >
-              Akademi Gelişim Sistemi
+              Bozüyük Satranç Akademisi
             </span>
           </>
         ) : (
