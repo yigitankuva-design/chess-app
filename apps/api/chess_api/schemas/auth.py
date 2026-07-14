@@ -49,3 +49,8 @@ class ChildPinLoginRequest(BaseModel):
     child_profile_id: int
     pin: str = Field(min_length=4, max_length=4)
     device_fingerprint: str
+
+
+class ChildEnterRequest(BaseModel):
+    child_profile_id: int
+    device_fingerprint: str

@@ -6,7 +6,7 @@ from chess_api.database import get_db
 from chess_api.models import User, UserRole, Device, ChildProfile
 from chess_api.schemas.auth import (
     ParentSignupRequest, LoginRequest, AuthResponse, EmailVerifyRequest,
-    DeviceRegisterRequest, ChildPinLoginRequest,
+    DeviceRegisterRequest, ChildPinLoginRequest, ChildEnterRequest,
 )
 from chess_api.services.password import hash_password, verify_password, verify_pin
 from chess_api.services.jwt import encode_token
@@ -232,6 +232,39 @@ async def child_pin_login(
 
     if not verify_pin(payload.pin, child.pin_hash):
         raise HTTPException(status_code=401, detail="Invalid PIN")
+
+    token = encode_token({
+        "child_profile_id": child.id,
+        "parent_user_id": child.parent_user_id,
+        "role": "child",
+    })
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "child_profile_id": child.id,
+        "display_name": child.display_name,
+    }
+
+
+@router.post("/child/enter")
+async def child_enter(
+    payload: ChildEnterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """PIN'siz çocuk girişi. Güvenlik: cihaz, çocuğun velisinin güvenilir cihazı olmalı."""
+    child = await db.get(ChildProfile, payload.child_profile_id)
+    if not child:
+        raise HTTPException(status_code=404, detail="Child not found")
+
+    device_result = await db.execute(
+        select(Device).where(
+            Device.device_fingerprint == payload.device_fingerprint,
+            Device.parent_user_id == child.parent_user_id,
+        )
+    )
+    device = device_result.scalar_one_or_none()
+    if not device:
+        raise HTTPException(status_code=403, detail="Untrusted device")
 
     token = encode_token({
         "child_profile_id": child.id,
