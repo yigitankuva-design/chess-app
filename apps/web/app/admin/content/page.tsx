@@ -19,27 +19,33 @@ export default function AdminContentPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <p>Yükleniyor...</p>;
+  if (loading) return <p className="n-muted">Yükleniyor...</p>;
+
+  const accents = ['neon-cyan', 'neon-purple', 'neon-green', 'neon-amber', 'neon-blue', 'neon-pink'];
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">İçerik (Modüller)</h1>
+      <h1 className="text-2xl font-bold mb-6 n-text">İçerik (Modüller)</h1>
       {rows.length === 0 ? (
-        <p className="opacity-60">Modül bulunamadı.</p>
+        <p className="n-muted">Modül bulunamadı.</p>
       ) : (
-        <div className="bg-white rounded-2xl shadow divide-y">
-          {rows.map((m) => (
-            <Link
-              key={m.id}
-              href={`/admin/content/${m.id}`}
-              className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-            >
-              <div>
-                <p className="font-semibold">{m.order_index}. {m.name}</p>
-              </div>
-              <span className="text-sm opacity-60">{m.lesson_count} ders →</span>
-            </Link>
-          ))}
+        <div className="grid gap-3">
+          {rows.map((m, i) => {
+            const accent = accents[i % accents.length];
+            return (
+              <Link
+                key={m.id}
+                href={`/admin/content/${m.id}`}
+                className={`neon-card neon-card-i ${accent} flex items-center gap-4 p-4`}
+              >
+                <span className={`neon-avatar ${accent} w-11 h-11 text-sm shrink-0`}>
+                  {m.order_index}
+                </span>
+                <p className="font-semibold n-text flex-1">{m.name}</p>
+                <span className={`neon-pill ${accent}`}>{m.lesson_count} ders →</span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

@@ -22,24 +22,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setReady(true);
   }, [router]);
 
-  if (!ready) return <p className="p-6">Yükleniyor...</p>;
+  if (!ready) return <p className="p-6 neon-shell n-muted">Yükleniyor...</p>;
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 bg-gray-900 text-white flex flex-col">
+    <div className="neon-shell flex min-h-screen">
+      <aside className="w-56 shrink-0 flex flex-col border-r border-white/10 bg-black/40 backdrop-blur-sm">
         <div className="p-4 border-b border-white/10">
-          <p className="font-bold">Admin Paneli</p>
-          <p className="text-xs opacity-60">Bozüyük Satranç Akademisi</p>
+          <p className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-400">Admin Paneli</p>
+          <p className="text-xs n-muted">Bozüyük Satranç Akademisi</p>
         </div>
         <nav className="flex-1 p-2 space-y-1">
           {NAV.map((n) => {
-            const active = pathname === n.href;
+            const active = pathname === n.href || pathname.startsWith(n.href + '/');
             return (
               <Link
                 key={n.href}
                 href={n.href}
-                className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active ? 'bg-blue-600 text-white' : 'text-white/70 hover:bg-white/10'
+                className={`block px-3 py-2 rounded-lg text-sm transition-all ${
+                  active
+                    ? 'text-cyan-200 bg-cyan-400/10 border border-cyan-400/40 shadow-[0_0_18px_-6px_rgba(34,211,238,0.7)]'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white/90 border border-transparent'
                 }`}
               >
                 {n.label}
@@ -49,12 +51,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
         <button
           onClick={() => { auth.logout(); router.replace('/'); }}
-          className="m-2 px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 text-left"
+          className="m-2 px-3 py-2 rounded-lg text-sm text-white/60 hover:bg-white/5 hover:text-white/90 text-left transition-colors"
         >
           Çıkış
         </button>
       </aside>
-      <main className="flex-1 p-6 bg-gray-50">{children}</main>
+      <main className="flex-1 p-6">{children}</main>
     </div>
   );
 }

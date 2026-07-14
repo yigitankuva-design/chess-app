@@ -49,21 +49,21 @@ export default function SignupPage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="text-center mb-6">
-        <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-16 w-auto mx-auto mb-3" />
-        <h1 className="text-2xl font-bold">Kayıt Ol</h1>
+        <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-16 w-auto mx-auto mb-3 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" />
+        <h1 className="text-2xl font-bold n-text">Kayıt Ol</h1>
       </div>
 
       <div>
-        <p className="text-sm font-medium mb-2">Hesap türü</p>
+        <p className="text-sm font-medium mb-2 n-muted">Hesap türü</p>
         <div className="grid grid-cols-2 gap-2">
           <label className={`cursor-pointer border rounded-lg p-3 text-center text-sm font-medium transition-colors ${
-            role === 'parent' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600'
+            role === 'parent' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
           }`}>
             <input type="radio" value="parent" {...register('role')} className="sr-only" />
             👤 Veli
           </label>
           <label className={`cursor-pointer border rounded-lg p-3 text-center text-sm font-medium transition-colors ${
-            role === 'teacher' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600'
+            role === 'teacher' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
           }`}>
             <input type="radio" value="teacher" {...register('role')} className="sr-only" />
             🎓 Öğretmen
@@ -75,9 +75,9 @@ export default function SignupPage() {
         <input
           {...register('name')}
           placeholder="Adınız"
-          className="w-full p-3 border rounded"
+          className="neon-input"
         />
-        {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>}
+        {errors.name && <p className="text-rose-400 text-sm mt-1">{errors.name.message}</p>}
       </div>
 
       <div>
@@ -85,9 +85,9 @@ export default function SignupPage() {
           {...register('email')}
           type="email"
           placeholder="E-posta"
-          className="w-full p-3 border rounded"
+          className="neon-input"
         />
-        {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>}
+        {errors.email && <p className="text-rose-400 text-sm mt-1">{errors.email.message}</p>}
       </div>
 
       <div>
@@ -95,9 +95,9 @@ export default function SignupPage() {
           {...register('password')}
           type="password"
           placeholder="Şifre (en az 8 karakter)"
-          className="w-full p-3 border rounded"
+          className="neon-input"
         />
-        {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password.message}</p>}
+        {errors.password && <p className="text-rose-400 text-sm mt-1">{errors.password.message}</p>}
       </div>
 
       <div className="flex items-start gap-2">
@@ -105,27 +105,23 @@ export default function SignupPage() {
           id="kvkk-consent"
           type="checkbox"
           {...register('kvkk_consent')}
-          className="mt-1 h-4 w-4"
+          className="mt-1 h-4 w-4 accent-cyan-400"
         />
-        <label htmlFor="kvkk-consent" className="text-sm text-gray-600">
-          <Link href="/privacy" target="_blank" className="text-blue-600 underline">Gizlilik Politikası</Link>&apos;nı ve{' '}
-          <Link href="/terms" target="_blank" className="text-blue-600 underline">Kullanım Şartları</Link>&apos;nı okudum, kabul ediyorum. *
+        <label htmlFor="kvkk-consent" className="text-sm n-muted">
+          <Link href="/privacy" target="_blank" className="text-cyan-400 hover:text-cyan-300 underline">Gizlilik Politikası</Link>&apos;nı ve{' '}
+          <Link href="/terms" target="_blank" className="text-cyan-400 hover:text-cyan-300 underline">Kullanım Şartları</Link>&apos;nı okudum, kabul ediyorum. *
         </label>
       </div>
-      {errors.kvkk_consent && <p className="text-red-600 text-sm">{errors.kvkk_consent.message}</p>}
+      {errors.kvkk_consent && <p className="text-rose-400 text-sm">{errors.kvkk_consent.message}</p>}
 
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <p className="text-rose-400 text-sm">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full bg-blue-600 text-white py-3 rounded disabled:opacity-50 font-medium"
-      >
+      <button type="submit" disabled={isSubmitting} className="neon-btn">
         {isSubmitting ? 'Kayıt...' : 'Hesap Aç'}
       </button>
 
-      <p className="text-center text-sm opacity-75">
-        Hesabın var mı? <Link href="/parent-login" className="underline">Giriş yap</Link>
+      <p className="text-center text-sm n-muted">
+        Hesabın var mı? <Link href="/parent-login" className="text-cyan-400 hover:text-cyan-300">Giriş yap</Link>
       </p>
     </form>
   );

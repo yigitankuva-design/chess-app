@@ -69,25 +69,25 @@ export default function AdminParentDetailPage() {
 
   return (
     <div className="max-w-2xl">
-      <button onClick={() => router.back()} className="text-sm underline opacity-70 mb-4">← Geri</button>
+      <button onClick={() => router.back()} className="text-sm text-cyan-400 hover:text-cyan-300 mb-4">← Geri</button>
 
-      <div className="bg-white rounded-2xl shadow p-6 mb-6">
-        <h1 className="text-2xl font-bold">{data.name}</h1>
-        <p className="opacity-60">{data.email}</p>
+      <div className="neon-card neon-cyan p-6 mb-5">
+        <h1 className="text-2xl font-bold n-text">{data.name}</h1>
+        <p className="n-muted">{data.email}</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-6 mb-6">
-        <h2 className="font-bold mb-3">Çocuklar</h2>
+      <div className="neon-card neon-purple p-6 mb-5">
+        <h2 className="font-bold mb-3 n-text">Çocuklar</h2>
         {data.children.length === 0 ? (
-          <p className="opacity-60 text-sm">Çocuk yok.</p>
+          <p className="n-muted text-sm">Çocuk yok.</p>
         ) : (
           <div className="space-y-2">
             {data.children.map((c) => (
               <div key={c.id} className="flex items-center gap-3">
                 <span className="text-2xl">{avatarEmoji(c.avatar)}</span>
                 <div className="flex-1">
-                  <p className="font-semibold">{c.display_name}</p>
-                  <p className="text-xs opacity-60">{c.age} yaşında · {c.completed_lessons} ders tamamlandı</p>
+                  <p className="font-semibold n-text">{c.display_name}</p>
+                  <p className="text-xs n-muted">{c.age} yaşında · {c.completed_lessons} ders tamamlandı</p>
                 </div>
               </div>
             ))}
@@ -95,52 +95,49 @@ export default function AdminParentDetailPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-6 mb-6">
-        <h2 className="font-bold mb-3">Şifre Sıfırla</h2>
+      <div className="neon-card neon-green p-6 mb-5">
+        <h2 className="font-bold mb-3 n-text">Şifre Sıfırla</h2>
         <div className="flex gap-2 items-start">
           <input
             type="text"
             value={newPass}
             onChange={(e) => setNewPass(e.target.value)}
             placeholder="Yeni şifre (min 8)"
-            className="flex-1 p-2 border rounded"
+            className="neon-input flex-1"
           />
           <button
             onClick={resetPassword}
             disabled={resetting}
-            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+            className="px-4 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-50 transition-colors shrink-0"
           >
             {resetting ? '...' : 'Sıfırla'}
           </button>
         </div>
-        {resetMsg && <p className="text-sm mt-2">{resetMsg}</p>}
+        {resetMsg && <p className="text-sm mt-2 n-muted">{resetMsg}</p>}
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-6 border border-red-100">
-        <h2 className="font-bold mb-3 text-red-700">Veliyi Sil</h2>
+      <div className="neon-card p-6" style={{ ['--glow' as string]: '244,63,94' }}>
+        <h2 className="font-bold mb-3 text-rose-400">Veliyi Sil</h2>
         {!confirmDelete ? (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="px-4 py-2 bg-red-50 text-red-700 rounded hover:bg-red-100"
-          >
+          <button onClick={() => setConfirmDelete(true)} className="neon-btn-danger">
             Veliyi Sil
           </button>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm">
-              <strong>{data.name}</strong> ve tüm çocuk profilleri silinecek. Bu işlem geri alınamaz.
+            <p className="text-sm n-muted">
+              <strong className="n-text">{data.name}</strong> ve tüm çocuk profilleri silinecek. Bu işlem geri alınamaz.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={deleteParent}
                 disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-rose-500 text-white font-medium hover:bg-rose-600 disabled:opacity-50 transition-colors"
               >
                 {deleting ? 'Siliniyor...' : 'Evet, sil'}
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="px-4 py-2 bg-gray-200 rounded"
+                className="px-4 py-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 transition-colors"
               >
                 Vazgeç
               </button>

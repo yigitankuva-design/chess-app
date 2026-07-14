@@ -294,6 +294,146 @@ body {
   );
 }
 
+/* ═══════════════════════════════════════════
+   NEON DARK THEME  (giriş akışı + admin paneli)
+   Yalnızca .neon-* sınıfı taşıyan elemanları etkiler;
+   diğer sayfalar mevcut haliyle kalır.
+═══════════════════════════════════════════ */
+
+.neon-shell {
+  position: relative;
+  min-height: 100dvh;
+  color: #e7e7f0;
+  background:
+    radial-gradient(1100px 380px at 50% -12%, rgba(139,92,246,0.14), transparent 62%),
+    radial-gradient(820px 460px at 88% -6%, rgba(34,211,238,0.10), transparent 58%),
+    radial-gradient(700px 500px at 6% 8%, rgba(132,204,22,0.06), transparent 60%),
+    #07070c;
+}
+.neon-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+  z-index: 0;
+}
+.neon-shell > * { position: relative; z-index: 1; }
+
+.neon-card {
+  --glow: 168,85,247;
+  position: relative;
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)), #0e0e17;
+  border: 1px solid rgba(var(--glow), 0.55);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(var(--glow), 0.10),
+    0 0 20px -3px rgba(var(--glow), 0.45),
+    inset 0 0 24px -14px rgba(var(--glow), 0.85);
+  transition: box-shadow .25s ease, transform .15s ease, border-color .2s ease;
+}
+.neon-card-i { display: block; text-decoration: none; color: inherit; }
+.neon-card-i:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--glow), 0.95);
+  box-shadow:
+    0 0 0 1px rgba(var(--glow), 0.20),
+    0 0 30px -3px rgba(var(--glow), 0.70),
+    inset 0 0 28px -12px rgba(var(--glow), 0.95);
+}
+.neon-card-i:active { transform: translateY(0); }
+
+/* Avatar halkası */
+.neon-avatar {
+  --glow: 168,85,247;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px;
+  background: #0b0b13;
+  color: #f2f2f8;
+  font-weight: 700;
+  border: 2px solid rgb(var(--glow));
+  box-shadow: 0 0 14px -1px rgba(var(--glow), 0.75), inset 0 0 10px -5px rgba(var(--glow), 0.9);
+}
+
+/* Dolu neon rozet (rol) */
+.neon-badge {
+  --glow: 245,182,40;
+  display: inline-flex; align-items: center;
+  background: rgb(var(--glow));
+  color: #0a0a10; font-weight: 700;
+  border-radius: 999px; padding: .28rem .8rem; font-size: .72rem;
+  box-shadow: 0 0 16px -3px rgba(var(--glow), 0.85);
+  white-space: nowrap;
+}
+/* Çerçeveli neon hap (sayaç) */
+.neon-pill {
+  --glow: 168,85,247;
+  display: inline-flex; align-items: center;
+  color: rgb(var(--glow));
+  border: 1px solid rgba(var(--glow), 0.65);
+  border-radius: 999px; padding: .18rem .65rem; font-size: .72rem; font-weight: 600;
+  box-shadow: inset 0 0 12px -7px rgba(var(--glow), 0.95);
+  white-space: nowrap;
+}
+
+/* Input */
+.neon-input {
+  width: 100%;
+  background: #0c0c15;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  padding: .75rem;
+  color: #e7e7f0;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.neon-input::placeholder { color: #6a6a7c; }
+.neon-input:focus {
+  outline: none;
+  border-color: rgba(34,211,238,0.75);
+  box-shadow: 0 0 0 3px rgba(34,211,238,0.15);
+}
+
+/* Primary neon buton */
+.neon-btn {
+  width: 100%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(90deg, #22d3ee, #6366f1);
+  color: #04121a; font-weight: 700;
+  border: none; border-radius: 12px; padding: .9rem;
+  cursor: pointer;
+  box-shadow: 0 0 24px -5px rgba(34,211,238,0.75);
+  transition: transform .1s ease, box-shadow .2s ease, filter .2s ease;
+}
+.neon-btn:hover { filter: brightness(1.08); box-shadow: 0 0 34px -4px rgba(34,211,238,0.95); }
+.neon-btn:active { transform: scale(.98); }
+.neon-btn:disabled { opacity: .5; cursor: default; box-shadow: none; }
+
+/* Metin yardımcıları (neon shell içinde) */
+.neon-shell .n-muted { color: #9a9aae; }
+.neon-shell .n-text  { color: #e7e7f0; }
+
+/* Neon danger buton */
+.neon-btn-danger {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(244,63,94,0.12);
+  color: #fb7185; font-weight: 600;
+  border: 1px solid rgba(244,63,94,0.5);
+  border-radius: 10px; padding: .55rem 1rem;
+  cursor: pointer;
+  transition: background .15s ease, box-shadow .2s ease;
+}
+.neon-btn-danger:hover { background: rgba(244,63,94,0.2); box-shadow: 0 0 18px -5px rgba(244,63,94,0.7); }
+
+/* Accent renk paletleri — component tanımlarından SONRA gelmeli ki
+   --glow'u geçersiz kılabilsinler (aynı specificity, sonra gelen kazanır) */
+.neon-cyan   { --glow: 34,211,238; }
+.neon-purple { --glow: 168,85,247; }
+.neon-green  { --glow: 132,204,22; }
+.neon-amber  { --glow: 245,182,40; }
+.neon-blue   { --glow: 59,130,246; }
+.neon-pink   { --glow: 244,114,182; }
+
 /* ── Legacy aliases (backward compat) ── */
 .chess-page-bg { background: var(--t-bg); }
 .chess-card    { background: var(--t-surface); border: 1px solid var(--t-border); border-radius: 8px; }

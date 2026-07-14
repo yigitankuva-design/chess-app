@@ -32,36 +32,51 @@ export default function AdminParentsPage() {
       r.email.toLowerCase().includes(q.toLowerCase()),
   );
 
-  if (loading) return <p>Yükleniyor...</p>;
+  if (loading) return <p className="n-muted">Yükleniyor...</p>;
+
+  const accents = ['neon-purple', 'neon-green', 'neon-cyan', 'neon-amber', 'neon-blue', 'neon-pink'];
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Kullanıcılar</h1>
+      <h1 className="text-2xl font-bold mb-6 n-text">Kullanıcılar</h1>
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Ad veya e-posta ara..."
-        className="w-full max-w-sm p-2 border rounded mb-4"
+        className="neon-input max-w-sm mb-5"
       />
       {filtered.length === 0 ? (
-        <p className="opacity-60">Kullanıcı bulunamadı.</p>
+        <p className="n-muted">Kullanıcı bulunamadı.</p>
       ) : (
-        <div className="bg-white rounded-2xl shadow divide-y">
-          {filtered.map((p) => (
-            <Link
-              key={p.id}
-              href={`/admin/parents/${p.id}`}
-              className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-            >
-              <div>
-                <p className="font-semibold">{p.name}</p>
-                <p className="text-sm opacity-60">{p.email}</p>
-              </div>
-              <span className="text-sm opacity-60">{p.child_count} çocuk</span>
-            </Link>
-          ))}
+        <div className="grid gap-3">
+          {filtered.map((p, i) => {
+            const accent = accents[i % accents.length];
+            return (
+              <Link
+                key={p.id}
+                href={`/admin/parents/${p.id}`}
+                className={`neon-card neon-card-i ${accent} flex items-center gap-4 p-4`}
+              >
+                <span className={`neon-avatar ${accent} w-12 h-12 text-sm shrink-0`}>
+                  {initials(p.name)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold n-text truncate">{p.name}</p>
+                  <p className="text-sm n-muted truncate">{p.email}</p>
+                </div>
+                <span className={`neon-pill ${accent}`}>{p.child_count} çocuk</span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
   );
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
