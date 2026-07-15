@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
 
@@ -148,6 +149,10 @@ export default function AdminModuleLessonsPage() {
                 <span className={les.published ? 'neon-pill neon-green' : 'neon-pill neon-amber'}>
                   {les.published ? 'Yayında' : 'Taslak'}
                 </span>
+                <Link href={`/admin/content/lesson/${les.id}`}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
+                  İçeriği düzenle
+                </Link>
                 <button onClick={() => togglePublish(les)}
                   className="px-3 py-1.5 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-xs transition-colors">
                   {les.published ? 'Yayından kaldır' : 'Yayınla'}
