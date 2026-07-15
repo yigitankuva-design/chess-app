@@ -17,6 +17,7 @@ from chess_api.schemas.auth import (
     ContentImportRequest, ContentImportResult,
     ModuleCreateRequest, ModuleUpdateRequest, ReorderRequest,
     LessonCreateRequest, LessonUpdateRequest, LessonPublishRequest, AdminLessonDetail,
+    StepCreateRequest, StepUpdateRequest, AdminStepDetail,
 )
 from chess_api.models.progress import ChildLessonStepResult
 
@@ -517,3 +518,149 @@ async def delete_lesson(
     await db.delete(lesson)
     await db.commit()
     return {"deleted": True}
+
+
+def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
+    """Editörden gelen içerik oynatıcının beklediği şekle uymalı; uymazsa çocukta bozuk görünür."""
+    if step_type == LessonStepType.quiz:
+        questions = content.get("questions")
+        if not isinstance(questions, list) or not questions:
+            raise HTTPException(status_code=400, detail="Quiz için en az bir soru gerekli")
+        for q in questions:
+            prompt = q.get("prompt")
+            options = q.get("options")
+            ci = q.get("correct_index")
+            if not prompt or not isinstance(options, list) or len(options) < 2:
+                raise HTTPException(status_code=400, detail="Her sorunun metni ve en az 2 şıkkı olmalı")
+            if not isinstance(ci, int) or ci < 0 or ci >= len(options):
+                raise HTTPException(status_code=400, detail="Doğru şık geçersiz")
+    elif step_type == LessonStepType.explanation:
+        if not content.get("title") and not content.get("body"):
+            raise HTTPException(status_code=400, detail="Anlatım için başlık veya metin gerekli")
+
+
+def _step_out(s: LessonStep) -> dict:
+    return {"id": s.id, "lesson_id": s.lesson_id, "order_index": s.order_index,
+            "type": s.type.value, "content_json": s.content_json,
+            "correct_answer_json": s.correct_answer_json}
+
+
+@router.get("/lessons/{lesson_id}/steps", response_model=list[AdminStepDetail])
+async def list_steps(
+    lesson_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    steps = (await db.execute(
+        select(LessonStep).where(LessonStep.lesson_id == lesson_id).order_by(LessonStep.order_index)
+    )).scalars().all()
+    return [AdminStepDetail(**_step_out(s)) for s in steps]
+
+
+@router.post("/lessons/{lesson_id}/steps", status_code=201)
+async def create_step(
+    lesson_id: int,
+    payload: StepCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    try:
+        step_type = LessonStepType(payload.type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Geçersiz adım türü: {payload.type}")
+    _validate_step_content(step_type, payload.content_json)
+
+    max_order = (await db.execute(
+        select(func.max(LessonStep.order_index)).where(LessonStep.lesson_id == lesson_id)
+    )).scalar_one_or_none() or 0
+    step = LessonStep(lesson_id=lesson_id, order_index=max_order + 1, type=step_type,
+                      content_json=payload.content_json,
+                      correct_answer_json=payload.correct_answer_json)
+    db.add(step)
+    await db.commit()
+    await db.refresh(step)
+    return _step_out(step)
+
+
+@router.patch("/steps/{step_id}")
+async def update_step(
+    step_id: int,
+    payload: StepUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    step = await db.get(LessonStep, step_id)
+    if not step:
+        raise HTTPException(status_code=404, detail="Step not found")
+    if payload.content_json is not None:
+        _validate_step_content(step.type, payload.content_json)
+        step.content_json = payload.content_json
+    if payload.correct_answer_json is not None:
+        step.correct_answer_json = payload.correct_answer_json
+    if payload.lesson_id is not None and payload.lesson_id != step.lesson_id:
+        target = await db.get(Lesson, payload.lesson_id)
+        if not target:
+            raise HTTPException(status_code=404, detail="Target lesson not found")
+        max_order = (await db.execute(
+            select(func.max(LessonStep.order_index)).where(LessonStep.lesson_id == payload.lesson_id)
+        )).scalar_one_or_none() or 0
+        step.lesson_id = payload.lesson_id
+        step.order_index = max_order + 1
+    await db.commit()
+    await db.refresh(step)
+    return _step_out(step)
+
+
+@router.post("/lessons/{lesson_id}/steps/reorder")
+async def reorder_steps(
+    lesson_id: int,
+    payload: ReorderRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    steps = (await db.execute(
+        select(LessonStep).where(LessonStep.id.in_(payload.ordered_ids),
+                                 LessonStep.lesson_id == lesson_id)
+    )).scalars().all()
+    by_id = {s.id: s for s in steps}
+    if len(by_id) != len(payload.ordered_ids):
+        raise HTTPException(status_code=400, detail="Unknown step id")
+    for i, sid in enumerate(payload.ordered_ids):
+        by_id[sid].order_index = i + 1
+    await db.commit()
+    return {"reordered": len(payload.ordered_ids)}
+
+
+@router.delete("/steps/{step_id}")
+async def delete_step(
+    step_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Adımı ve SADECE o adıma ait deneme kayıtlarını siler.
+    Ders tamamlama ilerlemesi (child_lesson_progress) korunur."""
+    _ensure_admin(current)
+    step = await db.get(LessonStep, step_id)
+    if not step:
+        raise HTTPException(status_code=404, detail="Step not found")
+    results = (await db.execute(
+        select(func.count(ChildLessonStepResult.id)).where(
+            ChildLessonStepResult.lesson_step_id == step_id
+        )
+    )).scalar_one()
+    await db.execute(
+        delete(ChildLessonStepResult).where(ChildLessonStepResult.lesson_step_id == step_id)
+    )
+    await db.delete(step)
+    await db.commit()
+    return {"deleted": True, "results_deleted": results}

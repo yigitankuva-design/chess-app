@@ -195,3 +195,24 @@ class AdminLessonDetail(BaseModel):
     estimated_minutes: int
     published: bool
     step_count: int
+
+
+class StepCreateRequest(BaseModel):
+    type: str
+    content_json: dict
+    correct_answer_json: dict | None = None
+
+
+class StepUpdateRequest(BaseModel):
+    content_json: dict | None = None
+    correct_answer_json: dict | None = None
+    lesson_id: int | None = None  # verilirse adım bu derse taşınır
+
+
+class AdminStepDetail(BaseModel):
+    id: int
+    lesson_id: int
+    order_index: int
+    type: str
+    content_json: dict
+    correct_answer_json: dict | None = None
