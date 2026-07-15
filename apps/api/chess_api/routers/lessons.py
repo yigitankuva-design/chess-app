@@ -37,7 +37,9 @@ async def list_modules(db: AsyncSession = Depends(get_db)):
 @router.get("/modules/{module_id}/lessons", response_model=list[dict])
 async def module_lessons(module_id: int, db: AsyncSession = Depends(get_db)):
     lessons = (await db.execute(
-        select(Lesson).where(Lesson.module_id == module_id).order_by(Lesson.order_index)
+        select(Lesson)
+        .where(Lesson.module_id == module_id, Lesson.published.is_(True))
+        .order_by(Lesson.order_index)
     )).scalars().all()
     return [
         {"id": l.id, "order_index": l.order_index, "title": l.title,

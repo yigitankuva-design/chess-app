@@ -154,3 +154,44 @@ class ContentImportResult(BaseModel):
     lessons_created: int
     steps_updated: int
     steps_created: int
+
+
+class ModuleCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str = ""
+    icon: str = "default"
+
+
+class ModuleUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = None
+    icon: str | None = None
+
+
+class ReorderRequest(BaseModel):
+    ordered_ids: list[int]
+
+
+class LessonCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    estimated_minutes: int = 10
+
+
+class LessonUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    estimated_minutes: int | None = None
+    module_id: int | None = None  # verilirse ders bu düzeye taşınır
+
+
+class LessonPublishRequest(BaseModel):
+    published: bool
+
+
+class AdminLessonDetail(BaseModel):
+    id: int
+    module_id: int
+    order_index: int
+    title: str
+    estimated_minutes: int
+    published: bool
+    step_count: int

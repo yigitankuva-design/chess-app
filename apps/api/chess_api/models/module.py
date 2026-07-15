@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import String, Integer, Text, JSON, ForeignKey, Enum
+from sqlalchemy import String, Integer, Text, JSON, ForeignKey, Enum, Boolean, true as sa_true
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -26,6 +26,7 @@ class Lesson(Base):
     order_index: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(160))
     estimated_minutes: Mapped[int] = mapped_column(Integer, default=10)
+    published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sa_true(), default=True)
 
 
 class LessonStep(Base):

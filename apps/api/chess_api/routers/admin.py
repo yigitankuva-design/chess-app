@@ -15,7 +15,10 @@ from chess_api.schemas.auth import (
     AdminLessonSummary,
     ContentExport, ContentModuleIO, ContentLessonIO, ContentStepIO,
     ContentImportRequest, ContentImportResult,
+    ModuleCreateRequest, ModuleUpdateRequest, ReorderRequest,
+    LessonCreateRequest, LessonUpdateRequest, LessonPublishRequest, AdminLessonDetail,
 )
+from chess_api.models.progress import ChildLessonStepResult
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -119,7 +122,7 @@ async def content(
     return out
 
 
-@router.get("/modules/{module_id}/lessons", response_model=list[AdminLessonSummary])
+@router.get("/modules/{module_id}/lessons", response_model=list[AdminLessonDetail])
 async def module_lessons(
     module_id: int,
     current: User = Depends(get_current_user),
@@ -137,9 +140,9 @@ async def module_lessons(
         sc = (await db.execute(
             select(func.count(LessonStep.id)).where(LessonStep.lesson_id == les.id)
         )).scalar_one()
-        out.append(AdminLessonSummary(
-            id=les.id, order_index=les.order_index, title=les.title,
-            estimated_minutes=les.estimated_minutes, step_count=sc,
+        out.append(AdminLessonDetail(
+            id=les.id, module_id=les.module_id, order_index=les.order_index, title=les.title,
+            estimated_minutes=les.estimated_minutes, published=les.published, step_count=sc,
         ))
     return out
 
@@ -292,3 +295,225 @@ async def content_import(
 
     await db.commit()
     return ContentImportResult(**counts)
+
+
+@router.post("/modules", status_code=201)
+async def create_module(
+    payload: ModuleCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    max_order = (await db.execute(select(func.max(Module.order_index)))).scalar_one_or_none() or 0
+    module = Module(order_index=max_order + 1, name=payload.name,
+                    description=payload.description, icon=payload.icon)
+    db.add(module)
+    await db.commit()
+    await db.refresh(module)
+    return {"id": module.id, "order_index": module.order_index, "name": module.name,
+            "description": module.description, "icon": module.icon}
+
+
+@router.patch("/modules/{module_id}")
+async def update_module(
+    module_id: int,
+    payload: ModuleUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    module = await db.get(Module, module_id)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    if payload.name is not None:
+        module.name = payload.name
+    if payload.description is not None:
+        module.description = payload.description
+    if payload.icon is not None:
+        module.icon = payload.icon
+    await db.commit()
+    await db.refresh(module)
+    return {"id": module.id, "order_index": module.order_index, "name": module.name,
+            "description": module.description, "icon": module.icon}
+
+
+@router.post("/modules/reorder")
+async def reorder_modules(
+    payload: ReorderRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """modules.order_index UNIQUE olduğu için İKİ AŞAMALI yazılır:
+    önce geçici negatif değerler, sonra kesin değerler. Yoksa unique çakışır."""
+    _ensure_admin(current)
+    modules = (await db.execute(
+        select(Module).where(Module.id.in_(payload.ordered_ids))
+    )).scalars().all()
+    by_id = {m.id: m for m in modules}
+    if len(by_id) != len(payload.ordered_ids):
+        raise HTTPException(status_code=400, detail="Unknown module id")
+
+    for i, mid in enumerate(payload.ordered_ids):
+        by_id[mid].order_index = -(i + 1)
+    await db.flush()
+    for i, mid in enumerate(payload.ordered_ids):
+        by_id[mid].order_index = i + 1
+    await db.commit()
+    return {"reordered": len(payload.ordered_ids)}
+
+
+@router.delete("/modules/{module_id}")
+async def delete_module(
+    module_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    module = await db.get(Module, module_id)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    lesson_count = (await db.execute(
+        select(func.count(Lesson.id)).where(Lesson.module_id == module_id)
+    )).scalar_one()
+    if lesson_count:
+        raise HTTPException(status_code=409, detail="Bu düzeyde ders var. Önce dersleri taşıyın veya silin.")
+    await db.delete(module)
+    await db.commit()
+    return {"deleted": True}
+
+
+def _lesson_out(les: Lesson, step_count: int) -> dict:
+    return {"id": les.id, "module_id": les.module_id, "order_index": les.order_index,
+            "title": les.title, "estimated_minutes": les.estimated_minutes,
+            "published": les.published, "step_count": step_count}
+
+
+@router.post("/modules/{module_id}/lessons", status_code=201)
+async def create_lesson(
+    module_id: int,
+    payload: LessonCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    module = await db.get(Module, module_id)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    max_order = (await db.execute(
+        select(func.max(Lesson.order_index)).where(Lesson.module_id == module_id)
+    )).scalar_one_or_none() or 0
+    lesson = Lesson(module_id=module_id, order_index=max_order + 1, title=payload.title,
+                    estimated_minutes=payload.estimated_minutes, published=False)
+    db.add(lesson)
+    await db.commit()
+    await db.refresh(lesson)
+    return _lesson_out(lesson, 0)
+
+
+@router.patch("/lessons/{lesson_id}")
+async def update_lesson(
+    lesson_id: int,
+    payload: LessonUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if payload.title is not None:
+        lesson.title = payload.title
+    if payload.estimated_minutes is not None:
+        lesson.estimated_minutes = payload.estimated_minutes
+    if payload.module_id is not None and payload.module_id != lesson.module_id:
+        target = await db.get(Module, payload.module_id)
+        if not target:
+            raise HTTPException(status_code=404, detail="Target module not found")
+        max_order = (await db.execute(
+            select(func.max(Lesson.order_index)).where(Lesson.module_id == payload.module_id)
+        )).scalar_one_or_none() or 0
+        lesson.module_id = payload.module_id
+        lesson.order_index = max_order + 1
+    await db.commit()
+    await db.refresh(lesson)
+    sc = (await db.execute(
+        select(func.count(LessonStep.id)).where(LessonStep.lesson_id == lesson.id)
+    )).scalar_one()
+    return _lesson_out(lesson, sc)
+
+
+@router.post("/lessons/{lesson_id}/publish")
+async def publish_lesson(
+    lesson_id: int,
+    payload: LessonPublishRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    lesson.published = payload.published
+    await db.commit()
+    await db.refresh(lesson)
+    sc = (await db.execute(
+        select(func.count(LessonStep.id)).where(LessonStep.lesson_id == lesson.id)
+    )).scalar_one()
+    return _lesson_out(lesson, sc)
+
+
+@router.post("/modules/{module_id}/lessons/reorder")
+async def reorder_lessons(
+    module_id: int,
+    payload: ReorderRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    lessons = (await db.execute(
+        select(Lesson).where(Lesson.id.in_(payload.ordered_ids), Lesson.module_id == module_id)
+    )).scalars().all()
+    by_id = {l.id: l for l in lessons}
+    if len(by_id) != len(payload.ordered_ids):
+        raise HTTPException(status_code=400, detail="Unknown lesson id")
+    for i, lid in enumerate(payload.ordered_ids):
+        by_id[lid].order_index = i + 1
+    await db.commit()
+    return {"reordered": len(payload.ordered_ids)}
+
+
+@router.delete("/lessons/{lesson_id}")
+async def delete_lesson(
+    lesson_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """İlerlemesi olan ders SİLİNMEZ — yayından kaldırılır. Çocuk emeği korunur."""
+    _ensure_admin(current)
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    prog = (await db.execute(
+        select(func.count(ChildLessonProgress.id)).where(ChildLessonProgress.lesson_id == lesson_id)
+    )).scalar_one()
+    step_ids = (await db.execute(
+        select(LessonStep.id).where(LessonStep.lesson_id == lesson_id)
+    )).scalars().all()
+    results = 0
+    if step_ids:
+        results = (await db.execute(
+            select(func.count(ChildLessonStepResult.id)).where(
+                ChildLessonStepResult.lesson_step_id.in_(step_ids)
+            )
+        )).scalar_one()
+    if prog or results:
+        raise HTTPException(
+            status_code=409,
+            detail="Bu derse ait çocuk ilerlemesi var. Silmek yerine yayından kaldırabilirsiniz.",
+        )
+
+    await db.execute(delete(LessonStep).where(LessonStep.lesson_id == lesson_id))
+    await db.delete(lesson)
+    await db.commit()
+    return {"deleted": True}
