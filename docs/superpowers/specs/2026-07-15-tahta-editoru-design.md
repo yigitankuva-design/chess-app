@@ -73,7 +73,15 @@ Adım editörü sayfasında (`/admin/content/lesson/[lessonId]`) her **anlatım*
 **Ortak:**
 - `instruction` boş olamaz → 400
 - `fen` zorunlu; `chess.Board(fen)` parse edilebilmeli → 400
-- `board.is_valid()` → pozisyon geçerli olmalı (her tarafta tam 1 şah vb.) → 400
+
+> **`board.is_valid()` KULLANILMAZ.** Zafer'in mevcut alıştırmaları kasten **şahsız** öğretim pozisyonları kullanıyor:
+> - `8/8/8/8/8/8/8/8 w - - 0 1` (boş tahta — "koyu kareye tıkla")
+> - `8/8/8/8/8/8/4P3/8 w - - 0 1` (tek piyon — "piyonu e4'e taşı")
+> - `8/8/8/8/4n3/8/8/8 b - - 0 1` (tek at — "bu taş ne?")
+>
+> `is_valid()` üçüne de `False` döner (şah yok). Bu kural konsaydı **hocanın mevcut 60 alıştırması reddedilirdi**. Sadece "FEN parse edilebiliyor mu" kontrolü yapılır.
+>
+> Doğrulandı: `legal_moves` şahsız tahtada **çalışıyor** (tek piyon FEN'inde `['e2e3','e2e4']` döner), yani hamle doğrulaması yine de yapılabilir.
 
 **click_square:**
 - `target_squares` boş olmayan liste, her eleman geçerli kare adı (`chess.SQUARE_NAMES`) → 400
@@ -110,8 +118,8 @@ Mevcut anlatım adımlarının doğrulaması korunur (başlık veya metin gerekl
 
 **Backend (pytest):**
 - Geçerli `board_exercises` (üç tür) → 201
-- Geçersiz FEN → 400
-- Geçersiz pozisyon (şahsız) → 400
+- Geçersiz FEN (parse edilemeyen, örn. "xyz") → 400
+- **Şahsız öğretim pozisyonu → 201** (reddedilmemeli — Zafer'in gerçek FEN'leri böyle; `is_valid()` kullanılmadığının kanıtı)
 - `click_square`: boş `target_squares` → 400; geçersiz kare ("z9") → 400
 - `move_piece`: `piece_square` boş kare → 400; illegal hedef → 400; terfi hamlesi → 400
 - `identify_piece`: `correct_index` aralık dışı → 400; 1 şık → 400
