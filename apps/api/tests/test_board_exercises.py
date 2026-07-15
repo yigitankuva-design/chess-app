@@ -1,0 +1,153 @@
+import pytest
+from chess_api.models.module import Module, Lesson
+
+
+async def _teacher_token(client, email="be@t.com"):
+    r = await client.post("/auth/teacher/signup", json={
+        "email": email, "password": "guvenli12345", "name": "Teacher",
+    })
+    return r.json()["access_token"]
+
+
+async def _lesson(db, order=1):
+    m = Module(order_index=order, name=f"M{order}", description="d", icon="pawn")
+    db.add(m)
+    await db.commit()
+    await db.refresh(m)
+    les = Lesson(module_id=m.id, order_index=1, title="Ders", estimated_minutes=10, published=False)
+    db.add(les)
+    await db.commit()
+    await db.refresh(les)
+    return les
+
+
+async def _post_step(client, tok, lesson_id, exercises):
+    return await client.post(
+        f"/admin/lessons/{lesson_id}/steps",
+        headers={"Authorization": f"Bearer {tok}"},
+        json={"type": "explanation",
+              "content_json": {"title": "T", "body": "b", "board_exercises": exercises}},
+    )
+
+
+@pytest.mark.asyncio
+async def test_kingless_teaching_positions_accepted(client, db):
+    """EN KRİTİK: Zafer'in gerçek FEN'leri şahsız — reddedilmemeli (is_valid kullanılmamalı)."""
+    les = await _lesson(db, order=40)
+    tok = await _teacher_token(client, email="be1@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "Koyu kareye tikla",
+         "fen": "8/8/8/8/8/8/8/8 w - - 0 1", "target_squares": ["a1", "c3"]},
+        {"type": "move_piece", "instruction": "Piyonu e4'e tasi",
+         "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1", "piece_square": "e2", "target_squares": ["e4"]},
+        {"type": "identify_piece", "instruction": "Bu tas ne?",
+         "fen": "8/8/8/8/4n3/8/8/8 b - - 0 1", "highlight_square": "e4",
+         "options": ["Piyon", "At"], "correct_index": 1},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_explanation_without_exercises_still_ok(client, db):
+    les = await _lesson(db, order=41)
+    tok = await _teacher_token(client, email="be2@t.com")
+    r = await client.post(f"/admin/lessons/{les.id}/steps",
+                          headers={"Authorization": f"Bearer {tok}"},
+                          json={"type": "explanation", "content_json": {"title": "T", "body": "b"}})
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_unparseable_fen_rejected(client, db):
+    les = await _lesson(db, order=42)
+    tok = await _teacher_token(client, email="be3@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "x", "fen": "bu-fen-degil", "target_squares": ["a1"]},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_empty_instruction_rejected(client, db):
+    les = await _lesson(db, order=43)
+    tok = await _teacher_token(client, email="be4@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "", "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+         "target_squares": ["a1"]},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_click_square_bad_targets_rejected(client, db):
+    les = await _lesson(db, order=44)
+    tok = await _teacher_token(client, email="be5@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "x", "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+         "target_squares": []},
+    ])
+    assert r.status_code == 400
+    r2 = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "x", "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+         "target_squares": ["z9"]},
+    ])
+    assert r2.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_move_piece_validations(client, db):
+    les = await _lesson(db, order=45)
+    tok = await _teacher_token(client, email="be6@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x", "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
+         "piece_square": "a1", "target_squares": ["a2"]},
+    ])
+    assert r.status_code == 400
+    r2 = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x", "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
+         "piece_square": "e2", "target_squares": ["h8"]},
+    ])
+    assert r2.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_promotion_move_rejected(client, db):
+    """Terfi {from,to} ile ifade edilemiyor -> legal bulunmaz -> 400."""
+    les = await _lesson(db, order=46)
+    tok = await _teacher_token(client, email="be7@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x", "fen": "k7/4P3/8/8/8/8/8/4K3 w - - 0 1",
+         "piece_square": "e7", "target_squares": ["e8"]},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_identify_piece_validations(client, db):
+    les = await _lesson(db, order=47)
+    tok = await _teacher_token(client, email="be8@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "identify_piece", "instruction": "x", "fen": "8/8/8/8/4n3/8/8/8 b - - 0 1",
+         "highlight_square": "e4", "options": ["A", "B"], "correct_index": 5},
+    ])
+    assert r.status_code == 400
+    r2 = await _post_step(client, tok, les.id, [
+        {"type": "identify_piece", "instruction": "x", "fen": "8/8/8/8/4n3/8/8/8 b - - 0 1",
+         "highlight_square": "e4", "options": ["A"], "correct_index": 0},
+    ])
+    assert r2.status_code == 400
+    r3 = await _post_step(client, tok, les.id, [
+        {"type": "identify_piece", "instruction": "x", "fen": "8/8/8/8/4n3/8/8/8 b - - 0 1",
+         "highlight_square": "a1", "options": ["A", "B"], "correct_index": 0},
+    ])
+    assert r3.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_unknown_exercise_type_rejected(client, db):
+    les = await _lesson(db, order=48)
+    tok = await _teacher_token(client, email="be9@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sarki_soyle", "instruction": "x", "fen": "8/8/8/8/8/8/8/8 w - - 0 1"},
+    ])
+    assert r.status_code == 400

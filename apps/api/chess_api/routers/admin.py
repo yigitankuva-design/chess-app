@@ -1,4 +1,5 @@
 from datetime import datetime
+import chess
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -520,6 +521,74 @@ async def delete_lesson(
     return {"deleted": True}
 
 
+def _validate_board_exercises(exercises: list) -> None:
+    """Anlatım adımının içindeki board_exercises dizisini doğrular.
+
+    ÖNEMLİ: board.is_valid() KULLANILMAZ — hocanın öğretim pozisyonları kasten şahsızdır
+    (boş tahta, tek piyon, tek at). is_valid() onlara False döner ve mevcut 60 alıştırmayı
+    reddederdi. Sadece FEN parse edilebiliyor mu bakılır. legal_moves şahsız tahtada çalışır.
+    """
+    if not isinstance(exercises, list):
+        raise HTTPException(status_code=400, detail="board_exercises bir liste olmalı")
+
+    for ex in exercises:
+        if not isinstance(ex, dict):
+            raise HTTPException(status_code=400, detail="Alıştırma nesne olmalı")
+        ex_type = ex.get("type")
+        if ex_type not in ("click_square", "move_piece", "identify_piece"):
+            raise HTTPException(status_code=400, detail=f"Geçersiz alıştırma türü: {ex_type}")
+        if not (ex.get("instruction") or "").strip():
+            raise HTTPException(status_code=400, detail="Alıştırma talimatı boş olamaz")
+
+        fen = ex.get("fen")
+        if not fen:
+            raise HTTPException(status_code=400, detail="Alıştırma için pozisyon (fen) gerekli")
+        try:
+            board = chess.Board(fen)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Pozisyon (fen) okunamadı")
+
+        def _squares(key: str) -> list[str]:
+            vals = ex.get(key)
+            if not isinstance(vals, list) or not vals:
+                raise HTTPException(status_code=400, detail=f"{key} boş olamaz")
+            for s in vals:
+                if s not in chess.SQUARE_NAMES:
+                    raise HTTPException(status_code=400, detail=f"Geçersiz kare: {s}")
+            return vals
+
+        if ex_type == "click_square":
+            _squares("target_squares")
+
+        elif ex_type == "move_piece":
+            piece_sq = ex.get("piece_square")
+            if piece_sq not in chess.SQUARE_NAMES:
+                raise HTTPException(status_code=400, detail=f"Geçersiz taş karesi: {piece_sq}")
+            if board.piece_at(chess.parse_square(piece_sq)) is None:
+                raise HTTPException(status_code=400, detail=f"{piece_sq} karesinde taş yok")
+            for target in _squares("target_squares"):
+                move = chess.Move.from_uci(piece_sq + target)
+                if move not in board.legal_moves:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{piece_sq}{target} bu pozisyonda kurallara uygun değil "
+                               f"(terfi içeren hamleler desteklenmiyor)",
+                    )
+
+        elif ex_type == "identify_piece":
+            hl = ex.get("highlight_square")
+            if hl not in chess.SQUARE_NAMES:
+                raise HTTPException(status_code=400, detail=f"Geçersiz vurgu karesi: {hl}")
+            if board.piece_at(chess.parse_square(hl)) is None:
+                raise HTTPException(status_code=400, detail=f"{hl} karesinde taş yok")
+            options = ex.get("options")
+            if not isinstance(options, list) or len(options) < 2:
+                raise HTTPException(status_code=400, detail="En az 2 şık gerekli")
+            ci = ex.get("correct_index")
+            if not isinstance(ci, int) or ci < 0 or ci >= len(options):
+                raise HTTPException(status_code=400, detail="Doğru şık geçersiz")
+
+
 def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
     """Editörden gelen içerik oynatıcının beklediği şekle uymalı; uymazsa çocukta bozuk görünür."""
     if step_type == LessonStepType.quiz:
@@ -537,6 +606,8 @@ def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
     elif step_type == LessonStepType.explanation:
         if not content.get("title") and not content.get("body"):
             raise HTTPException(status_code=400, detail="Anlatım için başlık veya metin gerekli")
+        if "board_exercises" in content:
+            _validate_board_exercises(content["board_exercises"])
 
 
 def _step_out(s: LessonStep) -> dict:
