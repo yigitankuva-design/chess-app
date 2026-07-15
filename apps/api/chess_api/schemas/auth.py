@@ -109,3 +109,48 @@ class AdminLessonSummary(BaseModel):
     title: str
     estimated_minutes: int
     step_count: int
+
+
+class ContentStepIO(BaseModel):
+    id: int | None = None
+    order_index: int
+    type: str
+    content_json: dict
+    correct_answer_json: dict | None = None
+
+
+class ContentLessonIO(BaseModel):
+    id: int | None = None
+    order_index: int
+    title: str = Field(min_length=1, max_length=160)
+    estimated_minutes: int = 10
+    steps: list[ContentStepIO] = []
+
+
+class ContentModuleIO(BaseModel):
+    id: int | None = None
+    order_index: int
+    name: str = Field(min_length=1, max_length=120)
+    description: str = ""
+    icon: str = "default"
+    lessons: list[ContentLessonIO] = []
+
+
+class ContentExport(BaseModel):
+    exported_at: datetime
+    version: int = 1
+    modules: list[ContentModuleIO]
+
+
+class ContentImportRequest(BaseModel):
+    version: int
+    modules: list[ContentModuleIO]
+
+
+class ContentImportResult(BaseModel):
+    modules_updated: int
+    modules_created: int
+    lessons_updated: int
+    lessons_created: int
+    steps_updated: int
+    steps_created: int
