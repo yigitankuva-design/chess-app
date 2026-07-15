@@ -12,6 +12,53 @@ export default function AdminContentPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  async function refresh() {
+    const token = getToken();
+    const r = await fetch(`${API_BASE}/admin/content`, { headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) setRows(await r.json());
+  }
+
+  async function addModule() {
+    if (newName.trim().length < 1) return;
+    setAdding(true);
+    setMsg(null);
+    try {
+      const token = getToken();
+      const r = await fetch(`${API_BASE}/admin/modules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newName.trim(), description: '', icon: 'default' }),
+      });
+      if (!r.ok) { setMsg('Düzey eklenemedi'); setAdding(false); return; }
+      setNewName('');
+      await refresh();
+      setMsg('Düzey eklendi');
+    } catch {
+      setMsg('Düzey eklenemedi');
+    }
+    setAdding(false);
+  }
+
+  async function deleteModule(id: number, name: string) {
+    if (!confirm(`"${name}" düzeyini silmek istiyor musun?`)) return;
+    setMsg(null);
+    try {
+      const token = getToken();
+      const r = await fetch(`${API_BASE}/admin/modules/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.status === 409) { setMsg('Bu düzeyde ders var. Önce dersleri taşıyın veya silin.'); return; }
+      if (!r.ok) { setMsg('Silinemedi'); return; }
+      await refresh();
+      setMsg('Düzey silindi');
+    } catch {
+      setMsg('Silinemedi');
+    }
+  }
 
   useEffect(() => {
     const token = getToken();
@@ -102,6 +149,19 @@ export default function AdminContentPage() {
         </label>
         {msg && <span className="text-sm n-muted">{msg}</span>}
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="Yeni düzey adı (örn. İleri Düzey)"
+          className="neon-input max-w-xs"
+        />
+        <button onClick={addModule} disabled={adding || newName.trim().length < 1}
+          className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-50 transition-colors text-sm">
+          {adding ? 'Ekleniyor...' : 'Düzey ekle'}
+        </button>
+      </div>
       {rows.length === 0 ? (
         <p className="n-muted">Modül bulunamadı.</p>
       ) : (
@@ -119,6 +179,13 @@ export default function AdminContentPage() {
                 </span>
                 <p className="font-semibold n-text flex-1">{m.name}</p>
                 <span className={`neon-pill ${accent}`}>{m.lesson_count} ders →</span>
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteModule(m.id, m.name); }}
+                  aria-label={`${m.name} düzeyini sil`}
+                  className="ml-2 px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs transition-colors"
+                >
+                  Sil
+                </button>
               </Link>
             );
           })}
