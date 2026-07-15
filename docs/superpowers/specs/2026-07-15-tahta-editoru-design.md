@@ -1,125 +1,129 @@
-# Parça 2 — Tahta Editörü — Tasarım
+# Parça 2 — Tahta Editörü — Tasarım (v2, düzeltilmiş)
 
 Tarih: 2026-07-15
 Durum: Onaylandı (kullanıcı, sohbet içinde)
 
+> **v1 iptal edildi.** İlk sürüm `inline_exercise` + `LessonPlayer` üzerine yazılmıştı. Kod incelemesi bunun **ölü kod** olduğunu, canlı sistemin farklı çalıştığını gösterdi. Bu sürüm gerçek sisteme göre yazıldı.
+
 ## Amaç
 
-Zafer hoca panelden tahtaya taşları dizip pozisyon kurabilsin, doğru cevabı (hamle veya kare) işaretleyip alıştırma oluşturabilsin. Oluşturduğu alıştırma çocuklarda doğru çalışsın — yani üretilen JSON oynatıcının beklediği şekle uysun ve pozisyon/hamle satranç kurallarına uygun olsun.
+Zafer hoca panelden tahtaya taş dizip pozisyon kurabilsin, doğru cevabı işaretleyip alıştırma oluşturabilsin — ve bu alıştırma **mevcut 60 alıştırmasıyla birebir aynı formatta**, çocukların gerçekten kullandığı oynatıcıda çalışsın.
 
-## Mevcut Durum (kod üzerinden doğrulandı)
+## Gerçek Sistem (kod + canlı veriyle doğrulandı)
 
-**Oynatıcının `inline_exercise` için beklediği şekil** (`components/lesson-steps/InlineExerciseStep.tsx`):
+| | Değer |
+|---|---|
+| Canlı oynatıcı | `app/(child)/modules/[id]/page.tsx` — çocuklar `/home → Dersler → /modules/{id}` yolundan girer |
+| Ölü kod | `app/(child)/lesson/[id]` + `LessonPlayer` + `InlineExerciseStep` — **hiçbir yerden link verilmiyor**, dokunulmayacak |
+| Adım türü | `explanation` |
+| Alıştırmaların yeri | Anlatım adımının `content_json` içinde `board_exercises: []` dizisi |
+| Render eden | `components/lesson-steps/BoardExercise.tsx` |
+| Cevap kontrolü | **İstemci tarafında** (doğru cevap içeriğin içinde) |
+
+**Canlı içerik:** "Tahta ve Taşlar" dersi = 6 anlatım adımı, her birinde 10 alıştırma = **60 alıştırma**.
+
+**Anlatım adımının content_json şekli:**
+```json
+{ "title": "...", "body": "...", "board_exercises": [ ... ] }
+```
+
+**Alıştırma tipleri** (`BoardExercise.tsx`'ten birebir):
 ```ts
-content: { title?: string; body?: string; fen?: string; task_type?: 'click_square' | 'make_move' }
+ClickSquareEx   { type:'click_square',   instruction, fen, target_squares: string[], hint_squares?: string[], success_msg?, fail_msg? }
+MovePieceEx     { type:'move_piece',     instruction, fen, piece_square: string, target_squares: string[], hint_squares?: string[], success_msg?, fail_msg? }
+IdentifyPieceEx { type:'identify_piece', instruction, fen, highlight_square: string, options: string[], correct_index: number, success_msg? }
 ```
 
-**İstemcinin gönderdiği cevap:**
-- `click_square` → `{ square: "e4" }`
-- `make_move` → `{ from: "e2", to: "e4" }`
+`target_squares` **dizidir** — birden çok doğru kare olabilir.
 
-**Sunucunun cevap kontrolü** (`routers/lessons.py`, `submit_step_answer`):
-```python
-expected = step.correct_answer_json or {}
-is_correct = all(payload.answer_json.get(k) == v for k, v in expected.items()) if expected else True
-```
+**Kütüphaneler:** backend `python-chess==1.2.0`, frontend `chess.js` + `react-chessboard` — ikisi de kurulu, yeni bağımlılık yok.
 
-Yani sunucu **satranç bilmiyor** — sadece sözlük karşılaştırması yapıyor.
-
-**Kütüphaneler:** backend `python-chess==1.2.0` ✓, frontend `chess.js` + `react-chessboard` ✓ (ikisi de kurulu, yeni bağımlılık gerekmez).
-
-**Canlı durum:** production'da hiç `inline_exercise` adımı yok (ders 42 = 6 anlatım). Bu, sunucu davranışını sertleştirmeyi güvenli kılıyor.
-
-## Çözülen İki Kritik Sorun
-
-1. **Sunucu satranç doğrulaması yapmıyor.** Zafer geçersiz bir pozisyon kurar veya kurallara aykırı bir hamleyi "doğru" işaretlerse sistem yakalamaz; çocuk o alıştırmayı asla çözemez. → Kayıtta python-chess ile doğrulanacak.
-2. **`correct_answer_json` boşsa her cevap "doğru" sayılıyor** (`if expected else True`). Cevabı işaretlenmemiş alıştırma tüm çocukları geçirir. → Düzeltilecek.
-
-## 1. Tahta Editörü Bileşeni (frontend)
+## 1. Tahta Editörü Bileşeni
 
 **Yaklaşım:** taş paleti + tıkla-yerleştir (lichess/chess.com standardı).
 
-- **Palet:** beyaz ve siyah için Şah, Vezir, Kale, Fil, At, Piyon + **Silgi**.
-- **Yerleştirme:** paletten taş seç → tahtada kareye tıkla → taş yerleşir. Silgi seçiliyken kareye tıkla → taş kalkar.
-- **Kısayollar:** "Başlangıç konumu", "Tahtayı temizle".
-- **Sıra seçimi:** "Hamle sırası: Beyaz / Siyah" — `make_move` için şart (FEN'in aktif renk alanı).
-- **Çıktı:** FEN.
+- **Palet:** beyaz/siyah Şah, Vezir, Kale, Fil, At, Piyon + **Silgi**
+- **Yerleştirme:** paletten taş seç → kareye tıkla → yerleşir. Silgi ile taş kaldır.
+- **Kısayollar:** "Başlangıç konumu", "Tahtayı temizle"
+- **Hamle sırası:** Beyaz/Siyah seçimi (FEN'in aktif renk alanı) — `move_piece` doğrulaması için gerekli
+- **Çıktı:** FEN
 
-Bileşen `components/BoardEditor.tsx` olarak yazılır; mevcut `ChessBoard`/react-chessboard kullanılır. Pozisyon state'i kare→taş haritası olarak tutulur, FEN'e çevrilir.
+Yeni bileşen: `components/BoardEditor.tsx`. Mevcut `ChessBoard` **kullanılamaz** — o satranç kurallarını zorluyor (sadece sıradaki rengin taşını seçtiriyor, sadece legal hamleye izin veriyor), pozisyon kurmaya uygun değil. `react-chessboard` doğrudan kullanılır (`allowDragging: false` + `onSquareClick` ile yerleştirme).
 
-## 2. Alıştırma Kurma Akışı (panel)
+## 2. Alıştırma Kurma Akışı
 
-Adım editörü sayfasına (`/admin/content/lesson/[lessonId]`) "Tahta alıştırması ekle" bölümü eklenir:
+Adım editörü sayfasında (`/admin/content/lesson/[lessonId]`) her **anlatım** adımı için "Alıştırmalar (N)" bölümü açılır. İçinde:
 
-1. Pozisyonu kur (tahta editörü) + hamle sırası seç
-2. Görev türü: **Hamleyi yap** / **Kareye tıkla**
-3. Doğru cevabı işaretle:
-   - *Hamleyi yap* → hoca hamleyi tahtada oynar (chess.js sadece legal hamleye izin verir) → `{from, to}`
-   - *Kareye tıkla* → hoca kareye tıklar → `{square}`
-4. Başlık + açıklama (çocuğa ne sorulduğu: "En iyi hamleyi oyna")
-5. Kaydet → `POST /admin/lessons/{id}/steps` (mevcut endpoint) ile:
-   - `type: "inline_exercise"`
-   - `content_json: {title, body, fen, task_type}`
-   - `correct_answer_json: {from,to}` veya `{square}`
+**Mevcut alıştırmalar:** liste (tip + instruction özeti) + sil + sırala
+**Yeni alıştırma ekle:**
+1. Pozisyonu kur (tahta editörü) + hamle sırası
+2. Tür seç: **Kareye tıkla** / **Taşı oynat** / **Taşı tanı**
+3. Talimat metni (`instruction`) — çocuğa ne soruluyor
+4. Doğru cevabı işaretle:
+   - *Kareye tıkla* → tahtada bir veya **birden çok** kare seç → `target_squares[]`
+   - *Taşı oynat* → önce taşı seç (`piece_square`), sonra gidebileceği kare(ler)i seç → `target_squares[]`
+   - *Taşı tanı* → vurgulanacak kareyi seç (`highlight_square`) + şıkları yaz + doğru şıkkı işaretle
+5. Opsiyonel: `hint_squares`, `success_msg`, `fail_msg`
+6. Kaydet → seçilen adımın `content_json.board_exercises` dizisine eklenir (mevcut `PATCH /admin/steps/{id}` ile)
 
-## 3. Doğrulama — İki Katman
+## 3. Backend Doğrulama (python-chess)
 
-**Frontend (chess.js):** pozisyon kurulurken ve hamle işaretlenirken anında geri bildirim; tahta zaten kurallara aykırı hamleyi kabul etmez.
+`_validate_step_content` içinde `explanation` için `board_exercises` varsa her alıştırma doğrulanır:
 
-**Backend (python-chess) — asıl güvence.** `create_step`/`update_step` içindeki `_validate_step_content` genişletilir; `inline_exercise` için:
+**Ortak:**
+- `instruction` boş olamaz → 400
+- `fen` zorunlu; `chess.Board(fen)` parse edilebilmeli → 400
+- `board.is_valid()` → pozisyon geçerli olmalı (her tarafta tam 1 şah vb.) → 400
 
-- `fen` zorunlu; `chess.Board(fen)` parse edilebilmeli → aksi halde 400
-- Pozisyon geçerli olmalı: `board.is_valid()` (her tarafta tam 1 şah, oynamayan taraf şahta değil vb.) → aksi halde 400
-- `task_type` `click_square` veya `make_move` olmalı → aksi halde 400
-- **`correct_answer_json` boş olamaz** → 400
-- `make_move` → `correct_answer_json` `{from, to}` içermeli ve bu hamle o pozisyonda **legal** olmalı (`chess.Move.from_uci(from+to) in board.legal_moves`) → aksi halde 400
-- `click_square` → `correct_answer_json` `{square}` içermeli, geçerli kare adı (a1–h8) olmalı → aksi halde 400
+**click_square:**
+- `target_squares` boş olmayan liste, her eleman geçerli kare adı (`chess.SQUARE_NAMES`) → 400
 
-Not: `_validate_step_content` şu an sadece `content` alıyor; `inline_exercise` doğrulaması `correct_answer_json`'a da ihtiyaç duyduğu için imzası genişletilir (`content`, `correct_answer`).
+**move_piece:**
+- `piece_square` geçerli kare ve o karede **taş olmalı** → 400
+- `target_squares` boş olmayan liste, geçerli kare adları → 400
+- Her hedef için `piece_square→target` hamlesi o pozisyonda **legal olmalı** → 400
+  (Terfi hamleleri `{from,to}` ile ifade edilemediği için legal bulunmaz → doğal olarak 400; hocaya "terfi içeren hamle desteklenmiyor" denir.)
 
-## 4. Sunucu Cevap Kontrolü Düzeltmesi
+**identify_piece:**
+- `highlight_square` geçerli kare, o karede taş olmalı → 400
+- `options` en az 2 eleman → 400
+- `correct_index` 0 ≤ i < len(options) → 400
 
-`routers/lessons.py` → `submit_step_answer`:
+Mevcut anlatım adımlarının doğrulaması korunur (başlık veya metin gerekli). `board_exercises` yoksa doğrulama atlanır → **Zafer'in mevcut 60 alıştırması etkilenmez** (zaten geçerli, ama yine de import/güncelleme sırasında doğrulanır).
 
-```python
-expected = step.correct_answer_json or {}
-if not expected:
-    is_correct = step.type != LessonStepType.inline_exercise
-else:
-    is_correct = all(payload.answer_json.get(k) == v for k, v in expected.items())
-```
+## 4. Panel Entegrasyonu
 
-Yani: cevabı tanımlanmamış bir **alıştırma** artık otomatik "doğru" saymaz. Diğer adım türlerinin (anlatım) mevcut davranışı korunur — anlatımda cevap yok, "doğru" dönmesi normal.
-
-Güvenli: canlıda hiç `inline_exercise` yok.
+- `/admin/content/lesson/[lessonId]` sayfasında her anlatım adımı kartına **"Alıştırmalar (N)"** butonu
+- Tıklanınca o adımın alıştırma listesi + tahta editörlü ekleme formu açılır
+- Kaydetme: `PATCH /admin/steps/{id}` ile `content_json` bütün olarak güncellenir (mevcut endpoint, yeni endpoint gerekmez)
 
 ## 5. Kapsam Dışı
 
-- Anlatım adımında tahta gösterme (`fen` + `highlight_squares`) — oynatıcı destekliyor ama bu turda yok.
-- Resimli alıştırma (Parça 3).
-- **Çok hamleli** alıştırma — tek hamle.
-- **Piyon terfisi** — istemci sadece `{from,to}` gönderiyor, terfi taşı ifade edilemiyor. Terfi içeren hamle işaretlenirse backend legal bulur ama çocuk tarafında terfi taşı belirsiz kalır; bu yüzden editör terfi hamlesini **reddeder** (400) ve hocaya "terfi içeren hamle şu an desteklenmiyor" der. Dürüst sınır.
-- Adım düzenleme ekranında tahta ile **var olan** alıştırmayı görsel düzenleme — bu turda alıştırma ekleme + silme var; düzenleme için sil-yeniden ekle.
+- `inline_exercise` / `LessonPlayer` / `InlineExerciseStep` — ölü kod, dokunulmayacak
+- Cevapların istemcide görünür olması (devtools ile "kopya") — mevcut tasarım böyle; sunucu kontrolüne geçmek ayrı ve büyük iş
+- Resimli alıştırma (Parça 3)
+- Piyon terfisi içeren hamle (istemci `{from,to}` modeli desteklemiyor)
+- Mevcut alıştırmayı görsel düzenleme — bu turda ekleme + silme + sıralama var; düzenleme için sil-yeniden ekle
+- Kilit/kademeli ilerleme — not: `/modules/[id]` sayfasında **adım bazında sıralı kilit zaten var** (`isStepAccessible`, önceki adım bitmeden sonraki açılmıyor). Ders/düzey bazında kilit ayrı iş.
 
 ## 6. Test
 
 **Backend (pytest):**
-- Geçerli `inline_exercise` (make_move, legal hamle) → 201
+- Geçerli `board_exercises` (üç tür) → 201
 - Geçersiz FEN → 400
-- Geçersiz pozisyon (şah yok / iki şah) → 400
-- `make_move` ama hamle illegal → 400
-- `make_move` ama `correct_answer_json` boş → 400
-- `click_square` geçerli kare → 201; geçersiz kare ("z9") → 400
-- Terfi hamlesi → 400
-- `submit_step_answer`: cevabı olmayan `inline_exercise` → `correct: False` (düzeltme testi)
-- `submit_step_answer`: doğru `{from,to}` → `correct: True`; yanlış → `correct: False`
-- Mevcut testler kırılmaz (anlatım/quiz)
+- Geçersiz pozisyon (şahsız) → 400
+- `click_square`: boş `target_squares` → 400; geçersiz kare ("z9") → 400
+- `move_piece`: `piece_square` boş kare → 400; illegal hedef → 400; terfi hamlesi → 400
+- `identify_piece`: `correct_index` aralık dışı → 400; 1 şık → 400
+- `board_exercises` olmayan anlatım → 201 (mevcut davranış korunur)
+- Canlı formatın birebir kopyası (gerçek örnekten) → 201 (regresyon güvencesi)
+- Mevcut testler kırılmaz
 
 **Frontend:** tsc temiz; mevcut testler kırılmaz.
 
 ## 7. Geriye Uyumluluk (KURAL #3)
 
-- Migration YOK.
-- Mevcut adım türleri (anlatım/quiz) ve endpoint'ler etkilenmez.
-- Cevap kontrolü düzeltmesi sadece `inline_exercise` için davranış değiştirir; canlıda o türde adım yok.
-- Deploy sırası: önce backend (Railway), sonra frontend (Vercel).
+- Migration YOK, yeni endpoint YOK (mevcut `PATCH /admin/steps/{id}` kullanılır)
+- Zafer'in mevcut 60 alıştırması aynı formatta kalır, doğrulamayı geçer
+- Çocuk tarafı oynatıcı (`/modules/[id]`, `BoardExercise`) değişmez
+- Deploy sırası: önce backend (Railway), sonra frontend (Vercel)
