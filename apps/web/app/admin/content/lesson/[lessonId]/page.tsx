@@ -7,6 +7,16 @@ import type { BoardExercise } from '@/components/admin/ExerciseForm';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+const EXERCISE_TYPE_LABELS: Record<string, string> = {
+  click_square: 'Kareye tıkla',
+  move_piece: 'Taşı oynat',
+  identify_piece: 'Taşı tanı',
+};
+
+function exerciseTypeLabel(type: string): string {
+  return EXERCISE_TYPE_LABELS[type] ?? type;
+}
+
 interface QuizQuestion { prompt: string; options: string[]; correct_index: number }
 interface StepRow {
   id: number;
@@ -221,7 +231,7 @@ export default function AdminStepEditorPage() {
                           <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/10">
                             <span className="text-xs n-muted w-6">{idx + 1}</span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs n-muted uppercase">{ex.type}</p>
+                              <p className="text-xs n-muted">{exerciseTypeLabel(ex.type)}</p>
                               <p className="text-sm n-text truncate">{ex.instruction}</p>
                             </div>
                             <button onClick={() => deleteExercise(s, idx)}
