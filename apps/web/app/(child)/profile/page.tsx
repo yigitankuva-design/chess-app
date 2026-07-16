@@ -7,6 +7,7 @@ import { ChessThemeSelector } from '@/components/ChessThemeSelector';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
 import { getSavedAvatar, saveAvatar, avatarEmoji } from '@/lib/avatars';
+import { PowerButton } from '@/components/PowerButton';
 
 interface Me {
   rank_name: string;
@@ -64,9 +65,9 @@ export default function ProfilePage() {
     return (
       <main className="px-4 pt-8 pb-12 max-w-xl mx-auto text-center space-y-4">
         <p className="t-muted">Profil yüklenemedi. Giriş yaptın mı?</p>
-        <button onClick={handleLogout} className="t-btn-ghost py-2 px-4 text-sm">
-          Çıkış Yap
-        </button>
+        <div className="flex justify-center">
+          <PowerButton onClick={handleLogout} />
+        </div>
       </main>
     );
   }
@@ -108,13 +109,13 @@ export default function ProfilePage() {
         <ChessThemeSelector />
       </div>
 
-      {/* Ana sayfa + Çıkış */}
+      {/* Ana sayfa + Çıkış (power ikonu) */}
       <button onClick={() => router.push('/home')} className="w-full t-btn py-3 text-base">
-        🏠 Ana Sayfaya Dön
+        Ana Sayfaya Dön
       </button>
-      <button onClick={handleLogout} className="w-full t-btn-ghost py-3 text-sm">
-        Çıkış Yap
-      </button>
+      <div className="flex justify-center pt-1">
+        <PowerButton onClick={handleLogout} />
+      </div>
 
     </main>
   );

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
+import { PowerButton } from '@/components/PowerButton';
 
 const NAV = [
   { href: '/admin/parents', label: 'Kullanıcılar' },
@@ -32,12 +33,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs n-muted">Bozüyük Satranç Akademisi</p>
         </div>
         <nav className="flex-1 p-2 space-y-1">
-          <Link
-            href="/admin/parents"
-            className="block px-3 py-2 rounded-lg text-sm font-semibold text-cyan-100 bg-cyan-400/15 border border-cyan-400/40 hover:bg-cyan-400/25 transition-all mb-1"
-          >
-            🏠 Ana Sayfaya Dön
-          </Link>
           {NAV.map((n) => {
             const active = pathname === n.href || pathname.startsWith(n.href + '/');
             return (
@@ -55,12 +50,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
-        <button
-          onClick={() => { auth.logout(); router.replace('/'); }}
-          className="m-2 px-3 py-2 rounded-lg text-sm text-white/60 hover:bg-white/5 hover:text-white/90 text-left transition-colors"
-        >
-          Çıkış
-        </button>
+        <div className="p-3 border-t border-white/10 space-y-3">
+          <Link
+            href="/admin/parents"
+            className="block text-center px-3 py-2 rounded-lg text-sm font-semibold text-cyan-100 bg-cyan-400/15 border border-cyan-400/40 hover:bg-cyan-400/25 transition-all"
+          >
+            Ana Sayfaya Dön
+          </Link>
+          <div className="flex justify-center">
+            <PowerButton onClick={() => { auth.logout(); router.replace('/'); }} />
+          </div>
+        </div>
       </aside>
       <main className="flex-1 p-6">{children}</main>
     </div>
