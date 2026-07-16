@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export type ChessThemeId = 'classic' | 'night';
+export type ChessThemeId = 'classic' | 'night' | 'neon';
 
 export interface ChessTheme {
   id: ChessThemeId;
@@ -53,9 +53,25 @@ export const CHESS_THEMES: ChessTheme[] = [
     textColor:    '#DEE3E6',
     cardBg:       'rgba(40, 38, 36, 0.97)',
   },
+  {
+    id: 'neon',
+    name: 'Neon',
+    emoji: '⚡',
+    description: 'Koyu neon tema (uygulama teması)',
+    lightSquare: '#3d4a63',
+    darkSquare:  '#222a3a',
+    highlightColor: 'rgba(34, 211, 238, 0.55)',
+    selectedColor:  'rgba(34, 211, 238, 0.45)',
+    lastMoveColor:  'rgba(139, 92, 246, 0.40)',
+    boardBg:    '#0e0e17',
+    accentColor:  '#22d3ee',
+    accentLight:  '#67e8f9',
+    textColor:    '#e7e7f0',
+    cardBg:       '#0e0e17',
+  },
 ];
 
-export const DEFAULT_THEME_ID: ChessThemeId = 'classic';
+export const DEFAULT_THEME_ID: ChessThemeId = 'neon';
 
 export function getTheme(id: ChessThemeId): ChessTheme {
   return CHESS_THEMES.find((t) => t.id === id) ?? CHESS_THEMES[0];

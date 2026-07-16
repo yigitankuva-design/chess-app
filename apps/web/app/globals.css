@@ -67,16 +67,53 @@ body {
   --t-prog-fill: #759900;
 }
 
+/* NEON — uygulama teması (admin ile aynı koyu-neon). Varsayılan. */
+[data-chess-theme='neon'] {
+  --t-bg:        #07070c;
+  --t-surface:   #0e0e17;
+  --t-surface-2: #14141f;
+  --t-border:    rgba(34,211,238,0.35);
+  --t-text-1:    #e7e7f0;
+  --t-text-2:    #9a9aae;
+  --t-accent:    #22d3ee;
+  --t-accent-dk: #0891b2;
+  --t-accent-fg: #04121a;
+  --t-nav-bg:    rgba(0,0,0,0.4);
+  --t-nav-text:  #9a9aae;
+  --t-nav-act:   #e7e7f0;
+  --t-ok-bg:     rgba(132,204,22,0.12);
+  --t-ok-bd:     #84cc16;
+  --t-ok-text:   #bef264;
+  --t-err-bg:    rgba(244,63,94,0.12);
+  --t-err-bd:    #f43f5e;
+  --t-err-text:  #fb7185;
+  --t-prog-bg:   rgba(255,255,255,0.08);
+  --t-prog-fill: #22d3ee;
+  --t-glow:      rgba(34,211,238,0.45);
+}
+
+/* Glow yalnızca neon temada; diğer temalarda şeffaf (etkisiz). */
+:root, [data-chess-theme='classic'], [data-chess-theme='night'] { --t-glow: transparent; }
+
 
 /* ═══════════════════════════════════════════
    UTILITY CLASSES
 ═══════════════════════════════════════════ */
 
-/* Page shell */
+/* Page shell — koyu zemin SABİT tam-ekran katmanda (mobilde beyaz alan olmaz) */
 .t-page {
+  position: relative;
   background: var(--t-bg);
   color: var(--t-text-1);
   transition: background-color 0.3s ease, color 0.2s ease;
+}
+.t-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--t-bg);
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* Cards */
@@ -85,6 +122,7 @@ body {
   border: 1px solid var(--t-border);
   border-radius: 8px;
   color: var(--t-text-1);
+  box-shadow: 0 0 18px -6px var(--t-glow);
   transition: background-color 0.25s ease, border-color 0.2s ease;
 }
 
@@ -96,12 +134,13 @@ body {
   border-radius: 8px;
   color: var(--t-text-1);
   text-decoration: none;
+  box-shadow: 0 0 18px -6px var(--t-glow);
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .t-card-i:hover {
   transform: translateY(-2px);
   border-color: var(--t-accent);
-  box-shadow: 0 4px 18px rgba(0,0,0,0.13);
+  box-shadow: 0 0 26px -4px var(--t-glow), 0 4px 18px rgba(0,0,0,0.25);
 }
 .t-card-i:active { transform: translateY(0); }
 
@@ -146,10 +185,11 @@ body {
   line-height: 1;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 0 22px -6px var(--t-glow);
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.2s ease;
   white-space: nowrap;
 }
-.t-btn:hover  { background: var(--t-accent-dk); }
+.t-btn:hover  { background: var(--t-accent-dk); box-shadow: 0 0 30px -5px var(--t-glow); }
 .t-btn:active { transform: scale(0.97); }
 .t-btn:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 3px; }
 
@@ -189,13 +229,14 @@ body {
   text-align: center;
   color: var(--t-text-1);
   text-decoration: none;
+  box-shadow: 0 0 18px -6px var(--t-glow);
   transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
   min-height: 90px;
 }
 .t-feat:hover {
   border-color: var(--t-accent);
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 0 26px -4px var(--t-glow), 0 4px 20px rgba(0,0,0,0.25);
 }
 .t-feat:active { transform: translateY(0); }
 
