@@ -177,11 +177,8 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
   const isStepDone = (lessonId: number, stepId: number) =>
     doneSteps.has(`${lessonId}_${stepId}`);
 
-  const isStepAccessible = (lessonId: number, steps: Step[], idx: number) => {
-    if (!hydrated) return false;
-    if (idx === 0) return true;
-    return isStepDone(lessonId, steps[idx - 1].id);
-  };
+  // Kilitler kaldırıldı — tüm adımlar (alt konular) her zaman erişilebilir.
+  const isStepAccessible = (_lessonId: number, _steps: Step[], _idx: number) => true;
 
   const markStepDone = useCallback((lessonId: number, stepId: number, steps: Step[]) => {
     const key = `${lessonId}_${stepId}`;

@@ -87,18 +87,12 @@ export function AppNav() {
         {title === '' ? (
           <>
             <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-6 w-auto flex-shrink-0" />
-            <span
-              className="text-sm font-bold tracking-wide truncate"
-              style={navActiveStyle}
-            >
+            <span className="text-sm font-extrabold tracking-wide truncate t-premium">
               Bozüyük Satranç Akademisi
             </span>
           </>
         ) : (
-          <p
-            className="text-sm font-semibold tracking-wide truncate"
-            style={navActiveStyle}
-          >
+          <p className="text-sm font-bold tracking-wide truncate t-premium">
             {title}
           </p>
         )}

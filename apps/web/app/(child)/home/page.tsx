@@ -37,12 +37,12 @@ export default function ChildHomePage() {
           <span className="text-2xl">🏅</span>
           <div>
             <p className="text-xs t-muted uppercase tracking-widest">Sporcu</p>
-            <p className="text-lg font-bold">{athleteName}</p>
+            <p className="text-2xl font-extrabold t-premium">{athleteName}</p>
           </div>
         </div>
       )}
       <section aria-label="Hızlı Erişim">
-        <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-3">
+        <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3">
           Hızlı Erişim
         </p>
 
@@ -91,7 +91,7 @@ export default function ChildHomePage() {
               </Link>
             )}
 
-            <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-3 px-1">
+            <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3 px-1">
               Dersler — Düzey Seç
             </p>
             <div className="space-y-2">
