@@ -178,7 +178,8 @@ export default function AdminContentPage() {
                   <span className={`neon-avatar ${accent} w-[5.5rem] h-[5.5rem] text-4xl font-bold shrink-0`}>
                     {m.order_index}
                   </span>
-                  <p className="font-semibold n-text text-right flex-1">{m.name}</p>
+                  <p className="font-bold n-text text-3xl">{m.name}</p>
+                  <div className="flex-1" />
                   <span className={`neon-pill ${accent}`}>{m.lesson_count} ders →</span>
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteModule(m.id, m.name); }}
