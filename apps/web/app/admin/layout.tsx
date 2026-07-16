@@ -28,9 +28,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="neon-shell flex min-h-screen">
       <aside className="w-56 shrink-0 flex flex-col border-r border-white/10 bg-black/40 backdrop-blur-sm">
-        <div className="p-4 border-b border-white/10">
-          <p className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-400">Admin Paneli</p>
-          <p className="text-xs n-muted">Bozüyük Satranç Akademisi</p>
+        <div className="p-4 border-b border-white/10 text-center">
+          <p className="text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-300 to-indigo-400 drop-shadow-[0_0_14px_rgba(34,211,238,0.45)]">
+            Admin Paneli
+          </p>
+          <p className="text-[0.7rem] n-muted mt-1.5 tracking-wide uppercase">Bozüyük Satranç Akademisi</p>
+          <p className="mt-2 text-3xl font-black tracking-[0.35em] pl-[0.35em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-400 drop-shadow-[0_0_18px_rgba(34,211,238,0.55)]">
+            AGEP
+          </p>
         </div>
         <nav className="flex-1 p-2 space-y-1">
           {NAV.map((n) => {
