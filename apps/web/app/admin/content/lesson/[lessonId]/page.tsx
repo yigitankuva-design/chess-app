@@ -68,10 +68,10 @@ export default function AdminStepEditorPage() {
         content_json: { title: expTitle.trim(), body: expBody.trim() },
       }),
     });
-    if (!r.ok) { setMsg('Anlatım eklenemedi'); setBusy(false); return; }
+    if (!r.ok) { setMsg('Alt konu eklenemedi'); setBusy(false); return; }
     setExpTitle(''); setExpBody('');
     await refresh();
-    setMsg('Anlatım eklendi');
+    setMsg('Alt konu eklendi');
     setBusy(false);
   }
 
@@ -201,7 +201,7 @@ export default function AdminStepEditorPage() {
                   <span className={`neon-avatar ${accent} w-10 h-10 text-xs shrink-0`}>{s.order_index}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs n-muted uppercase tracking-wide">
-                      {s.type === 'explanation' ? 'Anlatım' : s.type === 'quiz' ? 'Soru' : s.type}
+                      {s.type === 'explanation' ? 'Alt Konu' : s.type === 'quiz' ? 'Soru' : s.type}
                     </p>
                     <p className="font-semibold n-text truncate">{stepSummary(s)}</p>
                   </div>
@@ -250,14 +250,14 @@ export default function AdminStepEditorPage() {
       )}
 
       <div className="neon-card neon-cyan p-5 mb-4">
-        <h2 className="font-bold mb-3 n-text">Anlatım ekle</h2>
+        <h2 className="font-bold mb-3 n-text">Alt Konu ekle</h2>
         <input value={expTitle} onChange={(e) => setExpTitle(e.target.value)}
           placeholder="Başlık" className="neon-input mb-2" />
         <textarea value={expBody} onChange={(e) => setExpBody(e.target.value)}
           placeholder="Metin" rows={4} className="neon-input mb-3" />
         <button onClick={addExplanation} disabled={busy}
           className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-50 text-sm transition-colors">
-          Anlatım ekle
+          Alt Konu ekle
         </button>
       </div>
 

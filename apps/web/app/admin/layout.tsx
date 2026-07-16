@@ -32,6 +32,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs n-muted">Bozüyük Satranç Akademisi</p>
         </div>
         <nav className="flex-1 p-2 space-y-1">
+          <Link
+            href="/admin/parents"
+            className="block px-3 py-2 rounded-lg text-sm font-semibold text-cyan-100 bg-cyan-400/15 border border-cyan-400/40 hover:bg-cyan-400/25 transition-all mb-1"
+          >
+            🏠 Ana Sayfaya Dön
+          </Link>
           {NAV.map((n) => {
             const active = pathname === n.href || pathname.startsWith(n.href + '/');
             return (
