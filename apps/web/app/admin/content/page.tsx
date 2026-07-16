@@ -174,10 +174,11 @@ export default function AdminContentPage() {
                 href={`/admin/content/${m.id}`}
                 className={`neon-card neon-card-i ${accent} flex items-center gap-4 p-4`}
               >
-                <span className={`neon-avatar ${accent} w-11 h-11 text-sm shrink-0`}>
+                <span className={`neon-avatar ${accent} w-[5.5rem] h-[5.5rem] text-4xl font-bold shrink-0`}>
                   {m.order_index}
                 </span>
-                <p className="font-semibold n-text flex-1">{m.name}</p>
+                <div className="flex-1" />
+                <p className="font-semibold n-text text-right">{m.name}</p>
                 <span className={`neon-pill ${accent}`}>{m.lesson_count} ders →</span>
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteModule(m.id, m.name); }}
