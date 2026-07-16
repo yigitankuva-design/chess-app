@@ -108,7 +108,10 @@ export default function ProfilePage() {
         <ChessThemeSelector />
       </div>
 
-      {/* Çıkış */}
+      {/* Ana sayfa + Çıkış */}
+      <button onClick={() => router.push('/home')} className="w-full t-btn py-3 text-base">
+        🏠 Ana Sayfaya Dön
+      </button>
       <button onClick={handleLogout} className="w-full t-btn-ghost py-3 text-sm">
         Çıkış Yap
       </button>
