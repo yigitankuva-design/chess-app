@@ -42,6 +42,7 @@ body {
   --t-err-text:  #c03030;
   --t-prog-bg:   #e2ddd5;
   --t-prog-fill: #759900;
+  --t-glow:      transparent;
 }
 
 [data-chess-theme='night'] {
@@ -65,6 +66,7 @@ body {
   --t-err-text:  #f87171;
   --t-prog-bg:   #3a3836;
   --t-prog-fill: #759900;
+  --t-glow:      transparent;
 }
 
 /* NEON — uygulama teması (admin ile aynı koyu-neon). Varsayılan. */
@@ -91,9 +93,6 @@ body {
   --t-prog-fill: #22d3ee;
   --t-glow:      rgba(34,211,238,0.45);
 }
-
-/* Glow yalnızca neon temada; diğer temalarda şeffaf (etkisiz). */
-:root, [data-chess-theme='classic'], [data-chess-theme='night'] { --t-glow: transparent; }
 
 
 /* ═══════════════════════════════════════════
