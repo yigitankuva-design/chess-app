@@ -180,11 +180,13 @@ export default function AdminContentPage() {
                   </span>
                   <p className="font-bold n-text text-3xl">{m.name}</p>
                   <div className="flex-1" />
-                  <span className={`neon-pill ${accent}`}>{m.lesson_count} ders →</span>
+                  <span className={`neon-pill ${accent}`} style={{ fontSize: '1.1rem', padding: '0.35rem 0.9rem' }}>
+                    {m.lesson_count} adet ders →
+                  </span>
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteModule(m.id, m.name); }}
                     aria-label={`${m.name} düzeyini sil`}
-                    className="ml-2 px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs transition-colors"
+                    className="ml-2 px-3 py-1.5 rounded-md text-rose-400 hover:bg-rose-500/10 text-base font-semibold transition-colors"
                   >
                     Sil
                   </button>
