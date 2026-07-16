@@ -172,21 +172,23 @@ export default function AdminContentPage() {
               <Link
                 key={m.id}
                 href={`/admin/content/${m.id}`}
-                className={`neon-card neon-card-i ${accent} flex items-center gap-4 p-4`}
+                className={`neon-card neon-card-i ${accent} p-4`}
               >
-                <span className={`neon-avatar ${accent} w-[5.5rem] h-[5.5rem] text-4xl font-bold shrink-0`}>
-                  {m.order_index}
-                </span>
-                <div className="flex-1" />
-                <p className="font-semibold n-text text-right">{m.name}</p>
-                <span className={`neon-pill ${accent}`}>{m.lesson_count} ders →</span>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteModule(m.id, m.name); }}
-                  aria-label={`${m.name} düzeyini sil`}
-                  className="ml-2 px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs transition-colors"
-                >
-                  Sil
-                </button>
+                <div className="flex items-center gap-4">
+                  <span className={`neon-avatar ${accent} w-[5.5rem] h-[5.5rem] text-4xl font-bold shrink-0`}>
+                    {m.order_index}
+                  </span>
+                  <div className="flex-1" />
+                  <p className="font-semibold n-text text-right">{m.name}</p>
+                  <span className={`neon-pill ${accent}`}>{m.lesson_count} ders →</span>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteModule(m.id, m.name); }}
+                    aria-label={`${m.name} düzeyini sil`}
+                    className="ml-2 px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs transition-colors"
+                  >
+                    Sil
+                  </button>
+                </div>
               </Link>
             );
           })}
