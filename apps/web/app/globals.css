@@ -304,18 +304,20 @@ body {
   position: relative;
   min-height: 100dvh;
   color: #e7e7f0;
-  background:
-    radial-gradient(1100px 380px at 50% -12%, rgba(139,92,246,0.14), transparent 62%),
-    radial-gradient(820px 460px at 88% -6%, rgba(34,211,238,0.10), transparent 58%),
-    radial-gradient(700px 500px at 6% 8%, rgba(132,204,22,0.06), transparent 60%),
-    #07070c;
+  /* Koyu zemin SABİT tam-ekran ::before katmanında; içerik shell'den kısa/uzun
+     olsa da hiçbir yerde beyaz görünmez. */
+  background-color: #07070c;
 }
 .neon-shell::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
-  background-size: 22px 22px;
+  background:
+    radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px) 0 0 / 22px 22px,
+    radial-gradient(1100px 380px at 50% -12%, rgba(139,92,246,0.14), transparent 62%),
+    radial-gradient(820px 460px at 88% -6%, rgba(34,211,238,0.10), transparent 58%),
+    radial-gradient(700px 500px at 6% 8%, rgba(132,204,22,0.06), transparent 60%),
+    #07070c;
   pointer-events: none;
   z-index: 0;
 }
