@@ -16,10 +16,13 @@ export interface BoardExercise {
   hint_squares?: string[];
   success_msg?: string;
   fail_msg?: string;
+  difficulty?: number;
 }
 
 interface Props {
-  onAdd: (ex: BoardExercise) => Promise<void>;
+  onSubmit: (ex: BoardExercise) => Promise<void>;
+  initial?: BoardExercise;
+  onCancel?: () => void;
 }
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -46,20 +49,26 @@ function SquarePicker({ values, onToggle }: { values: string[]; onToggle: (sq: s
   );
 }
 
-export function ExerciseForm({ onAdd }: Props) {
-  const [type, setType] = useState<ExerciseType>('click_square');
-  const [fen, setFen] = useState(EMPTY_FEN);
-  const [turn, setTurn] = useState<'w' | 'b'>('w');
-  const [instruction, setInstruction] = useState('');
-  const [targets, setTargets] = useState<string[]>([]);
-  const [pieceSquare, setPieceSquare] = useState('');
-  const [highlight, setHighlight] = useState('');
-  const [options, setOptions] = useState<string[]>(['', '']);
-  const [correctIndex, setCorrectIndex] = useState(0);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [failMsg, setFailMsg] = useState('');
+export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
+  const [type, setType] = useState<ExerciseType>(initial?.type ?? 'click_square');
+  const [fen, setFen] = useState(initial?.fen ?? EMPTY_FEN);
+  const [turn, setTurn] = useState<'w' | 'b'>(
+    initial?.fen ? ((initial.fen.split(' ')[1] as 'w' | 'b') ?? 'w') : 'w',
+  );
+  const [instruction, setInstruction] = useState(initial?.instruction ?? '');
+  const [targets, setTargets] = useState<string[]>(initial?.target_squares ?? []);
+  const [pieceSquare, setPieceSquare] = useState(initial?.piece_square ?? '');
+  const [highlight, setHighlight] = useState(initial?.highlight_square ?? '');
+  const [options, setOptions] = useState<string[]>(
+    initial?.options && initial.options.length > 0 ? initial.options : ['', ''],
+  );
+  const [correctIndex, setCorrectIndex] = useState(initial?.correct_index ?? 0);
+  const [successMsg, setSuccessMsg] = useState(initial?.success_msg ?? '');
+  const [failMsg, setFailMsg] = useState(initial?.fail_msg ?? '');
+  const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 1);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const editing = !!initial;
 
   function toggleTarget(sq: string) {
     setTargets((prev) => (prev.includes(sq) ? prev.filter((x) => x !== sq) : [...prev, sq]));
@@ -91,7 +100,7 @@ export function ExerciseForm({ onAdd }: Props) {
     const v = validate();
     if (v) { setErr(v); return; }
     setSaving(true);
-    const base: BoardExercise = { type, instruction: instruction.trim(), fen };
+    const base: BoardExercise = { type, instruction: instruction.trim(), fen, difficulty };
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
     if (type === 'click_square') base.target_squares = targets;
@@ -102,9 +111,11 @@ export function ExerciseForm({ onAdd }: Props) {
       base.correct_index = correctIndex;
     }
     try {
-      await onAdd(base);
-      setInstruction(''); setTargets([]); setPieceSquare(''); setHighlight('');
-      setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg('');
+      await onSubmit(base);
+      if (!editing) {
+        setInstruction(''); setTargets([]); setPieceSquare(''); setHighlight('');
+        setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
+      }
     } catch {
       setErr('Kaydedilemedi');
     }
@@ -115,7 +126,7 @@ export function ExerciseForm({ onAdd }: Props) {
 
   return (
     <div className="neon-card neon-green p-5 space-y-4">
-      <h3 className="font-bold n-text">Yeni alıştırma</h3>
+      <h3 className="font-bold n-text">{editing ? 'Soruyu düzenle' : 'Yeni soru'}</h3>
 
       <div className="flex flex-wrap gap-2">
         {([
@@ -194,11 +205,32 @@ export function ExerciseForm({ onAdd }: Props) {
           placeholder="Yanlış mesajı (opsiyonel)" className="neon-input" />
       </div>
 
+      <div>
+        <p className="text-xs n-muted mb-1">Sorunun Zorluk Düzeyini Belirle</p>
+        <div className="flex flex-wrap gap-2">
+          {[1, 2, 3, 4, 5].map((d) => (
+            <button key={d} type="button" onClick={() => setDifficulty(d)}
+              className={`w-9 h-9 rounded-lg text-sm font-bold border transition-colors ${
+                difficulty === d ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+              }`}>{d}</button>
+          ))}
+          <span className="text-xs n-muted self-center">1 en kolay · 5 en zor</span>
+        </div>
+      </div>
+
       {err && <p className="text-rose-400 text-sm">{err}</p>}
-      <button type="button" onClick={submit} disabled={saving}
-        className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-50 text-sm transition-colors">
-        {saving ? 'Kaydediliyor...' : 'Alıştırmayı ekle'}
-      </button>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={submit} disabled={saving}
+          className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-50 text-sm transition-colors">
+          {saving ? 'Kaydediliyor...' : editing ? 'Soruyu kaydet' : 'Soruyu ekle'}
+        </button>
+        {editing && onCancel && (
+          <button type="button" onClick={onCancel}
+            className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+            İptal
+          </button>
+        )}
+      </div>
     </div>
   );
 }

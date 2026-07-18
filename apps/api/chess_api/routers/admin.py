@@ -540,6 +540,11 @@ def _validate_board_exercises(exercises: list) -> None:
         if not (ex.get("instruction") or "").strip():
             raise HTTPException(status_code=400, detail="Alıştırma talimatı boş olamaz")
 
+        if "difficulty" in ex and ex["difficulty"] is not None:
+            diff = ex["difficulty"]
+            if not isinstance(diff, int) or diff < 1 or diff > 5:
+                raise HTTPException(status_code=400, detail="Zorluk düzeyi 1-5 arasında olmalı")
+
         fen = ex.get("fen")
         if not fen:
             raise HTTPException(status_code=400, detail="Alıştırma için pozisyon (fen) gerekli")

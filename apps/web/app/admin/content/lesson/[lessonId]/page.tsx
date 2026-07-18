@@ -44,6 +44,7 @@ export default function AdminStepEditorPage() {
   const [qCorrect, setQCorrect] = useState(0);
 
   const [openExercises, setOpenExercises] = useState<number | null>(null);
+  const [editingExercise, setEditingExercise] = useState<{ stepId: number; idx: number } | null>(null);
 
   const refresh = useCallback(async () => {
     const token = getToken();
@@ -148,19 +149,47 @@ export default function AdminStepEditorPage() {
     setMsg(null);
     try {
       await saveExercises(s, [...exercisesOf(s), ex]);
-      setMsg('Alıştırma eklendi');
+      setMsg('Soru eklendi');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Kaydedilemedi');
       throw e;
     }
   }
 
+  async function updateExercise(s: StepRow, idx: number, ex: BoardExercise) {
+    setMsg(null);
+    try {
+      const list = exercisesOf(s).map((x, i) => (i === idx ? ex : x));
+      await saveExercises(s, list);
+      setMsg('Soru güncellendi');
+      setEditingExercise(null);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Kaydedilemedi');
+      throw e;
+    }
+  }
+
+  async function moveExercise(s: StepRow, idx: number, dir: -1 | 1) {
+    const list = exercisesOf(s);
+    const target = idx + dir;
+    if (target < 0 || target >= list.length) return;
+    const next = [...list];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setMsg(null);
+    try {
+      await saveExercises(s, next);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Sıralanamadı');
+    }
+  }
+
   async function deleteExercise(s: StepRow, idx: number) {
-    if (!confirm('Bu alıştırmayı silmek istiyor musun?')) return;
+    if (!confirm('Bu soruyu silmek istiyor musun?')) return;
     setMsg(null);
     try {
       await saveExercises(s, exercisesOf(s).filter((_, i) => i !== idx));
-      setMsg('Alıştırma silindi');
+      if (editingExercise?.stepId === s.id && editingExercise.idx === idx) setEditingExercise(null);
+      setMsg('Soru silindi');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Silinemedi');
     }
@@ -208,7 +237,7 @@ export default function AdminStepEditorPage() {
                   {s.type === 'explanation' && (
                     <button onClick={() => setOpenExercises(openExercises === s.id ? null : s.id)}
                       className="px-3 py-1.5 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-xs transition-colors">
-                      Alıştırmalar ({exercisesOf(s).length})
+                      Sorular ({exercisesOf(s).length})
                     </button>
                   )}
                   <button onClick={() => move(s, -1)} disabled={i === 0}
@@ -224,23 +253,43 @@ export default function AdminStepEditorPage() {
                 {openExercises === s.id && (
                   <div className="mt-3 ml-6 space-y-3">
                     {exercisesOf(s).length === 0 ? (
-                      <p className="text-sm n-muted">Bu adımda henüz alıştırma yok.</p>
+                      <p className="text-sm n-muted">Bu adımda henüz soru yok.</p>
                     ) : (
                       <div className="grid gap-2">
                         {exercisesOf(s).map((ex, idx) => (
                           <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/10">
                             <span className="text-xs n-muted w-6">{idx + 1}</span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs n-muted">{exerciseTypeLabel(ex.type)}</p>
+                              <p className="text-xs n-muted">
+                                {exerciseTypeLabel(ex.type)}
+                                {ex.difficulty ? ` · Zorluk ${ex.difficulty}/5` : ''}
+                              </p>
                               <p className="text-sm n-text truncate">{ex.instruction}</p>
                             </div>
+                            <button onClick={() => moveExercise(s, idx, -1)} disabled={idx === 0}
+                              aria-label="Soruyu yukarı taşı"
+                              className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">↑</button>
+                            <button onClick={() => moveExercise(s, idx, 1)} disabled={idx === exercisesOf(s).length - 1}
+                              aria-label="Soruyu aşağı taşı"
+                              className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">↓</button>
+                            <button onClick={() => setEditingExercise({ stepId: s.id, idx })}
+                              className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">Düzenle</button>
                             <button onClick={() => deleteExercise(s, idx)}
                               className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">Sil</button>
                           </div>
                         ))}
                       </div>
                     )}
-                    <ExerciseForm onAdd={(ex) => addExercise(s, ex)} />
+                    {editingExercise?.stepId === s.id ? (
+                      <ExerciseForm
+                        key={`edit-${s.id}-${editingExercise.idx}`}
+                        initial={exercisesOf(s)[editingExercise.idx]}
+                        onSubmit={(ex) => updateExercise(s, editingExercise.idx, ex)}
+                        onCancel={() => setEditingExercise(null)}
+                      />
+                    ) : (
+                      <ExerciseForm key={`add-${s.id}`} onSubmit={(ex) => addExercise(s, ex)} />
+                    )}
                   </div>
                 )}
               </div>

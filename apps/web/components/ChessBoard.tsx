@@ -158,29 +158,67 @@ export function ChessBoard({
 
   const squareStyles = buildSquareStyles(theme, overrides);
 
+  const ranks = boardOrientation === 'white' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const files = boardOrientation === 'white'
+    ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
+  const coordFontSize = 'clamp(11px, 3.2vw, 15px)';
+  const coordLabelWidth = 'clamp(16px, 4.5vw, 22px)';
+
   return (
-    <div
-      className="aspect-square w-full max-w-[600px] mx-auto relative"
-      style={{ touchAction: 'none', boxShadow: theme.boardShadow, borderRadius: theme.boardShadow ? '4px' : undefined }}
-      onPointerDown={() => lockScroll(400)}
-    >
-      <Chessboard
-        options={{
-          position: fen,
-          boardOrientation,
-          allowDragging: interactive,
-              onPieceDrop: onPieceDrop
-            ? ({ sourceSquare, targetSquare }) => {
-                lockScroll(400);
-                return onPieceDrop(sourceSquare as Square, targetSquare as Square);
-              }
-            : undefined,
-          onSquareClick: ({ square }) => {
-            handleSquareClick(square as Square);
-          },
-          squareStyles,
-        }}
-      />
+    <div className="w-full max-w-[600px] mx-auto">
+      <div className="flex">
+        <div
+          className="grid shrink-0"
+          style={{ gridTemplateRows: 'repeat(8, 1fr)', width: coordLabelWidth }}
+        >
+          {ranks.map((r) => (
+            <span
+              key={r}
+              className="t-muted flex items-center justify-center font-semibold select-none"
+              style={{ fontSize: coordFontSize }}
+            >
+              {r}
+            </span>
+          ))}
+        </div>
+
+        <div
+          className="aspect-square flex-1 relative"
+          style={{ touchAction: 'none', boxShadow: theme.boardShadow, borderRadius: theme.boardShadow ? '4px' : undefined }}
+          onPointerDown={() => lockScroll(400)}
+        >
+          <Chessboard
+            options={{
+              position: fen,
+              boardOrientation,
+              allowDragging: interactive,
+                  onPieceDrop: onPieceDrop
+                ? ({ sourceSquare, targetSquare }) => {
+                    lockScroll(400);
+                    return onPieceDrop(sourceSquare as Square, targetSquare as Square);
+                  }
+                : undefined,
+              onSquareClick: ({ square }) => {
+                handleSquareClick(square as Square);
+              },
+              squareStyles,
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="flex" style={{ paddingLeft: coordLabelWidth }}>
+        {files.map((f) => (
+          <span
+            key={f}
+            className="t-muted flex-1 text-center font-semibold select-none"
+            style={{ fontSize: coordFontSize }}
+          >
+            {f}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
