@@ -56,6 +56,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
         <div className="p-3 border-t border-white/10 space-y-3">
+          <a
+            href="/home"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-emerald-100 bg-emerald-400/15 border border-emerald-400/40 hover:bg-emerald-400/25 transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Kullanıcı Ekranı
+          </a>
           <Link
             href="/admin/parents"
             className="block text-center px-3 py-2 rounded-lg text-sm font-semibold text-cyan-100 bg-cyan-400/15 border border-cyan-400/40 hover:bg-cyan-400/25 transition-all"
