@@ -1,7 +1,7 @@
 {
-  "name": "Çocuklar İçin Satranç",
+  "name": "Bozüyük Satranç Akademisi",
   "short_name": "BSA AGEP",
-  "description": "Çocuklar için satranç öğretim uygulaması",
+  "description": "Bozüyük Satranç Akademisi — Akademik Gelişim Platformu",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

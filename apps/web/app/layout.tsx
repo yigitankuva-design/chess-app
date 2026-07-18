@@ -5,8 +5,8 @@ import { ChessThemeProvider } from '@/lib/chess-theme-context';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const metadata: Metadata = {
-  title: 'Çocuklar İçin Satranç',
-  description: 'Çocuklar için satranç öğretim uygulaması',
+  title: 'Bozüyük Satranç Akademisi',
+  description: 'Bozüyük Satranç Akademisi — Akademik Gelişim Platformu',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon-192.png',
