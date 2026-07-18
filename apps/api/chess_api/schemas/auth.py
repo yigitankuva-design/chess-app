@@ -72,6 +72,7 @@ class AdminParentSummary(BaseModel):
     email: str
     created_at: datetime
     child_count: int
+    child_names: list[str] = []
 
 
 class AdminChildSummary(BaseModel):

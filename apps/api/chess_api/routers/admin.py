@@ -41,12 +41,12 @@ async def list_parents(
     )).scalars().all()
     out = []
     for p in parents:
-        count = (await db.execute(
-            select(func.count(ChildProfile.id)).where(ChildProfile.parent_user_id == p.id)
-        )).scalar_one()
+        names = (await db.execute(
+            select(ChildProfile.display_name).where(ChildProfile.parent_user_id == p.id)
+        )).scalars().all()
         out.append(AdminParentSummary(
             id=p.id, name=p.name, email=p.email,
-            created_at=p.created_at, child_count=count,
+            created_at=p.created_at, child_count=len(names), child_names=list(names),
         ))
     return out
 
