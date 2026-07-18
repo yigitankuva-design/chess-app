@@ -160,3 +160,34 @@ export function coordLabels(orientation: 'white' | 'black') {
     : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
   return { ranks, files };
 }
+
+// --- Ayara göre override (Faz 3-4) -----------------------------------------
+// settings.board.lightSquare/darkSquare varsa onu kullan; yoksa varsayılan.
+export function getBoardColors(board?: { lightSquare?: string; darkSquare?: string }) {
+  return {
+    light: board?.lightSquare || BOARD_LIGHT_SQUARE,
+    dark: board?.darkSquare || BOARD_DARK_SQUARE,
+  };
+}
+
+export const PIECE_KEYS = [
+  'wK', 'wQ', 'wR', 'wB', 'wN', 'wP', 'bK', 'bQ', 'bR', 'bB', 'bN', 'bP',
+] as const;
+
+/** Özel taş görseli (data-URI) varsa <img> ile, yoksa gömülü SVG ile taş seti döner. */
+export function getPieceSet(pieces?: Record<string, string>): typeof CHESS_PIECE_SET {
+  if (!pieces || Object.keys(pieces).length === 0) return CHESS_PIECE_SET;
+  const set = { ...CHESS_PIECE_SET } as Record<string, (props?: { svgStyle?: CSSProperties }) => React.JSX.Element>;
+  for (const k of PIECE_KEYS) {
+    const uri = pieces[k];
+    if (uri) {
+      const CustomPiece = (props?: { svgStyle?: CSSProperties }) => (
+        <img src={uri} alt={k} draggable={false}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', ...props?.svgStyle }} />
+      );
+      CustomPiece.displayName = `CustomPiece_${k}`;
+      set[k] = CustomPiece;
+    }
+  }
+  return set as typeof CHESS_PIECE_SET;
+}

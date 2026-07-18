@@ -14,8 +14,10 @@ from chess_api.models.class_ import Class, ClassAssignment
 from chess_api.models.parent import (
     ParentTimeLimit, ChildActivityLog, ParentSurvey, ParentSurveyResponse,
 )
+from chess_api.models.app_settings import AppSettings
 
 __all__ = [
+    "AppSettings",
     "User", "UserRole", "ChildProfile", "Device",
     "Module", "Lesson", "LessonStep", "LessonStepType",
     "ChildLessonProgress", "ChildLessonStepResult", "LessonStatus",

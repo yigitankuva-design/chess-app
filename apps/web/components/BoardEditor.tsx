@@ -2,9 +2,11 @@
 import { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import {
-  CHESS_PIECE_SET, BOARD_LIGHT_SQUARE, BOARD_DARK_SQUARE, BOARD_CARD_BG,
-  BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
+  CHESS_PIECE_SET, BOARD_CARD_BG,
+  BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels, getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
+import { useSettings } from '@/lib/settings/settings-context';
+import { useMemo } from 'react';
 
 const { ranks: EDITOR_RANKS, files: EDITOR_FILES_LABELS } = coordLabels('white');
 
@@ -73,6 +75,9 @@ interface Props {
 
 export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
   const [selected, setSelected] = useState<string | null>('P');
+  const { settings } = useSettings();
+  const boardColors = getBoardColors(settings.board);
+  const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
 
   function handleSquareClick(square: string) {
     const map = fenToMap(fen);
@@ -100,7 +105,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
             aria-label="Taş paleti"
           >
             {PALETTE.map((p) => {
-              const Icon = CHESS_PIECE_SET[pieceKey(p.code)];
+              const Icon = pieceSet[pieceKey(p.code)];
               const active = selected === p.code;
               return (
                 <button
@@ -112,7 +117,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
                   className={`w-9 h-9 rounded-md p-0.5 border transition-all ${
                     active ? 'border-cyan-400 ring-2 ring-cyan-400/50' : 'border-black/10 hover:border-cyan-400/60'
                   }`}
-                  style={{ backgroundColor: BOARD_LIGHT_SQUARE }}
+                  style={{ backgroundColor: boardColors.light }}
                 >
                   <Icon />
                 </button>
@@ -152,9 +157,9 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
                   position: fen,
                   allowDragging: false,
                   onSquareClick: ({ square }) => handleSquareClick(square as string),
-                  pieces: CHESS_PIECE_SET,
-                  lightSquareStyle: { backgroundColor: BOARD_LIGHT_SQUARE },
-                  darkSquareStyle: { backgroundColor: BOARD_DARK_SQUARE },
+                  pieces: pieceSet,
+                  lightSquareStyle: { backgroundColor: boardColors.light },
+                  darkSquareStyle: { backgroundColor: boardColors.dark },
                   boardStyle: BOARD_STYLE,
                   showNotation: false,
                 }}

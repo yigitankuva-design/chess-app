@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { ChessThemeProvider } from '@/lib/chess-theme-context';
+import { SettingsProvider } from '@/lib/settings/settings-context';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const metadata: Metadata = {
@@ -34,9 +35,11 @@ export default function RootLayout({
         >
           İçeriğe geç
         </a>
-        <ChessThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </ChessThemeProvider>
+        <SettingsProvider>
+          <ChessThemeProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </ChessThemeProvider>
+        </SettingsProvider>
         <ThemeToggle />
       </body>
     </html>

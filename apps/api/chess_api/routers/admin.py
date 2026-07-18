@@ -1,10 +1,11 @@
 from datetime import datetime
 import chess
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
-from chess_api.models import User, UserRole, ChildProfile, ParentSurveyResponse, Device
+import re
+from chess_api.models import User, UserRole, ChildProfile, ParentSurveyResponse, Device, AppSettings
 from chess_api.models.module import Module, Lesson, LessonStep, LessonStepType
 from chess_api.models.progress import ChildLessonProgress, LessonStatus
 from chess_api.dependencies.auth import get_current_user
@@ -740,3 +741,77 @@ async def delete_step(
     await db.delete(step)
     await db.commit()
     return {"deleted": True, "results_deleted": results}
+
+
+# ---------------------------------------------------------------------------
+# Sporcu paneli global ayarları (yazılar, sekmeler, tahta renk/taş)
+# ---------------------------------------------------------------------------
+
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+_PIECE_KEYS = {"wK", "wQ", "wR", "wB", "wN", "wP", "bK", "bQ", "bR", "bB", "bN", "bP"}
+_DATA_URI = re.compile(r"^data:image/(png|svg\+xml);base64,")
+_MAX_PIECE_BYTES = 64 * 1024  # data-URI kaba üst sınır
+
+
+def _deep_merge(base: dict, incoming: dict) -> dict:
+    """incoming'i base üstüne derin birleştirir (dict'ler iç içe, diğerleri override)."""
+    out = dict(base)
+    for k, v in incoming.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def _validate_settings_patch(patch: dict) -> None:
+    """Bilinen alanları doğrular. Bilinmeyen üst anahtarlar reddedilmez (esnek JSON)."""
+    if not isinstance(patch, dict):
+        raise HTTPException(status_code=400, detail="Ayar gövdesi nesne olmalı")
+    board = patch.get("board")
+    if isinstance(board, dict):
+        for key in ("lightSquare", "darkSquare"):
+            if key in board and board[key] is not None:
+                if not (isinstance(board[key], str) and _HEX_COLOR.match(board[key])):
+                    raise HTTPException(status_code=400, detail=f"Geçersiz renk: {key} (#rrggbb bekleniyor)")
+        pieces = board.get("pieces")
+        if isinstance(pieces, dict):
+            for pk, pv in pieces.items():
+                if pk not in _PIECE_KEYS:
+                    raise HTTPException(status_code=400, detail=f"Geçersiz taş anahtarı: {pk}")
+                if pv is None:
+                    continue  # varsayılana dön
+                if not (isinstance(pv, str) and _DATA_URI.match(pv)):
+                    raise HTTPException(status_code=400, detail=f"Taş görseli data-URI (png/svg) olmalı: {pk}")
+                if len(pv.encode("utf-8")) > _MAX_PIECE_BYTES:
+                    raise HTTPException(status_code=400, detail=f"Taş görseli çok büyük (≤64KB): {pk}")
+
+
+@router.get("/settings")
+async def admin_get_settings(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = (await db.execute(select(AppSettings).limit(1))).scalar_one_or_none()
+    return row.data if row and isinstance(row.data, dict) else {}
+
+
+@router.patch("/settings")
+async def admin_patch_settings(
+    patch: dict = Body(...),
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğretmen global ayarları kısmen günceller (deep-merge). Sporcuya otomatik yansır."""
+    _ensure_admin(current)
+    _validate_settings_patch(patch)
+    row = (await db.execute(select(AppSettings).limit(1))).scalar_one_or_none()
+    if row is None:
+        row = AppSettings(data=_deep_merge({}, patch))
+        db.add(row)
+    else:
+        row.data = _deep_merge(row.data or {}, patch)
+    await db.commit()
+    await db.refresh(row)
+    return row.data

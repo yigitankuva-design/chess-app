@@ -6,9 +6,22 @@ import { getToken } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
 import { PowerButton } from '@/components/PowerButton';
 
-const NAV = [
-  { href: '/admin/parents', label: 'Kullanıcılar' },
-  { href: '/admin/content', label: 'İçerik' },
+const NAV_GROUPS: { title: string; items: { href: string; label: string }[] }[] = [
+  {
+    title: 'Admin',
+    items: [
+      { href: '/admin/parents', label: 'Kullanıcılar' },
+    ],
+  },
+  {
+    title: 'Sporcu Paneli',
+    items: [
+      { href: '/admin/content', label: 'Ders' },
+      { href: '/admin/settings/labels', label: 'Yazılar & Etiketler' },
+      { href: '/admin/settings/tabs', label: 'Sekmeler' },
+      { href: '/admin/settings/board', label: 'Görünüm — Tahta & Taş' },
+    ],
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -37,23 +50,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             AGEP
           </p>
         </div>
-        <nav className="flex-1 p-2 space-y-1">
-          {NAV.map((n) => {
-            const active = pathname === n.href || pathname.startsWith(n.href + '/');
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={`block px-3 py-2 rounded-lg text-sm transition-all ${
-                  active
-                    ? 'text-cyan-200 bg-cyan-400/10 border border-cyan-400/40 shadow-[0_0_18px_-6px_rgba(34,211,238,0.7)]'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white/90 border border-transparent'
-                }`}
-              >
-                {n.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 p-2 space-y-4 overflow-y-auto">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-1">
+              <p className="px-3 pt-1 pb-0.5 text-[0.65rem] font-bold uppercase tracking-widest text-cyan-300/50">
+                {group.title}
+              </p>
+              {group.items.map((n) => {
+                const active = pathname === n.href || pathname.startsWith(n.href + '/');
+                return (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    className={`block px-3 py-2 rounded-lg text-sm transition-all ${
+                      active
+                        ? 'text-cyan-200 bg-cyan-400/10 border border-cyan-400/40 shadow-[0_0_18px_-6px_rgba(34,211,238,0.7)]'
+                        : 'text-white/60 hover:bg-white/5 hover:text-white/90 border border-transparent'
+                    }`}
+                  >
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="p-3 border-t border-white/10 space-y-3">
           <a

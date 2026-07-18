@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from chess_api.settings import settings
-from chess_api.routers import health, auth as auth_router, children as children_router, lessons as lessons_router, puzzles as puzzles_router, srs as srs_router, games as games_router, gamification as gamification_router, daily as daily_router, live_game as live_game_router, parent as parent_router, teacher as teacher_router, admin as admin_router
+from chess_api.routers import health, auth as auth_router, children as children_router, lessons as lessons_router, puzzles as puzzles_router, srs as srs_router, games as games_router, gamification as gamification_router, daily as daily_router, live_game as live_game_router, parent as parent_router, teacher as teacher_router, admin as admin_router, settings as settings_router
 
 
 def create_app() -> FastAPI:
@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(parent_router.router)
     app.include_router(teacher_router.router)
     app.include_router(admin_router.router)
+    app.include_router(settings_router.router)
 
     @app.on_event("startup")
     async def _start_scheduler():

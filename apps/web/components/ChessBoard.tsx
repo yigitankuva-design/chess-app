@@ -6,9 +6,11 @@ import type { Square } from 'chess.js';
 import { useChessTheme } from '@/lib/chess-theme-context';
 import { buildSquareStyles } from '@/lib/chess-themes';
 import {
-  CHESS_PIECE_SET, BOARD_LIGHT_SQUARE, BOARD_DARK_SQUARE, BOARD_CARD_BG,
-  BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
+  BOARD_CARD_BG, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
+  getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
+import { useSettings } from '@/lib/settings/settings-context';
+import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 
 interface ChessBoardProps {
@@ -34,6 +36,9 @@ export function ChessBoard({
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const { theme } = useChessTheme();
+  const { settings } = useSettings();
+  const boardColors = getBoardColors(settings.board);
+  const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
   const scrollRef = useRef(0);
   const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -160,7 +165,7 @@ export function ChessBoard({
     };
   });
 
-  const squareStyles = buildSquareStyles(theme, overrides, { light: BOARD_LIGHT_SQUARE, dark: BOARD_DARK_SQUARE });
+  const squareStyles = buildSquareStyles(theme, overrides, { light: boardColors.light, dark: boardColors.dark });
 
   const { ranks, files } = coordLabels(boardOrientation);
   const coordFontSize = 'clamp(11px, 3.2vw, 15px)';
@@ -207,9 +212,9 @@ export function ChessBoard({
                 handleSquareClick(square as Square);
               },
               squareStyles,
-              pieces: CHESS_PIECE_SET,
-              lightSquareStyle: { backgroundColor: BOARD_LIGHT_SQUARE },
-              darkSquareStyle: { backgroundColor: BOARD_DARK_SQUARE },
+              pieces: pieceSet,
+              lightSquareStyle: { backgroundColor: boardColors.light },
+              darkSquareStyle: { backgroundColor: boardColors.dark },
               showNotation: false,
             }}
           />

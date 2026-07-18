@@ -2,25 +2,28 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getAthleteName } from '@/lib/auth-storage';
+import { useSettings } from '@/lib/settings/settings-context';
 
 interface LastLesson { moduleId: number; lessonId: number; title: string; orderIndex: number; }
 
-const LEVELS = [
-  { id: 1, label: 'Temel Düzey',      emoji: '🌱', href: '/modules/1' },
-  { id: 2, label: 'Başlangıç Düzeyi', emoji: '😊', href: '/modules/2' },
-  { id: 3, label: 'Orta Düzey',       emoji: '😎', href: '/modules/3' },
-  { id: 4, label: 'İleri Düzey',      emoji: '🔥', href: '/modules/4' },
-];
-
-const FEATURES = [
-  { href: '/puzzle', emoji: '🧩', label: 'Bulmaca'  },
-  { href: '/badges', emoji: '🏆', label: 'Rozetler' },
+const LEVEL_META = [
+  { id: 1, emoji: '🌱', href: '/modules/1' },
+  { id: 2, emoji: '😊', href: '/modules/2' },
+  { id: 3, emoji: '😎', href: '/modules/3' },
+  { id: 4, emoji: '🔥', href: '/modules/4' },
 ];
 
 export default function ChildHomePage() {
+  const { settings } = useSettings();
   const [showLevels, setShowLevels] = useState(false);
   const [lastLesson, setLastLesson] = useState<LastLesson | null>(null);
   const [athleteName, setAthleteName] = useState<string | null>(null);
+
+  const L = settings.labels;
+  const remainingFeatures = [
+    { href: '/puzzle', emoji: '🧩', label: L.features.puzzle, show: settings.tabs.puzzle },
+    { href: '/badges', emoji: '🏆', label: L.features.badges, show: settings.tabs.badges },
+  ].filter((f) => f.show);
 
   useEffect(() => {
     try {
@@ -41,17 +44,19 @@ export default function ChildHomePage() {
           </div>
         </div>
       )}
-      <section aria-label="Hızlı Erişim">
+      <section aria-label={L.sections.quickAccess}>
         <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3">
-          Hızlı Erişim
+          {L.sections.quickAccess}
         </p>
 
         {/* Grid — Oyna + Dersler in first row, rest below */}
         <div className="grid grid-cols-2 gap-3 mb-3">
-          <Link href="/play" className="t-feat">
-            <span className="text-3xl leading-none">🎮</span>
-            <span className="text-xs font-semibold leading-tight">Oyna</span>
-          </Link>
+          {settings.tabs.play && (
+            <Link href="/play" className="t-feat">
+              <span className="text-3xl leading-none">🎮</span>
+              <span className="text-xs font-semibold leading-tight">{L.features.play}</span>
+            </Link>
+          )}
 
           {/* Dersler — toggle */}
           <button
@@ -59,7 +64,7 @@ export default function ChildHomePage() {
             className={`t-feat transition-colors ${showLevels ? 'border-[var(--t-accent)] bg-[color-mix(in_srgb,var(--t-accent)_8%,transparent)]' : ''}`}
           >
             <span className="text-3xl leading-none">📚</span>
-            <span className="text-xs font-semibold leading-tight">Dersler</span>
+            <span className="text-xs font-semibold leading-tight">{L.features.lessons}</span>
           </button>
         </div>
 
@@ -92,10 +97,10 @@ export default function ChildHomePage() {
             )}
 
             <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3 px-1">
-              Dersler — Düzey Seç
+              {L.sections.lessonsPick}
             </p>
             <div className="space-y-2">
-              {LEVELS.map((lv) => (
+              {LEVEL_META.map((lv) => (
                 <Link
                   key={lv.id}
                   href={lv.href}
@@ -104,7 +109,7 @@ export default function ChildHomePage() {
                 >
                   <span className="text-3xl leading-none w-10 text-center flex-shrink-0">{lv.emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{lv.id}. {lv.label}</p>
+                    <p className="font-semibold text-sm">{lv.id}. {L.levels[String(lv.id)] ?? ''}</p>
                   </div>
                   <svg className="flex-shrink-0 opacity-40" width="16" height="16" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -117,14 +122,16 @@ export default function ChildHomePage() {
         )}
 
         {/* Remaining features */}
-        <div className="grid grid-cols-2 gap-3">
-          {FEATURES.map((f) => (
-            <Link key={f.href} href={f.href} className="t-feat">
-              <span className="text-3xl leading-none">{f.emoji}</span>
-              <span className="text-xs font-semibold leading-tight">{f.label}</span>
-            </Link>
-          ))}
-        </div>
+        {remainingFeatures.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {remainingFeatures.map((f) => (
+              <Link key={f.href} href={f.href} className="t-feat">
+                <span className="text-3xl leading-none">{f.emoji}</span>
+                <span className="text-xs font-semibold leading-tight">{f.label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );
