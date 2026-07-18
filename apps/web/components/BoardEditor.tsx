@@ -1,52 +1,12 @@
 'use client';
 import { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
+import {
+  CHESS_PIECE_SET, BOARD_LIGHT_SQUARE, BOARD_DARK_SQUARE, BOARD_CARD_BG,
+  BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
+} from '@/lib/chess/boardSkin';
 
-/** "yenitahta.jpeg" referansına uygun kalın-kontur taş seti. */
-const PIECE_GLYPH: Record<string, string> = {
-  K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟',
-  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
-};
-
-function pieceSvg(code: string) {
-  const isWhite = code === code.toUpperCase();
-  const glyph = PIECE_GLYPH[code];
-  function PieceIcon(props?: { svgStyle?: React.CSSProperties }) {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" width="100%" height="100%" style={props?.svgStyle}>
-        <text
-          x="22.5"
-          y="35"
-          textAnchor="middle"
-          fontSize="36"
-          fontFamily="'Segoe UI Symbol', 'Noto Sans Symbols2', 'DejaVu Sans', sans-serif"
-          fill={isWhite ? '#ffffff' : '#1a1a1a'}
-          stroke={isWhite ? '#1a1a1a' : '#ffffff'}
-          strokeWidth={isWhite ? 2.2 : 1.4}
-          paintOrder="stroke"
-          strokeLinejoin="round"
-        >
-          {glyph}
-        </text>
-      </svg>
-    );
-  }
-  PieceIcon.displayName = `PieceIcon_${code}`;
-  return PieceIcon;
-}
-
-const CUSTOM_PIECES = {
-  wP: pieceSvg('P'), wN: pieceSvg('N'), wB: pieceSvg('B'), wR: pieceSvg('R'), wQ: pieceSvg('Q'), wK: pieceSvg('K'),
-  bP: pieceSvg('p'), bN: pieceSvg('n'), bB: pieceSvg('b'), bR: pieceSvg('r'), bQ: pieceSvg('q'), bK: pieceSvg('k'),
-};
-
-const DARK_SQUARE_STYLE: React.CSSProperties = {
-  backgroundColor: '#dcdcdc',
-  backgroundImage:
-    'repeating-linear-gradient(45deg, rgba(255,255,255,0.85) 0px, rgba(255,255,255,0.85) 2px, transparent 2px, transparent 7px)',
-};
-
-const LIGHT_SQUARE_STYLE: React.CSSProperties = { backgroundColor: '#ffffff' };
+const { ranks: EDITOR_RANKS, files: EDITOR_FILES_LABELS } = coordLabels('white');
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
@@ -127,20 +87,39 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
   return (
     <div className="space-y-3">
       <div
-        className="rounded-2xl overflow-hidden p-3"
-        style={{ maxWidth: 360, margin: '0 auto', backgroundColor: '#d4d4d4' }}
+        className="rounded-2xl p-3"
+        style={{ maxWidth: 360, margin: '0 auto', backgroundColor: BOARD_CARD_BG }}
       >
-        <Chessboard
-          options={{
-            position: fen,
-            allowDragging: false,
-            onSquareClick: ({ square }) => handleSquareClick(square as string),
-            pieces: CUSTOM_PIECES,
-            darkSquareStyle: DARK_SQUARE_STYLE,
-            lightSquareStyle: LIGHT_SQUARE_STYLE,
-            boardStyle: { borderRadius: '14px', overflow: 'hidden' },
-          }}
-        />
+        <div className="flex">
+          <div className="grid shrink-0" style={{ gridTemplateRows: 'repeat(8, 1fr)', width: 18 }}>
+            {EDITOR_RANKS.map((r) => (
+              <span key={r} className="flex items-center justify-center text-xs font-semibold select-none" style={{ color: BOARD_LABEL_COLOR }}>
+                {r}
+              </span>
+            ))}
+          </div>
+          <div className="flex-1">
+            <Chessboard
+              options={{
+                position: fen,
+                allowDragging: false,
+                onSquareClick: ({ square }) => handleSquareClick(square as string),
+                pieces: CHESS_PIECE_SET,
+                lightSquareStyle: { backgroundColor: BOARD_LIGHT_SQUARE },
+                darkSquareStyle: { backgroundColor: BOARD_DARK_SQUARE },
+                boardStyle: BOARD_STYLE,
+                showNotation: false,
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex" style={{ paddingLeft: 18 }}>
+          {EDITOR_FILES_LABELS.map((f) => (
+            <span key={f} className="flex-1 text-center text-xs font-semibold select-none" style={{ color: BOARD_LABEL_COLOR }}>
+              {f}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div>

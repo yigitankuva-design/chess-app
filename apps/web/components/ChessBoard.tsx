@@ -5,6 +5,10 @@ import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { useChessTheme } from '@/lib/chess-theme-context';
 import { buildSquareStyles } from '@/lib/chess-themes';
+import {
+  CHESS_PIECE_SET, BOARD_LIGHT_SQUARE, BOARD_DARK_SQUARE, BOARD_CARD_BG,
+  BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
+} from '@/lib/chess/boardSkin';
 import type { CSSProperties } from 'react';
 
 interface ChessBoardProps {
@@ -156,17 +160,17 @@ export function ChessBoard({
     };
   });
 
-  const squareStyles = buildSquareStyles(theme, overrides);
+  const squareStyles = buildSquareStyles(theme, overrides, { light: BOARD_LIGHT_SQUARE, dark: BOARD_DARK_SQUARE });
 
-  const ranks = boardOrientation === 'white' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
-  const files = boardOrientation === 'white'
-    ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
+  const { ranks, files } = coordLabels(boardOrientation);
   const coordFontSize = 'clamp(11px, 3.2vw, 15px)';
   const coordLabelWidth = 'clamp(16px, 4.5vw, 22px)';
 
   return (
-    <div className="w-full max-w-[600px] mx-auto">
+    <div
+      className="w-full max-w-[600px] mx-auto p-3 rounded-2xl"
+      style={{ backgroundColor: BOARD_CARD_BG }}
+    >
       <div className="flex">
         <div
           className="grid shrink-0"
@@ -175,8 +179,8 @@ export function ChessBoard({
           {ranks.map((r) => (
             <span
               key={r}
-              className="t-muted flex items-center justify-center font-semibold select-none"
-              style={{ fontSize: coordFontSize }}
+              className="flex items-center justify-center font-semibold select-none"
+              style={{ fontSize: coordFontSize, color: BOARD_LABEL_COLOR }}
             >
               {r}
             </span>
@@ -185,7 +189,7 @@ export function ChessBoard({
 
         <div
           className="aspect-square flex-1 relative"
-          style={{ touchAction: 'none', boxShadow: theme.boardShadow, borderRadius: theme.boardShadow ? '4px' : undefined }}
+          style={{ touchAction: 'none', ...BOARD_STYLE }}
           onPointerDown={() => lockScroll(400)}
         >
           <Chessboard
@@ -203,6 +207,10 @@ export function ChessBoard({
                 handleSquareClick(square as Square);
               },
               squareStyles,
+              pieces: CHESS_PIECE_SET,
+              lightSquareStyle: { backgroundColor: BOARD_LIGHT_SQUARE },
+              darkSquareStyle: { backgroundColor: BOARD_DARK_SQUARE },
+              showNotation: false,
             }}
           />
         </div>
@@ -212,8 +220,8 @@ export function ChessBoard({
         {files.map((f) => (
           <span
             key={f}
-            className="t-muted flex-1 text-center font-semibold select-none"
-            style={{ fontSize: coordFontSize }}
+            className="flex-1 text-center font-semibold select-none"
+            style={{ fontSize: coordFontSize, color: BOARD_LABEL_COLOR }}
           >
             {f}
           </span>

@@ -89,15 +89,18 @@ const RANKS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
  */
 export function buildSquareStyles(
   theme: ChessTheme,
-  overrides: Record<string, CSSProperties> = {}
+  overrides: Record<string, CSSProperties> = {},
+  squareColors?: { light: string; dark: string },
 ): Record<string, CSSProperties> {
   const styles: Record<string, CSSProperties> = {};
+  const light = squareColors?.light ?? theme.lightSquare;
+  const dark = squareColors?.dark ?? theme.darkSquare;
   FILES.forEach((file, fi) => {
     RANKS.forEach((rank) => {
       const isLight = (fi + rank) % 2 === 0;
       const sq = `${file}${rank}`;
       styles[sq] = {
-        backgroundColor: isLight ? theme.lightSquare : theme.darkSquare,
+        backgroundColor: isLight ? light : dark,
         transition: 'background-color 0.2s ease',
         ...overrides[sq],
       };
