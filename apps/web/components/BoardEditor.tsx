@@ -2,6 +2,48 @@
 import { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 
+/** "yenitahta.jpeg" referansına uygun kalın-kontur taş seti. */
+const PIECE_GLYPH: Record<string, string> = {
+  K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟',
+  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
+};
+
+function pieceSvg(code: string) {
+  const isWhite = code === code.toUpperCase();
+  const glyph = PIECE_GLYPH[code];
+  return (props?: { svgStyle?: React.CSSProperties }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" width="100%" height="100%" style={props?.svgStyle}>
+      <text
+        x="22.5"
+        y="35"
+        textAnchor="middle"
+        fontSize="36"
+        fontFamily="'Segoe UI Symbol', 'Noto Sans Symbols2', 'DejaVu Sans', sans-serif"
+        fill={isWhite ? '#ffffff' : '#1a1a1a'}
+        stroke={isWhite ? '#1a1a1a' : '#ffffff'}
+        strokeWidth={isWhite ? 2.2 : 1.4}
+        paintOrder="stroke"
+        strokeLinejoin="round"
+      >
+        {glyph}
+      </text>
+    </svg>
+  );
+}
+
+const CUSTOM_PIECES = {
+  wP: pieceSvg('P'), wN: pieceSvg('N'), wB: pieceSvg('B'), wR: pieceSvg('R'), wQ: pieceSvg('Q'), wK: pieceSvg('K'),
+  bP: pieceSvg('p'), bN: pieceSvg('n'), bB: pieceSvg('b'), bR: pieceSvg('r'), bQ: pieceSvg('q'), bK: pieceSvg('k'),
+};
+
+const DARK_SQUARE_STYLE: React.CSSProperties = {
+  backgroundColor: '#dcdcdc',
+  backgroundImage:
+    'repeating-linear-gradient(45deg, rgba(255,255,255,0.85) 0px, rgba(255,255,255,0.85) 2px, transparent 2px, transparent 7px)',
+};
+
+const LIGHT_SQUARE_STYLE: React.CSSProperties = { backgroundColor: '#ffffff' };
+
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
@@ -80,12 +122,19 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl overflow-hidden" style={{ maxWidth: 340, margin: '0 auto' }}>
+      <div
+        className="rounded-2xl overflow-hidden p-3"
+        style={{ maxWidth: 360, margin: '0 auto', backgroundColor: '#d4d4d4' }}
+      >
         <Chessboard
           options={{
             position: fen,
             allowDragging: false,
             onSquareClick: ({ square }) => handleSquareClick(square as string),
+            pieces: CUSTOM_PIECES,
+            darkSquareStyle: DARK_SQUARE_STYLE,
+            lightSquareStyle: LIGHT_SQUARE_STYLE,
+            boardStyle: { borderRadius: '14px', overflow: 'hidden' },
           }}
         />
       </div>
