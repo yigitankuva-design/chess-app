@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { BotGame } from '@/components/BotGame';
 import type { TimeControl } from '@/components/BotGame';
+import { useTabGuard } from '@/lib/settings/useTabGuard';
 
 const LEVELS = [
   { label: 'Çok Kolay', skill: 0,  depth: 1,  emoji: '🐣' },
@@ -41,6 +42,7 @@ const ChevronRight = () => (
 type Level = typeof LEVELS[number];
 
 export default function PlayPage() {
+  useTabGuard('play');
   const [selected, setSelected] = useState<Level | null>(null);
   const [tc, setTc] = useState<TimeControl | null>(null);
   const [started, setStarted] = useState(false);

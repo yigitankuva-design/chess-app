@@ -1,7 +1,7 @@
 # Sporcu Paneli Yönetimi — Tasarım Belgesi
 
-Tarih: 2026-07-18
-Durum: Onaylandı (mimari + fazlama), Faz 1 detaylı
+Tarih: 2026-07-18 (son güncelleme: uygulama sonrası düzeltme)
+Durum: Uygulandı (Faz 1-4 tamamlandı, canlıda doğrulandı). Bu belge gerçek koda göre güncellenmiştir.
 
 ## Amaç
 
@@ -32,14 +32,21 @@ Yazılar + tahta/taş görünümü + sekme görünürlüğü hepsi tek bir yerde
 
 ### Backend
 
-- **Yeni tablo `app_settings`**: tek satırlı, `id`, `data JSONB`, `updated_at`. (Ayrı sütunlar
-  değil; yeni ayar eklemek migration gerektirmesin diye tek JSON blob.)
-- **`GET /settings`** — herkese açık (auth yok), sporcu app okur. Cache'lenebilir. Satır yoksa
-  varsayılan boş `{}` döner; app varsayılanlara düşer.
+- **Yeni tablo `app_settings`**: tek satırlı, `id`, `data` (SQLAlchemy generic `JSON` —
+  Postgres'te JSON olarak saklanır, JSONB değil; ölçek gereksinimi çıkarsa ileride JSONB'ye
+  geçirilebilir), `updated_at`. (Ayrı sütunlar değil; yeni ayar eklemek migration
+  gerektirmesin diye tek JSON blob.)
+- **`GET /settings`** — herkese açık (auth yok), sporcu app okur. Satır yoksa varsayılan boş
+  `{}` döner; app varsayılanlara düşer.
 - **`PATCH /admin/settings`** — sadece `role == teacher`. Gelen JSON'u mevcut `data` ile
   **derin birleştirir** (kısmi güncelleme), doğrular, kaydeder.
-- **Taş görselleri (Faz 4)**: Railway object storage bucket'a yüklenir; public URL'ler
-  `data.board.pieces` altında saklanır. Yükleme endpoint'i doğrulama yapar (format, boyut).
+- **Taş görselleri (Faz 4) — GERÇEKLEŞEN YAKLAŞIM:** Railway object storage KULLANILMADI.
+  Bunun yerine her taş **base64 data-URI** (`data:image/png;base64,...` veya
+  `data:image/svg+xml;base64,...`) olarak doğrudan `data.board.pieces` içinde saklanır.
+  Gerekçe: ek altyapı/servis kurulumu gerektirmeden, tek `git push` ile deploy edilebilir
+  kalması. Backend her taş için ≤64KB sınırı ve format doğrulaması uygular
+  (`_DATA_URI` regex + boyut kontrolü, `chess_api/routers/admin.py`). İleride hacim sorun
+  olursa object storage'a taşınabilir; şu an için gereksiz karmaşıklık (YAGNI).
 
 ### Ayarlar JSON şeması (kademeli dolar; her alan opsiyonel)
 
@@ -56,7 +63,7 @@ Yazılar + tahta/taş görünümü + sekme görünürlüğü hepsi tek bir yerde
   "board": {                     // Faz 3 renkler, Faz 4 taşlar
     "lightSquare": "#eef0fb",
     "darkSquare": "#c3c6ee",
-    "pieces": { "wK": "https://.../wK.png", "...": "..." }  // Faz 4; yoksa gömülü SVG seti
+    "pieces": { "wK": "data:image/png;base64,...", "...": "..." }  // Faz 4; yoksa gömülü SVG seti
   }
 }
 ```
@@ -97,19 +104,24 @@ Her faz kendi spec-detayı → plan → uygulama → test kapısı döngüsünde
 - `SettingsProvider` + sporcu ana sayfa (home) ve düzey/başlık yazılarının ayardan okunması.
 - Fail-safe: ayar yoksa bugünkü yazılar aynen görünür.
 
-### Faz 2 — Sekme görünürlüğü
+### Faz 2 — Sekme görünürlüğü (tamamlandı)
 - `data.tabs` + `/admin/settings/tabs` editörü (aç/kapa).
-- Sporcu home + AppNav gizli sekmeleri göstermez; doğrudan URL erişimi de kapalı sekmeyi engeller.
+- Sporcu home gizli sekmeleri göstermez.
+- Doğrudan URL erişimi: `lib/settings/useTabGuard.ts` hook'u — `/play`, `/puzzle`, `/badges`
+  sayfaları açılışta `settings.tabs[key]` kontrol eder, kapalıysa `/home`'a yönlendirir.
+  (Not: `/play/online/[id]` gibi iç alt-rotalar ayrıca korunmuyor; ana giriş sayfası
+  korunduğu için pratikte erişilmiyor.)
 
-### Faz 3 — Tahta renkleri
+### Faz 3 — Tahta renkleri (tamamlandı)
 - `data.board.lightSquare/darkSquare` + `/admin/settings/board` renk seçici + canlı önizleme.
-- `boardSkin` renkleri ayardan override; tüm tahtalarda uygulanır.
+- `boardSkin.tsx` (`getBoardColors`) renkleri ayardan override eder; ChessBoard ve
+  BoardEditor'un ikisinde de (tüm tahtalarda) uygulanır.
 
-### Faz 4 — Özel taş yükleme (en ağır, en sona)
-- 12 taş için görsel yükleme (PNG/SVG, boyut/format doğrulama) → Railway object storage.
-- `data.board.pieces` URL'leri; sporcu tahtası `<img>` ile özel taşları render eder; eksik
-  taş için gömülü SVG'ye düşer.
-- Ek risk: dosya yükleme güvenliği, depolama, bozuk görsel → bu yüzden ayrı faz ve ekstra test.
+### Faz 4 — Özel taş yükleme (tamamlandı — plandan sapma var, bkz. Backend bölümü)
+- 12 taş için dosya yükleme (PNG/SVG, ≤64KB) → **base64 data-URI**, doğrudan
+  `data.board.pieces` içinde saklanır (object storage değil — bkz. yukarıdaki gerekçe).
+- `boardSkin.tsx` (`getPieceSet`) data-URI varsa `<img>` render eder; yoksa gömülü SVG'ye düşer.
+- Doğrulama backend'de: bilinen 12 anahtar dışı reddedilir, format/boyut kontrolü yapılır.
 
 ## Test yaklaşımı
 
