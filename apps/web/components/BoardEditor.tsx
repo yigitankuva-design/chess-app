@@ -11,24 +11,28 @@ const PIECE_GLYPH: Record<string, string> = {
 function pieceSvg(code: string) {
   const isWhite = code === code.toUpperCase();
   const glyph = PIECE_GLYPH[code];
-  return (props?: { svgStyle?: React.CSSProperties }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" width="100%" height="100%" style={props?.svgStyle}>
-      <text
-        x="22.5"
-        y="35"
-        textAnchor="middle"
-        fontSize="36"
-        fontFamily="'Segoe UI Symbol', 'Noto Sans Symbols2', 'DejaVu Sans', sans-serif"
-        fill={isWhite ? '#ffffff' : '#1a1a1a'}
-        stroke={isWhite ? '#1a1a1a' : '#ffffff'}
-        strokeWidth={isWhite ? 2.2 : 1.4}
-        paintOrder="stroke"
-        strokeLinejoin="round"
-      >
-        {glyph}
-      </text>
-    </svg>
-  );
+  function PieceIcon(props?: { svgStyle?: React.CSSProperties }) {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" width="100%" height="100%" style={props?.svgStyle}>
+        <text
+          x="22.5"
+          y="35"
+          textAnchor="middle"
+          fontSize="36"
+          fontFamily="'Segoe UI Symbol', 'Noto Sans Symbols2', 'DejaVu Sans', sans-serif"
+          fill={isWhite ? '#ffffff' : '#1a1a1a'}
+          stroke={isWhite ? '#1a1a1a' : '#ffffff'}
+          strokeWidth={isWhite ? 2.2 : 1.4}
+          paintOrder="stroke"
+          strokeLinejoin="round"
+        >
+          {glyph}
+        </text>
+      </svg>
+    );
+  }
+  PieceIcon.displayName = `PieceIcon_${code}`;
+  return PieceIcon;
 }
 
 const CUSTOM_PIECES = {
