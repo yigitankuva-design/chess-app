@@ -28,6 +28,8 @@ function getConfig(pathname: string): NavConfig {
     return { title: 'Analiz Et', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/eglence'))
     return { title: 'Eğlence', back: '/home', rightHref: '/home', rightIcon: 'home' };
+  if (pathname.startsWith('/pratik'))
+    return { title: 'Pratik', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/daily'))
     return { title: 'Günün Bulmacası', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/srs'))

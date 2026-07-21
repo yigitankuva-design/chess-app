@@ -19,10 +19,11 @@ function exerciseTypeLabel(type: string): string {
 
 // Alt konu soruları 3 pratik modunda ayrı listelerde saklanır.
 // 'untimed' = mevcut board_exercises (öğrenci tarafı bununla çalışır — geriye uyumlu).
-const EX_MODES: { key: string; field: string; label: string; emoji: string; accent: string }[] = [
-  { key: 'untimed', field: 'board_exercises',       label: 'Süresiz Pratik Yap', emoji: '♾️', accent: 'neon-green' },
-  { key: 'timed',   field: 'board_exercises_timed',  label: 'Süreli Pratik Yap',  emoji: '⏱️', accent: 'neon-amber' },
-  { key: 'test',    field: 'board_exercises_test',   label: 'Kendini Test Et',    emoji: '📝', accent: 'neon-purple' },
+// Renkler Hızlı Erişim'deki pratik kartlarıyla aynı (uyumlu tasarım).
+const EX_MODES: { key: string; field: string; label: string; emoji: string; color: string }[] = [
+  { key: 'untimed', field: 'board_exercises',       label: 'Süresiz Pratik Yap', emoji: '♾️', color: '#2dd4bf' },
+  { key: 'timed',   field: 'board_exercises_timed',  label: 'Süreli Pratik Yap',  emoji: '⏱️', color: '#fbbf24' },
+  { key: 'test',    field: 'board_exercises_test',   label: 'Kendini Test Et',    emoji: '📝', color: '#a78bfa' },
 ];
 
 interface QuizQuestion { prompt: string; options: string[]; correct_index: number }
@@ -265,7 +266,7 @@ export default function AdminStepEditorPage() {
 
                 {openExercises === s.id && (
                   <div className="mt-3 ml-6 space-y-3">
-                    {/* 3 pratik modu kartı */}
+                    {/* 3 pratik modu kartı — Hızlı Erişim ile uyumlu renkli tasarım */}
                     <div className="grid sm:grid-cols-3 gap-2">
                       {EX_MODES.map((m) => {
                         const count = exercisesOf(s, m.field).length;
@@ -274,11 +275,16 @@ export default function AdminStepEditorPage() {
                           <button
                             key={m.field}
                             onClick={() => { setOpenMode(active ? null : { stepId: s.id, field: m.field }); setEditingExercise(null); }}
-                            className={`neon-card ${m.accent} p-4 text-left transition-all ${active ? 'ring-2 ring-cyan-400/60' : ''}`}
+                            className="rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-1 border transition-all"
+                            style={{
+                              borderColor: m.color,
+                              background: active ? `color-mix(in srgb, ${m.color} 14%, transparent)` : 'transparent',
+                              boxShadow: active ? `0 0 22px -4px ${m.color}, inset 0 0 0 1px ${m.color}` : `0 0 16px -8px ${m.color}`,
+                            }}
                           >
-                            <div className="text-2xl leading-none">{m.emoji}</div>
-                            <p className="font-semibold n-text text-sm mt-1.5">{m.label}</p>
-                            <p className="text-xs n-muted mt-0.5">{count} soru</p>
+                            <span className="text-2xl leading-none">{m.emoji}</span>
+                            <span className="font-semibold text-sm" style={{ color: m.color }}>{m.label}</span>
+                            <span className="text-xs n-muted">{count} soru</span>
                           </button>
                         );
                       })}

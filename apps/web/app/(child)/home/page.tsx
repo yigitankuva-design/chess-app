@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { getAthleteName } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
@@ -34,6 +34,15 @@ interface SubtopicLesson { lessonId: number; title: string; subtopics: string[] 
 // Alt konu dairelerinde sırayla kullanılacak emojiler
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
 
+// Pratik modu kartları — admin ders içeriğindeki kartlarla aynı (uyumlu tasarım)
+const PRACTICE_MODES = [
+  { slug: 'suresiz', emoji: '♾️', label: 'Süresiz Pratik Yap', color: '#2dd4bf' },
+  { slug: 'sureli',  emoji: '⏱️', label: 'Süreli Pratik Yap',  color: '#fbbf24' },
+  { slug: 'test',    emoji: '📝', label: 'Kendini Test Et',    color: '#a78bfa' },
+];
+
+const QA_STATE_KEY = 'bea_qa_state';
+
 function featTabStyle(color: string, active: boolean): React.CSSProperties {
   return {
     borderColor: color,
@@ -53,10 +62,31 @@ export default function ChildHomePage() {
   const [athleteName, setAthleteName] = useState<string | null>(null);
 
   const L = settings.labels;
+  const restored = useRef(false);
 
   useEffect(() => {
     setAthleteName(getAthleteName());
   }, []);
+
+  // Geri dönünce açılım durumunu koru (en başa/kapalıya dönmesin) — item 1
+  useEffect(() => {
+    try {
+      const st = JSON.parse(sessionStorage.getItem(QA_STATE_KEY) || '{}');
+      if (st.showLevels) setShowLevels(true);
+      if (st.showEglence) setShowEglence(true);
+      if (st.showTemel) { setShowTemel(true); loadTemel(); }
+    } catch { /* ignore */ }
+    restored.current = true;
+    // loadTemel stabildir (useCallback [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!restored.current) return;
+    try {
+      sessionStorage.setItem(QA_STATE_KEY, JSON.stringify({ showLevels, showTemel, showEglence }));
+    } catch { /* ignore */ }
+  }, [showLevels, showTemel, showEglence]);
 
   // Temel düzey (modül 1) derslerinin alt konularını yükle
   const loadTemel = useCallback(async () => {
@@ -158,7 +188,6 @@ export default function ChildHomePage() {
                                   <Link
                                     key={i}
                                     href="/modules/1"
-                                    onClick={() => { setShowLevels(false); setShowTemel(false); }}
                                     className="w-full flex justify-center"
                                   >
                                     <div
@@ -189,7 +218,6 @@ export default function ChildHomePage() {
                   <Link
                     key={lv.id}
                     href={lv.href}
-                    onClick={() => setShowLevels(false)}
                     className="t-card-i flex flex-col items-center justify-center gap-1 px-4 py-4 rounded-xl text-center"
                   >
                     <span className="text-3xl leading-none">{lv.emoji}</span>
@@ -238,7 +266,6 @@ export default function ChildHomePage() {
                 <Link
                   key={g.slug}
                   href={`/eglence/${g.slug}`}
-                  onClick={() => setShowEglence(false)}
                   className="t-card-i flex flex-col items-center justify-center gap-1 px-4 py-4 rounded-xl text-center"
                 >
                   <span className="text-3xl leading-none">{g.emoji}</span>
@@ -248,6 +275,26 @@ export default function ChildHomePage() {
             </div>
           </div>
         )}
+
+        {/* Pratik modları — admin ders içeriğindeki kartlarla aynı tasarım */}
+        <div className="mt-6">
+          <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3 px-1 text-center">Pratik</p>
+          <div className="grid grid-cols-2 gap-3">
+            {PRACTICE_MODES.map((m, idx) => (
+              <Link
+                key={m.slug}
+                href={`/pratik/${m.slug}`}
+                className={`t-feat ${idx === PRACTICE_MODES.length - 1 ? 'col-span-2' : ''}`}
+                style={featTabStyle(m.color, false)}
+              >
+                <span className="text-3xl leading-none">{m.emoji}</span>
+                <span className="text-xs font-semibold leading-tight text-center" style={{ color: m.color }}>
+                  {m.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
     </main>
   );
