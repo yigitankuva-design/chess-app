@@ -31,6 +31,9 @@ const FEATURE_COLORS = {
 
 interface SubtopicLesson { lessonId: number; title: string; subtopics: string[] }
 
+// Alt konu dairelerinde sırayla kullanılacak emojiler
+const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
+
 function featTabStyle(color: string, active: boolean): React.CSSProperties {
   return {
     borderColor: color,
@@ -148,19 +151,33 @@ export default function ChildHomePage() {
                           {temel === null && <p className="text-xs t-muted text-center py-2">Yükleniyor...</p>}
                           {temel?.length === 0 && <p className="text-xs t-muted text-center py-2">Alt konu bulunamadı.</p>}
                           {temel?.map((les) => (
-                            <div key={les.lessonId} className="space-y-1.5">
+                            <div key={les.lessonId} className="space-y-3">
                               <p className="text-xs font-bold t-muted uppercase tracking-wide text-center">{les.title}</p>
-                              {les.subtopics.map((st, i) => (
-                                <Link
-                                  key={i}
-                                  href="/modules/1"
-                                  onClick={() => { setShowLevels(false); setShowTemel(false); }}
-                                  className="t-card-i flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-center"
-                                >
-                                  <span className="text-base leading-none">📄</span>
-                                  <span className="font-medium text-sm">{st}</span>
-                                </Link>
-                              ))}
+                              <div className="grid grid-cols-2 gap-4 justify-items-center">
+                                {les.subtopics.map((st, i) => (
+                                  <Link
+                                    key={i}
+                                    href="/modules/1"
+                                    onClick={() => { setShowLevels(false); setShowTemel(false); }}
+                                    className="w-full flex justify-center"
+                                  >
+                                    <div
+                                      className="rounded-full flex flex-col items-center justify-center text-center p-3 transition-transform active:scale-95 hover:-translate-y-0.5"
+                                      style={{
+                                        width: '100%',
+                                        maxWidth: 140,
+                                        aspectRatio: '1 / 1',
+                                        background: 'radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--t-accent) 22%, var(--t-surface)), var(--t-surface))',
+                                        border: '1px solid color-mix(in srgb, var(--t-accent) 55%, transparent)',
+                                        boxShadow: '0 0 26px -6px var(--t-glow), inset 0 0 18px -10px var(--t-accent)',
+                                      }}
+                                    >
+                                      <span className="text-2xl leading-none mb-1">{SUBTOPIC_EMOJIS[i % SUBTOPIC_EMOJIS.length]}</span>
+                                      <span className="text-[0.72rem] font-bold leading-tight" style={{ color: 'var(--t-text-1)' }}>{st}</span>
+                                    </div>
+                                  </Link>
+                                ))}
+                              </div>
                             </div>
                           ))}
                         </div>
