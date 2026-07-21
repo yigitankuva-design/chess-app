@@ -612,8 +612,10 @@ def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
     elif step_type == LessonStepType.explanation:
         if not content.get("title") and not content.get("body"):
             raise HTTPException(status_code=400, detail="Anlatım için başlık veya metin gerekli")
-        if "board_exercises" in content:
-            _validate_board_exercises(content["board_exercises"])
+        # Üç pratik modu ayrı listelerde saklanır; hepsi aynı şekilde doğrulanır.
+        for key in ("board_exercises", "board_exercises_timed", "board_exercises_test"):
+            if key in content:
+                _validate_board_exercises(content[key])
 
 
 def _step_out(s: LessonStep) -> dict:

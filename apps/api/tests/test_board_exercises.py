@@ -151,3 +151,42 @@ async def test_unknown_exercise_type_rejected(client, db):
         {"type": "sarki_soyle", "instruction": "x", "fen": "8/8/8/8/8/8/8/8 w - - 0 1"},
     ])
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_timed_and_test_mode_fields_accepted_and_validated(client, db):
+    """3 pratik modu (board_exercises / _timed / _test) ayrı listelerde saklanır ve doğrulanır."""
+    les = await _lesson(db, order=71)
+    tok = await _teacher_token(client, email="be_modes@t.com")
+    valid = {"type": "click_square", "instruction": "Koyu kareye tikla",
+             "fen": "8/8/8/8/8/8/8/8 w - - 0 1", "target_squares": ["a1"]}
+    # Üç mod da geçerli veriyle kabul edilir
+    r = await client.post(
+        f"/admin/lessons/{les.id}/steps",
+        headers={"Authorization": f"Bearer {tok}"},
+        json={"type": "explanation", "content_json": {
+            "title": "T", "body": "b",
+            "board_exercises": [valid],
+            "board_exercises_timed": [valid],
+            "board_exercises_test": [valid],
+        }},
+    )
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_invalid_exercise_in_timed_mode_rejected(client, db):
+    """Süreli mod listesindeki geçersiz soru da reddedilmeli (doğrulama tüm modlara uygulanır)."""
+    les = await _lesson(db, order=72)
+    tok = await _teacher_token(client, email="be_timedbad@t.com")
+    r = await client.post(
+        f"/admin/lessons/{les.id}/steps",
+        headers={"Authorization": f"Bearer {tok}"},
+        json={"type": "explanation", "content_json": {
+            "title": "T", "body": "b",
+            "board_exercises_timed": [
+                {"type": "click_square", "instruction": "", "fen": "8/8/8/8/8/8/8/8 w - - 0 1", "target_squares": ["a1"]},
+            ],
+        }},
+    )
+    assert r.status_code == 400
