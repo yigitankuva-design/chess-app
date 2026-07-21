@@ -65,7 +65,7 @@ export default function AdminLabelsPage() {
       <div className="neon-card neon-purple p-5 mb-4">
         <h2 className="font-bold mb-3 n-text">Buton Yazıları</h2>
         <div className="grid gap-2">
-          {([['play', 'Oyna'], ['lessons', 'Dersler'], ['puzzle', 'Bulmaca'], ['badges', 'Rozetler']] as const).map(([k, hint]) => (
+          {([['play', 'Maç Yap'], ['lessons', 'Dersler'], ['analiz', 'Analiz Et'], ['eglence', 'Eğlence']] as const).map(([k, hint]) => (
             <div key={k} className="flex items-center gap-3">
               <span className="w-24 n-muted text-xs">{hint}</span>
               <input className="neon-input flex-1" value={labels.features[k] ?? ''}

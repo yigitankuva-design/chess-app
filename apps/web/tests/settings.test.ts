@@ -15,17 +15,17 @@ describe('mergeSettings', () => {
     const merged = mergeSettings({ labels: { features: { play: 'Oynayalım' } } });
     expect(merged.labels.features.play).toBe('Oynayalım');
     // diğer feature'lar varsayılan kalır
-    expect(merged.labels.features.puzzle).toBe(DEFAULT_SETTINGS.labels.features.puzzle);
+    expect(merged.labels.features.analiz).toBe(DEFAULT_SETTINGS.labels.features.analiz);
     // diğer üst alanlar korunur
     expect(merged.board.lightSquare).toBe(DEFAULT_SETTINGS.board.lightSquare);
     expect(merged.tabs.play).toBe(true);
   });
 
   it('tahta renklerini ve sekmeleri override eder', () => {
-    const merged = mergeSettings({ board: { darkSquare: '#000000' }, tabs: { puzzle: false } });
+    const merged = mergeSettings({ board: { darkSquare: '#000000' }, tabs: { analiz: false } });
     expect(merged.board.darkSquare).toBe('#000000');
     expect(merged.board.lightSquare).toBe(DEFAULT_SETTINGS.board.lightSquare);
-    expect(merged.tabs.puzzle).toBe(false);
+    expect(merged.tabs.analiz).toBe(false);
     expect(merged.tabs.play).toBe(true);
   });
 });

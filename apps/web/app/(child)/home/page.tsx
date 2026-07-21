@@ -21,8 +21,8 @@ export default function ChildHomePage() {
 
   const L = settings.labels;
   const remainingFeatures = [
-    { href: '/puzzle', emoji: '🧩', label: L.features.puzzle, show: settings.tabs.puzzle },
-    { href: '/badges', emoji: '🏆', label: L.features.badges, show: settings.tabs.badges },
+    { href: '/analiz', emoji: '🔍', label: L.features.analiz, show: settings.tabs.analiz },
+    { href: '/eglence', emoji: '🎉', label: L.features.eglence, show: settings.tabs.eglence },
   ].filter((f) => f.show);
 
   useEffect(() => {

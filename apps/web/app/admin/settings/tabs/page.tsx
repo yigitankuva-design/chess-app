@@ -7,9 +7,9 @@ import { DEFAULT_SETTINGS, mergeSettings, AppSettingsData } from '@/lib/settings
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const TAB_META: { key: keyof AppSettingsData['tabs']; label: string; desc: string }[] = [
-  { key: 'play', label: 'Oyna', desc: 'Sporcu oyun (bot/online) ekranını görür' },
-  { key: 'puzzle', label: 'Bulmaca', desc: 'Bulmaca sekmesi görünür' },
-  { key: 'badges', label: 'Rozetler', desc: 'Rozetler sekmesi görünür' },
+  { key: 'play', label: 'Maç Yap', desc: 'Sporcu maç (bot/online) ekranını görür' },
+  { key: 'analiz', label: 'Analiz Et', desc: 'Analiz sekmesi görünür' },
+  { key: 'eglence', label: 'Eğlence', desc: 'Eğlence sekmesi görünür' },
 ];
 
 export default function AdminTabsPage() {

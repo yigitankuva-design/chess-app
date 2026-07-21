@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getToken } from '@/lib/auth-storage';
-import { useTabGuard } from '@/lib/settings/useTabGuard';
 
 interface Badge {
   slug: string;
@@ -14,7 +13,6 @@ interface Badge {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function BadgesPage() {
-  useTabGuard('badges');
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -24,6 +24,10 @@ function getConfig(pathname: string): NavConfig {
     return { title: 'Oyna', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/puzzle'))
     return { title: 'Bulmaca', back: '/home', rightHref: '/home', rightIcon: 'home' };
+  if (pathname.startsWith('/analiz'))
+    return { title: 'Analiz Et', back: '/home', rightHref: '/home', rightIcon: 'home' };
+  if (pathname.startsWith('/eglence'))
+    return { title: 'Eğlence', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/daily'))
     return { title: 'Günün Bulmacası', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/srs'))

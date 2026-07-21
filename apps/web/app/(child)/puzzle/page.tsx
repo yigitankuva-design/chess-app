@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { PuzzleSolver } from '@/components/PuzzleSolver';
 import { getToken } from '@/lib/auth-storage';
-import { useTabGuard } from '@/lib/settings/useTabGuard';
 
 interface Puzzle {
   id: number;
@@ -15,7 +14,6 @@ interface Puzzle {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function PuzzlePage() {
-  useTabGuard('puzzle');
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

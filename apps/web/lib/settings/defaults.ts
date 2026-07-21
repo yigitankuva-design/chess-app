@@ -4,10 +4,10 @@
 export interface AppSettingsData {
   labels: {
     levels: Record<string, string>;      // "1".."4"
-    features: { play: string; lessons: string; puzzle: string; badges: string };
+    features: { play: string; lessons: string; analiz: string; eglence: string };
     sections: { quickAccess: string; lessonsPick: string };
   };
-  tabs: { play: boolean; puzzle: boolean; badges: boolean };
+  tabs: { play: boolean; analiz: boolean; eglence: boolean };
   board: {
     lightSquare: string;
     darkSquare: string;
@@ -18,10 +18,10 @@ export interface AppSettingsData {
 export const DEFAULT_SETTINGS: AppSettingsData = {
   labels: {
     levels: { '1': 'Temel Düzey', '2': 'Başlangıç Düzeyi', '3': 'Orta Düzey', '4': 'İleri Düzey' },
-    features: { play: 'Oyna', lessons: 'Dersler', puzzle: 'Bulmaca', badges: 'Rozetler' },
+    features: { play: 'Maç Yap', lessons: 'Dersler', analiz: 'Analiz Et', eglence: 'Eğlence' },
     sections: { quickAccess: 'Hızlı Erişim', lessonsPick: 'Dersler — Düzey Seç' },
   },
-  tabs: { play: true, puzzle: true, badges: true },
+  tabs: { play: true, analiz: true, eglence: true },
   board: {
     lightSquare: '#eef0fb',
     darkSquare: '#c3c6ee',
