@@ -1,6 +1,5 @@
 'use client';
-import { useState } from 'react';
-import { Chessboard } from 'react-chessboard';
+import { Chessboard, ChessboardProvider, SparePiece } from 'react-chessboard';
 import {
   CHESS_PIECE_SET, BOARD_CARD_BG,
   BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels, getBoardColors, getPieceSet,
@@ -24,6 +23,13 @@ const PALETTE: { code: string; label: string }[] = [
 /** Palet kodunu (K, p, ...) taş seti anahtarına (wK, bP, ...) çevirir. */
 function pieceKey(code: string): keyof typeof CHESS_PIECE_SET {
   return `${code === code.toUpperCase() ? 'w' : 'b'}${code.toUpperCase()}` as keyof typeof CHESS_PIECE_SET;
+}
+
+/** Taş seti anahtarını (wP, bN, ...) FEN karakterine (P, n, ...) çevirir. */
+function pieceTypeToFen(pieceType: string): string {
+  const color = pieceType[0];
+  const type = pieceType[1];
+  return color === 'w' ? type.toUpperCase() : type.toLowerCase();
 }
 
 /** FEN'in taş yerleşimi kısmını kare→taş haritasına çevirir. */
@@ -74,18 +80,36 @@ interface Props {
 }
 
 export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
-  const [selected, setSelected] = useState<string | null>('P');
   const { settings } = useSettings();
   const boardColors = getBoardColors(settings.board);
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
 
-  function handleSquareClick(square: string) {
+  // Sürükle-bırak: paletten (spare) veya tahtadan taş bırakıldığında.
+  function handleDrop({ piece, sourceSquare, targetSquare }: {
+    piece: { isSparePiece: boolean; pieceType: string };
+    sourceSquare: string;
+    targetSquare: string | null;
+  }): boolean {
+    if (!targetSquare) return false;
     const map = fenToMap(fen);
-    if (selected === null) {
-      delete map[square];
+    if (piece.isSparePiece) {
+      map[targetSquare] = pieceTypeToFen(piece.pieceType);
     } else {
-      map[square] = selected;
+      // Tahtadaki taşı taşı
+      delete map[sourceSquare];
+      map[targetSquare] = pieceTypeToFen(piece.pieceType);
     }
+    onChange(mapToFen(map, turn));
+    return true;
+  }
+
+  // Tahtadaki bir taşa tıklamak onu siler.
+  function handlePieceClick({ isSparePiece, square }: {
+    isSparePiece: boolean; square: string | null;
+  }) {
+    if (isSparePiece || !square) return;
+    const map = fenToMap(fen);
+    delete map[square];
     onChange(mapToFen(map, turn));
   }
 
@@ -95,47 +119,44 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
   }
 
   return (
+    <ChessboardProvider
+      options={{
+        id: 'board-editor',
+        position: fen,
+        allowDragging: true,
+        pieces: pieceSet,
+        lightSquareStyle: { backgroundColor: boardColors.light },
+        darkSquareStyle: { backgroundColor: boardColors.dark },
+        boardStyle: BOARD_STYLE,
+        showNotation: false,
+        onPieceDrop: handleDrop,
+        onPieceClick: handlePieceClick,
+      }}
+    >
     <div className="space-y-3">
+      <p className="text-xs n-muted text-center">
+        Taşı tahtaya <b>sürükle</b> · eklenen taşı silmek için üstüne <b>tıkla</b>
+      </p>
       <div className="flex items-start gap-2" style={{ maxWidth: 440, margin: '0 auto' }}>
-        {/* Sol taş paleti — tıkla, sonra kareye bas */}
+        {/* Sol taş paleti — sürüklenebilir taşlar */}
         <div className="flex flex-col gap-1 shrink-0">
           <div
             className="grid gap-1"
             style={{ gridTemplateRows: 'repeat(6, 1fr)', gridAutoFlow: 'column' }}
             aria-label="Taş paleti"
           >
-            {PALETTE.map((p) => {
-              const Icon = pieceSet[pieceKey(p.code)];
-              const active = selected === p.code;
-              return (
-                <button
-                  key={p.code}
-                  type="button"
-                  title={p.label}
-                  aria-label={p.label}
-                  onClick={() => setSelected(p.code)}
-                  className={`w-9 h-9 rounded-md p-0.5 border transition-all ${
-                    active ? 'border-cyan-400 ring-2 ring-cyan-400/50' : 'border-black/10 hover:border-cyan-400/60'
-                  }`}
-                  style={{ backgroundColor: boardColors.light }}
-                >
-                  <Icon />
-                </button>
-              );
-            })}
+            {PALETTE.map((p) => (
+              <div
+                key={p.code}
+                title={p.label}
+                aria-label={p.label}
+                className="w-9 h-9 rounded-md p-0.5 border border-black/10 cursor-grab active:cursor-grabbing"
+                style={{ backgroundColor: boardColors.light }}
+              >
+                <SparePiece pieceType={pieceKey(p.code)} />
+              </div>
+            ))}
           </div>
-          {/* Silgi — paletin altında, tam genişlik */}
-          <button
-            type="button"
-            title="Silgi (taş kaldır)"
-            aria-label="Silgi"
-            onClick={() => setSelected(null)}
-            className={`h-9 w-full rounded-md border text-base transition-all ${
-              selected === null ? 'border-rose-400 ring-2 ring-rose-400/50 bg-rose-400/15 text-rose-200' : 'border-white/15 text-white/70 hover:border-rose-400/60'
-            }`}
-          >
-            🧹
-          </button>
         </div>
 
         {/* Tahta */}
@@ -152,18 +173,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
               ))}
             </div>
             <div className="flex-1">
-              <Chessboard
-                options={{
-                  position: fen,
-                  allowDragging: false,
-                  onSquareClick: ({ square }) => handleSquareClick(square as string),
-                  pieces: pieceSet,
-                  lightSquareStyle: { backgroundColor: boardColors.light },
-                  darkSquareStyle: { backgroundColor: boardColors.dark },
-                  boardStyle: BOARD_STYLE,
-                  showNotation: false,
-                }}
-              />
+              <Chessboard />
             </div>
           </div>
           <div className="flex" style={{ paddingLeft: 18 }}>
@@ -197,6 +207,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
 
       <p className="text-xs n-muted break-all">FEN: {fen}</p>
     </div>
+    </ChessboardProvider>
   );
 }
 

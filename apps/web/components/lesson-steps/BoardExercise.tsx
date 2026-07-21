@@ -218,9 +218,6 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
         </span>
       </div>
 
-      {/* Instruction */}
-      <p className="text-sm font-semibold">{exercise.instruction}</p>
-
       {/* Board */}
       <div className="rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 340, margin: '0 auto' }}>
         <Chessboard
@@ -231,6 +228,13 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
             onSquareClick,
           }}
         />
+      </div>
+
+      {/* Instruction — tahtanın altında kart olarak */}
+      <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
+        style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
+        <span className="text-xl leading-none flex-shrink-0">🎯</span>
+        <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
       </div>
 
       {/* Multiple-choice for identify_piece */}
@@ -259,17 +263,33 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
         </p>
       )}
 
-      {/* Feedback banners */}
+      {/* Feedback — dikkat çekici ve ilgi çekici */}
       {status === 'success' && (
-        <div className="flex items-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold"
-          style={{ background: '#dcfce7', color: '#15803d' }}>
-          ✓ {exercise.success_msg ?? 'Doğru! Harika iş çıkardın.'}
+        <div className="bea-pop relative flex items-center gap-3 py-3.5 px-4 rounded-2xl text-base font-extrabold overflow-visible"
+          style={{
+            background: 'linear-gradient(90deg, #22c55e, #16a34a)',
+            color: '#fff',
+            boxShadow: '0 8px 24px -6px rgba(34,197,94,0.6)',
+          }}>
+          <span className="text-2xl bea-bounce flex-shrink-0">🎉</span>
+          <span>{exercise.success_msg ?? 'Aferin! Doğru yaptın! 👏'}</span>
+          {/* yukarı süzülen emoji patlaması */}
+          <div className="bea-burst pointer-events-none absolute inset-0">
+            {['⭐', '✨', '🎊', '⭐', '✨'].map((e, i) => (
+              <span key={i} style={{ left: `${12 + i * 19}%`, top: '40%', fontSize: 18, animationDelay: `${i * 0.06}s` }}>{e}</span>
+            ))}
+          </div>
         </div>
       )}
       {status === 'fail' && (
-        <div className="flex items-center gap-2 py-2 px-3 rounded-xl text-sm"
-          style={{ background: '#fee2e2', color: '#b91c1c' }}>
-          ✗ {feedback}
+        <div className="bea-shake flex items-center gap-3 py-3 px-4 rounded-2xl text-sm font-bold"
+          style={{
+            background: 'linear-gradient(90deg, #f59e0b, #ef4444)',
+            color: '#fff',
+            boxShadow: '0 6px 18px -6px rgba(239,68,68,0.5)',
+          }}>
+          <span className="text-2xl flex-shrink-0">🤔</span>
+          <span>{feedback}</span>
         </div>
       )}
 

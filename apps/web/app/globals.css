@@ -515,3 +515,35 @@ body {
   color: transparent;
   filter: drop-shadow(0 0 10px var(--t-glow));
 }
+
+/* ── Soru geri bildirimi animasyonları (BoardExercise) ───────────────────── */
+@keyframes bea-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes bea-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+@keyframes bea-bounce {
+  from { transform: translateY(0) rotate(-6deg); }
+  to   { transform: translateY(-5px) rotate(6deg); }
+}
+@keyframes bea-float-up {
+  0%   { transform: translateY(0) scale(0.8); opacity: 1; }
+  100% { transform: translateY(-46px) scale(1.5); opacity: 0; }
+}
+.bea-pop   { animation: bea-pop 0.45s cubic-bezier(.34,1.56,.64,1); }
+.bea-shake { animation: bea-shake 0.45s ease; }
+.bea-bounce { animation: bea-bounce 0.55s ease infinite alternate; }
+.bea-burst span {
+  position: absolute;
+  animation: bea-float-up 0.9s ease forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bea-pop, .bea-shake, .bea-bounce, .bea-burst span { animation: none; }
+}
