@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface NavConfig {
   title: string;
@@ -61,10 +61,21 @@ const IconProfile = () => (
 
 export function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { title, back, rightHref, rightIcon } = getConfig(pathname);
 
   const navTextStyle = { color: 'var(--t-nav-text)' } as React.CSSProperties;
   const navActiveStyle = { color: 'var(--t-nav-act)' } as React.CSSProperties;
+
+  // Geri: bir önceki sayfaya dön (en başa değil). Tarayıcı geçmişi yoksa
+  // yapılandırılmış geri hedefine (genelde /home) düş.
+  function handleBack() {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(back ?? '/home');
+    }
+  }
 
   return (
     <nav
@@ -75,14 +86,14 @@ export function AppNav() {
       {/* Left */}
       <div className="w-9 flex items-center justify-start flex-shrink-0">
         {back && (
-          <Link
-            href={back}
+          <button
+            onClick={handleBack}
             className="flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-white/10 active:bg-white/20"
             style={navActiveStyle}
             aria-label="Geri"
           >
             <IconChevronLeft />
-          </Link>
+          </button>
         )}
       </div>
 
