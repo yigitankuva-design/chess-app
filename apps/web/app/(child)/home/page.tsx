@@ -13,17 +13,22 @@ const LEVEL_META = [
   { id: 4, emoji: '🔥', href: '/modules/4' },
 ];
 
+// Eğlence sekmesinin açılır alt menüleri
+const EGLENCE_GAMES = [
+  { slug: 'bulmaca-duellosu', emoji: '⚔️', label: 'Bulmaca Düellosu' },
+  { slug: 'bulmaca-firtinasi', emoji: '🌪️', label: 'Bulmaca Fırtınası' },
+  { slug: 'koordinat-yarisi', emoji: '🏁', label: 'Koordinat Yarışı' },
+  { slug: 'acilisi-tahmin-et', emoji: '🎯', label: 'Açılışı Tahmin Et' },
+];
+
 export default function ChildHomePage() {
   const { settings } = useSettings();
   const [showLevels, setShowLevels] = useState(false);
+  const [showEglence, setShowEglence] = useState(false);
   const [lastLesson, setLastLesson] = useState<LastLesson | null>(null);
   const [athleteName, setAthleteName] = useState<string | null>(null);
 
   const L = settings.labels;
-  const remainingFeatures = [
-    { href: '/analiz', emoji: '🔍', label: L.features.analiz, show: settings.tabs.analiz },
-    { href: '/eglence', emoji: '🎉', label: L.features.eglence, show: settings.tabs.eglence },
-  ].filter((f) => f.show);
 
   useEffect(() => {
     try {
@@ -121,15 +126,52 @@ export default function ChildHomePage() {
           </div>
         )}
 
-        {/* Remaining features */}
-        {remainingFeatures.length > 0 && (
+        {/* Remaining features: Analiz Et (link) + Eğlence (açılır) */}
+        {(settings.tabs.analiz || settings.tabs.eglence) && (
           <div className="grid grid-cols-2 gap-3">
-            {remainingFeatures.map((f) => (
-              <Link key={f.href} href={f.href} className="t-feat">
-                <span className="text-3xl leading-none">{f.emoji}</span>
-                <span className="text-xs font-semibold leading-tight">{f.label}</span>
+            {settings.tabs.analiz && (
+              <Link href="/analiz" className="t-feat">
+                <span className="text-3xl leading-none">🔍</span>
+                <span className="text-xs font-semibold leading-tight">{L.features.analiz}</span>
               </Link>
-            ))}
+            )}
+            {settings.tabs.eglence && (
+              <button
+                onClick={() => setShowEglence((v) => !v)}
+                className={`t-feat transition-colors ${showEglence ? 'border-[var(--t-accent)] bg-[color-mix(in_srgb,var(--t-accent)_8%,transparent)]' : ''}`}
+              >
+                <span className="text-3xl leading-none">🎉</span>
+                <span className="text-xs font-semibold leading-tight">{L.features.eglence}</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Eğlence açılır alt menü */}
+        {settings.tabs.eglence && showEglence && (
+          <div className="mt-3">
+            <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3 px-1">
+              {L.features.eglence}
+            </p>
+            <div className="space-y-2">
+              {EGLENCE_GAMES.map((g) => (
+                <Link
+                  key={g.slug}
+                  href={`/eglence/${g.slug}`}
+                  onClick={() => setShowEglence(false)}
+                  className="t-card-i flex items-center gap-4 px-4 py-4 rounded-xl"
+                >
+                  <span className="text-3xl leading-none w-10 text-center flex-shrink-0">{g.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">{g.label}</p>
+                  </div>
+                  <svg className="flex-shrink-0 opacity-40" width="16" height="16" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </section>
