@@ -1,5 +1,5 @@
 'use client';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { ComingSoon } from '@/components/ComingSoon';
 
 const MODES: Record<string, { emoji: string; title: string; desc: string }> = {
@@ -19,7 +19,10 @@ const MODES: Record<string, { emoji: string; title: string; desc: string }> = {
 
 export default function PratikPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = String(params.mode ?? '');
+  const konu = searchParams.get('konu');
   const m = MODES[slug] ?? { emoji: '🎯', title: 'Pratik', desc: 'Bu içerik hazırlanıyor.' };
-  return <ComingSoon emoji={m.emoji} title={m.title} description={m.desc} />;
+  const desc = konu ? `“${konu}” alt konusu için: ${m.desc}` : m.desc;
+  return <ComingSoon emoji={m.emoji} title={m.title} description={desc} />;
 }
