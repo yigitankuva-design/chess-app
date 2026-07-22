@@ -29,6 +29,22 @@ const FEATURE_COLORS = {
 
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
 
+/* Maç Yap hiyerarşisi — /play sayfasındaki gerçek seçeneklerle birebir */
+const BOT_LEVELS = [
+  { label: 'Çok Kolay', skill: 0,  depth: 1,  emoji: '🐣' },
+  { label: 'Kolay',     skill: 3,  depth: 4,  emoji: '🙂' },
+  { label: 'Orta',      skill: 8,  depth: 8,  emoji: '😎' },
+  { label: 'Zor',       skill: 14, depth: 10, emoji: '🔥' },
+  { label: 'Çok Zor',   skill: 20, depth: 12, emoji: '👑' },
+];
+
+const TIME_GROUPS = [
+  { cat: 'Yıldırım', emoji: '⚡', color: '#fbbf24', items: ['3+2', '5+0', '5+3'] },
+  { cat: 'Hızlı',    emoji: '🚀', color: '#38bdf8', items: ['10+0', '10+5', '15+10'] },
+  { cat: 'Klasik',   emoji: '🐢', color: '#2dd4bf', items: ['30+0', '30+10', '30+20'] },
+  { cat: 'Süresiz',  emoji: '♾️', color: '#a78bfa', items: [] as string[] },
+];
+
 const PRACTICE_MODES = [
   { slug: 'suresiz', emoji: '♾️', label: 'Süresiz Pratik Yap', color: '#2dd4bf' },
   { slug: 'sureli',  emoji: '⏱️', label: 'Süreli Pratik Yap',  color: '#fbbf24' },
@@ -120,6 +136,12 @@ export default function ChildHomePage() {
   const [subtopicsByLesson, setSubtopicsByLesson] = useState<Record<number, Subtopic[]>>({});
   const [openSubtopic, setOpenSubtopic] = useState<{ lessonId: number; stepId: number; title: string } | null>(null);
 
+  // Maç Yap: Oyun türü → Zorluk → Tempo → Süre
+  const [showPlay, setShowPlay] = useState(false);
+  const [openBot, setOpenBot] = useState(false);
+  const [openSkill, setOpenSkill] = useState<number | null>(null);
+  const [openTempo, setOpenTempo] = useState<string | null>(null);
+
   const L = settings.labels;
   const restored = useRef(false);
 
@@ -157,6 +179,10 @@ export default function ChildHomePage() {
       if (st.openLevel) { setOpenLevel(st.openLevel); loadLessons(st.openLevel); }
       if (st.openLessonId) { setOpenLessonId(st.openLessonId); loadSubtopics(st.openLessonId); }
       if (st.openSubtopic) setOpenSubtopic(st.openSubtopic);
+      if (st.showPlay) setShowPlay(true);
+      if (st.openBot) setOpenBot(true);
+      if (typeof st.openSkill === 'number') setOpenSkill(st.openSkill);
+      if (st.openTempo) setOpenTempo(st.openTempo);
     } catch { /* ignore */ }
     restored.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,9 +191,12 @@ export default function ChildHomePage() {
   useEffect(() => {
     if (!restored.current) return;
     try {
-      sessionStorage.setItem(QA_STATE_KEY, JSON.stringify({ showLevels, showEglence, openLevel, openLessonId, openSubtopic }));
+      sessionStorage.setItem(QA_STATE_KEY, JSON.stringify({
+        showLevels, showEglence, openLevel, openLessonId, openSubtopic,
+        showPlay, openBot, openSkill, openTempo,
+      }));
     } catch { /* ignore */ }
-  }, [showLevels, showEglence, openLevel, openLessonId, openSubtopic]);
+  }, [showLevels, showEglence, openLevel, openLessonId, openSubtopic, showPlay, openBot, openSkill, openTempo]);
 
   function toggleLevel(levelId: number) {
     const opening = openLevel !== levelId;
@@ -236,13 +265,114 @@ export default function ChildHomePage() {
         {/* Sekmeler */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           {settings.tabs.play && (
-            <FeatureTab emoji="🎮" label={L.features.play} color={FEATURE_COLORS.play} href="/play" />
+            <FeatureTab
+              emoji="🎮" label={L.features.play} color={FEATURE_COLORS.play}
+              active={showPlay} onClick={() => setShowPlay((v) => !v)}
+            />
           )}
           <FeatureTab
             emoji="📚" label={L.features.lessons} color={FEATURE_COLORS.lessons}
             active={showLevels} onClick={() => setShowLevels((v) => !v)}
           />
         </div>
+
+        {/* Maç Yap patikası — Oyun türü › Zorluk › Tempo › Süre */}
+        {settings.tabs.play && showPlay && (
+          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
+            <p className="text-xs font-bold t-muted uppercase tracking-widest mb-4">
+              {L.features.play} — Nasıl Oynayalım?
+            </p>
+
+            {/* Arkadaşla Oyna — doğrudan gider */}
+            <Link href="/play/online" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
+              <span className="flex items-center justify-center flex-shrink-0"
+                style={{ ...raised(999, 4), width: 44, height: 44, fontSize: 19 }}>🤝</span>
+              <span className="font-bold text-sm" style={{ color: 'var(--t-text-1)' }}>Arkadaşla Oyna</span>
+            </Link>
+
+            <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
+
+            {/* Bota Karşı — açılır */}
+            <PathNode
+              emoji="🤖" label="Bota Karşı Oyna" active={openBot} size={44}
+              onClick={() => { setOpenBot((v) => !v); setOpenSkill(null); setOpenTempo(null); }}
+            />
+
+            {openBot && (
+              <Branch offset={21}>
+                {BOT_LEVELS.map((bl) => {
+                  const skillOpen = openSkill === bl.skill;
+                  return (
+                    <div key={bl.skill}>
+                      <PathNode
+                        emoji={bl.emoji} label={bl.label} active={skillOpen} size={36}
+                        onClick={() => { setOpenSkill(skillOpen ? null : bl.skill); setOpenTempo(null); }}
+                      />
+
+                      {skillOpen && (
+                        <Branch offset={17}>
+                          {TIME_GROUPS.map((tg) => {
+                            const tempoOpen = openTempo === tg.cat;
+                            const isUnlimited = tg.items.length === 0;
+                            // Süresiz'in alt seçeneği yok — doğrudan oyunu başlatır
+                            if (isUnlimited) {
+                              return (
+                                <Link
+                                  key={tg.cat}
+                                  href={`/play?skill=${bl.skill}&depth=${bl.depth}&tc=suresiz`}
+                                  className="flex items-center gap-3"
+                                  style={{ textDecoration: 'none' }}
+                                >
+                                  <span className="flex items-center justify-center flex-shrink-0"
+                                    style={{ ...raised(999, 4), width: 32, height: 32, fontSize: 14 }}>{tg.emoji}</span>
+                                  <span className="font-bold" style={{ fontSize: '0.75rem', color: tg.color }}>
+                                    {tg.cat}
+                                  </span>
+                                </Link>
+                              );
+                            }
+                            return (
+                              <div key={tg.cat}>
+                                <PathNode
+                                  emoji={tg.emoji} label={tg.cat} active={tempoOpen} size={32}
+                                  labelColor={tg.color}
+                                  onClick={() => setOpenTempo(tempoOpen ? null : tg.cat)}
+                                />
+
+                                {tempoOpen && (
+                                  <div style={{ marginLeft: 15, paddingLeft: 17, borderLeft: `2px dashed ${SH_LIGHT}`, marginTop: 10 }}>
+                                    <div className="grid grid-cols-3 gap-2.5">
+                                      {tg.items.map((t) => (
+                                        <Link
+                                          key={t}
+                                          href={`/play?skill=${bl.skill}&depth=${bl.depth}&tc=${encodeURIComponent(t)}`}
+                                          style={{
+                                            ...raised(12),
+                                            padding: '0.7rem 0.3rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            textDecoration: 'none',
+                                          }}
+                                        >
+                                          <span className="font-bold" style={{ fontSize: '0.78rem', color: tg.color }}>{t}</span>
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </Branch>
+                      )}
+                    </div>
+                  );
+                })}
+              </Branch>
+            )}
+          </div>
+        )}
 
         {/* Dikey Patika — Düzey › Ders › Alt Konu › Pratik */}
         {showLevels && (

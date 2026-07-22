@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { BotGame } from '@/components/BotGame';
 import type { TimeControl } from '@/components/BotGame';
@@ -41,11 +42,33 @@ const ChevronRight = () => (
 
 type Level = typeof LEVELS[number];
 
+const ALL_TIMES: TimeControl[] = TIME_GROUPS.flatMap((g) => g.items);
+
 export default function PlayPage() {
+  return (
+    <Suspense fallback={<main id="main-content" className="px-4 pt-5 max-w-lg mx-auto"><p className="text-sm t-muted">Yükleniyor...</p></main>}>
+      <PlayInner />
+    </Suspense>
+  );
+}
+
+function PlayInner() {
   useTabGuard('play');
-  const [selected, setSelected] = useState<Level | null>(null);
-  const [tc, setTc] = useState<TimeControl | null>(null);
-  const [started, setStarted] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Hızlı Erişim patikasından gelinmişse (skill+depth+tc) oyunu doğrudan başlat.
+  const skillParam = searchParams.get('skill');
+  const tcParam = searchParams.get('tc');
+  const initialLevel = skillParam !== null
+    ? (LEVELS.find((l) => l.skill === Number(skillParam)) ?? null)
+    : null;
+  const initialTc = tcParam && tcParam !== 'suresiz'
+    ? (ALL_TIMES.find((t) => t.label === tcParam) ?? null)
+    : null;
+
+  const [selected, setSelected] = useState<Level | null>(initialLevel);
+  const [tc, setTc] = useState<TimeControl | null>(initialTc);
+  const [started, setStarted] = useState<boolean>(Boolean(initialLevel && tcParam));
   const [gameKey, setGameKey] = useState(0);
 
   // ── Step 1: choose difficulty ──────────────────────────────────────────────
