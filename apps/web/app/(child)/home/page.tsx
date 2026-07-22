@@ -375,26 +375,27 @@ export default function ChildHomePage() {
 
               return (
                 <div style={{ ...raised(16), padding: '0.9rem 0.75rem', marginTop: 12 }}>
-                  <div className="flex items-stretch gap-2.5" style={{ overflowX: 'auto' }}>
+                  {/* Dar ekranda alt alta, geniş ekranda yan yana (dikey çizgiyle) */}
+                  <div className="flex flex-col sm:flex-row sm:items-stretch" style={{ gap: 18 }}>
                     {/* ── 1. ZORLUK ── */}
                     <div className="flex-shrink-0">
-                      <p className="text-[0.6rem] font-extrabold t-muted uppercase tracking-widest mb-2">1 · Zorluk</p>
-                      <div className="grid gap-2">
+                      <p className="text-[0.75rem] font-extrabold t-muted uppercase tracking-widest mb-2.5">1 · Zorluk</p>
+                      <div className="grid gap-2.5">
                         {BOT_LEVELS.map((bl) => {
                           const on = openSkill === bl.skill;
                           return (
                             <button
                               key={bl.skill}
                               onClick={() => { setOpenSkill(on ? null : bl.skill); setOpenTempo(null); setSelTime(null); }}
-                              className="flex items-center gap-2 transition-transform active:scale-[0.98]"
-                              style={{ ...(on ? pressed(11) : raised(11)), padding: '0.5rem 0.6rem', cursor: 'pointer' }}
+                              className="flex items-center gap-2.5 transition-transform active:scale-[0.98]"
+                              style={{ ...(on ? pressed(12) : raised(12)), padding: '0.6rem 0.75rem', cursor: 'pointer' }}
                             >
-                              <Radio on={on} size={15} />
+                              <Radio on={on} size={18} />
                               <span style={{ color: on ? 'var(--t-accent)' : 'var(--t-text-2)', display: 'flex' }}>
-                                <LevelBars n={bl.bars} s={17} />
+                                <LevelBars n={bl.bars} s={21} />
                               </span>
                               <span className="font-bold whitespace-nowrap"
-                                style={{ fontSize: '0.68rem', color: on ? 'var(--t-accent)' : 'var(--t-text-1)' }}>
+                                style={{ fontSize: '0.85rem', color: on ? 'var(--t-accent)' : 'var(--t-text-1)' }}>
                                 {bl.label}
                               </span>
                             </button>
@@ -403,33 +404,36 @@ export default function ChildHomePage() {
                       </div>
                     </div>
 
-                    {/* Dikey ayırma çizgisi */}
-                    <div style={{ width: 2, background: SH_LIGHT, borderRadius: 9, flexShrink: 0, opacity: 0.85 }} />
+                    {/* Ayırma çizgisi — geniş ekranda dikey, dar ekranda yatay */}
+                    <div
+                      className="w-full h-0.5 sm:w-0.5 sm:h-auto"
+                      style={{ background: SH_LIGHT, borderRadius: 9, flexShrink: 0, opacity: 0.85 }}
+                    />
 
                     {/* ── 2. TEMPO + 3. SÜRE ── */}
                     <div className="flex-shrink-0" style={{ opacity: openSkill === null ? 0.4 : 1, pointerEvents: openSkill === null ? 'none' : 'auto' }}>
-                      <p className="text-[0.6rem] font-extrabold t-muted uppercase tracking-widest mb-2">2 · Tempo &nbsp;·&nbsp; 3 · Süre</p>
-                      <div className="grid gap-2">
+                      <p className="text-[0.75rem] font-extrabold t-muted uppercase tracking-widest mb-2.5">2 · Tempo &nbsp;·&nbsp; 3 · Süre</p>
+                      <div className="grid gap-2.5">
                         {TIME_GROUPS.map((tg) => {
                           const on = openTempo === tg.cat;
                           const Icon = TEMPO_ICONS[tg.cat];
                           return (
-                            <div key={tg.cat} className="flex items-center gap-2">
+                            <div key={tg.cat} className="flex items-center" style={{ gap: 14 }}>
                               <button
                                 onClick={() => { setOpenTempo(on ? null : tg.cat); setSelTime(null); }}
-                                className="flex items-center gap-2 transition-transform active:scale-[0.98]"
-                                style={{ ...(on ? pressed(11) : raised(11)), padding: '0.5rem 0.6rem', cursor: 'pointer', minWidth: 96 }}
+                                className="flex items-center gap-2.5 transition-transform active:scale-[0.98]"
+                                style={{ ...(on ? pressed(12) : raised(12)), padding: '0.6rem 0.75rem', cursor: 'pointer', minWidth: 122 }}
                               >
-                                <Radio on={on} size={14} />
-                                <span style={{ color: on ? tg.color : 'var(--t-text-2)', display: 'flex' }}><Icon s={16} /></span>
+                                <Radio on={on} size={17} />
+                                <span style={{ color: on ? tg.color : 'var(--t-text-2)', display: 'flex' }}><Icon s={20} /></span>
                                 <span className="font-bold whitespace-nowrap"
-                                  style={{ fontSize: '0.66rem', color: on ? tg.color : 'var(--t-text-1)' }}>
+                                  style={{ fontSize: '0.825rem', color: on ? tg.color : 'var(--t-text-1)' }}>
                                   {tg.cat}
                                 </span>
                               </button>
 
                               {/* Süreler — dairesel kartlar */}
-                              <div className="flex items-center gap-1.5" style={{ opacity: on ? 1 : 0.35, pointerEvents: on ? 'auto' : 'none' }}>
+                              <div className="flex items-center gap-2" style={{ opacity: on ? 1 : 0.35, pointerEvents: on ? 'auto' : 'none' }}>
                                 {tg.items.map((t) => {
                                   const tOn = on && selTime === t;
                                   return (
@@ -439,18 +443,18 @@ export default function ChildHomePage() {
                                       className="flex items-center justify-center transition-transform active:scale-95"
                                       style={{
                                         ...(tOn ? pressed(999, 3) : raised(999, 3)),
-                                        width: 34, height: 34, cursor: 'pointer', flexShrink: 0,
+                                        width: 44, height: 44, cursor: 'pointer', flexShrink: 0,
                                       }}
                                     >
                                       <span className="font-extrabold"
-                                        style={{ fontSize: '0.56rem', color: tOn ? tg.color : 'var(--t-text-1)' }}>
+                                        style={{ fontSize: '0.7rem', color: tOn ? tg.color : 'var(--t-text-1)' }}>
                                         {t}
                                       </span>
                                     </button>
                                   );
                                 })}
                                 {tg.items.length === 0 && (
-                                  <span className="text-[0.58rem] t-muted whitespace-nowrap">saat yok</span>
+                                  <span className="text-[0.725rem] t-muted whitespace-nowrap">saat yok</span>
                                 )}
                               </div>
                             </div>
@@ -461,22 +465,22 @@ export default function ChildHomePage() {
                   </div>
 
                   {/* Maça başla */}
-                  <div className="mt-3.5">
+                  <div className="mt-4">
                     {ready ? (
                       <Link
                         href={href}
-                        className="flex items-center justify-center gap-2"
-                        style={{ ...raised(13), padding: '0.7rem', textDecoration: 'none', color: 'var(--t-accent)' }}
+                        className="flex items-center justify-center gap-2.5"
+                        style={{ ...raised(14), padding: '0.85rem', textDecoration: 'none', color: 'var(--t-accent)' }}
                       >
-                        <IconPlay s={17} />
-                        <span className="font-extrabold text-sm">Maça Başla</span>
+                        <IconPlay s={21} />
+                        <span className="font-extrabold" style={{ fontSize: '1.09rem' }}>Maça Başla</span>
                       </Link>
                     ) : (
                       <div
                         className="flex items-center justify-center"
-                        style={{ ...pressed(13), padding: '0.7rem', opacity: 0.65 }}
+                        style={{ ...pressed(14), padding: '0.85rem', opacity: 0.65 }}
                       >
-                        <span className="font-bold text-xs t-muted">
+                        <span className="font-bold t-muted" style={{ fontSize: '0.94rem' }}>
                           {!bot ? 'Önce zorluk seç' : !tempo ? 'Şimdi tempo seç' : 'Şimdi süre seç'}
                         </span>
                       </div>
