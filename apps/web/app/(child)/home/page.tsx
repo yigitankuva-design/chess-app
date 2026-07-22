@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getAthleteName } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
@@ -143,7 +143,6 @@ export default function ChildHomePage() {
   const [openTempo, setOpenTempo] = useState<string | null>(null);
 
   const L = settings.labels;
-  const restored = useRef(false);
 
   useEffect(() => { setAthleteName(getAthleteName()); }, []);
 
@@ -170,33 +169,12 @@ export default function ChildHomePage() {
     }
   }, []);
 
-  // Geri dönünce açık kaldığı yere dön
+  // Not: Hiyerarşi durumu KASITLI olarak saklanmaz — kullanıcı her girişte
+  // akışa baştan başlar (Düzey/Oyun türü → ... ) ve tıklayarak ilerler.
+  // Eski oturumlardan kalan kayıt varsa temizlenir.
   useEffect(() => {
-    try {
-      const st = JSON.parse(sessionStorage.getItem(QA_STATE_KEY) || '{}');
-      if (st.showLevels) setShowLevels(true);
-      if (st.showEglence) setShowEglence(true);
-      if (st.openLevel) { setOpenLevel(st.openLevel); loadLessons(st.openLevel); }
-      if (st.openLessonId) { setOpenLessonId(st.openLessonId); loadSubtopics(st.openLessonId); }
-      if (st.openSubtopic) setOpenSubtopic(st.openSubtopic);
-      if (st.showPlay) setShowPlay(true);
-      if (st.openBot) setOpenBot(true);
-      if (typeof st.openSkill === 'number') setOpenSkill(st.openSkill);
-      if (st.openTempo) setOpenTempo(st.openTempo);
-    } catch { /* ignore */ }
-    restored.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    try { sessionStorage.removeItem(QA_STATE_KEY); } catch { /* ignore */ }
   }, []);
-
-  useEffect(() => {
-    if (!restored.current) return;
-    try {
-      sessionStorage.setItem(QA_STATE_KEY, JSON.stringify({
-        showLevels, showEglence, openLevel, openLessonId, openSubtopic,
-        showPlay, openBot, openSkill, openTempo,
-      }));
-    } catch { /* ignore */ }
-  }, [showLevels, showEglence, openLevel, openLessonId, openSubtopic, showPlay, openBot, openSkill, openTempo]);
 
   function toggleLevel(levelId: number) {
     const opening = openLevel !== levelId;
