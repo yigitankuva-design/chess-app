@@ -31,19 +31,95 @@ const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '�
 
 /* Maç Yap hiyerarşisi — /play sayfasındaki gerçek seçeneklerle birebir */
 const BOT_LEVELS = [
-  { label: 'Çok Kolay', skill: 0,  depth: 1,  emoji: '🐣' },
-  { label: 'Kolay',     skill: 3,  depth: 4,  emoji: '🙂' },
-  { label: 'Orta',      skill: 8,  depth: 8,  emoji: '😎' },
-  { label: 'Zor',       skill: 14, depth: 10, emoji: '🔥' },
-  { label: 'Çok Zor',   skill: 20, depth: 12, emoji: '👑' },
+  { label: 'Çok Kolay', skill: 0,  depth: 1,  bars: 1 },
+  { label: 'Kolay',     skill: 3,  depth: 4,  bars: 2 },
+  { label: 'Orta',      skill: 8,  depth: 8,  bars: 3 },
+  { label: 'Zor',       skill: 14, depth: 10, bars: 4 },
+  { label: 'Çok Zor',   skill: 20, depth: 12, bars: 5 },
 ];
 
 const TIME_GROUPS = [
-  { cat: 'Yıldırım', emoji: '⚡', color: '#fbbf24', items: ['3+2', '5+0', '5+3'] },
-  { cat: 'Hızlı',    emoji: '🚀', color: '#38bdf8', items: ['10+0', '10+5', '15+10'] },
-  { cat: 'Klasik',   emoji: '🐢', color: '#2dd4bf', items: ['30+0', '30+10', '30+20'] },
-  { cat: 'Süresiz',  emoji: '♾️', color: '#a78bfa', items: [] as string[] },
+  { cat: 'Yıldırım', color: '#fbbf24', items: ['3+2', '5+0', '5+3'] },
+  { cat: 'Hızlı',    color: '#38bdf8', items: ['10+0', '10+5', '15+10'] },
+  { cat: 'Klasik',   color: '#2dd4bf', items: ['30+0', '30+10', '30+20'] },
+  { cat: 'Süresiz',  color: '#a78bfa', items: [] as string[] },
 ];
+
+/* ── Modern çizgi ikonlar (emoji yerine) ─────────────────────────────── */
+const svgBase = {
+  viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+  strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
+};
+
+const IconBot = ({ s = 20 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <rect x="4" y="8" width="16" height="12" rx="3.5" />
+    <path d="M12 8V5.2" /><circle cx="12" cy="3.6" r="1.3" />
+    <circle cx="9" cy="13.6" r="1.15" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="13.6" r="1.15" fill="currentColor" stroke="none" />
+    <path d="M9.6 17h4.8" />
+  </svg>
+);
+const IconFriends = ({ s = 20 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <circle cx="9" cy="7.8" r="3.2" />
+    <path d="M3.6 19.2v-1.1a4.6 4.6 0 0 1 4.6-4.6h1.6a4.6 4.6 0 0 1 4.6 4.6v1.1" />
+    <path d="M16.2 5.2a3.2 3.2 0 0 1 0 6.2" />
+    <path d="M17.6 13.7a4.6 4.6 0 0 1 2.8 4.4v1.1" />
+  </svg>
+);
+const IconBolt = ({ s = 18 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}><path d="M13 2.5 4.8 13.6H11l-1 7.9 9.2-11.8H13z" /></svg>
+);
+const IconGauge = ({ s = 18 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <path d="M4 18.5a8.5 8.5 0 1 1 16 0" />
+    <path d="M12 18.5 16.4 13" />
+    <circle cx="12" cy="18.5" r="1.3" fill="currentColor" stroke="none" />
+  </svg>
+);
+const IconClock = ({ s = 18 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}><circle cx="12" cy="12" r="8.6" /><path d="M12 7.2V12l3.2 2.1" /></svg>
+);
+const IconInfinity = ({ s = 18 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <path d="M7 15.6c-2 0-3.6-1.6-3.6-3.6S5 8.4 7 8.4c3.1 0 4 7.2 8 7.2 2 0 3.6-1.6 3.6-3.6S17 8.4 15 8.4c-3.1 0-4 7.2-8 7.2z" />
+  </svg>
+);
+const IconPlay = ({ s = 18 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}><path d="M7.5 4.8 19 12 7.5 19.2z" /></svg>
+);
+
+const TEMPO_ICONS: Record<string, ({ s }: { s?: number }) => React.JSX.Element> = {
+  'Yıldırım': IconBolt, 'Hızlı': IconGauge, 'Klasik': IconClock, 'Süresiz': IconInfinity,
+};
+
+/* Zorluk göstergesi — dolu çubuk sayısı seviyeyi anlatır */
+function LevelBars({ n, s = 18 }: { n: number; s?: number }) {
+  return (
+    <svg width={s} height={s} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <rect
+          key={i}
+          x={0.8 + (i - 1) * 3.9} y={16.5 - i * 2.7} width="2.6" height={i * 2.7} rx="1.2"
+          fill="currentColor" opacity={i <= n ? 1 : 0.22}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/* Dairesel seçim (radio) düğmesi */
+function Radio({ on, size = 16 }: { on: boolean; size?: number }) {
+  return (
+    <span
+      className="flex items-center justify-center flex-shrink-0"
+      style={{ ...(on ? pressed(999, 2) : raised(999, 2)), width: size, height: size }}
+    >
+      {on && <span style={{ width: size * 0.42, height: size * 0.42, borderRadius: 999, background: 'var(--t-accent)' }} />}
+    </span>
+  );
+}
 
 const PRACTICE_MODES = [
   { slug: 'suresiz', emoji: '♾️', label: 'Süresiz Pratik Yap', color: '#2dd4bf' },
@@ -141,6 +217,7 @@ export default function ChildHomePage() {
   const [openBot, setOpenBot] = useState(false);
   const [openSkill, setOpenSkill] = useState<number | null>(null);
   const [openTempo, setOpenTempo] = useState<string | null>(null);
+  const [selTime, setSelTime] = useState<string | null>(null);
 
   const L = settings.labels;
 
@@ -264,91 +341,150 @@ export default function ChildHomePage() {
             {/* Arkadaşla Oyna — doğrudan gider */}
             <Link href="/play/online" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
               <span className="flex items-center justify-center flex-shrink-0"
-                style={{ ...raised(999, 4), width: 44, height: 44, fontSize: 19 }}>🤝</span>
+                style={{ ...raised(999, 4), width: 44, height: 44, color: 'var(--t-text-1)' }}>
+                <IconFriends s={20} />
+              </span>
               <span className="font-bold text-sm" style={{ color: 'var(--t-text-1)' }}>Arkadaşla Oyna</span>
             </Link>
 
             <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
 
-            {/* Bota Karşı — açılır */}
-            <PathNode
-              emoji="🤖" label="Bota Karşı Oyna" active={openBot} size={44}
-              onClick={() => { setOpenBot((v) => !v); setOpenSkill(null); setOpenTempo(null); }}
-            />
+            {/* Bota Karşı — açılır seçim tablosu */}
+            <button
+              onClick={() => { setOpenBot((v) => !v); setOpenSkill(null); setOpenTempo(null); setSelTime(null); }}
+              className="flex items-center gap-3 w-full text-left transition-transform active:scale-[0.98]"
+              style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+            >
+              <span className="flex items-center justify-center flex-shrink-0"
+                style={{ ...(openBot ? pressed(999, 3) : raised(999, 4)), width: 44, height: 44, color: 'var(--t-text-1)' }}>
+                <IconBot s={20} />
+              </span>
+              <span className="font-bold text-sm" style={{ color: openBot ? 'var(--t-accent)' : 'var(--t-text-1)' }}>
+                Bota Karşı Oyna
+              </span>
+            </button>
 
-            {openBot && (
-              <Branch offset={21}>
-                {BOT_LEVELS.map((bl) => {
-                  const skillOpen = openSkill === bl.skill;
-                  return (
-                    <div key={bl.skill}>
-                      <PathNode
-                        emoji={bl.emoji} label={bl.label} active={skillOpen} size={36}
-                        onClick={() => { setOpenSkill(skillOpen ? null : bl.skill); setOpenTempo(null); }}
-                      />
+            {openBot && (() => {
+              const bot = BOT_LEVELS.find((b) => b.skill === openSkill) ?? null;
+              const tempo = TIME_GROUPS.find((t) => t.cat === openTempo) ?? null;
+              const unlimited = tempo?.items.length === 0;
+              const ready = !!bot && !!tempo && (unlimited || !!selTime);
+              const href = ready
+                ? `/play?skill=${bot!.skill}&depth=${bot!.depth}&tc=${unlimited ? 'suresiz' : encodeURIComponent(selTime!)}`
+                : '#';
 
-                      {skillOpen && (
-                        <Branch offset={17}>
-                          {TIME_GROUPS.map((tg) => {
-                            const tempoOpen = openTempo === tg.cat;
-                            const isUnlimited = tg.items.length === 0;
-                            // Süresiz'in alt seçeneği yok — doğrudan oyunu başlatır
-                            if (isUnlimited) {
-                              return (
-                                <Link
-                                  key={tg.cat}
-                                  href={`/play?skill=${bl.skill}&depth=${bl.depth}&tc=suresiz`}
-                                  className="flex items-center gap-3"
-                                  style={{ textDecoration: 'none' }}
-                                >
-                                  <span className="flex items-center justify-center flex-shrink-0"
-                                    style={{ ...raised(999, 4), width: 32, height: 32, fontSize: 14 }}>{tg.emoji}</span>
-                                  <span className="font-bold" style={{ fontSize: '0.75rem', color: tg.color }}>
-                                    {tg.cat}
-                                  </span>
-                                </Link>
-                              );
-                            }
-                            return (
-                              <div key={tg.cat}>
-                                <PathNode
-                                  emoji={tg.emoji} label={tg.cat} active={tempoOpen} size={32}
-                                  labelColor={tg.color}
-                                  onClick={() => setOpenTempo(tempoOpen ? null : tg.cat)}
-                                />
+              return (
+                <div style={{ ...raised(16), padding: '0.9rem 0.75rem', marginTop: 12 }}>
+                  <div className="flex items-stretch gap-2.5" style={{ overflowX: 'auto' }}>
+                    {/* ── 1. ZORLUK ── */}
+                    <div className="flex-shrink-0">
+                      <p className="text-[0.6rem] font-extrabold t-muted uppercase tracking-widest mb-2">1 · Zorluk</p>
+                      <div className="grid gap-2">
+                        {BOT_LEVELS.map((bl) => {
+                          const on = openSkill === bl.skill;
+                          return (
+                            <button
+                              key={bl.skill}
+                              onClick={() => { setOpenSkill(on ? null : bl.skill); setOpenTempo(null); setSelTime(null); }}
+                              className="flex items-center gap-2 transition-transform active:scale-[0.98]"
+                              style={{ ...(on ? pressed(11) : raised(11)), padding: '0.5rem 0.6rem', cursor: 'pointer' }}
+                            >
+                              <Radio on={on} size={15} />
+                              <span style={{ color: on ? 'var(--t-accent)' : 'var(--t-text-2)', display: 'flex' }}>
+                                <LevelBars n={bl.bars} s={17} />
+                              </span>
+                              <span className="font-bold whitespace-nowrap"
+                                style={{ fontSize: '0.68rem', color: on ? 'var(--t-accent)' : 'var(--t-text-1)' }}>
+                                {bl.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                                {tempoOpen && (
-                                  <div style={{ marginLeft: 15, paddingLeft: 17, borderLeft: `2px dashed ${SH_LIGHT}`, marginTop: 10 }}>
-                                    <div className="grid grid-cols-3 gap-2.5">
-                                      {tg.items.map((t) => (
-                                        <Link
-                                          key={t}
-                                          href={`/play?skill=${bl.skill}&depth=${bl.depth}&tc=${encodeURIComponent(t)}`}
-                                          style={{
-                                            ...raised(12),
-                                            padding: '0.7rem 0.3rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            textDecoration: 'none',
-                                          }}
-                                        >
-                                          <span className="font-bold" style={{ fontSize: '0.78rem', color: tg.color }}>{t}</span>
-                                        </Link>
-                                      ))}
-                                    </div>
-                                  </div>
+                    {/* Dikey ayırma çizgisi */}
+                    <div style={{ width: 2, background: SH_LIGHT, borderRadius: 9, flexShrink: 0, opacity: 0.85 }} />
+
+                    {/* ── 2. TEMPO + 3. SÜRE ── */}
+                    <div className="flex-shrink-0" style={{ opacity: openSkill === null ? 0.4 : 1, pointerEvents: openSkill === null ? 'none' : 'auto' }}>
+                      <p className="text-[0.6rem] font-extrabold t-muted uppercase tracking-widest mb-2">2 · Tempo &nbsp;·&nbsp; 3 · Süre</p>
+                      <div className="grid gap-2">
+                        {TIME_GROUPS.map((tg) => {
+                          const on = openTempo === tg.cat;
+                          const Icon = TEMPO_ICONS[tg.cat];
+                          return (
+                            <div key={tg.cat} className="flex items-center gap-2">
+                              <button
+                                onClick={() => { setOpenTempo(on ? null : tg.cat); setSelTime(null); }}
+                                className="flex items-center gap-2 transition-transform active:scale-[0.98]"
+                                style={{ ...(on ? pressed(11) : raised(11)), padding: '0.5rem 0.6rem', cursor: 'pointer', minWidth: 96 }}
+                              >
+                                <Radio on={on} size={14} />
+                                <span style={{ color: on ? tg.color : 'var(--t-text-2)', display: 'flex' }}><Icon s={16} /></span>
+                                <span className="font-bold whitespace-nowrap"
+                                  style={{ fontSize: '0.66rem', color: on ? tg.color : 'var(--t-text-1)' }}>
+                                  {tg.cat}
+                                </span>
+                              </button>
+
+                              {/* Süreler — dairesel kartlar */}
+                              <div className="flex items-center gap-1.5" style={{ opacity: on ? 1 : 0.35, pointerEvents: on ? 'auto' : 'none' }}>
+                                {tg.items.map((t) => {
+                                  const tOn = on && selTime === t;
+                                  return (
+                                    <button
+                                      key={t}
+                                      onClick={() => setSelTime(tOn ? null : t)}
+                                      className="flex items-center justify-center transition-transform active:scale-95"
+                                      style={{
+                                        ...(tOn ? pressed(999, 3) : raised(999, 3)),
+                                        width: 34, height: 34, cursor: 'pointer', flexShrink: 0,
+                                      }}
+                                    >
+                                      <span className="font-extrabold"
+                                        style={{ fontSize: '0.56rem', color: tOn ? tg.color : 'var(--t-text-1)' }}>
+                                        {t}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                                {tg.items.length === 0 && (
+                                  <span className="text-[0.58rem] t-muted whitespace-nowrap">saat yok</span>
                                 )}
                               </div>
-                            );
-                          })}
-                        </Branch>
-                      )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  );
-                })}
-              </Branch>
-            )}
+                  </div>
+
+                  {/* Maça başla */}
+                  <div className="mt-3.5">
+                    {ready ? (
+                      <Link
+                        href={href}
+                        className="flex items-center justify-center gap-2"
+                        style={{ ...raised(13), padding: '0.7rem', textDecoration: 'none', color: 'var(--t-accent)' }}
+                      >
+                        <IconPlay s={17} />
+                        <span className="font-extrabold text-sm">Maça Başla</span>
+                      </Link>
+                    ) : (
+                      <div
+                        className="flex items-center justify-center"
+                        style={{ ...pressed(13), padding: '0.7rem', opacity: 0.65 }}
+                      >
+                        <span className="font-bold text-xs t-muted">
+                          {!bot ? 'Önce zorluk seç' : !tempo ? 'Şimdi tempo seç' : 'Şimdi süre seç'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
