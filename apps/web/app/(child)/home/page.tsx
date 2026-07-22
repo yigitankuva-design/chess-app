@@ -13,7 +13,6 @@ const LEVEL_META = [
   { id: 4, emoji: '🔥' },
 ];
 
-// Eğlence sekmesinin açılır alt menüleri
 const EGLENCE_GAMES = [
   { slug: 'bulmaca-duellosu', emoji: '⚔️', label: 'Bulmaca Düellosu' },
   { slug: 'bulmaca-firtinasi', emoji: '🌪️', label: 'Bulmaca Fırtınası' },
@@ -21,18 +20,15 @@ const EGLENCE_GAMES = [
   { slug: 'acilisi-tahmin-et', emoji: '🎯', label: 'Açılışı Tahmin Et' },
 ];
 
-// Her hızlı erişim sekmesi farklı renk
 const FEATURE_COLORS = {
-  play: '#34d399',     // yeşil
-  lessons: '#38bdf8',  // mavi
-  analiz: '#a78bfa',   // mor
-  eglence: '#f472b6',  // pembe
+  play: '#34d399',
+  lessons: '#38bdf8',
+  analiz: '#a78bfa',
+  eglence: '#f472b6',
 };
 
-// Alt konu dairelerinde sırayla kullanılacak emojiler
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
 
-// Pratik modu kartları — alt konu seçildiğinde gösterilir
 const PRACTICE_MODES = [
   { slug: 'suresiz', emoji: '♾️', label: 'Süresiz Pratik Yap', color: '#2dd4bf' },
   { slug: 'sureli',  emoji: '⏱️', label: 'Süreli Pratik Yap',  color: '#fbbf24' },
@@ -44,36 +40,71 @@ const QA_STATE_KEY = 'bea_qa_state_v2';
 interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number }
 interface Subtopic { stepId: number; title: string }
 
-function featTabStyle(color: string, active: boolean): React.CSSProperties {
+/* ── Yumuşak kabartma yüzeyler — gölgeler tema renginden türetilir ────── */
+const SH_DARK = 'color-mix(in srgb, var(--t-surface) 55%, #000)';
+const SH_LIGHT = 'color-mix(in srgb, var(--t-surface) 84%, #fff)';
+
+function raised(radius: number | string = 14, depth = 5): React.CSSProperties {
   return {
-    borderColor: color,
-    boxShadow: active
-      ? `0 0 22px -4px ${color}, inset 0 0 0 1px ${color}`
-      : `0 0 18px -8px ${color}`,
-    background: active ? `color-mix(in srgb, ${color} 12%, var(--t-surface))` : undefined,
+    background: 'var(--t-surface)',
+    borderRadius: radius,
+    border: 'none',
+    boxShadow: `${depth}px ${depth}px ${depth * 2}px ${SH_DARK}, -${depth}px -${depth}px ${depth * 2}px ${SH_LIGHT}`,
+  };
+}
+function pressed(radius: number | string = 14, depth = 4): React.CSSProperties {
+  return {
+    background: 'var(--t-surface)',
+    borderRadius: radius,
+    border: 'none',
+    boxShadow: `inset ${depth}px ${depth}px ${depth * 2}px ${SH_DARK}, inset -${depth}px -${depth}px ${depth * 2}px ${SH_LIGHT}`,
   };
 }
 
-function SubtopicCircle({ emoji, label, active, onClick }: { emoji: string; label: string; active: boolean; onClick: () => void }) {
+/* Patika düğümü: yuvarlak kabartma buton + yanında etiket */
+function PathNode({
+  emoji, label, active, size, onClick, labelColor,
+}: { emoji: string; label: string; active: boolean; size: number; onClick: () => void; labelColor?: string }) {
   return (
-    <button onClick={onClick} className="w-full flex justify-center">
-      <div
-        className="rounded-full flex flex-col items-center justify-center text-center p-3 transition-transform active:scale-95 hover:-translate-y-0.5"
+    <button
+      onClick={onClick}
+      className="flex items-center gap-3 w-full text-left transition-transform active:scale-[0.98]"
+      style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+    >
+      <span
+        className="flex items-center justify-center flex-shrink-0"
+        style={{ ...(active ? pressed(999, 3) : raised(999, 4)), width: size, height: size, fontSize: size * 0.44 }}
+      >
+        {emoji}
+      </span>
+      <span
+        className="font-bold leading-tight"
         style={{
-          width: '100%',
-          maxWidth: 140,
-          aspectRatio: '1 / 1',
-          background: active
-            ? 'radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--t-accent) 38%, var(--t-surface)), var(--t-surface))'
-            : 'radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--t-accent) 22%, var(--t-surface)), var(--t-surface))',
-          border: `1px solid color-mix(in srgb, var(--t-accent) ${active ? 80 : 55}%, transparent)`,
-          boxShadow: '0 0 26px -6px var(--t-glow), inset 0 0 18px -10px var(--t-accent)',
+          fontSize: size >= 40 ? '0.86rem' : size >= 34 ? '0.8rem' : '0.75rem',
+          color: active ? (labelColor ?? 'var(--t-accent)') : 'var(--t-text-1)',
         }}
       >
-        <span className="text-2xl leading-none mb-1">{emoji}</span>
-        <span className="text-[0.72rem] font-bold leading-tight" style={{ color: 'var(--t-text-1)' }}>{label}</span>
-      </div>
+        {label}
+      </span>
     </button>
+  );
+}
+
+/* Katmanlar arası kesikli bağlantı çizgisi */
+function Branch({ offset, children }: { offset: number; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        marginLeft: offset,
+        paddingLeft: 18,
+        borderLeft: `2px dashed ${SH_LIGHT}`,
+        marginTop: 10,
+        display: 'grid',
+        gap: 10,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -83,7 +114,6 @@ export default function ChildHomePage() {
   const [showEglence, setShowEglence] = useState(false);
   const [athleteName, setAthleteName] = useState<string | null>(null);
 
-  // Düzeyler → Dersler → Alt Konular → Pratik hiyerarşisi
   const [openLevel, setOpenLevel] = useState<number | null>(null);
   const [lessonsByLevel, setLessonsByLevel] = useState<Record<number, LessonSummary[]>>({});
   const [openLessonId, setOpenLessonId] = useState<number | null>(null);
@@ -93,9 +123,7 @@ export default function ChildHomePage() {
   const L = settings.labels;
   const restored = useRef(false);
 
-  useEffect(() => {
-    setAthleteName(getAthleteName());
-  }, []);
+  useEffect(() => { setAthleteName(getAthleteName()); }, []);
 
   const loadLessons = useCallback(async (levelId: number) => {
     setLessonsByLevel((prev) => (prev[levelId] ? prev : { ...prev, [levelId]: [] }));
@@ -120,7 +148,7 @@ export default function ChildHomePage() {
     }
   }, []);
 
-  // Geri dönünce açılım durumunu koru (en başa dönmesin)
+  // Geri dönünce açık kaldığı yere dön
   useEffect(() => {
     try {
       const st = JSON.parse(sessionStorage.getItem(QA_STATE_KEY) || '{}');
@@ -161,6 +189,33 @@ export default function ChildHomePage() {
     setOpenSubtopic(opening ? { lessonId, stepId: sub.stepId, title: sub.title } : null);
   }
 
+  /* Sekme kartı — kabartma, açıkken gömük */
+  function FeatureTab({ emoji, label, color, active, onClick, href }: {
+    emoji: string; label: string; color: string; active?: boolean; onClick?: () => void; href?: string;
+  }) {
+    const style: React.CSSProperties = {
+      ...(active ? pressed(16) : raised(16)),
+      padding: '1rem 0.5rem',
+      minHeight: 88,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.4rem',
+      cursor: 'pointer',
+      textDecoration: 'none',
+    };
+    const inner = (
+      <>
+        <span className="text-3xl leading-none">{emoji}</span>
+        <span className="text-xs font-bold leading-tight text-center" style={{ color }}>{label}</span>
+      </>
+    );
+    return href
+      ? <Link href={href} style={style}>{inner}</Link>
+      : <button onClick={onClick} style={style}>{inner}</button>;
+  }
+
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-8">
       {athleteName && (
@@ -172,176 +227,153 @@ export default function ChildHomePage() {
           </div>
         </div>
       )}
+
       <section aria-label={L.sections.quickAccess}>
         <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3">
           {L.sections.quickAccess}
         </p>
 
-        {/* Sekmeler — her biri farklı renk, yazılar ortalı */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        {/* Sekmeler */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
           {settings.tabs.play && (
-            <Link href="/play" className="t-feat" style={featTabStyle(FEATURE_COLORS.play, false)}>
-              <span className="text-3xl leading-none">🎮</span>
-              <span className="text-xs font-semibold leading-tight text-center" style={{ color: FEATURE_COLORS.play }}>
-                {L.features.play}
-              </span>
-            </Link>
+            <FeatureTab emoji="🎮" label={L.features.play} color={FEATURE_COLORS.play} href="/play" />
           )}
-
-          {/* Dersler — açılır: Düzeyler */}
-          <button
-            onClick={() => setShowLevels((v) => !v)}
-            className="t-feat transition-colors"
-            style={featTabStyle(FEATURE_COLORS.lessons, showLevels)}
-          >
-            <span className="text-3xl leading-none">📚</span>
-            <span className="text-xs font-semibold leading-tight text-center" style={{ color: FEATURE_COLORS.lessons }}>
-              {L.features.lessons}
-            </span>
-          </button>
+          <FeatureTab
+            emoji="📚" label={L.features.lessons} color={FEATURE_COLORS.lessons}
+            active={showLevels} onClick={() => setShowLevels((v) => !v)}
+          />
         </div>
 
-        {/* 1. Düzeyler */}
+        {/* Dikey Patika — Düzey › Ders › Alt Konu › Pratik */}
         {showLevels && (
-          <div className="mb-3">
-            <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3 px-1 text-center">
+          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
+            <p className="text-xs font-bold t-muted uppercase tracking-widest mb-4">
               {L.sections.lessonsPick}
             </p>
-            <div className="space-y-2">
-              {LEVEL_META.map((lv) => {
-                const levelOpen = openLevel === lv.id;
-                const lessons = lessonsByLevel[lv.id];
-                return (
-                  <div key={lv.id}>
-                    <button
-                      onClick={() => toggleLevel(lv.id)}
-                      className="t-card-i w-full flex flex-col items-center justify-center gap-1 px-4 py-4 rounded-xl text-center"
-                      style={levelOpen ? { borderColor: 'var(--t-accent)' } : undefined}
-                    >
-                      <span className="text-3xl leading-none">{lv.emoji}</span>
-                      <span className="font-semibold text-sm">{lv.id}. {L.levels[String(lv.id)] ?? ''}</span>
-                    </button>
 
-                    {/* 2. Dersler */}
-                    {levelOpen && (
-                      <div className="mt-2 space-y-2 pl-2">
-                        {lessons === undefined && <p className="text-xs t-muted text-center py-2">Yükleniyor...</p>}
-                        {lessons?.length === 0 && <p className="text-xs t-muted text-center py-2">Bu düzeyde henüz ders yok.</p>}
-                        {lessons?.map((les) => {
-                          const lessonOpen = openLessonId === les.id;
-                          const subs = subtopicsByLesson[les.id];
-                          return (
-                            <div key={les.id}>
-                              <button
-                                onClick={() => toggleLesson(les.id)}
-                                className="t-card-i w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left"
-                                style={lessonOpen ? { borderColor: 'var(--t-accent)' } : undefined}
-                              >
-                                <span className="text-xl leading-none flex-shrink-0">📘</span>
-                                <span className="font-medium text-sm flex-1">{les.title}</span>
-                                <svg className="flex-shrink-0 opacity-40" width="14" height="14" viewBox="0 0 24 24"
-                                  fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M9 18l6-6-6-6" />
-                                </svg>
-                              </button>
+            {LEVEL_META.map((lv, li) => {
+              const levelOpen = openLevel === lv.id;
+              const lessons = lessonsByLevel[lv.id];
+              return (
+                <div key={lv.id}>
+                  {li > 0 && (
+                    <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
+                  )}
+                  <PathNode
+                    emoji={lv.emoji}
+                    label={`${lv.id}. ${L.levels[String(lv.id)] ?? ''}`}
+                    active={levelOpen}
+                    size={44}
+                    onClick={() => toggleLevel(lv.id)}
+                  />
 
-                              {/* 3. Alt Konular */}
-                              {lessonOpen && (
-                                <div className="mt-2 pl-3 space-y-3">
-                                  {subs === undefined && <p className="text-xs t-muted text-center py-2">Yükleniyor...</p>}
-                                  {subs?.length === 0 && <p className="text-xs t-muted text-center py-2">Alt konu bulunamadı.</p>}
-                                  {subs && subs.length > 0 && (
-                                    <div className="grid grid-cols-2 gap-4 justify-items-center">
-                                      {subs.map((sub, i) => (
-                                        <SubtopicCircle
-                                          key={sub.stepId}
-                                          emoji={SUBTOPIC_EMOJIS[i % SUBTOPIC_EMOJIS.length]}
-                                          label={sub.title}
-                                          active={openSubtopic?.stepId === sub.stepId}
-                                          onClick={() => toggleSubtopic(les.id, sub)}
-                                        />
-                                      ))}
+                  {levelOpen && (
+                    <Branch offset={21}>
+                      {lessons === undefined && <p className="text-xs t-muted py-1">Yükleniyor...</p>}
+                      {lessons?.length === 0 && <p className="text-xs t-muted py-1">Bu düzeyde henüz ders yok.</p>}
+                      {lessons?.map((les) => {
+                        const lessonOpen = openLessonId === les.id;
+                        const subs = subtopicsByLesson[les.id];
+                        return (
+                          <div key={les.id}>
+                            <PathNode
+                              emoji="📘"
+                              label={les.title}
+                              active={lessonOpen}
+                              size={36}
+                              onClick={() => toggleLesson(les.id)}
+                            />
+
+                            {lessonOpen && (
+                              <Branch offset={17}>
+                                {subs === undefined && <p className="text-xs t-muted py-1">Yükleniyor...</p>}
+                                {subs?.length === 0 && <p className="text-xs t-muted py-1">Alt konu bulunamadı.</p>}
+                                {subs?.map((sub, si) => {
+                                  const subOpen = openSubtopic?.lessonId === les.id && openSubtopic.stepId === sub.stepId;
+                                  return (
+                                    <div key={sub.stepId}>
+                                      <PathNode
+                                        emoji={SUBTOPIC_EMOJIS[si % SUBTOPIC_EMOJIS.length]}
+                                        label={sub.title}
+                                        active={subOpen}
+                                        size={32}
+                                        onClick={() => toggleSubtopic(les.id, sub)}
+                                      />
+
+                                      {subOpen && (
+                                        <div style={{ marginLeft: 15, paddingLeft: 17, borderLeft: `2px dashed ${SH_LIGHT}`, marginTop: 10 }}>
+                                          <div className="grid grid-cols-2 gap-3">
+                                            {PRACTICE_MODES.map((m, idx) => (
+                                              <Link
+                                                key={m.slug}
+                                                href={`/pratik/${m.slug}?konu=${encodeURIComponent(sub.title)}&step=${sub.stepId}`}
+                                                style={{
+                                                  ...raised(14),
+                                                  padding: '0.85rem 0.5rem',
+                                                  display: 'flex',
+                                                  flexDirection: 'column',
+                                                  alignItems: 'center',
+                                                  gap: '0.35rem',
+                                                  textDecoration: 'none',
+                                                  gridColumn: idx === PRACTICE_MODES.length - 1 ? '1 / -1' : undefined,
+                                                }}
+                                              >
+                                                <span className="text-2xl leading-none">{m.emoji}</span>
+                                                <span className="text-[0.68rem] font-bold text-center leading-tight" style={{ color: m.color }}>
+                                                  {m.label}
+                                                </span>
+                                              </Link>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-
-                                  {/* 4. Pratik modları */}
-                                  {openSubtopic?.lessonId === les.id && subs?.some((s) => s.stepId === openSubtopic.stepId) && (
-                                    <div className="mt-1">
-                                      <p className="text-xs font-bold t-muted uppercase tracking-wide text-center mb-2">
-                                        {openSubtopic.title}
-                                      </p>
-                                      <div className="grid grid-cols-2 gap-3">
-                                        {PRACTICE_MODES.map((m, idx) => (
-                                          <Link
-                                            key={m.slug}
-                                            href={`/pratik/${m.slug}?konu=${encodeURIComponent(openSubtopic.title)}&step=${openSubtopic.stepId}`}
-                                            className={`t-feat ${idx === PRACTICE_MODES.length - 1 ? 'col-span-2' : ''}`}
-                                            style={featTabStyle(m.color, false)}
-                                          >
-                                            <span className="text-3xl leading-none">{m.emoji}</span>
-                                            <span className="text-xs font-semibold leading-tight text-center" style={{ color: m.color }}>
-                                              {m.label}
-                                            </span>
-                                          </Link>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                                  );
+                                })}
+                              </Branch>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </Branch>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
         {/* Analiz Et + Eğlence */}
         {(settings.tabs.analiz || settings.tabs.eglence) && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {settings.tabs.analiz && (
-              <Link href="/analiz" className="t-feat" style={featTabStyle(FEATURE_COLORS.analiz, false)}>
-                <span className="text-3xl leading-none">🔍</span>
-                <span className="text-xs font-semibold leading-tight text-center" style={{ color: FEATURE_COLORS.analiz }}>
-                  {L.features.analiz}
-                </span>
-              </Link>
+              <FeatureTab emoji="🔍" label={L.features.analiz} color={FEATURE_COLORS.analiz} href="/analiz" />
             )}
             {settings.tabs.eglence && (
-              <button
-                onClick={() => setShowEglence((v) => !v)}
-                className="t-feat transition-colors"
-                style={featTabStyle(FEATURE_COLORS.eglence, showEglence)}
-              >
-                <span className="text-3xl leading-none">🎉</span>
-                <span className="text-xs font-semibold leading-tight text-center" style={{ color: FEATURE_COLORS.eglence }}>
-                  {L.features.eglence}
-                </span>
-              </button>
+              <FeatureTab
+                emoji="🎉" label={L.features.eglence} color={FEATURE_COLORS.eglence}
+                active={showEglence} onClick={() => setShowEglence((v) => !v)}
+              />
             )}
           </div>
         )}
 
-        {/* Eğlence açılır alt menü — yazılar ortalı */}
+        {/* Eğlence — aynı patika dili */}
         {settings.tabs.eglence && showEglence && (
-          <div className="mt-3">
-            <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3 px-1 text-center">
+          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mt-4">
+            <p className="text-xs font-bold t-muted uppercase tracking-widest mb-4">
               {L.features.eglence}
             </p>
-            <div className="space-y-2">
+            <div className="grid gap-3">
               {EGLENCE_GAMES.map((g) => (
-                <Link
-                  key={g.slug}
-                  href={`/eglence/${g.slug}`}
-                  className="t-card-i flex flex-col items-center justify-center gap-1 px-4 py-4 rounded-xl text-center"
-                >
-                  <span className="text-3xl leading-none">{g.emoji}</span>
-                  <span className="font-semibold text-sm">{g.label}</span>
+                <Link key={g.slug} href={`/eglence/${g.slug}`} className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
+                  <span
+                    className="flex items-center justify-center flex-shrink-0"
+                    style={{ ...raised(999, 4), width: 40, height: 40, fontSize: 18 }}
+                  >
+                    {g.emoji}
+                  </span>
+                  <span className="font-bold text-sm" style={{ color: 'var(--t-text-1)' }}>{g.label}</span>
                 </Link>
               ))}
             </div>
