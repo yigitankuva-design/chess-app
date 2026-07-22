@@ -16,9 +16,9 @@ const NAV_GROUPS: { title: string; items: { href: string; label: string }[] }[] 
   {
     title: 'Sporcu Paneli',
     items: [
-      { href: '/admin/content', label: 'Ders' },
-      { href: '/admin/settings/labels', label: 'Yazılar & Etiketler' },
+      // 'Ders' artık Sekmeler > Dersler kartının içinde yönetiliyor
       { href: '/admin/settings/tabs', label: 'Sekmeler' },
+      { href: '/admin/settings/labels', label: 'Yazılar & Etiketler' },
       { href: '/admin/settings/board', label: 'Görünüm — Tahta & Taş' },
     ],
   },

@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getAthleteName } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
+import { visibleTabsInOrder } from '@/lib/settings/defaults';
+import type { TabKey } from '@/lib/settings/defaults';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -202,8 +204,10 @@ function Branch({ offset, children }: { offset: number; children: React.ReactNod
 
 export default function ChildHomePage() {
   const { settings } = useSettings();
-  const [showLevels, setShowLevels] = useState(false);
-  const [showEglence, setShowEglence] = useState(false);
+  // Tek seferde yalnızca bir sekme açık (akordiyon)
+  const [openTab, setOpenTab] = useState<TabKey | null>(null);
+  const showLevels = openTab === 'lessons';
+  const showEglence = openTab === 'eglence';
   const [athleteName, setAthleteName] = useState<string | null>(null);
 
   const [openLevel, setOpenLevel] = useState<number | null>(null);
@@ -213,13 +217,23 @@ export default function ChildHomePage() {
   const [openSubtopic, setOpenSubtopic] = useState<{ lessonId: number; stepId: number; title: string } | null>(null);
 
   // Maç Yap: Oyun türü → Zorluk → Tempo → Süre
-  const [showPlay, setShowPlay] = useState(false);
+  const showPlay = openTab === 'play';
   const [openBot, setOpenBot] = useState(false);
   const [openSkill, setOpenSkill] = useState<number | null>(null);
   const [openTempo, setOpenTempo] = useState<string | null>(null);
   const [selTime, setSelTime] = useState<string | null>(null);
 
   const L = settings.labels;
+  const orderedTabs = visibleTabsInOrder(settings);
+
+  /** Bir sekmeye tıklayınca diğerleri kapanır ve iç seçimleri sıfırlanır. */
+  function toggleTab(key: TabKey) {
+    setOpenTab((prev) => (prev === key ? null : key));
+    // Dersler dalı
+    setOpenLevel(null); setOpenLessonId(null); setOpenSubtopic(null);
+    // Maç Yap dalı
+    setOpenBot(false); setOpenSkill(null); setOpenTempo(null); setSelTime(null);
+  }
 
   useEffect(() => { setAthleteName(getAthleteName()); }, []);
 
@@ -317,22 +331,31 @@ export default function ChildHomePage() {
           {L.sections.quickAccess}
         </p>
 
-        {/* Sekmeler */}
+        {/* Sekmeler — admin sırasına göre; aynı anda yalnızca biri açık */}
         <div className="grid grid-cols-2 gap-4 mb-4">
-          {settings.tabs.play && (
-            <FeatureTab
-              emoji="🎮" label={L.features.play} color={FEATURE_COLORS.play}
-              active={showPlay} onClick={() => setShowPlay((v) => !v)}
-            />
-          )}
-          <FeatureTab
-            emoji="📚" label={L.features.lessons} color={FEATURE_COLORS.lessons}
-            active={showLevels} onClick={() => setShowLevels((v) => !v)}
-          />
+          {orderedTabs.map((key) => {
+            if (key === 'analiz') {
+              return (
+                <FeatureTab key={key} emoji="🔍" label={L.features.analiz}
+                  color={FEATURE_COLORS.analiz} href="/analiz" />
+              );
+            }
+            const meta = {
+              play:    { emoji: '🎮', label: L.features.play,    color: FEATURE_COLORS.play },
+              lessons: { emoji: '📚', label: L.features.lessons, color: FEATURE_COLORS.lessons },
+              eglence: { emoji: '🎉', label: L.features.eglence, color: FEATURE_COLORS.eglence },
+            }[key];
+            return (
+              <FeatureTab
+                key={key} emoji={meta.emoji} label={meta.label} color={meta.color}
+                active={openTab === key} onClick={() => toggleTab(key)}
+              />
+            );
+          })}
         </div>
 
         {/* Maç Yap patikası — Oyun türü › Zorluk › Tempo › Süre */}
-        {settings.tabs.play && showPlay && (
+        {showPlay && (
           <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
             <p className="text-xs font-bold t-muted uppercase tracking-widest mb-4">
               {L.features.play} — Nasıl Oynayalım?
@@ -591,24 +614,9 @@ export default function ChildHomePage() {
           </div>
         )}
 
-        {/* Analiz Et + Eğlence */}
-        {(settings.tabs.analiz || settings.tabs.eglence) && (
-          <div className="grid grid-cols-2 gap-4">
-            {settings.tabs.analiz && (
-              <FeatureTab emoji="🔍" label={L.features.analiz} color={FEATURE_COLORS.analiz} href="/analiz" />
-            )}
-            {settings.tabs.eglence && (
-              <FeatureTab
-                emoji="🎉" label={L.features.eglence} color={FEATURE_COLORS.eglence}
-                active={showEglence} onClick={() => setShowEglence((v) => !v)}
-              />
-            )}
-          </div>
-        )}
-
         {/* Eğlence — aynı patika dili */}
-        {settings.tabs.eglence && showEglence && (
-          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mt-4">
+        {showEglence && (
+          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }}>
             <p className="text-xs font-bold t-muted uppercase tracking-widest mb-4">
               {L.features.eglence}
             </p>

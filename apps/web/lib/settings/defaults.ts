@@ -7,7 +7,9 @@ export interface AppSettingsData {
     features: { play: string; lessons: string; analiz: string; eglence: string };
     sections: { quickAccess: string; lessonsPick: string };
   };
-  tabs: { play: boolean; analiz: boolean; eglence: boolean };
+  tabs: { play: boolean; lessons: boolean; analiz: boolean; eglence: boolean };
+  /** Sekmelerin sporcu ekranındaki sırası (admin sürükleyip değiştirebilir). */
+  tabOrder: TabKey[];
   board: {
     lightSquare: string;
     darkSquare: string;
@@ -15,19 +17,37 @@ export interface AppSettingsData {
   };
 }
 
+export type TabKey = 'play' | 'lessons' | 'analiz' | 'eglence';
+
+/** Uygulamada içeriği olan sekmeler — admin bunları ekleyip/kaldırıp sıralayabilir. */
+export const ALL_TABS: TabKey[] = ['play', 'lessons', 'analiz', 'eglence'];
+
 export const DEFAULT_SETTINGS: AppSettingsData = {
   labels: {
     levels: { '1': 'Temel Düzey', '2': 'Başlangıç Düzeyi', '3': 'Orta Düzey', '4': 'İleri Düzey' },
     features: { play: 'Maç Yap', lessons: 'Dersler', analiz: 'Analiz Et', eglence: 'Eğlence' },
     sections: { quickAccess: 'Hızlı Erişim', lessonsPick: 'Dersler — Düzey Seç' },
   },
-  tabs: { play: true, analiz: true, eglence: true },
+  tabs: { play: true, lessons: true, analiz: true, eglence: true },
+  tabOrder: ['play', 'lessons', 'analiz', 'eglence'],
   board: {
     lightSquare: '#eef0fb',
     darkSquare: '#c3c6ee',
     pieces: {},
   },
 };
+
+/**
+ * Sporcu ekranında gösterilecek sekmeleri, admin sırasına göre döndürür.
+ * Fail-safe: tabOrder eksik/bozuksa varsayılan sıraya düşer, sırada olmayan
+ * sekmeler sona eklenir (hiçbir sekme sessizce kaybolmaz).
+ */
+export function visibleTabsInOrder(s: AppSettingsData): TabKey[] {
+  const raw = Array.isArray(s.tabOrder) ? s.tabOrder : [];
+  const order = raw.filter((t): t is TabKey => ALL_TABS.includes(t as TabKey));
+  const complete = [...order, ...ALL_TABS.filter((t) => !order.includes(t))];
+  return complete.filter((t) => s.tabs?.[t] !== false);
+}
 
 type Json = Record<string, unknown>;
 
