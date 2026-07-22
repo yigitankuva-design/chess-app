@@ -8,12 +8,8 @@ import type { TabKey } from '@/lib/settings/defaults';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-const LEVEL_META = [
-  { id: 1, emoji: '🌱' },
-  { id: 2, emoji: '😊' },
-  { id: 3, emoji: '😎' },
-  { id: 4, emoji: '🔥' },
-];
+/** Düzey ikonları sırayla kullanılır — düzeylerin kendisi admin'den (DB) gelir. */
+const LEVEL_EMOJIS = ['🌱', '😊', '😎', '🔥', '⭐', '👑', '🚀', '🏆'];
 
 const EGLENCE_GAMES = [
   { slug: 'bulmaca-duellosu', emoji: '⚔️', label: 'Bulmaca Düellosu' },
@@ -131,6 +127,7 @@ const PRACTICE_MODES = [
 
 const QA_STATE_KEY = 'bea_qa_state_v2';
 
+interface ModuleSummary { id: number; order_index: number; name: string; lessons_count: number }
 interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number }
 interface Subtopic { stepId: number; title: string }
 
@@ -210,6 +207,7 @@ export default function ChildHomePage() {
   const showEglence = openTab === 'eglence';
   const [athleteName, setAthleteName] = useState<string | null>(null);
 
+  const [modules, setModules] = useState<ModuleSummary[] | null>(null);
   const [openLevel, setOpenLevel] = useState<number | null>(null);
   const [lessonsByLevel, setLessonsByLevel] = useState<Record<number, LessonSummary[]>>({});
   const [openLessonId, setOpenLessonId] = useState<number | null>(null);
@@ -229,6 +227,7 @@ export default function ChildHomePage() {
   /** Bir sekmeye tıklayınca diğerleri kapanır ve iç seçimleri sıfırlanır. */
   function toggleTab(key: TabKey) {
     setOpenTab((prev) => (prev === key ? null : key));
+    if (key === 'lessons' && openTab !== 'lessons' && modules === null) loadModules();
     // Dersler dalı
     setOpenLevel(null); setOpenLessonId(null); setOpenSubtopic(null);
     // Maç Yap dalı
@@ -236,6 +235,16 @@ export default function ChildHomePage() {
   }
 
   useEffect(() => { setAthleteName(getAthleteName()); }, []);
+
+  // Düzeyler admin'deki Ders İçeriği'nden (DB) gelir — ekleme/ad değişikliği anında yansır
+  const loadModules = useCallback(async () => {
+    try {
+      const list: ModuleSummary[] = await fetch(`${API_BASE}/modules`).then((r) => (r.ok ? r.json() : []));
+      setModules(Array.isArray(list) ? list : []);
+    } catch {
+      setModules([]);
+    }
+  }, []);
 
   const loadLessons = useCallback(async (levelId: number) => {
     setLessonsByLevel((prev) => (prev[levelId] ? prev : { ...prev, [levelId]: [] }));
@@ -522,7 +531,10 @@ export default function ChildHomePage() {
               {L.sections.lessonsPick}
             </p>
 
-            {LEVEL_META.map((lv, li) => {
+            {modules === null && <p className="text-xs t-muted py-1">Düzeyler yükleniyor...</p>}
+            {modules?.length === 0 && <p className="text-xs t-muted py-1">Henüz düzey eklenmemiş.</p>}
+
+            {modules?.map((lv, li) => {
               const levelOpen = openLevel === lv.id;
               const lessons = lessonsByLevel[lv.id];
               return (
@@ -531,8 +543,8 @@ export default function ChildHomePage() {
                     <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
                   )}
                   <PathNode
-                    emoji={lv.emoji}
-                    label={`${lv.id}. ${L.levels[String(lv.id)] ?? ''}`}
+                    emoji={LEVEL_EMOJIS[li % LEVEL_EMOJIS.length]}
+                    label={`${li + 1}. ${lv.name}`}
                     active={levelOpen}
                     size={44}
                     onClick={() => toggleLevel(lv.id)}
@@ -577,7 +589,7 @@ export default function ChildHomePage() {
                                             {PRACTICE_MODES.map((m, idx) => (
                                               <Link
                                                 key={m.slug}
-                                                href={`/pratik/${m.slug}?konu=${encodeURIComponent(sub.title)}&step=${sub.stepId}`}
+                                                href={`/pratik/${m.slug}?konu=${encodeURIComponent(sub.title)}&step=${sub.stepId}&ders=${les.id}`}
                                                 style={{
                                                   ...raised(14),
                                                   padding: '0.85rem 0.5rem',

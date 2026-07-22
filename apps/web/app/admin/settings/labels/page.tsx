@@ -37,7 +37,6 @@ export default function AdminLabelsPage() {
 
   if (loading) return <p className="n-muted">Yükleniyor...</p>;
 
-  const setLevel = (k: string, v: string) => setLabels({ ...labels, levels: { ...labels.levels, [k]: v } });
   const setFeature = (k: keyof AppSettingsData['labels']['features'], v: string) =>
     setLabels({ ...labels, features: { ...labels.features, [k]: v } });
   const setSection = (k: keyof AppSettingsData['labels']['sections'], v: string) =>
@@ -50,16 +49,11 @@ export default function AdminLabelsPage() {
       {msg && <p className="text-sm text-cyan-300 mb-4">{msg}</p>}
 
       <div className="neon-card neon-cyan p-5 mb-4">
-        <h2 className="font-bold mb-3 n-text">Düzey Adları</h2>
-        <div className="grid gap-2">
-          {['1', '2', '3', '4'].map((k) => (
-            <div key={k} className="flex items-center gap-3">
-              <span className="w-6 text-center n-muted text-sm">{k}</span>
-              <input className="neon-input flex-1" value={labels.levels[k] ?? ''}
-                onChange={(e) => setLevel(k, e.target.value)} />
-            </div>
-          ))}
-        </div>
+        <h2 className="font-bold mb-2 n-text">Düzey Adları</h2>
+        <p className="text-sm n-muted">
+          Düzey adları artık <b className="n-text">Sekmeler → Dersler → Ders İçeriği</b> bölümünden
+          yönetiliyor. Oradaki düzey adı sporcu ekranında birebir görünür.
+        </p>
       </div>
 
       <div className="neon-card neon-purple p-5 mb-4">
