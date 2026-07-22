@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
-import { DEFAULT_SETTINGS, mergeSettings, ALL_TABS } from '@/lib/settings/defaults';
-import type { AppSettingsData, TabKey } from '@/lib/settings/defaults';
+import { DEFAULT_SETTINGS, mergeSettings, ALL_TABS, TAB_DESTINATIONS } from '@/lib/settings/defaults';
+import type { AppSettingsData, TabKey, CustomTab } from '@/lib/settings/defaults';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -19,6 +19,9 @@ export default function AdminTabsPage() {
   const { reload } = useSettings();
   const [tabs, setTabs] = useState<AppSettingsData['tabs']>(DEFAULT_SETTINGS.tabs);
   const [order, setOrder] = useState<TabKey[]>(DEFAULT_SETTINGS.tabOrder);
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [newLabel, setNewLabel] = useState('');
+  const [newDest, setNewDest] = useState(TAB_DESTINATIONS[0].href);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -33,23 +36,43 @@ export default function AdminTabsPage() {
         // Bozuk/eksik sırayı onar: bilinen sekmeler, eksikler sona
         const clean = (Array.isArray(s.tabOrder) ? s.tabOrder : []).filter((t): t is TabKey => ALL_TABS.includes(t as TabKey));
         setOrder([...clean, ...ALL_TABS.filter((t) => !clean.includes(t))]);
+        setCustomTabs(Array.isArray(s.customTabs) ? s.customTabs : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  async function persist(nextTabs: AppSettingsData['tabs'], nextOrder: TabKey[]) {
+  async function persist(nextTabs: AppSettingsData['tabs'], nextOrder: TabKey[], nextCustom: CustomTab[] = customTabs) {
     setSaving(true); setMsg(null);
     const token = getToken();
     const r = await fetch(`${API_BASE}/admin/settings`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ tabs: nextTabs, tabOrder: nextOrder }),
+      body: JSON.stringify({ tabs: nextTabs, tabOrder: nextOrder, customTabs: nextCustom }),
     });
     setSaving(false);
     if (!r.ok) { setMsg('Kaydedilemedi'); return; }
     setMsg('Kaydedildi ✓');
     reload();
+  }
+
+  function addCustomTab() {
+    const label = newLabel.trim();
+    if (!label) { setMsg('Sekme adı gerekli'); return; }
+    const dest = TAB_DESTINATIONS.find((d) => d.href === newDest)!;
+    const next: CustomTab[] = [
+      ...customTabs,
+      { id: `c${Date.now()}`, label, emoji: dest.emoji, href: dest.href },
+    ];
+    setCustomTabs(next);
+    setNewLabel('');
+    persist(tabs, order, next);
+  }
+
+  function removeCustomTab(id: string) {
+    const next = customTabs.filter((c) => c.id !== id);
+    setCustomTabs(next);
+    persist(tabs, order, next);
   }
 
   function move(key: TabKey, dir: -1 | 1) {
@@ -130,6 +153,54 @@ export default function AdminTabsPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* ── Yeni sekme ekleme ── */}
+      <div className="neon-card neon-green p-5 mb-8">
+        <h2 className="font-bold mb-1 n-text">+ Yeni Sekme Ekle</h2>
+        <p className="text-xs n-muted mb-4">
+          Sekmeye bir ad ver ve hangi bölümü açacağını seç. Sekme sporcunun Hızlı Erişim
+          ekranında görünür.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+          <div>
+            <label className="text-xs n-muted block mb-1">Sekme adı</label>
+            <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
+              placeholder="örn. Bulmacalar" className="neon-input w-full" />
+          </div>
+          <div>
+            <label className="text-xs n-muted block mb-1">Nereyi açsın?</label>
+            <select value={newDest} onChange={(e) => setNewDest(e.target.value)} className="neon-input">
+              {TAB_DESTINATIONS.map((d) => (
+                <option key={d.href} value={d.href}>{d.emoji} {d.label}</option>
+              ))}
+            </select>
+          </div>
+          <button onClick={addCustomTab} disabled={saving || !newLabel.trim()}
+            className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm disabled:opacity-40 transition-colors">
+            Ekle
+          </button>
+        </div>
+
+        {customTabs.length > 0 && (
+          <div className="grid gap-2 mt-4">
+            {customTabs.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/10">
+                <span className="text-xl leading-none">{c.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold n-text">{c.label}</p>
+                  <p className="text-xs n-muted">
+                    {TAB_DESTINATIONS.find((d) => d.href === c.href)?.label ?? c.href}
+                  </p>
+                </div>
+                <button onClick={() => removeCustomTab(c.id)} disabled={saving}
+                  className="px-2.5 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs disabled:opacity-40">
+                  Kaldır
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Kaldırılan sekmeler ── */}

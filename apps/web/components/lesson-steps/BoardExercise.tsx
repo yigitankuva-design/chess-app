@@ -47,18 +47,16 @@ interface Props {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** True when sq is a standard chess dark square (a1 = dark, h1 = light). */
-function isDarkSquare(sq: string): boolean {
-  const file = sq.charCodeAt(0) - 97; // a=0 … h=7
-  const rank = parseInt(sq[1], 10);   // 1–8
-  return (file + rank) % 2 === 1;
-}
-
-/** Handles inverted DB data: if stored list contains known light squares, flip. */
-function isTargetSquare(sq: string, targets: string[]): boolean {
-  if (targets.length === 0) return false;
-  const dbInverted = targets.includes('h1') || targets.includes('a2') || targets.includes('b1');
-  return dbInverted ? isDarkSquare(sq) : targets.includes(sq);
+/**
+ * Doğru kare kontrolü: SADECE admin'de kaydedilen hedef kareler geçerlidir.
+ *
+ * ÖNEMLİ: Burada eskiden "liste h1/a2/b1 içeriyorsa hedefleri yok say, herhangi
+ * bir koyu kareyi doğru kabul et" şeklinde bir düzeltme hack'i vardı. Bu hack,
+ * öğretmenin yazdığı cevabı bozuyordu (örn. "açık renkli kareye dokun" sorusunda
+ * cevabı tam tersine çeviriyordu). Kaldırıldı — cevap artık adminde ne yazıldıysa o.
+ */
+export function isTargetSquare(sq: string, targets: string[]): boolean {
+  return targets.includes(sq);
 }
 
 // ─── Progress dots ────────────────────────────────────────────────────────────

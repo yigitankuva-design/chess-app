@@ -27,6 +27,9 @@ const FEATURE_COLORS = {
 
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
 
+/** Admin'in eklediği ek sekmeler için sırayla kullanılan renkler */
+const CUSTOM_TAB_COLORS = ['#fbbf24', '#2dd4bf', '#fb7185', '#60a5fa', '#c084fc'];
+
 /* Maç Yap hiyerarşisi — /play sayfasındaki gerçek seçeneklerle birebir */
 const BOT_LEVELS = [
   { label: 'Çok Kolay', skill: 0,  depth: 1,  bars: 1 },
@@ -87,6 +90,9 @@ const IconInfinity = ({ s = 18 }: { s?: number }) => (
 const IconPlay = ({ s = 18 }: { s?: number }) => (
   <svg width={s} height={s} {...svgBase}><path d="M7.5 4.8 19 12 7.5 19.2z" /></svg>
 );
+
+/** Tempo ve Süre sütunlarının satırları hizalı kalsın diye sabit satır yüksekliği */
+const TEMPO_ROW_H = 48;
 
 const TEMPO_ICONS: Record<string, ({ s }: { s?: number }) => React.JSX.Element> = {
   'Yıldırım': IconBolt, 'Hızlı': IconGauge, 'Klasik': IconClock, 'Süresiz': IconInfinity,
@@ -361,6 +367,14 @@ export default function ChildHomePage() {
               />
             );
           })}
+
+          {/* Zafer hocanın eklediği ek sekmeler */}
+          {(settings.customTabs ?? []).map((ct, i) => (
+            <FeatureTab
+              key={ct.id} emoji={ct.emoji} label={ct.label}
+              color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]} href={ct.href}
+            />
+          ))}
         </div>
 
         {/* Maç Yap patikası — Oyun türü › Zorluk › Tempo › Süre */}
@@ -442,53 +456,75 @@ export default function ChildHomePage() {
                       style={{ background: SH_LIGHT, borderRadius: 9, flexShrink: 0, opacity: 0.85 }}
                     />
 
-                    {/* ── 2. TEMPO + 3. SÜRE ── */}
+                    {/* ── 2. TEMPO ── */}
                     <div className="flex-shrink-0" style={{ opacity: openSkill === null ? 0.4 : 1, pointerEvents: openSkill === null ? 'none' : 'auto' }}>
-                      <p className="text-[0.75rem] font-extrabold t-muted uppercase tracking-widest mb-2.5">2 · Tempo &nbsp;·&nbsp; 3 · Süre</p>
+                      <p className="text-[0.75rem] font-extrabold t-muted uppercase tracking-widest mb-2.5">2 · Tempo</p>
                       <div className="grid gap-2.5">
                         {TIME_GROUPS.map((tg) => {
                           const on = openTempo === tg.cat;
                           const Icon = TEMPO_ICONS[tg.cat];
                           return (
-                            <div key={tg.cat} className="flex items-center" style={{ gap: 14 }}>
-                              <button
-                                onClick={() => { setOpenTempo(on ? null : tg.cat); setSelTime(null); }}
-                                className="flex items-center gap-2.5 transition-transform active:scale-[0.98]"
-                                style={{ ...(on ? pressed(12) : raised(12)), padding: '0.6rem 0.75rem', cursor: 'pointer', minWidth: 122 }}
-                              >
-                                <Radio on={on} size={17} />
-                                <span style={{ color: on ? tg.color : 'var(--t-text-2)', display: 'flex' }}><Icon s={20} /></span>
-                                <span className="font-bold whitespace-nowrap"
-                                  style={{ fontSize: '0.825rem', color: on ? tg.color : 'var(--t-text-1)' }}>
-                                  {tg.cat}
-                                </span>
-                              </button>
+                            <button
+                              key={tg.cat}
+                              onClick={() => { setOpenTempo(on ? null : tg.cat); setSelTime(null); }}
+                              className="flex items-center gap-2.5 transition-transform active:scale-[0.98]"
+                              style={{ ...(on ? pressed(12) : raised(12)), padding: '0 0.75rem', height: TEMPO_ROW_H, cursor: 'pointer', minWidth: 122 }}
+                            >
+                              <Radio on={on} size={17} />
+                              <span style={{ color: on ? tg.color : 'var(--t-text-2)', display: 'flex' }}><Icon s={20} /></span>
+                              <span className="font-bold whitespace-nowrap"
+                                style={{ fontSize: '0.825rem', color: on ? tg.color : 'var(--t-text-1)' }}>
+                                {tg.cat}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                              {/* Süreler — dairesel kartlar */}
-                              <div className="flex items-center gap-2" style={{ opacity: on ? 1 : 0.35, pointerEvents: on ? 'auto' : 'none' }}>
-                                {tg.items.map((t) => {
-                                  const tOn = on && selTime === t;
-                                  return (
-                                    <button
-                                      key={t}
-                                      onClick={() => setSelTime(tOn ? null : t)}
-                                      className="flex items-center justify-center transition-transform active:scale-95"
-                                      style={{
-                                        ...(tOn ? pressed(999, 3) : raised(999, 3)),
-                                        width: 44, height: 44, cursor: 'pointer', flexShrink: 0,
-                                      }}
-                                    >
-                                      <span className="font-extrabold"
-                                        style={{ fontSize: '0.7rem', color: tOn ? tg.color : 'var(--t-text-1)' }}>
-                                        {t}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                                {tg.items.length === 0 && (
-                                  <span className="text-[0.725rem] t-muted whitespace-nowrap">saat yok</span>
-                                )}
-                              </div>
+                    {/* Tempo ile Süre arasındaki ayırma çizgisi */}
+                    <div
+                      className="w-full h-0.5 sm:w-0.5 sm:h-auto"
+                      style={{
+                        background: SH_LIGHT, borderRadius: 9, flexShrink: 0,
+                        opacity: openSkill === null ? 0.35 : 0.85,
+                      }}
+                    />
+
+                    {/* ── 3. SÜRE ── */}
+                    <div className="flex-shrink-0" style={{ opacity: openSkill === null ? 0.4 : 1, pointerEvents: openSkill === null ? 'none' : 'auto' }}>
+                      <p className="text-[0.75rem] font-extrabold t-muted uppercase tracking-widest mb-2.5">3 · Süre</p>
+                      <div className="grid gap-2.5">
+                        {TIME_GROUPS.map((tg) => {
+                          const on = openTempo === tg.cat;
+                          return (
+                            <div
+                              key={tg.cat}
+                              className="flex items-center gap-2"
+                              style={{ height: TEMPO_ROW_H, opacity: on ? 1 : 0.35, pointerEvents: on ? 'auto' : 'none' }}
+                            >
+                              {tg.items.map((t) => {
+                                const tOn = on && selTime === t;
+                                return (
+                                  <button
+                                    key={t}
+                                    onClick={() => setSelTime(tOn ? null : t)}
+                                    className="flex items-center justify-center transition-transform active:scale-95"
+                                    style={{
+                                      ...(tOn ? pressed(999, 3) : raised(999, 3)),
+                                      width: 44, height: 44, cursor: 'pointer', flexShrink: 0,
+                                    }}
+                                  >
+                                    <span className="font-extrabold"
+                                      style={{ fontSize: '0.7rem', color: tOn ? tg.color : 'var(--t-text-1)' }}>
+                                      {t}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                              {tg.items.length === 0 && (
+                                <span className="text-[0.725rem] t-muted whitespace-nowrap">saat yok</span>
+                              )}
                             </div>
                           );
                         })}

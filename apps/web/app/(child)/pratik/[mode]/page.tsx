@@ -9,13 +9,27 @@ import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercis
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /** Admin'deki 3 pratik modu → adım içeriğindeki soru listesi alanı */
-const MODES: Record<string, { emoji: string; title: string; field: string; timed: boolean; scored: boolean }> = {
-  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false },
-  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false },
-  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true  },
+const MODES: Record<string, {
+  emoji: string; title: string; field: string; timed: boolean; scored: boolean;
+  /** Havuzdan rastgele kaç soru seçilsin (0 = hepsi, sırayla) */
+  randomPick: number;
+}> = {
+  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, randomPick: 20 },
+  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, randomPick: 0 },
+  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  randomPick: 0 },
 };
 
 const TIMED_SECONDS = 300; // Süreli mod: 5 dakika
+
+/** Fisher–Yates karıştırma — her girişte farklı sıra/soru seti için. */
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 interface StepRow { id: number; type: string; content_json?: Record<string, unknown> }
 
@@ -38,6 +52,7 @@ function PratikInner() {
   const lessonId = Number(searchParams.get('ders'));
 
   const [exercises, setExercises] = useState<BoardExerciseConfig[] | null>(null);
+  const [poolSize, setPoolSize] = useState(0);
   const [loading, setLoading] = useState(true);
   const [solved, setSolved] = useState(0);
   const [left, setLeft] = useState(TIMED_SECONDS);
@@ -50,8 +65,12 @@ function PratikInner() {
       .then((r) => (r.ok ? r.json() : { steps: [] }))
       .then((d) => {
         const step = (d.steps as StepRow[] | undefined)?.find((s) => s.id === stepId);
-        const list = (step?.content_json?.[mode.field] as BoardExerciseConfig[] | undefined) ?? [];
-        setExercises(Array.isArray(list) ? list : []);
+        const raw = (step?.content_json?.[mode.field] as BoardExerciseConfig[] | undefined) ?? [];
+        const pool = Array.isArray(raw) ? raw : [];
+        setPoolSize(pool.length);
+        // Süresiz mod: havuzdan her seferinde rastgele 20 soru
+        const picked = mode.randomPick > 0 ? shuffle(pool).slice(0, mode.randomPick) : pool;
+        setExercises(picked);
         setLoading(false);
       })
       .catch(() => { setExercises([]); setLoading(false); });
@@ -132,6 +151,12 @@ function PratikInner() {
           {mode.scored && (
             <p className="text-xs t-muted mb-2">
               Puan: <b style={{ color: 'var(--t-accent)' }}>{solved}</b> / {exercises.length}
+            </p>
+          )}
+          {mode.randomPick > 0 && poolSize > exercises.length && (
+            <p className="text-xs t-muted mb-2">
+              🎲 {poolSize} soruluk havuzdan rastgele <b style={{ color: 'var(--t-accent)' }}>{exercises.length}</b> soru seçildi
+              <span className="opacity-70"> — her girişte farklı sorular gelir</span>
             </p>
           )}
           <BoardExercise

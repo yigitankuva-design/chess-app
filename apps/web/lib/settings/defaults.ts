@@ -10,6 +10,8 @@ export interface AppSettingsData {
   tabs: { play: boolean; lessons: boolean; analiz: boolean; eglence: boolean };
   /** Sekmelerin sporcu ekranındaki sırası (admin sürükleyip değiştirebilir). */
   tabOrder: TabKey[];
+  /** Zafer hocanın eklediği ek sekmeler — uygulamada var olan bir sayfaya gider. */
+  customTabs: CustomTab[];
   board: {
     lightSquare: string;
     darkSquare: string;
@@ -22,6 +24,25 @@ export type TabKey = 'play' | 'lessons' | 'analiz' | 'eglence';
 /** Uygulamada içeriği olan sekmeler — admin bunları ekleyip/kaldırıp sıralayabilir. */
 export const ALL_TABS: TabKey[] = ['play', 'lessons', 'analiz', 'eglence'];
 
+export interface CustomTab {
+  id: string;      // benzersiz anahtar
+  label: string;   // sekmede görünen ad
+  emoji: string;   // ikon
+  href: string;    // gideceği sayfa (aşağıdaki listeden)
+}
+
+/**
+ * Yeni sekmenin gidebileceği yerler — hepsi uygulamada GERÇEKTEN var olan sayfalar.
+ * (Boş/ölü sekme oluşmasın diye serbest URL kabul edilmiyor.)
+ */
+export const TAB_DESTINATIONS: { href: string; label: string; emoji: string }[] = [
+  { href: '/puzzle', label: 'Bulmaca',           emoji: '🧩' },
+  { href: '/badges', label: 'Rozetler',          emoji: '🏆' },
+  { href: '/daily',  label: 'Günün Bulmacası',   emoji: '📅' },
+  { href: '/srs',    label: 'Tekrar',            emoji: '🔁' },
+  { href: '/play/online', label: 'Arkadaşla Oyna', emoji: '🤝' },
+];
+
 export const DEFAULT_SETTINGS: AppSettingsData = {
   labels: {
     levels: { '1': 'Temel Düzey', '2': 'Başlangıç Düzeyi', '3': 'Orta Düzey', '4': 'İleri Düzey' },
@@ -30,6 +51,7 @@ export const DEFAULT_SETTINGS: AppSettingsData = {
   },
   tabs: { play: true, lessons: true, analiz: true, eglence: true },
   tabOrder: ['play', 'lessons', 'analiz', 'eglence'],
+  customTabs: [],
   board: {
     lightSquare: '#eef0fb',
     darkSquare: '#c3c6ee',
