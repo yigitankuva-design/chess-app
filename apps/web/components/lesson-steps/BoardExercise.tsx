@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { playPieceSound } from '@/lib/sounds/pieceSounds';
+import { ChoiceQuestionBody } from './ChoiceQuestionBody';
 
 // ─── Exercise config types ────────────────────────────────────────────────────
 
@@ -169,32 +170,32 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
     setShowNext(false);
   };
 
-  // ── Square styles ──────────────────────────────────────────────────────────
+  // ── Tahta kareleri (sadece tahta tipleri için) ─────────────────────────────
   const styles: Record<string, CSSProperties> = {};
-
-  if (status !== 'success' || showNext) {
-    if (exercise.type !== 'identify_piece') {
-      (exercise.hint_squares ?? []).forEach((sq) => {
-        styles[sq] = { backgroundColor: 'rgba(255,200,0,0.50)' };
+  if (isBoardExercise(exercise)) {
+    if (status !== 'success' || showNext) {
+      if (exercise.type !== 'identify_piece') {
+        (exercise.hint_squares ?? []).forEach((sq) => {
+          styles[sq] = { backgroundColor: 'rgba(255,200,0,0.50)' };
+        });
+      }
+      if (exercise.type === 'identify_piece') {
+        styles[exercise.highlight_square] = { backgroundColor: 'rgba(255,200,0,0.65)' };
+      }
+      if (selected) {
+        styles[selected] = { backgroundColor: 'rgba(80,160,255,0.65)', cursor: 'pointer' };
+      }
+    }
+    if (status === 'success' && exercise.type === 'move_piece') {
+      exercise.target_squares.forEach((sq) => {
+        styles[sq] = { backgroundColor: 'rgba(100,220,100,0.45)' };
       });
     }
-    if (exercise.type === 'identify_piece') {
-      styles[exercise.highlight_square] = { backgroundColor: 'rgba(255,200,0,0.65)' };
-    }
-    if (selected) {
-      styles[selected] = { backgroundColor: 'rgba(80,160,255,0.65)', cursor: 'pointer' };
-    }
   }
 
-  if (status === 'success' && exercise.type === 'move_piece') {
-    exercise.target_squares.forEach((sq) => {
-      styles[sq] = { backgroundColor: 'rgba(100,220,100,0.45)' };
-    });
-  }
-
-  // ── Click handler ──────────────────────────────────────────────────────────
+  // ── Tahta tıklama ────────────────────────────────────────────────────────
   const onSquareClick = ({ square, piece }: { square: string; piece: { pieceType: string } | null }) => {
-    if (status === 'success') return;
+    if (status === 'success' || !isBoardExercise(exercise)) return;
 
     if (exercise.type === 'click_square') {
       if (piece) playPieceSound(piece.pieceType);
@@ -223,6 +224,16 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
       } else {
         fail(exercise.fail_msg ?? 'Yanlış kare! Altın renkli kareye taşı.');
       }
+    }
+  };
+
+  // ── Seçenek tıklama (sentence_question / image_question) ──────────────────
+  const onChoiceAnswer = (i: number) => {
+    if (status === 'success' || isBoardExercise(exercise)) return;
+    if (i === exercise.correct_index) {
+      succeed();
+    } else {
+      fail(exercise.fail_msg ?? 'Yanlış! Tekrar dene.');
     }
   };
 
@@ -259,49 +270,55 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
         </span>
       </div>
 
-      {/* Board */}
-      <div className="rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 340, margin: '0 auto' }}>
-        <Chessboard
-          options={{
-            position: exercise.fen,
-            allowDragging: false,
-            squareStyles: styles,
-            onSquareClick,
-          }}
-        />
-      </div>
-
-      {/* Instruction — tahtanın altında kart olarak */}
-      <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
-        style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-        <span className="text-xl leading-none flex-shrink-0">🎯</span>
-        <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
-      </div>
-
-      {/* Multiple-choice for identify_piece */}
-      {exercise.type === 'identify_piece' && status !== 'success' && (
-        <div className="grid grid-cols-2 gap-2">
-          {exercise.options.map((opt, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                if (i === exercise.correct_index) succeed();
-                else fail('Yanlış! Tekrar bak ve dene.');
+      {isBoardExercise(exercise) ? (
+        <>
+          {/* Board */}
+          <div className="rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 340, margin: '0 auto' }}>
+            <Chessboard
+              options={{
+                position: exercise.fen,
+                allowDragging: false,
+                squareStyles: styles,
+                onSquareClick,
               }}
-              className="py-2.5 px-3 rounded-lg text-sm font-medium transition-all"
-              style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      )}
+            />
+          </div>
 
-      {/* Helper hint for move_piece */}
-      {exercise.type === 'move_piece' && status === 'idle' && (
-        <p className="text-xs" style={{ color: 'var(--t-muted)' }}>
-          {selected ? '✔ Taş seçildi — şimdi hedef kareye tıkla!' : 'Önce taşa tıkla, sonra gideceği kareye tıkla.'}
-        </p>
+          {/* Instruction — tahtanın altında kart olarak */}
+          <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
+            style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
+            <span className="text-xl leading-none flex-shrink-0">🎯</span>
+            <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
+          </div>
+
+          {/* Multiple-choice for identify_piece */}
+          {exercise.type === 'identify_piece' && status !== 'success' && (
+            <div className="grid grid-cols-2 gap-2">
+              {exercise.options.map((opt, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    if (i === exercise.correct_index) succeed();
+                    else fail('Yanlış! Tekrar bak ve dene.');
+                  }}
+                  className="py-2.5 px-3 rounded-lg text-sm font-medium transition-all"
+                  style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Helper hint for move_piece */}
+          {exercise.type === 'move_piece' && status === 'idle' && (
+            <p className="text-xs" style={{ color: 'var(--t-muted)' }}>
+              {selected ? '✔ Taş seçildi — şimdi hedef kareye tıkla!' : 'Önce taşa tıkla, sonra gideceği kareye tıkla.'}
+            </p>
+          )}
+        </>
+      ) : (
+        <ChoiceQuestionBody exercise={exercise} disabled={status === 'success'} onAnswer={onChoiceAnswer} />
       )}
 
       {/* Feedback — dikkat çekici ve ilgi çekici */}
