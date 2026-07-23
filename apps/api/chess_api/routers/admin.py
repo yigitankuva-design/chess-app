@@ -523,6 +523,15 @@ async def delete_lesson(
 
 
 BOARD_EXERCISE_TYPES = ("click_square", "move_piece", "identify_piece")
+MAX_EXERCISE_IMAGE_BYTES = 400_000
+
+
+def _check_data_uri_size(value: object, field_label: str) -> None:
+    """data-URI'nin gerçek bayt boyutunu kontrol eder (tarayıcı sıkıştırmasının ikinci savunma hattı)."""
+    if not isinstance(value, str) or not value.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail=f"{field_label} geçerli bir görsel değil")
+    if len(value.encode("utf-8")) > MAX_EXERCISE_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail=f"{field_label} çok büyük (en fazla 400KB)")
 
 
 def _validate_board_exercises(exercises: list) -> None:

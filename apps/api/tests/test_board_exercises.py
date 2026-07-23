@@ -190,3 +190,30 @@ async def test_invalid_exercise_in_timed_mode_rejected(client, db):
         }},
     )
     assert r.status_code == 400
+
+
+from chess_api.routers.admin import _check_data_uri_size
+from fastapi import HTTPException
+
+
+def test_data_uri_size_check_accepts_small_image():
+    small = "data:image/jpeg;base64," + ("A" * 100)
+    _check_data_uri_size(small, "Test görseli")  # exception atmamalı
+
+
+def test_data_uri_size_check_rejects_oversized_image():
+    huge = "data:image/jpeg;base64," + ("A" * 500_000)
+    with pytest.raises(HTTPException) as exc:
+        _check_data_uri_size(huge, "Test görseli")
+    assert exc.value.status_code == 400
+
+
+def test_data_uri_size_check_rejects_non_data_uri():
+    with pytest.raises(HTTPException) as exc:
+        _check_data_uri_size("https://example.com/img.png", "Test görseli")
+    assert exc.value.status_code == 400
+
+
+def test_data_uri_size_check_rejects_non_string():
+    with pytest.raises(HTTPException):
+        _check_data_uri_size(None, "Test görseli")
