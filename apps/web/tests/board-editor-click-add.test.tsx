@@ -37,3 +37,43 @@ describe('BoardEditor — palet seçimi', () => {
     expect(king.className).toMatch(/ring-cyan-400/);
   });
 });
+
+describe('BoardEditor — tıkla-ekle', () => {
+  it('seçiliyken boş bir kareye tıklamak taşı oraya yerleştirir', () => {
+    const { onChange } = setup();
+    fireEvent.click(screen.getByLabelText('Beyaz Vezir'));
+    const square = document.querySelector('[data-square="e4"]');
+    expect(square).toBeTruthy();
+    fireEvent.click(square!);
+    expect(onChange).toHaveBeenCalled();
+    const newFen = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(fenToMap(newFen)['e4']).toBe('Q');
+  });
+
+  it('seçiliyken art arda iki farklı kareye tıklamak seçim kalkmadan ikisini de yerleştirir', () => {
+    const { onChange } = setup();
+    fireEvent.click(screen.getByLabelText('Beyaz Vezir'));
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
+    fireEvent.click(document.querySelector('[data-square="a1"]')!);
+    const lastFen = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    const map = fenToMap(lastFen);
+    expect(map['e4']).toBe('Q');
+    expect(map['a1']).toBe('Q');
+  });
+
+  it('seçim yokken boş bir kareye tıklamak hiçbir şey yapmaz', () => {
+    const { onChange } = setup();
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('seçiliyken dolu bir kareye tıklamak eski taşın yerine geçer (üst üste binmez)', () => {
+    const { onChange } = setup('8/8/8/8/4P3/8/8/8 w - - 0 1'); // e4'te beyaz piyon
+    fireEvent.click(screen.getByLabelText('Beyaz Vezir'));
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
+    const newFen = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    const map = fenToMap(newFen);
+    expect(map['e4']).toBe('Q');
+    expect(Object.keys(map)).toHaveLength(1); // sadece bir taş, ikisi üst üste değil
+  });
+});

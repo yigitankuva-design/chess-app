@@ -5,7 +5,7 @@ import {
   BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels, getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const { ranks: EDITOR_RANKS, files: EDITOR_FILES_LABELS } = coordLabels('white');
 
@@ -86,6 +86,13 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
 
   const [selectedPaletteKey, setSelectedPaletteKey] = useState<string | null>(null);
 
+  // Tıkla-ekle art arda çalıştığında (parent henüz yeni fen ile yeniden render etmemiş
+  // olsa bile) bir önceki tıklamayla eklenen taşı kaybetmemek için en güncel FEN'i tutar.
+  const lastFenRef = useRef(fen);
+  useEffect(() => {
+    lastFenRef.current = fen;
+  }, [fen]);
+
   function togglePaletteSelection(code: string) {
     setSelectedPaletteKey((prev) => (prev === code ? null : code));
   }
@@ -107,6 +114,17 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
     }
     onChange(mapToFen(map, turn));
     return true;
+  }
+
+  // Seçili palet taşı varken tahtada bir kareye tıklamak o taşı oraya yerleştirir
+  // (kare doluysa üzerine yazar). Seçim, palet taşına tekrar tıklanana kadar aktif kalır.
+  function handleSquareClick({ square }: { piece: { pieceType: string } | null; square: string }) {
+    if (!selectedPaletteKey) return;
+    const map = fenToMap(lastFenRef.current);
+    map[square] = selectedPaletteKey;
+    const newFen = mapToFen(map, turn);
+    lastFenRef.current = newFen;
+    onChange(newFen);
   }
 
   // Tahtadaki bir taşa tıklamak onu siler.
@@ -137,6 +155,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
         showNotation: false,
         onPieceDrop: handleDrop,
         onPieceClick: handlePieceClick,
+        onSquareClick: handleSquareClick,
       }}
     >
     <div className="space-y-3">
