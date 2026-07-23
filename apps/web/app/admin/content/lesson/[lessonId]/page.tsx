@@ -5,6 +5,7 @@ import { getToken } from '@/lib/auth-storage';
 import { ExerciseForm } from '@/components/admin/ExerciseForm';
 import type { BoardExercise } from '@/components/admin/ExerciseForm';
 import { assignExerciseCodes, nextExerciseCode } from '@/lib/exerciseCodes';
+import { exerciseBadgeTitle } from '@/lib/exerciseBadge';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -306,7 +307,7 @@ export default function AdminStepEditorPage() {
                                   return (
                                     <button
                                       key={idx}
-                                      title={ex.instruction}
+                                      title={exerciseBadgeTitle(ex)}
                                       onClick={() => setEditingExercise(editingThis ? null : { stepId: s.id, field: mode.field, idx })}
                                       className="aspect-square rounded-full flex items-center justify-center font-mono font-bold transition-all"
                                       style={{
