@@ -41,7 +41,38 @@ export interface IdentifyPieceEx {
   code?: string;
 }
 
-export type BoardExerciseConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;
+export interface SentenceQuestionEx {
+  type: 'sentence_question';
+  instruction: string;
+  answer_kind: 'sentence' | 'image';
+  options: string[];
+  correct_index: number;
+  success_msg?: string;
+  fail_msg?: string;
+  code?: string;
+}
+
+export interface ImageQuestionEx {
+  type: 'image_question';
+  /** İsteğe bağlı alt başlık/açıklama — '' olabilir. */
+  instruction: string;
+  prompt_image: string;
+  answer_kind: 'sentence' | 'image';
+  options: string[];
+  correct_index: number;
+  success_msg?: string;
+  fail_msg?: string;
+  code?: string;
+}
+
+export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;
+export type ChoiceTypeConfig = SentenceQuestionEx | ImageQuestionEx;
+export type BoardExerciseConfig = BoardTypeConfig | ChoiceTypeConfig;
+
+/** Tahta tabanlı bir soru mu (click_square/move_piece/identify_piece)? */
+export function isBoardExercise(ex: BoardExerciseConfig): ex is BoardTypeConfig {
+  return ex.type === 'click_square' || ex.type === 'move_piece' || ex.type === 'identify_piece';
+}
 
 interface Props {
   exercises: BoardExerciseConfig[];
