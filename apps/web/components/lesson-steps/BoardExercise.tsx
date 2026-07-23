@@ -14,6 +14,8 @@ export interface ClickSquareEx {
   hint_squares?: string[];
   success_msg?: string;
   fail_msg?: string;
+  /** 3 haneli soru kodu — admin panelinde atanır, öğrenciye üstte gösterilir. */
+  code?: string;
 }
 
 export interface MovePieceEx {
@@ -25,6 +27,7 @@ export interface MovePieceEx {
   hint_squares?: string[];
   success_msg?: string;
   fail_msg?: string;
+  code?: string;
 }
 
 export interface IdentifyPieceEx {
@@ -35,6 +38,7 @@ export interface IdentifyPieceEx {
   options: string[];
   correct_index: number;
   success_msg?: string;
+  code?: string;
 }
 
 export type BoardExerciseConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;
@@ -210,9 +214,17 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
       {/* Progress */}
       <div className="flex items-center justify-between">
         <ProgressDots total={total} current={currentIdx} doneCount={doneCount} />
-        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-          style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
-          Soru {currentIdx + 1}/{total}
+        <span className="flex items-center gap-1.5">
+          {exercise.code && (
+            <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
+              #{exercise.code}
+            </span>
+          )}
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
+            Soru {currentIdx + 1}/{total}
+          </span>
         </span>
       </div>
 

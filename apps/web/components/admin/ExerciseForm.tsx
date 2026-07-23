@@ -17,6 +17,8 @@ export interface BoardExercise {
   success_msg?: string;
   fail_msg?: string;
   difficulty?: number;
+  /** 3 haneli kalıcı soru kodu (örn. "007") — admin panelinde atanır, değişmez. */
+  code?: string;
 }
 
 interface Props {
@@ -101,6 +103,7 @@ export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
     if (v) { setErr(v); return; }
     setSaving(true);
     const base: BoardExercise = { type, instruction: instruction.trim(), fen, difficulty };
+    if (initial?.code) base.code = initial.code;
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
     if (type === 'click_square') base.target_squares = targets;
@@ -126,7 +129,10 @@ export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
 
   return (
     <div className="neon-card neon-green p-5 space-y-4">
-      <h3 className="font-bold n-text">{editing ? 'Soruyu düzenle' : 'Yeni soru'}</h3>
+      <h3 className="font-bold n-text">
+        {editing ? 'Soruyu düzenle' : 'Yeni soru'}
+        {editing && initial?.code && <span className="ml-2 text-xs font-mono n-muted">Kod: {initial.code}</span>}
+      </h3>
 
       <div className="flex flex-wrap gap-2">
         {([

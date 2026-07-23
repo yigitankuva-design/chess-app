@@ -7,16 +7,6 @@ import type { BoardExercise } from '@/components/admin/ExerciseForm';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-const EXERCISE_TYPE_LABELS: Record<string, string> = {
-  click_square: 'Kareye tıkla',
-  move_piece: 'Taşı oynat',
-  identify_piece: 'Taşı tanı',
-};
-
-function exerciseTypeLabel(type: string): string {
-  return EXERCISE_TYPE_LABELS[type] ?? type;
-}
-
 // Alt konu soruları 3 pratik modunda ayrı listelerde saklanır.
 // 'untimed' = mevcut board_exercises (öğrenci tarafı bununla çalışır — geriye uyumlu).
 // Renkler Hızlı Erişim'deki pratik kartlarıyla aynı (uyumlu tasarım).
@@ -145,6 +135,36 @@ export default function AdminStepEditorPage() {
     return EX_MODES.reduce((n, m) => n + exercisesOf(s, m.field).length, 0);
   }
 
+  /**
+   * Listedeki her soru için gösterilecek kod: kayıtlı kodu varsa o, yoksa boşta olan en
+   * küçük numara. Kayıtlı kodlarla ASLA çakışmaz (aksi halde silme sonrası iki soru aynı
+   * kodu gösterebilir — tam da bu kodun önlemesi gereken karışıklık).
+   */
+  function assignCodes(list: BoardExercise[]): string[] {
+    const used = new Set(list.map((e) => e.code).filter((c): c is string => !!c));
+    const out: string[] = [];
+    let next = 1;
+    for (const ex of list) {
+      if (ex.code) { out.push(ex.code); continue; }
+      let c = String(next).padStart(3, '0');
+      while (used.has(c)) { next++; c = String(next).padStart(3, '0'); }
+      used.add(c);
+      out.push(c);
+      next++;
+    }
+    return out;
+  }
+
+  /**
+   * Yeni eklenecek soru için bir sonraki kalıcı kod. O an ekranda gösterilen (kayıtlı veya
+   * geçici) tüm kodların en büyüğünden büyük olanı alır — bir soru silinse bile ya da henüz
+   * kaydedilmemiş eski sorular olsa bile kodlar asla çakışmaz veya tekrar kullanılmaz.
+   */
+  function nextCode(list: BoardExercise[]): string {
+    const nums = assignCodes(list).map((c) => parseInt(c, 10)).filter((n) => !isNaN(n));
+    return String(Math.max(0, ...nums) + 1).padStart(3, '0');
+  }
+
   async function saveExercises(s: StepRow, field: string, list: BoardExercise[]) {
     const token = getToken();
     const r = await fetch(`${API_BASE}/admin/steps/${s.id}`, {
@@ -162,8 +182,10 @@ export default function AdminStepEditorPage() {
   async function addExercise(s: StepRow, field: string, ex: BoardExercise) {
     setMsg(null);
     try {
-      await saveExercises(s, field, [...exercisesOf(s, field), ex]);
-      setMsg('Soru eklendi');
+      const list = exercisesOf(s, field);
+      const coded: BoardExercise = { ...ex, code: nextCode(list) };
+      await saveExercises(s, field, [...list, coded]);
+      setMsg(`Soru eklendi (Kod: ${coded.code})`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Kaydedilemedi');
       throw e;
@@ -173,8 +195,11 @@ export default function AdminStepEditorPage() {
   async function updateExercise(s: StepRow, field: string, idx: number, ex: BoardExercise) {
     setMsg(null);
     try {
-      const list = exercisesOf(s, field).map((x, i) => (i === idx ? ex : x));
-      await saveExercises(s, field, list);
+      const list = exercisesOf(s, field);
+      // Eski sorularda kod yoksa düzenlerken kalıcı kod atanır (bir kez, o andan sonra sabit kalır).
+      const coded: BoardExercise = { ...ex, code: ex.code ?? assignCodes(list)[idx] };
+      const next = list.map((x, i) => (i === idx ? coded : x));
+      await saveExercises(s, field, next);
       setMsg('Soru güncellendi');
       setEditingExercise(null);
     } catch (e) {
@@ -294,45 +319,60 @@ export default function AdminStepEditorPage() {
                     {openMode?.stepId === s.id && (() => {
                       const mode = EX_MODES.find((m) => m.field === openMode.field)!;
                       const list = exercisesOf(s, mode.field);
+                      const codes = assignCodes(list);
                       return (
                         <div className="space-y-3 pl-2 border-l-2 border-cyan-400/30">
                           <p className="text-sm font-bold n-text pl-2">{mode.emoji} {mode.label}</p>
                           {list.length === 0 ? (
                             <p className="text-sm n-muted pl-2">Bu modda henüz soru yok.</p>
                           ) : (
-                            <div className="grid gap-2 pl-2">
-                              {list.map((ex, idx) => (
-                                <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/10">
-                                  <span className="text-xs n-muted w-6">{idx + 1}</span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs n-muted">
-                                      {exerciseTypeLabel(ex.type)}
-                                      {ex.difficulty ? ` · Zorluk ${ex.difficulty}/5` : ''}
-                                    </p>
-                                    <p className="text-sm n-text truncate">{ex.instruction}</p>
-                                  </div>
-                                  <button onClick={() => moveExercise(s, mode.field, idx, -1)} disabled={idx === 0}
-                                    aria-label="Soruyu yukarı taşı"
-                                    className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">↑</button>
-                                  <button onClick={() => moveExercise(s, mode.field, idx, 1)} disabled={idx === list.length - 1}
-                                    aria-label="Soruyu aşağı taşı"
-                                    className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">↓</button>
-                                  <button onClick={() => setEditingExercise({ stepId: s.id, field: mode.field, idx })}
-                                    className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">Düzenle</button>
-                                  <button onClick={() => deleteExercise(s, mode.field, idx)}
-                                    className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">Sil</button>
-                                </div>
-                              ))}
+                            <div className="pl-2">
+                              {/* Soru kodları — dairesel kartlar, satırda 10 adet. Bir koda tıklayınca o soru düzenlenir. */}
+                              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(10, minmax(0, 1fr))' }}>
+                                {list.map((ex, idx) => {
+                                  const editingThis = editingExercise?.stepId === s.id
+                                    && editingExercise.field === mode.field && editingExercise.idx === idx;
+                                  return (
+                                    <button
+                                      key={idx}
+                                      title={ex.instruction}
+                                      onClick={() => setEditingExercise(editingThis ? null : { stepId: s.id, field: mode.field, idx })}
+                                      className="aspect-square rounded-full flex items-center justify-center font-mono font-bold transition-all"
+                                      style={{
+                                        fontSize: '0.65rem',
+                                        border: `1.5px solid ${mode.color}`,
+                                        background: editingThis ? mode.color : `color-mix(in srgb, ${mode.color} 12%, transparent)`,
+                                        color: editingThis ? '#0b0f1a' : mode.color,
+                                        boxShadow: editingThis ? `0 0 12px -2px ${mode.color}` : 'none',
+                                      }}
+                                    >
+                                      {codes[idx]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                           <div className="pl-2">
                             {editingExercise?.stepId === s.id && editingExercise.field === mode.field ? (
-                              <ExerciseForm
-                                key={`edit-${s.id}-${mode.field}-${editingExercise.idx}`}
-                                initial={list[editingExercise.idx]}
-                                onSubmit={(ex) => updateExercise(s, mode.field, editingExercise.idx, ex)}
-                                onCancel={() => setEditingExercise(null)}
-                              />
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => moveExercise(s, mode.field, editingExercise.idx, -1)} disabled={editingExercise.idx === 0}
+                                    aria-label="Soruyu yukarı taşı"
+                                    className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">↑ Sırayı yukarı al</button>
+                                  <button onClick={() => moveExercise(s, mode.field, editingExercise.idx, 1)} disabled={editingExercise.idx === list.length - 1}
+                                    aria-label="Soruyu aşağı taşı"
+                                    className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">↓ Sırayı aşağı al</button>
+                                  <button onClick={() => deleteExercise(s, mode.field, editingExercise.idx)}
+                                    className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">Soruyu sil</button>
+                                </div>
+                                <ExerciseForm
+                                  key={`edit-${s.id}-${mode.field}-${editingExercise.idx}`}
+                                  initial={{ ...list[editingExercise.idx], code: codes[editingExercise.idx] }}
+                                  onSubmit={(ex) => updateExercise(s, mode.field, editingExercise.idx, ex)}
+                                  onCancel={() => setEditingExercise(null)}
+                                />
+                              </div>
                             ) : (
                               <ExerciseForm key={`add-${s.id}-${mode.field}`} onSubmit={(ex) => addExercise(s, mode.field, ex)} />
                             )}
