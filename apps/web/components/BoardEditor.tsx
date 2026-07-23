@@ -5,7 +5,7 @@ import {
   BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels, getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 const { ranks: EDITOR_RANKS, files: EDITOR_FILES_LABELS } = coordLabels('white');
 
@@ -84,6 +84,12 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
   const boardColors = getBoardColors(settings.board);
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
 
+  const [selectedPaletteKey, setSelectedPaletteKey] = useState<string | null>(null);
+
+  function togglePaletteSelection(code: string) {
+    setSelectedPaletteKey((prev) => (prev === code ? null : code));
+  }
+
   // Sürükle-bırak: paletten (spare) veya tahtadan taş bırakıldığında.
   function handleDrop({ piece, sourceSquare, targetSquare }: {
     piece: { isSparePiece: boolean; pieceType: string };
@@ -145,17 +151,23 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
             style={{ gridTemplateRows: 'repeat(6, 1fr)', gridAutoFlow: 'column' }}
             aria-label="Taş paleti"
           >
-            {PALETTE.map((p) => (
-              <div
-                key={p.code}
-                title={p.label}
-                aria-label={p.label}
-                className="w-9 h-9 rounded-md p-0.5 border border-black/10 cursor-grab active:cursor-grabbing"
-                style={{ backgroundColor: boardColors.light }}
-              >
-                <SparePiece pieceType={pieceKey(p.code)} />
-              </div>
-            ))}
+            {PALETTE.map((p) => {
+              const selected = selectedPaletteKey === p.code;
+              return (
+                <div
+                  key={p.code}
+                  title={p.label}
+                  aria-label={p.label}
+                  onClick={() => togglePaletteSelection(p.code)}
+                  className={`w-9 h-9 rounded-md p-0.5 border cursor-pointer active:cursor-grabbing ${
+                    selected ? 'ring-2 ring-cyan-400 border-cyan-400' : 'border-black/10'
+                  }`}
+                  style={{ backgroundColor: boardColors.light }}
+                >
+                  <SparePiece pieceType={pieceKey(p.code)} />
+                </div>
+              );
+            })}
           </div>
         </div>
 
