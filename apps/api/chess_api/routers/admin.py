@@ -522,6 +522,9 @@ async def delete_lesson(
     return {"deleted": True}
 
 
+BOARD_EXERCISE_TYPES = ("click_square", "move_piece", "identify_piece")
+
+
 def _validate_board_exercises(exercises: list) -> None:
     """Anlatım adımının içindeki board_exercises dizisini doğrular.
 
@@ -536,15 +539,17 @@ def _validate_board_exercises(exercises: list) -> None:
         if not isinstance(ex, dict):
             raise HTTPException(status_code=400, detail="Alıştırma nesne olmalı")
         ex_type = ex.get("type")
-        if ex_type not in ("click_square", "move_piece", "identify_piece"):
+        if ex_type not in BOARD_EXERCISE_TYPES:
             raise HTTPException(status_code=400, detail=f"Geçersiz alıştırma türü: {ex_type}")
-        if not (ex.get("instruction") or "").strip():
-            raise HTTPException(status_code=400, detail="Alıştırma talimatı boş olamaz")
 
         if "difficulty" in ex and ex["difficulty"] is not None:
             diff = ex["difficulty"]
             if not isinstance(diff, int) or diff < 1 or diff > 5:
                 raise HTTPException(status_code=400, detail="Zorluk düzeyi 1-5 arasında olmalı")
+
+        # --- tahta sorusu doğrulaması ---
+        if not (ex.get("instruction") or "").strip():
+            raise HTTPException(status_code=400, detail="Alıştırma talimatı boş olamaz")
 
         fen = ex.get("fen")
         if not fen:
