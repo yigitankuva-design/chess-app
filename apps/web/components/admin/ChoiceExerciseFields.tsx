@@ -1,0 +1,211 @@
+'use client';
+import { useState } from 'react';
+import type { BoardExercise, QuestionFamily } from './ExerciseForm';
+import { compressImageToDataUri } from '@/lib/imageCompress';
+
+interface Props {
+  kind: Extract<QuestionFamily, 'sentence_question' | 'image_question'>;
+  onSubmit: (ex: BoardExercise) => Promise<void>;
+  initial?: BoardExercise;
+  onCancel?: () => void;
+}
+
+export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Props) {
+  const [instruction, setInstruction] = useState(initial?.instruction ?? '');
+  const [promptImage, setPromptImage] = useState(initial?.prompt_image ?? '');
+  const [optionCount, setOptionCount] = useState<2 | 3 | 4>(
+    ((initial?.options?.length ?? 2) as 2 | 3 | 4),
+  );
+  const [answerKind, setAnswerKind] = useState<'sentence' | 'image'>(initial?.answer_kind ?? 'sentence');
+  const [options, setOptions] = useState<string[]>(
+    initial?.options && initial.options.length > 0 ? initial.options : ['', ''],
+  );
+  const [correctIndex, setCorrectIndex] = useState(initial?.correct_index ?? 0);
+  const [successMsg, setSuccessMsg] = useState(initial?.success_msg ?? '');
+  const [failMsg, setFailMsg] = useState(initial?.fail_msg ?? '');
+  const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 1);
+  const [err, setErr] = useState<string | null>(null);
+  const [imgErr, setImgErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const editing = !!initial;
+
+  function setCount(n: 2 | 3 | 4) {
+    setOptionCount(n);
+    setOptions((prev) => {
+      const next = prev.slice(0, n);
+      while (next.length < n) next.push('');
+      return next;
+    });
+    setCorrectIndex((prev) => (prev >= n ? 0 : prev));
+  }
+
+  async function onPromptImageFile(file: File | undefined) {
+    if (!file) return;
+    setImgErr(null);
+    try {
+      setPromptImage(await compressImageToDataUri(file));
+    } catch {
+      setImgErr('Görsel çok büyük, daha küçük bir görsel seçin');
+    }
+  }
+
+  async function onOptionImageFile(i: number, file: File | undefined) {
+    if (!file) return;
+    setImgErr(null);
+    try {
+      const uri = await compressImageToDataUri(file);
+      setOptions((prev) => prev.map((o, j) => (j === i ? uri : o)));
+    } catch {
+      setImgErr('Görsel çok büyük, daha küçük bir görsel seçin');
+    }
+  }
+
+  function validate(): string | null {
+    if (kind === 'sentence_question' && !instruction.trim()) return 'Soru metni gerekli';
+    if (kind === 'image_question' && !promptImage) return 'Soru görseli gerekli';
+    if (answerKind === 'sentence') {
+      if (options.some((o) => !o.trim())) return 'Tüm cevap seçenekleri doldurulmalı';
+    } else {
+      if (options.some((o) => !o)) return 'Tüm cevap seçenekleri için görsel yüklenmeli';
+    }
+    return null;
+  }
+
+  async function submit() {
+    setErr(null);
+    const v = validate();
+    if (v) { setErr(v); return; }
+    setSaving(true);
+    const base: BoardExercise = {
+      type: kind,
+      instruction: instruction.trim(),
+      answer_kind: answerKind,
+      options,
+      correct_index: correctIndex,
+      difficulty,
+    };
+    if (kind === 'image_question') base.prompt_image = promptImage;
+    if (initial?.code) base.code = initial.code;
+    if (successMsg.trim()) base.success_msg = successMsg.trim();
+    if (failMsg.trim()) base.fail_msg = failMsg.trim();
+    try {
+      await onSubmit(base);
+      if (!editing) {
+        setInstruction(''); setPromptImage(''); setOptionCount(2); setAnswerKind('sentence');
+        setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
+      }
+    } catch {
+      setErr('Kaydedilemedi');
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      {kind === 'sentence_question' ? (
+        <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
+          placeholder="Soru cümlesi (örn. Atın hareket şekli nasıldır?)" className="neon-input" />
+      ) : (
+        <div className="space-y-2">
+          <span className="text-xs n-muted block">Soru görseli</span>
+          <input type="file" accept="image/*" className="hidden" id="prompt-image-input"
+            onChange={(e) => onPromptImageFile(e.target.files?.[0])} />
+          <label htmlFor="prompt-image-input"
+            className="inline-block px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
+            Görsel seç
+          </label>
+          {promptImage && (
+            <img src={promptImage} alt="Soru görseli önizleme" style={{ maxWidth: 200, maxHeight: 150, objectFit: 'contain' }} />
+          )}
+          <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
+            placeholder="Açıklama (opsiyonel)" className="neon-input" />
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs n-muted mb-1">Seçenek sayısı</p>
+        <div className="flex gap-2">
+          {([2, 3, 4] as const).map((n) => (
+            <button key={n} type="button" onClick={() => setCount(n)}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                optionCount === n ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+              }`}>{n} seçenek</button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs n-muted mb-1">Cevap tipi</p>
+        <div className="flex gap-2">
+          {([['sentence', 'Cümle'], ['image', 'Görüntü']] as const).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setAnswerKind(k)}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                answerKind === k ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+              }`}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs n-muted mb-1">Cevaplar — doğru olanı soldaki yuvarlakla işaretle</p>
+        {options.map((o, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input type="radio" name="choice-correct" checked={correctIndex === i}
+              onChange={() => setCorrectIndex(i)} aria-label={`${i + 1}. şık doğru`}
+              className="h-4 w-4 accent-cyan-400" />
+            {answerKind === 'sentence' ? (
+              <input value={o} onChange={(e) => setOptions(options.map((x, j) => (j === i ? e.target.value : x)))}
+                placeholder={`${i + 1}. şık`} className="neon-input flex-1" />
+            ) : (
+              <div className="flex-1 flex items-center gap-2">
+                <input type="file" accept="image/*" className="hidden" id={`option-image-${i}`}
+                  onChange={(e) => onOptionImageFile(i, e.target.files?.[0])} />
+                <label htmlFor={`option-image-${i}`}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
+                  {o ? 'Değiştir' : 'Görsel seç'}
+                </label>
+                {o && <img src={o} alt={`${i + 1}. şık önizleme`} style={{ maxWidth: 60, maxHeight: 45, objectFit: 'contain' }} />}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {imgErr && <p className="text-rose-400 text-sm">{imgErr}</p>}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <input value={successMsg} onChange={(e) => setSuccessMsg(e.target.value)}
+          placeholder="Doğru mesajı (opsiyonel)" className="neon-input" />
+        <input value={failMsg} onChange={(e) => setFailMsg(e.target.value)}
+          placeholder="Yanlış mesajı (opsiyonel)" className="neon-input" />
+      </div>
+
+      <div>
+        <p className="text-xs n-muted mb-1">Sorunun Zorluk Düzeyini Belirle</p>
+        <div className="flex flex-wrap gap-2">
+          {[1, 2, 3, 4, 5].map((d) => (
+            <button key={d} type="button" onClick={() => setDifficulty(d)}
+              className={`w-9 h-9 rounded-lg text-sm font-bold border transition-colors ${
+                difficulty === d ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+              }`}>{d}</button>
+          ))}
+          <span className="text-xs n-muted self-center">1 en kolay · 5 en zor</span>
+        </div>
+      </div>
+
+      {err && <p className="text-rose-400 text-sm">{err}</p>}
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={submit} disabled={saving}
+          className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-50 text-sm transition-colors">
+          {saving ? 'Kaydediliyor...' : editing ? 'Soruyu kaydet' : 'Soruyu ekle'}
+        </button>
+        {editing && onCancel && (
+          <button type="button" onClick={onCancel}
+            className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+            İptal
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
