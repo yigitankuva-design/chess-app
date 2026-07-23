@@ -1,13 +1,16 @@
 'use client';
 import { useState } from 'react';
 import { BoardEditor, EMPTY_FEN, fenToMap } from '@/components/BoardEditor';
+import { ChoiceExerciseFields } from './ChoiceExerciseFields';
 
 export type ExerciseType = 'click_square' | 'move_piece' | 'identify_piece';
+export type QuestionFamily = 'sentence_question' | 'image_question' | 'konum';
 
 export interface BoardExercise {
-  type: ExerciseType;
+  type: ExerciseType | 'sentence_question' | 'image_question';
   instruction: string;
-  fen: string;
+  /** Sadece tahta tipleri (Konum Ekle) için zorunlu. */
+  fen?: string;
   target_squares?: string[];
   piece_square?: string;
   highlight_square?: string;
@@ -19,6 +22,10 @@ export interface BoardExercise {
   difficulty?: number;
   /** 3 haneli kalıcı soru kodu (örn. "007") — admin panelinde atanır, değişmez. */
   code?: string;
+  /** Sadece image_question için — data-URI. */
+  prompt_image?: string;
+  /** Sadece sentence_question/image_question için — cevapların tipi. */
+  answer_kind?: 'sentence' | 'image';
 }
 
 interface Props {
@@ -28,6 +35,18 @@ interface Props {
 }
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+const FAMILY_OPTIONS: [QuestionFamily, string][] = [
+  ['sentence_question', 'Cümle ekle'],
+  ['image_question', 'Görüntü ekle'],
+  ['konum', 'Konum ekle'],
+];
+
+function familyOf(ex?: BoardExercise): QuestionFamily {
+  if (ex?.type === 'sentence_question') return 'sentence_question';
+  if (ex?.type === 'image_question') return 'image_question';
+  return 'konum';
+}
 
 function SquarePicker({ values, onToggle }: { values: string[]; onToggle: (sq: string) => void }) {
   return (
@@ -52,7 +71,47 @@ function SquarePicker({ values, onToggle }: { values: string[]; onToggle: (sq: s
 }
 
 export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
-  const [type, setType] = useState<ExerciseType>(initial?.type ?? 'click_square');
+  const [family, setFamily] = useState<QuestionFamily>(() => familyOf(initial));
+  const editing = !!initial;
+
+  return (
+    <div className="neon-card neon-green p-5 space-y-4">
+      <h3 className="font-bold n-text">
+        {editing ? 'Soruyu düzenle' : 'Yeni soru'}
+        {editing && initial?.code && <span className="ml-2 text-xs font-mono n-muted">Kod: {initial.code}</span>}
+      </h3>
+
+      <div className="flex justify-center gap-3 flex-wrap">
+        {FAMILY_OPTIONS.map(([f, label]) => (
+          <button
+            key={f}
+            type="button"
+            disabled={editing}
+            onClick={() => setFamily(f)}
+            className={`w-36 py-4 px-3 rounded-xl border text-center transition-colors ${
+              family === f ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+            } ${editing ? 'opacity-60 cursor-not-allowed' : ''}`}
+          >
+            <span className="block font-semibold text-sm">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {family === 'konum' ? (
+        <BoardExerciseFields onSubmit={onSubmit} initial={initial} onCancel={onCancel} />
+      ) : (
+        <ChoiceExerciseFields kind={family} onSubmit={onSubmit} initial={initial} onCancel={onCancel} />
+      )}
+    </div>
+  );
+}
+
+function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
+  const [type, setType] = useState<ExerciseType>(
+    initial && (initial.type === 'click_square' || initial.type === 'move_piece' || initial.type === 'identify_piece')
+      ? initial.type
+      : 'click_square',
+  );
   const [fen, setFen] = useState(initial?.fen ?? EMPTY_FEN);
   const [turn, setTurn] = useState<'w' | 'b'>(
     initial?.fen ? ((initial.fen.split(' ')[1] as 'w' | 'b') ?? 'w') : 'w',
@@ -128,12 +187,7 @@ export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
   const squares = Object.keys(fenToMap(fen)).sort();
 
   return (
-    <div className="neon-card neon-green p-5 space-y-4">
-      <h3 className="font-bold n-text">
-        {editing ? 'Soruyu düzenle' : 'Yeni soru'}
-        {editing && initial?.code && <span className="ml-2 text-xs font-mono n-muted">Kod: {initial.code}</span>}
-      </h3>
-
+    <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {([
           ['click_square', 'Kareye tıkla'],
