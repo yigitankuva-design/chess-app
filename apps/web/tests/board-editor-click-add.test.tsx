@@ -51,9 +51,18 @@ describe('BoardEditor — tıkla-ekle', () => {
   });
 
   it('seçiliyken art arda iki farklı kareye tıklamak seçim kalkmadan ikisini de yerleştirir', () => {
-    const { onChange } = setup();
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <BoardEditor fen="8/8/8/8/8/8/8/8 w - - 0 1" turn="w" onChange={onChange} onTurnChange={vi.fn()} />,
+    );
     fireEvent.click(screen.getByLabelText('Beyaz Vezir'));
     fireEvent.click(document.querySelector('[data-square="e4"]')!);
+    const fenAfterFirst = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    // Gerçek kullanımda parent burada state'ini günceller ve BoardEditor'ı yeni fen ile
+    // yeniden render eder — testte bunu manuel simüle ediyoruz.
+    rerender(
+      <BoardEditor fen={fenAfterFirst} turn="w" onChange={onChange} onTurnChange={vi.fn()} />,
+    );
     fireEvent.click(document.querySelector('[data-square="a1"]')!);
     const lastFen = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     const map = fenToMap(lastFen);
