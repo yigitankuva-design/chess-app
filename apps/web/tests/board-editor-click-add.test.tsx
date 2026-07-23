@@ -86,3 +86,31 @@ describe('BoardEditor — tıkla-ekle', () => {
     expect(Object.keys(map)).toHaveLength(1); // sadece bir taş, ikisi üst üste değil
   });
 });
+
+describe('BoardEditor — seçim aktifken silme devre dışı, seçim yokken silme çalışır (regresyon)', () => {
+  // NOT: react-chessboard'da onPieceClick, tıklamanın gerçek DOM hedefi taşın kendi
+  // (`[data-piece]`) elemanı olduğunda tetiklenir ve olay yukarı doğru kabarcıklanarak
+  // (bubbling) kare div'inin (`[data-square]`) onSquareClick'ini de tetikler. Dış kare
+  // div'ine doğrudan tıklamak (`fireEvent.click([data-square])`) sadece onSquareClick'i
+  // tetikler, onPieceClick hiç çalışmaz — bu yüzden testte iç `[data-piece]` elemanı
+  // hedefleniyor (gerçek bir kullanıcı tıklamasını doğru şekilde simüle etmek için).
+  function pieceElAt(square: string) {
+    return document.querySelector(`[data-square="${square}"] [data-piece]`)!;
+  }
+
+  it('seçiliyken dolu bir kareye tıklamak onChange\'i SADECE BİR KEZ çağırır', () => {
+    const { onChange } = setup('8/8/8/8/4P3/8/8/8 w - - 0 1');
+    fireEvent.click(screen.getByLabelText('Beyaz Vezir'));
+    onChange.mockClear();
+    fireEvent.click(pieceElAt('e4'));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('REGRESYON: seçim yokken bir taşa tıklamak hâlâ siler', () => {
+    const { onChange } = setup('8/8/8/8/4P3/8/8/8 w - - 0 1');
+    fireEvent.click(pieceElAt('e4'));
+    expect(onChange).toHaveBeenCalled();
+    const newFen = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(fenToMap(newFen)['e4']).toBeUndefined();
+  });
+});

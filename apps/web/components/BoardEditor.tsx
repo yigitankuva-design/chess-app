@@ -118,10 +118,13 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
     onChange(mapToFen(map, turn));
   }
 
-  // Tahtadaki bir taşa tıklamak onu siler.
+  // Tahtadaki bir taşa tıklamak onu siler — AMA seçili bir palet taşı varken değil:
+  // o durumda aynı tıklama handleSquareClick tarafından "buraya yerleştir" olarak
+  // yorumlanıyor, ikisi birden çalışırsa onChange iki kez tetiklenir.
   function handlePieceClick({ isSparePiece, square }: {
     isSparePiece: boolean; square: string | null;
   }) {
+    if (selectedPaletteKey) return;
     if (isSparePiece || !square) return;
     const map = fenToMap(fen);
     delete map[square];
