@@ -217,3 +217,128 @@ def test_data_uri_size_check_rejects_non_data_uri():
 def test_data_uri_size_check_rejects_non_string():
     with pytest.raises(HTTPException):
         _check_data_uri_size(None, "Test görseli")
+
+
+@pytest.mark.asyncio
+async def test_sentence_question_accepted(client, db):
+    les = await _lesson(db, order=90)
+    tok = await _teacher_token(client, email="be_sentence@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "Atın hareket şekli nasıldır?",
+         "answer_kind": "sentence", "options": ["L şeklinde", "Düz çizgide"], "correct_index": 0},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_sentence_question_without_text_rejected(client, db):
+    les = await _lesson(db, order=91)
+    tok = await _teacher_token(client, email="be_sentence2@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "",
+         "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_image_question_requires_prompt_image(client, db):
+    les = await _lesson(db, order=92)
+    tok = await _teacher_token(client, email="be_image@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "",
+         "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_image_question_accepted_with_empty_instruction(client, db):
+    """Görüntü sorusunda instruction opsiyonel — boş olabilir."""
+    les = await _lesson(db, order=93)
+    tok = await _teacher_token(client, email="be_image2@t.com")
+    small_img = "data:image/jpeg;base64," + ("A" * 100)
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "", "prompt_image": small_img,
+         "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 0},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_choice_question_bad_option_count_rejected(client, db):
+    les = await _lesson(db, order=94)
+    tok = await _teacher_token(client, email="be_optcount@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "x",
+         "answer_kind": "sentence", "options": ["Tek"], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+    r2 = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "x",
+         "answer_kind": "sentence", "options": ["1", "2", "3", "4", "5"], "correct_index": 0},
+    ])
+    assert r2.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_choice_question_bad_correct_index_rejected(client, db):
+    les = await _lesson(db, order=95)
+    tok = await _teacher_token(client, email="be_ci@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "x",
+         "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 5},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_choice_question_invalid_answer_kind_rejected(client, db):
+    les = await _lesson(db, order=96)
+    tok = await _teacher_token(client, email="be_ak@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "x",
+         "answer_kind": "video", "options": ["A", "B"], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_choice_question_empty_sentence_option_rejected(client, db):
+    les = await _lesson(db, order=97)
+    tok = await _teacher_token(client, email="be_empty@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "x",
+         "answer_kind": "sentence", "options": ["A", ""], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_choice_question_oversized_option_image_rejected(client, db):
+    les = await _lesson(db, order=98)
+    tok = await _teacher_token(client, email="be_optimg@t.com")
+    huge_img = "data:image/jpeg;base64," + ("A" * 500_000)
+    small_img = "data:image/jpeg;base64," + ("A" * 100)
+    r = await _post_step(client, tok, les.id, [
+        {"type": "sentence_question", "instruction": "x",
+         "answer_kind": "image", "options": [huge_img, small_img], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_mixed_board_and_choice_types_in_same_pool_accepted(client, db):
+    """Konum + Cümle + Görüntü soruları aynı havuzda karışık kabul edilmeli."""
+    les = await _lesson(db, order=99)
+    tok = await _teacher_token(client, email="be_mixed@t.com")
+    small_img = "data:image/jpeg;base64," + ("A" * 100)
+    r = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "Koyu kareye tikla",
+         "fen": "8/8/8/8/8/8/8/8 w - - 0 1", "target_squares": ["a1"]},
+        {"type": "sentence_question", "instruction": "Atın hareketi?",
+         "answer_kind": "sentence", "options": ["L şeklinde", "Düz"], "correct_index": 0},
+        {"type": "image_question", "instruction": "", "prompt_image": small_img,
+         "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 1},
+    ])
+    assert r.status_code == 201

@@ -534,6 +534,40 @@ def _check_data_uri_size(value: object, field_label: str) -> None:
         raise HTTPException(status_code=400, detail=f"{field_label} çok büyük (en fazla 400KB)")
 
 
+CHOICE_EXERCISE_TYPES = ("sentence_question", "image_question")
+
+
+def _validate_choice_exercise(ex: dict, ex_type: str) -> None:
+    """sentence_question / image_question doğrulaması — tahtaya bağımlı değil."""
+    if ex_type == "image_question":
+        img = ex.get("prompt_image")
+        if not img:
+            raise HTTPException(status_code=400, detail="Görsel soru için görsel gerekli")
+        _check_data_uri_size(img, "Soru görseli")
+    else:  # sentence_question
+        if not (ex.get("instruction") or "").strip():
+            raise HTTPException(status_code=400, detail="Cümle sorusu için soru metni gerekli")
+
+    options = ex.get("options")
+    if not isinstance(options, list) or not (2 <= len(options) <= 4):
+        raise HTTPException(status_code=400, detail="2, 3 veya 4 cevap seçeneği gerekli")
+
+    answer_kind = ex.get("answer_kind")
+    if answer_kind not in ("sentence", "image"):
+        raise HTTPException(status_code=400, detail="Geçersiz cevap tipi")
+
+    if answer_kind == "image":
+        for i, opt in enumerate(options):
+            _check_data_uri_size(opt, f"{i + 1}. cevap görseli")
+    else:
+        if any(not (o or "").strip() for o in options):
+            raise HTTPException(status_code=400, detail="Boş cevap seçeneği olamaz")
+
+    ci = ex.get("correct_index")
+    if not isinstance(ci, int) or ci < 0 or ci >= len(options):
+        raise HTTPException(status_code=400, detail="Doğru cevap seçimi geçersiz")
+
+
 def _validate_board_exercises(exercises: list) -> None:
     """Anlatım adımının içindeki board_exercises dizisini doğrular.
 
@@ -548,13 +582,17 @@ def _validate_board_exercises(exercises: list) -> None:
         if not isinstance(ex, dict):
             raise HTTPException(status_code=400, detail="Alıştırma nesne olmalı")
         ex_type = ex.get("type")
-        if ex_type not in BOARD_EXERCISE_TYPES:
+        if ex_type not in BOARD_EXERCISE_TYPES + CHOICE_EXERCISE_TYPES:
             raise HTTPException(status_code=400, detail=f"Geçersiz alıştırma türü: {ex_type}")
 
         if "difficulty" in ex and ex["difficulty"] is not None:
             diff = ex["difficulty"]
             if not isinstance(diff, int) or diff < 1 or diff > 5:
                 raise HTTPException(status_code=400, detail="Zorluk düzeyi 1-5 arasında olmalı")
+
+        if ex_type in CHOICE_EXERCISE_TYPES:
+            _validate_choice_exercise(ex, ex_type)
+            continue
 
         # --- tahta sorusu doğrulaması ---
         if not (ex.get("instruction") or "").strip():
