@@ -154,9 +154,9 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
     >
     <div className="space-y-3">
       <p className="text-xs n-muted text-center">
-        Taşı tahtaya <b>sürükle</b> · eklenen taşı silmek için üstüne <b>tıkla</b>
+        Taşı tahtaya <b>sürükle</b> veya paletten seçip kareye <b>tıkla</b> · eklenen taşı silmek için üstüne <b>tıkla</b>
       </p>
-      <div className="flex items-start gap-2" style={{ maxWidth: 440, margin: '0 auto' }}>
+      <div className="flex items-start gap-2" style={{ maxWidth: 440 }}>
         {/* Sol taş paleti — sürüklenebilir taşlar */}
         <div className="flex flex-col gap-1 shrink-0">
           <div

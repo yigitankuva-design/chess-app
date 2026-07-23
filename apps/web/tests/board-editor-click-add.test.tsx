@@ -114,3 +114,22 @@ describe('BoardEditor — seçim aktifken silme devre dışı, seçim yokken sil
     expect(fenToMap(newFen)['e4']).toBeUndefined();
   });
 });
+
+describe('BoardEditor — sürükle-ekle regresyonu (DOM yapısı doğrulaması)', () => {
+  it('REGRESYON: paletteki taşlar hâlâ sürüklenebilir (dnd-kit draggable wrapper mevcut)', () => {
+    setup();
+    const spareQueen = screen.getByLabelText('Beyaz Vezir').querySelector('[aria-roledescription]');
+    expect(spareQueen).toBeTruthy();
+    expect(spareQueen?.getAttribute('aria-roledescription')).toBe('draggable');
+  });
+});
+
+describe('BoardEditor — sola yaslama', () => {
+  it('palet+tahta sarmalayıcısı artık ortalanmıyor (margin: 0 auto yok)', () => {
+    const { container } = setup();
+    const wrapper = container.querySelector('.flex.items-start.gap-2') as HTMLElement;
+    expect(wrapper).toBeTruthy();
+    expect(wrapper.style.margin).not.toBe('0px auto');
+    expect(wrapper.style.marginLeft).not.toBe('auto');
+  });
+});
