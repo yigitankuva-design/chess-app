@@ -23,7 +23,8 @@
 | `apps/web/lib/imageCompress.ts` | **Yeni** — görsel sıkıştırma yardımcı fonksiyonu |
 | `apps/web/components/admin/ExerciseForm.tsx` | Dış kabuk + 3 kart + `BoardExerciseFields` (taşınan mevcut form) |
 | `apps/web/components/admin/ChoiceExerciseFields.tsx` | **Yeni** — Cümle/Görüntü admin formu |
-| `apps/web/app/admin/content/lesson/[lessonId]/page.tsx` | Badge tooltip fallback (1 satır) |
+| `apps/web/lib/exerciseBadge.ts` | **Yeni** — badge tooltip metni (saf fonksiyon, page.tsx'ten ayrı) |
+| `apps/web/app/admin/content/lesson/[lessonId]/page.tsx` | `exerciseBadgeTitle` import + `title` kullanımı (2 satır) |
 | `apps/web/tests/*.test.ts(x)` | Yeni test dosyaları (aşağıda) |
 
 ---
@@ -49,7 +50,9 @@ Bu adım kod değiştirmez; sadece refactora başlamadan önce "kırılmamış" 
 
 - [ ] **Step 1: Döngüyü ortak/tahta olarak ikiye ayır, YENİ TİP EKLEMEDEN**
 
-`admin.py:525-595` aralığındaki `_validate_board_exercises` fonksiyonunu şu şekilde değiştir (henüz `sentence_question`/`image_question` kabul edilmiyor — bu adım SADECE yapısal refactor, davranış birebir aynı kalmalı):
+`admin.py:525-595` aralığındaki `_validate_board_exercises` fonksiyonunu şu şekilde değiştir (henüz `sentence_question`/`image_question` kabul edilmiyor — bu adım SADECE yapısal hazırlık).
+
+**Dikkat — tek davranış farkı:** `difficulty` kontrolü, `instruction` kontrolünün ÖNÜNE alınıyor. Bunun sebebi Task 4'te seçenek tipleri için `continue` edilmeden önce `difficulty`'nin ortak kontrol olarak çalışması gerekmesi. **Kabul/ret sonucu değişmez**; sadece hem `instruction` boş HEM `difficulty` geçersiz olan (mevcut testlerde ve gerçek veride bulunmayan) bir soruda dönen hata *mesajı* değişir. Bu kasıtlıdır ve kabul edilmiştir.
 
 ```python
 BOARD_EXERCISE_TYPES = ("click_square", "move_piece", "identify_piece")
@@ -743,31 +746,44 @@ git commit -m "feat: ChoiceQuestionBody bileşeni (öğrenci tarafı, tahtasız 
 
 `apps/web/tests/board-exercise-render.test.tsx` oluştur:
 
+`[data-square]` seçicisi react-chessboard'un ürettiği 64 kareyi işaretler (bu ortamda ölçülerek doğrulandı: tahta render olunca tam 64 adet, olmayınca 0). Tahtanın çizilip çizilmediğini bu sayıyla iddia ediyoruz.
+
 ```tsx
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
 
 describe('BoardExercise — tip dallanması', () => {
-  it('click_square için tahta render eder (REGRESYON)', () => {
+  it('click_square için tahtanın 64 karesini render eder (REGRESYON)', () => {
     const exercises: BoardExerciseConfig[] = [
       { type: 'click_square', instruction: 'Bir kareye tıkla', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
     ];
     const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={() => {}} />);
-    expect(container.querySelector('[data-testid], .rounded-xl')).toBeTruthy();
+    expect(container.querySelectorAll('[data-square]')).toHaveLength(64);
     expect(screen.getByText('Bir kareye tıkla')).toBeInTheDocument();
   });
 
-  it('sentence_question için tahta render ETMEZ, seçenekleri gösterir', () => {
+  it('sentence_question için HİÇ tahta karesi render ETMEZ, seçenekleri gösterir', () => {
     const exercises: BoardExerciseConfig[] = [
       { type: 'sentence_question', instruction: 'Atın hareketi?', answer_kind: 'sentence',
         options: ['L şeklinde', 'Düz'], correct_index: 0 },
     ];
-    render(<BoardExercise exercises={exercises} done={false} onCorrect={() => {}} />);
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={() => {}} />);
+    expect(container.querySelectorAll('[data-square]')).toHaveLength(0);
     expect(screen.getByText('Atın hareketi?')).toBeInTheDocument();
     expect(screen.getByText('L şeklinde')).toBeInTheDocument();
     expect(screen.getByText('Düz')).toBeInTheDocument();
+  });
+
+  it('image_question için görseli gösterir, tahta karesi render ETMEZ', () => {
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'image_question', instruction: '', prompt_image: 'data:image/jpeg;base64,AAA',
+        answer_kind: 'sentence', options: ['A', 'B'], correct_index: 1 },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={() => {}} />);
+    expect(container.querySelectorAll('[data-square]')).toHaveLength(0);
+    expect(screen.getByAltText('Soru görseli')).toBeInTheDocument();
   });
 
   it('sentence_question doğru cevaba tıklayınca onCorrect çağrılır', () => {
@@ -777,8 +793,19 @@ describe('BoardExercise — tip dallanması', () => {
         options: ['L şeklinde', 'Düz'], correct_index: 0 },
     ];
     render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
-    screen.getByText('L şeklinde').click();
+    fireEvent.click(screen.getByText('L şeklinde'));
     expect(onCorrect).toHaveBeenCalled();
+  });
+
+  it('sentence_question yanlış cevaba tıklayınca onCorrect çağrılMAZ', () => {
+    const onCorrect = vi.fn();
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'sentence_question', instruction: 'Atın hareketi?', answer_kind: 'sentence',
+        options: ['L şeklinde', 'Düz'], correct_index: 0 },
+    ];
+    render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
+    fireEvent.click(screen.getByText('Düz'));
+    expect(onCorrect).not.toHaveBeenCalled();
   });
 });
 ```
@@ -932,7 +959,7 @@ Expected: 0 hata (Task 5'te bırakılan hata artık giderilmiş olmalı).
 - [ ] **Step 5: Yeni testleri çalıştır**
 
 Run: `cd apps/web && npx vitest run tests/board-exercise-render.test.tsx`
-Expected: 3 test PASS
+Expected: 5 test PASS
 
 - [ ] **Step 6: TÜM frontend test paketini çalıştır (regresyon)**
 
@@ -1460,7 +1487,7 @@ git commit -m "refactor: ExerciseForm dış kabuk + 3 soru ailesi kartı + Board
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChoiceExerciseFields } from '@/components/admin/ChoiceExerciseFields';
 
 describe('ChoiceExerciseFields', () => {
@@ -1474,7 +1501,8 @@ describe('ChoiceExerciseFields', () => {
     fireEvent.change(optionInputs[1], { target: { value: 'Düz çizgide' } });
     fireEvent.click(screen.getByText('Soruyu ekle'));
 
-    await Promise.resolve();
+    // submit() async — waitFor ile bekle (çıplak `await Promise.resolve()` güvenilir değil)
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       type: 'sentence_question',
       instruction: 'Atın hareketi?',
@@ -1765,28 +1793,19 @@ git commit -m "feat: ChoiceExerciseFields — admin Cümle/Görüntü soru formu
 ## Task 11: Frontend — admin ders içeriği sayfasında badge tooltip düzeltmesi
 
 **Files:**
-- Modify: `apps/web/app/admin/content/lesson/[lessonId]/page.tsx:309`
-- Test: `apps/web/tests/admin-lesson-badge-tooltip.test.tsx` (yeni)
+- Create: `apps/web/lib/exerciseBadge.ts`
+- Modify: `apps/web/app/admin/content/lesson/[lessonId]/page.tsx` (import + `title` kullanımı)
+- Test: `apps/web/tests/exercise-badge.test.ts` (yeni)
 
-- [ ] **Step 1: Testi yaz (mevcut satırla FAIL bekleniyor)**
+Yardımcı fonksiyon **`page.tsx` içine konmaz**, ayrı bir lib modülüne çıkarılır. İki sebep: (1) Next.js App Router `page.tsx` dosyalarından bileşen dışı isim export etmek desteklenen bir kullanım değil; (2) testin bir sayfa modülünü import etmesi, o sayfanın tüm bağımlılık ağacını (`getToken`, `fetch`, `ExerciseForm` → `BoardEditor` → react-chessboard) çekerdi — saf bir fonksiyon testi için gereksiz ve kırılgan.
 
-Bu sayfa `getToken`/`fetch` çağırdığı için tam render testi ağır olur; bunun yerine tooltip mantığını izole bir yardımcıya çıkarıp test etmek daha sağlam. `page.tsx`'te `title={ex.instruction}` satırının hemen üstüne (fonksiyon bileşeninin dışına, dosya başına) ekle:
+- [ ] **Step 1: Testi yaz (FAIL bekleniyor — dosya yok)**
 
-`apps/web/app/admin/content/lesson/[lessonId]/page.tsx` dosyasının başına (import'lardan sonra, `EX_MODES` tanımından önce):
+`apps/web/tests/exercise-badge.test.ts` oluştur:
 
 ```ts
-/** Badge grid tooltip metni — image_question'da instruction boş olabilir. */
-export function exerciseBadgeTitle(ex: { type: string; instruction: string }): string {
-  if (ex.instruction) return ex.instruction;
-  return ex.type === 'image_question' ? 'Görüntü sorusu' : '';
-}
-```
-
-`apps/web/tests/admin-lesson-badge-tooltip.test.tsx` oluştur:
-
-```tsx
 import { describe, it, expect } from 'vitest';
-import { exerciseBadgeTitle } from '@/app/admin/content/lesson/[lessonId]/page';
+import { exerciseBadgeTitle } from '@/lib/exerciseBadge';
 
 describe('exerciseBadgeTitle', () => {
   it('instruction doluysa onu döner', () => {
@@ -1800,15 +1819,35 @@ describe('exerciseBadgeTitle', () => {
   it('sentence_question ve instruction boşsa (normalde olmaz) boş döner', () => {
     expect(exerciseBadgeTitle({ type: 'sentence_question', instruction: '' })).toBe('');
   });
+
+  it('instruction tanımsızsa çökmez', () => {
+    expect(exerciseBadgeTitle({ type: 'image_question' })).toBe('Görüntü sorusu');
+  });
 });
 ```
 
-- [ ] **Step 2: Testi çalıştır, FAIL ettiğini doğrula**
+- [ ] **Step 2: Testi çalıştır, dosya yok hatasıyla FAIL ettiğini doğrula**
 
-Run: `cd apps/web && npx vitest run tests/admin-lesson-badge-tooltip.test.tsx`
-Expected: FAIL — `exerciseBadgeTitle` henüz export edilmiyor (Step 1'deki fonksiyon eklenmeden önce çalıştırılırsa).
+Run: `cd apps/web && npx vitest run tests/exercise-badge.test.ts`
+Expected: FAIL — modül bulunamadı.
 
-- [ ] **Step 3: `page.tsx`'teki badge `title` kullanımını güncelle**
+- [ ] **Step 3: Yardımcıyı oluştur ve `page.tsx`'e bağla**
+
+`apps/web/lib/exerciseBadge.ts` oluştur:
+
+```ts
+/** Admin badge grid tooltip metni — image_question'da instruction boş olabilir. */
+export function exerciseBadgeTitle(ex: { type: string; instruction?: string }): string {
+  if (ex.instruction) return ex.instruction;
+  return ex.type === 'image_question' ? 'Görüntü sorusu' : '';
+}
+```
+
+`apps/web/app/admin/content/lesson/[lessonId]/page.tsx` import'larına ekle:
+
+```ts
+import { exerciseBadgeTitle } from '@/lib/exerciseBadge';
+```
 
 `page.tsx:309` civarındaki:
 
@@ -1824,8 +1863,8 @@ satırını şununla değiştir:
 
 - [ ] **Step 4: Testi tekrar çalıştır**
 
-Run: `cd apps/web && npx vitest run tests/admin-lesson-badge-tooltip.test.tsx`
-Expected: 3 test PASS
+Run: `cd apps/web && npx vitest run tests/exercise-badge.test.ts`
+Expected: 4 test PASS
 
 - [ ] **Step 5: TypeScript derlemesini doğrula**
 
@@ -1835,7 +1874,7 @@ Expected: 0 hata
 - [ ] **Step 6: Commit**
 
 ```bash
-git add "apps/web/app/admin/content/lesson/[lessonId]/page.tsx" apps/web/tests/admin-lesson-badge-tooltip.test.tsx
+git add apps/web/lib/exerciseBadge.ts "apps/web/app/admin/content/lesson/[lessonId]/page.tsx" apps/web/tests/exercise-badge.test.ts
 git commit -m "fix: badge tooltip'i image_question'da boş instruction için geri düşüş metni gösterir"
 ```
 
