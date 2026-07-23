@@ -2,6 +2,7 @@
 import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
+import { assignExerciseCodes } from '@/lib/exerciseCodes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Quiz {
@@ -352,16 +353,19 @@ export default function ModuleLessonsPage({ params }: { params: Promise<{ id: st
                                     </p>
                                   )}
                                   {/* Board exercises (array) takes priority */}
-                                  {(content.board_exercises || content.board_exercise) && (
-                                    <BoardExercise
-                                      exercises={
-                                        content.board_exercises ??
-                                        (content.board_exercise ? [content.board_exercise] : [])
-                                      }
-                                      done={stepDone}
-                                      onCorrect={() => markStepDone(l.id, step.id, steps)}
-                                    />
-                                  )}
+                                  {(content.board_exercises || content.board_exercise) && (() => {
+                                    const raw = content.board_exercises ?? (content.board_exercise ? [content.board_exercise] : []);
+                                    // Kodlar admin panelindeki sırayla eşleşsin diye burada da aynı mantıkla hesaplanır.
+                                    const codes = assignExerciseCodes(raw);
+                                    const coded = raw.map((ex, i) => ({ ...ex, code: ex.code ?? codes[i] }));
+                                    return (
+                                      <BoardExercise
+                                        exercises={coded}
+                                        done={stepDone}
+                                        onCorrect={() => markStepDone(l.id, step.id, steps)}
+                                      />
+                                    );
+                                  })()}
                                   {!content.board_exercises && !content.board_exercise && content.quiz && (
                                     <InlineQuiz
                                       quiz={content.quiz}

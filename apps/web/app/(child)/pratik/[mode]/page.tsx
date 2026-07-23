@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { ComingSoon } from '@/components/ComingSoon';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
+import { assignExerciseCodes } from '@/lib/exerciseCodes';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -66,8 +67,12 @@ function PratikInner() {
       .then((d) => {
         const step = (d.steps as StepRow[] | undefined)?.find((s) => s.id === stepId);
         const raw = (step?.content_json?.[mode.field] as BoardExerciseConfig[] | undefined) ?? [];
-        const pool = Array.isArray(raw) ? raw : [];
-        setPoolSize(pool.length);
+        const rawPool = Array.isArray(raw) ? raw : [];
+        setPoolSize(rawPool.length);
+        // Kodlar ADMİN'DEKİ SIRAYA göre (havuz karıştırılmadan önce) hesaplanır — yoksa
+        // öğrenciye gösterilen kod, admin panelindeki dairesel kartla eşleşmez.
+        const codes = assignExerciseCodes(rawPool);
+        const pool = rawPool.map((ex, i) => ({ ...ex, code: ex.code ?? codes[i] }));
         // Süresiz mod: havuzdan her seferinde rastgele 20 soru
         const picked = mode.randomPick > 0 ? shuffle(pool).slice(0, mode.randomPick) : pool;
         setExercises(picked);

@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
 import { ExerciseForm } from '@/components/admin/ExerciseForm';
 import type { BoardExercise } from '@/components/admin/ExerciseForm';
+import { assignExerciseCodes, nextExerciseCode } from '@/lib/exerciseCodes';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -135,36 +136,6 @@ export default function AdminStepEditorPage() {
     return EX_MODES.reduce((n, m) => n + exercisesOf(s, m.field).length, 0);
   }
 
-  /**
-   * Listedeki her soru için gösterilecek kod: kayıtlı kodu varsa o, yoksa boşta olan en
-   * küçük numara. Kayıtlı kodlarla ASLA çakışmaz (aksi halde silme sonrası iki soru aynı
-   * kodu gösterebilir — tam da bu kodun önlemesi gereken karışıklık).
-   */
-  function assignCodes(list: BoardExercise[]): string[] {
-    const used = new Set(list.map((e) => e.code).filter((c): c is string => !!c));
-    const out: string[] = [];
-    let next = 1;
-    for (const ex of list) {
-      if (ex.code) { out.push(ex.code); continue; }
-      let c = String(next).padStart(3, '0');
-      while (used.has(c)) { next++; c = String(next).padStart(3, '0'); }
-      used.add(c);
-      out.push(c);
-      next++;
-    }
-    return out;
-  }
-
-  /**
-   * Yeni eklenecek soru için bir sonraki kalıcı kod. O an ekranda gösterilen (kayıtlı veya
-   * geçici) tüm kodların en büyüğünden büyük olanı alır — bir soru silinse bile ya da henüz
-   * kaydedilmemiş eski sorular olsa bile kodlar asla çakışmaz veya tekrar kullanılmaz.
-   */
-  function nextCode(list: BoardExercise[]): string {
-    const nums = assignCodes(list).map((c) => parseInt(c, 10)).filter((n) => !isNaN(n));
-    return String(Math.max(0, ...nums) + 1).padStart(3, '0');
-  }
-
   async function saveExercises(s: StepRow, field: string, list: BoardExercise[]) {
     const token = getToken();
     const r = await fetch(`${API_BASE}/admin/steps/${s.id}`, {
@@ -183,7 +154,7 @@ export default function AdminStepEditorPage() {
     setMsg(null);
     try {
       const list = exercisesOf(s, field);
-      const coded: BoardExercise = { ...ex, code: nextCode(list) };
+      const coded: BoardExercise = { ...ex, code: nextExerciseCode(list) };
       await saveExercises(s, field, [...list, coded]);
       setMsg(`Soru eklendi (Kod: ${coded.code})`);
     } catch (e) {
@@ -197,7 +168,7 @@ export default function AdminStepEditorPage() {
     try {
       const list = exercisesOf(s, field);
       // Eski sorularda kod yoksa düzenlerken kalıcı kod atanır (bir kez, o andan sonra sabit kalır).
-      const coded: BoardExercise = { ...ex, code: ex.code ?? assignCodes(list)[idx] };
+      const coded: BoardExercise = { ...ex, code: ex.code ?? assignExerciseCodes(list)[idx] };
       const next = list.map((x, i) => (i === idx ? coded : x));
       await saveExercises(s, field, next);
       setMsg('Soru güncellendi');
@@ -319,7 +290,7 @@ export default function AdminStepEditorPage() {
                     {openMode?.stepId === s.id && (() => {
                       const mode = EX_MODES.find((m) => m.field === openMode.field)!;
                       const list = exercisesOf(s, mode.field);
-                      const codes = assignCodes(list);
+                      const codes = assignExerciseCodes(list);
                       return (
                         <div className="space-y-3 pl-2 border-l-2 border-cyan-400/30">
                           <p className="text-sm font-bold n-text pl-2">{mode.emoji} {mode.label}</p>
