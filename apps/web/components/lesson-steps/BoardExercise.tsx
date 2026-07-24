@@ -132,9 +132,12 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
   const [feedback, setFeedback] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [showNext, setShowNext] = useState(false);
+  const [clickedSquare, setClickedSquare] = useState<string | null>(null);
+  const [allAttempted, setAllAttempted] = useState(false);
 
   const exercise = exercises[currentIdx] ?? exercises[0];
   const total = exercises.length;
+  const isLastQuestion = currentIdx === total - 1;
 
   // Reset per-exercise state when index changes
   useEffect(() => {
@@ -143,6 +146,7 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
     setFeedback('');
     setSelected(null);
     setShowNext(false);
+    setClickedSquare(null);
   }, [currentIdx, done]);
 
   const succeed = (piece?: string | null) => {
@@ -155,12 +159,13 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
     // cevapta da ilerleme olan click_square'de doneCount artık currentIdx'ten
     // geride kalabilir. Mevcut tipler için (her soru doğru cevaplanmak
     // zorunda) bu ikisi zaten eşdeğerdi, bu yüzden davranış değişmiyor.
-    if (currentIdx < total - 1) {
+    if (!isLastQuestion) {
       setShowNext(true);
     } else if (next >= total) {
       if (!done) onCorrect();
+    } else {
+      setAllAttempted(true);
     }
-    // else: dizi bitti ama hepsi doğru değildi — Task 3'te ele alınacak (allAttempted)
   };
 
   const fail = (msg: string) => {
@@ -168,6 +173,20 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
     setFeedback(msg);
     setSelected(null);
     setTimeout(() => setStatus('idle'), 1800);
+  };
+
+  // Kareye Tıkla'da yanlış cevapta tekrar deneme yok: geri bildirim gösterilir,
+  // sonra sporcu sonraki soruya geçer. doneCount ARTIRILMAZ — yanlış cevap
+  // ilerleme noktalarında doğru gibi görünmemeli.
+  const failNoRetry = (msg: string) => {
+    setStatus('fail');
+    setFeedback(msg);
+    setSelected(null);
+    if (!isLastQuestion) {
+      setShowNext(true);
+    } else {
+      setAllAttempted(true);
+    }
   };
 
   const goNext = () => {
@@ -196,18 +215,30 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
         styles[sq] = { backgroundColor: 'rgba(100,220,100,0.45)' };
       });
     }
+    if (exercise.type === 'click_square' && clickedSquare) {
+      if (status === 'success') {
+        styles[clickedSquare] = { backgroundColor: 'rgba(100,220,100,0.45)' };
+      } else if (status === 'fail') {
+        styles[clickedSquare] = { backgroundColor: 'rgba(239,68,68,0.45)' };
+      }
+    }
   }
 
   // ── Tahta tıklama ────────────────────────────────────────────────────────
   const onSquareClick = ({ square, piece }: { square: string; piece: { pieceType: string } | null }) => {
-    if (status === 'success' || !isBoardExercise(exercise)) return;
+    if (!isBoardExercise(exercise)) return;
+    if (status === 'success') return;
+    // Kareye Tıkla'da yanlış cevaptan sonra soru kilitlenir (tekrar deneme yok).
+    // Diğer tipler (ör. Taşı Oynat) fail penceresinde hemen tekrar denenebilmeye devam eder.
+    if (exercise.type === 'click_square' && status === 'fail') return;
 
     if (exercise.type === 'click_square') {
       if (piece) playPieceSound(piece.pieceType);
+      setClickedSquare(square);
       if (isTargetSquare(square, exercise.target_squares)) {
         succeed();
       } else {
-        fail(exercise.fail_msg ?? 'Yanlış kare! Tekrar dene.');
+        failNoRetry(exercise.fail_msg ?? 'Yanlış kare!');
       }
       return;
     }
@@ -249,6 +280,20 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
         <div className="flex items-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold"
           style={{ background: '#dcfce7', color: '#15803d' }}>
           ✓ Tüm egzersizler tamamlandı!
+        </div>
+      </div>
+    );
+  }
+
+  // Kareye Tıkla'da tekrar deneme olmadığı için dizi bitebilir ama hepsi doğru
+  // olmayabilir — bu durumda onCorrect çağrılmaz (puanlama P6'ya bırakıldı),
+  // sadece yerel bir "bitti" ekranı gösterilir.
+  if (allAttempted) {
+    return (
+      <div className="mt-2 pt-3 space-y-2" style={{ borderTop: '1px solid var(--t-border)' }}>
+        <div className="flex items-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold"
+          style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
+          Bu bölümdeki tüm sorular cevaplandı.
         </div>
       </div>
     );

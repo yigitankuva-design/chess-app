@@ -66,6 +66,118 @@ describe('BoardExercise — P3 öncesi taban çizgisi (regresyon güvenlik ağı
   });
 });
 
+describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar deneme yok', () => {
+  it('doğru kareye tıklayınca kare açık yeşille renklenir', () => {
+    // react-chessboard, squareStyles[square]'i [data-square]'in KENDİSİNE değil,
+    // onun doğrudan çocuğu olan içerik sarmalayıcı div'ine uyguluyor (kaynak
+    // kodda doğrulandı: <div style={{width:'100%',height:'100%',...squareStyles[id]}}>).
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'x', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-square="e4"]')!);
+    const sq = container.querySelector('[data-square="e4"]') as HTMLElement;
+    const overlay = sq.querySelector('div') as HTMLElement;
+    expect(overlay.style.backgroundColor).toBe('rgba(100, 220, 100, 0.45)');
+  });
+
+  it('yanlış kareye tıklayınca o kare açık kırmızıyla renklenir', () => {
+    // 2 soruluk dizi kullanılıyor — tek soruda yanlış cevap "son soru" sayılıp
+    // allAttempted terminal ekranına geçer, tahta DOM'dan tamamen kalkar.
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'x', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+      { type: 'click_square', instruction: 'y', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
+    const sq = container.querySelector('[data-square="a1"]') as HTMLElement;
+    const overlay = sq.querySelector('div') as HTMLElement;
+    expect(overlay.style.backgroundColor).toBe('rgba(239, 68, 68, 0.45)');
+  });
+
+  it('yanlış cevaptan 2 saniye sonra bile durum sıfırlanmaz (tekrar deneme yok)', async () => {
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'x', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+      { type: 'click_square', instruction: 'y', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
+    expect(screen.getByText('Sonraki Soru →')).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 2000)); // mevcut fail() 1.8sn'de idle'a dönerdi
+    expect(screen.getByText('Sonraki Soru →')).toBeInTheDocument(); // hâlâ orada — sıfırlanmadı
+  });
+
+  it('yanlış cevap sonrası tekrar tıklama hiçbir şeyi değiştirmez', () => {
+    const onCorrect = vi.fn();
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'x', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+      { type: 'click_square', instruction: 'y', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
+    fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
+    fireEvent.click(container.querySelector('[data-square="e4"]')!); // tekrar dene — etkisiz olmalı
+    expect(onCorrect).not.toHaveBeenCalled();
+    expect(screen.getByText('Sonraki Soru →')).toBeInTheDocument();
+  });
+
+  it("yanlış cevap doneCount'u artırmaz (ilerleme noktası yanlışı doğru saymaz)", () => {
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'x', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+      { type: 'click_square', instruction: 'y', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+    ];
+    render(<BoardExercise exercises={exercises} done={false} onCorrect={vi.fn()} />);
+    fireEvent.click(document.querySelector('[data-square="a1"]')!); // yanlış
+    expect(screen.getByText('0/2')).toBeInTheDocument();
+  });
+
+  it('KİLİTLENME REGRESYONU: Q1 doğru, Q2 yanlış, Q3 doğru — Q3 sonrası buton görünmez, terminal ekran görünür', () => {
+    const onCorrect = vi.fn();
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'q1', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+      { type: 'click_square', instruction: 'q2', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+      { type: 'click_square', instruction: 'q3', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
+    // Q1 doğru
+    fireEvent.click(container.querySelector('[data-square="e4"]')!);
+    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    // Q2 yanlış
+    fireEvent.click(container.querySelector('[data-square="a1"]')!);
+    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    // Q3 doğru — SON SORU
+    fireEvent.click(container.querySelector('[data-square="e4"]')!);
+    expect(screen.queryByText('Sonraki Soru →')).not.toBeInTheDocument();
+    expect(onCorrect).not.toHaveBeenCalled(); // hepsi doğru değildi (Q2 yanlıştı)
+    expect(container.textContent).toMatch(/cevapland/i); // yerel "bitti" mesajı
+  });
+
+  it('son soru YANLIŞ cevaplanırsa terminal ekran görünür, onCorrect çağrılmaz', () => {
+    const onCorrect = vi.fn();
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'q1', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['e4'] },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
+    fireEvent.click(container.querySelector('[data-square="a1"]')!); // tek soru, yanlış
+    expect(onCorrect).not.toHaveBeenCalled();
+    expect(container.textContent).toMatch(/cevapland/i);
+  });
+
+  it('REGRESYON: move_piece hâlâ fail penceresinde hemen tekrar denenebiliyor (guard tipe özel)', () => {
+    const exercises: BoardExerciseConfig[] = [
+      {
+        type: 'move_piece', instruction: 'x',
+        fen: '8/8/8/8/8/8/4P3/8 w - - 0 1', piece_square: 'e2', target_squares: ['e4'],
+      },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-square="e2"]')!);
+    fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
+    fireEvent.click(container.querySelector('[data-square="e2"]')!); // hemen tekrar dene
+    fireEvent.click(container.querySelector('[data-square="e4"]')!);
+    expect(container.textContent).toMatch(/Aferin/);
+  });
+});
+
 describe('BoardExercise — succeed() bitiş tespiti currentIdx tabanlı (Task 2)', () => {
   it('3 sorunun tümü DOĞRU cevaplanırsa onCorrect hâlâ tam bir kez çağrılır (refactor no-op doğrulaması)', () => {
     const onCorrect = vi.fn();
