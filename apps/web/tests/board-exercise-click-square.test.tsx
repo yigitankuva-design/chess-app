@@ -65,3 +65,18 @@ describe('BoardExercise — P3 öncesi taban çizgisi (regresyon güvenlik ağı
     expect(onCorrect).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('BoardExercise — succeed() bitiş tespiti currentIdx tabanlı (Task 2)', () => {
+  it('3 sorunun tümü DOĞRU cevaplanırsa onCorrect hâlâ tam bir kez çağrılır (refactor no-op doğrulaması)', () => {
+    const onCorrect = vi.fn();
+    const exercises: BoardExerciseConfig[] = [
+      { type: 'click_square', instruction: 'q1', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['a1'] },
+      { type: 'click_square', instruction: 'q2', fen: '8/8/8/8/8/8/8/8 w - - 0 1', target_squares: ['a1'] },
+    ];
+    const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
+    fireEvent.click(container.querySelector('[data-square="a1"]')!);
+    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(container.querySelector('[data-square="a1"]')!);
+    expect(onCorrect).toHaveBeenCalledTimes(1);
+  });
+});

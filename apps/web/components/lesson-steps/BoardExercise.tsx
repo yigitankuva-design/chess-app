@@ -151,11 +151,16 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
     setSelected(null);
     const next = doneCount + 1;
     setDoneCount(next);
-    if (next >= total) {
-      if (!done) onCorrect();
-    } else {
+    // Bitiş tespiti currentIdx tabanlı (doneCount tabanlı DEĞİL) — çünkü yanlış
+    // cevapta da ilerleme olan click_square'de doneCount artık currentIdx'ten
+    // geride kalabilir. Mevcut tipler için (her soru doğru cevaplanmak
+    // zorunda) bu ikisi zaten eşdeğerdi, bu yüzden davranış değişmiyor.
+    if (currentIdx < total - 1) {
       setShowNext(true);
+    } else if (next >= total) {
+      if (!done) onCorrect();
     }
+    // else: dizi bitti ama hepsi doğru değildi — Task 3'te ele alınacak (allAttempted)
   };
 
   const fail = (msg: string) => {
