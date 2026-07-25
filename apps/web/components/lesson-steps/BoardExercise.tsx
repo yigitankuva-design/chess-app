@@ -19,7 +19,8 @@ export interface ClickSquareEx {
   code?: string;
 }
 
-export interface MovePieceEx {
+/** Eski format: "şu taşı şu karelerden birine taşı" (tek hamle). */
+export interface MovePieceLegacyEx {
   type: 'move_piece';
   instruction: string;
   fen: string;
@@ -30,6 +31,24 @@ export interface MovePieceEx {
   fail_msg?: string;
   code?: string;
 }
+
+/** Yeni format (P4): SAN hamle dizisi — sporcu çizgiyi oynar. */
+export interface MovePieceSequenceEx {
+  type: 'move_piece';
+  instruction: string;
+  fen: string;
+  moves: string[];
+  success_msg?: string;
+  fail_msg?: string;
+  code?: string;
+}
+
+/**
+ * İki format tek `type` değerini paylaşıyor; TypeScript bunları `in` operatörüyle
+ * ayırır: `'moves' in exercise` pozitif dalda MovePieceSequenceEx'e, negatif dalda
+ * MovePieceLegacyEx'e daraltır. Böylece eski format kodu tip güvenli kalır.
+ */
+export type MovePieceEx = MovePieceLegacyEx | MovePieceSequenceEx;
 
 export interface IdentifyPieceEx {
   type: 'identify_piece';
@@ -198,7 +217,8 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
   const styles: Record<string, CSSProperties> = {};
   if (isBoardExercise(exercise)) {
     if (status !== 'success' || showNext) {
-      if (exercise.type !== 'identify_piece') {
+      // Yeni format (moves) sorularda ipucu karesi yok — tahtayı MovePieceSolver çiziyor.
+      if (exercise.type !== 'identify_piece' && !('moves' in exercise)) {
         (exercise.hint_squares ?? []).forEach((sq) => {
           styles[sq] = { backgroundColor: 'rgba(255,200,0,0.50)' };
         });
@@ -244,7 +264,9 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
       return;
     }
 
-    if (exercise.type === 'move_piece') {
+    // Yeni format (moves) soruların tahtası burada render EDİLMİYOR — MovePieceSolver
+    // kendi tahtasını çiziyor. Açık daraltma TypeScript'in bunu bilmesi için gerekli.
+    if (exercise.type === 'move_piece' && !('moves' in exercise)) {
       if (!selected) {
         if (square === exercise.piece_square) {
           setSelected(square);
