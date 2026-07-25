@@ -69,9 +69,14 @@ export function ChessBoard({
     window.scrollTo(0, scrollRef.current);
   }, []);
 
+  // ŞAHSIZ POZİSYON DESTEĞİ: Zafer Hoca'nın öğretim pozisyonları kasten şahsızdır
+  // (boş tahta + tek piyon). skipValidation olmadan chess.js "Invalid FEN: missing
+  // white king" fırlatır, catch bloğu boş liste döndürür ve tıkla-oynat SESSİZCE
+  // çalışmaz (ölçüldü: onPieceDrop 0 kez çağrılıyordu). skipValidation yalnızca FEN
+  // doğrulamasını atlar — geçerli pozisyonlarda davranış birebir aynı kalır.
   function getValidDestinations(square: Square, chessFen: string): Square[] {
     try {
-      const chess = new Chess(chessFen);
+      const chess = new Chess(chessFen, { skipValidation: true });
       return chess
         .moves({ square, verbose: true })
         .map((m) => m.to as Square);
@@ -82,7 +87,7 @@ export function ChessBoard({
 
   function getPieceColor(square: Square, chessFen: string): 'w' | 'b' | null {
     try {
-      const chess = new Chess(chessFen);
+      const chess = new Chess(chessFen, { skipValidation: true });
       const piece = chess.get(square);
       return piece ? piece.color : null;
     } catch {
@@ -92,7 +97,7 @@ export function ChessBoard({
 
   function getTurnColor(chessFen: string): 'w' | 'b' {
     try {
-      const chess = new Chess(chessFen);
+      const chess = new Chess(chessFen, { skipValidation: true });
       return chess.turn();
     } catch {
       return 'w';
