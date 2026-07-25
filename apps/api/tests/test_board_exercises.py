@@ -39,7 +39,7 @@ async def test_kingless_teaching_positions_accepted(client, db):
         {"type": "click_square", "instruction": "Koyu kareye tikla",
          "fen": "8/8/8/8/8/8/8/8 w - - 0 1", "target_squares": ["a1", "c3"]},
         {"type": "move_piece", "instruction": "Piyonu e4'e tasi",
-         "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1", "piece_square": "e2", "target_squares": ["e4"]},
+         "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1", "moves": ["e4"]},
         {"type": "identify_piece", "instruction": "Bu tas ne?",
          "fen": "8/8/8/8/4n3/8/8/8 b - - 0 1", "highlight_square": "e4",
          "options": ["Piyon", "At"], "correct_index": 1},
@@ -96,30 +96,26 @@ async def test_click_square_bad_targets_rejected(client, db):
 
 @pytest.mark.asyncio
 async def test_move_piece_validations(client, db):
+    """Eski format (piece_square/target_squares) artık kabul edilmiyor — moves gerekli."""
     les = await _lesson(db, order=45)
     tok = await _teacher_token(client, email="be6@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x", "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
-         "piece_square": "a1", "target_squares": ["a2"]},
+         "piece_square": "e2", "target_squares": ["e4"]},
     ])
     assert r.status_code == 400
-    r2 = await _post_step(client, tok, les.id, [
-        {"type": "move_piece", "instruction": "x", "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
-         "piece_square": "e2", "target_squares": ["h8"]},
-    ])
-    assert r2.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_promotion_move_rejected(client, db):
-    """Terfi {from,to} ile ifade edilemiyor -> legal bulunmaz -> 400."""
+async def test_promotion_move_accepted_as_san(client, db):
+    """Terfi artık SAN ile ifade edilebiliyor (e8=Q) — eski from/to modelinde imkansızdı."""
     les = await _lesson(db, order=46)
     tok = await _teacher_token(client, email="be7@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x", "fen": "k7/4P3/8/8/8/8/8/4K3 w - - 0 1",
-         "piece_square": "e7", "target_squares": ["e8"]},
+         "moves": ["e8=Q"]},
     ])
-    assert r.status_code == 400
+    assert r.status_code == 201
 
 
 @pytest.mark.asyncio
@@ -342,3 +338,83 @@ async def test_mixed_board_and_choice_types_in_same_pool_accepted(client, db):
          "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 1},
     ])
     assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_move_piece_valid_move_sequence_accepted(client, db):
+    """İki taraflı pozisyonda çoklu hamle dizisi kabul edilir."""
+    les = await _lesson(db, order=110)
+    tok = await _teacher_token(client, email="mp_ok@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "Taktigi oyna",
+         "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": ["Rh4", "Kf8"]},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_move_piece_kingless_teaching_position_accepted(client, db):
+    """EN KRİTİK: Zafer'in şahsız öğretim pozisyonları reddedilmemeli."""
+    les = await _lesson(db, order=111)
+    tok = await _teacher_token(client, email="mp_kingless@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "Piyonu ilerlet",
+         "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1", "moves": ["e4"]},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_move_piece_empty_moves_rejected(client, db):
+    les = await _lesson(db, order=112)
+    tok = await _teacher_token(client, email="mp_empty@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x",
+         "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": []},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_move_piece_illegal_san_rejected(client, db):
+    les = await _lesson(db, order=113)
+    tok = await _teacher_token(client, email="mp_illegal@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x",
+         "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": ["Qh8"]},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_move_piece_garbage_san_rejected(client, db):
+    les = await _lesson(db, order=114)
+    tok = await _teacher_token(client, email="mp_garbage@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x",
+         "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": ["zz9"]},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_move_piece_out_of_turn_move_rejected(client, db):
+    """Tek renkli pozisyonda ikinci bir beyaz hamle sıraya aykırı — reddedilmeli."""
+    les = await _lesson(db, order=115)
+    tok = await _teacher_token(client, email="mp_turn@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x",
+         "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1", "moves": ["e4", "e5"]},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_move_piece_non_string_move_rejected(client, db):
+    les = await _lesson(db, order=116)
+    tok = await _teacher_token(client, email="mp_nonstr@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "move_piece", "instruction": "x",
+         "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": [42]},
+    ])
+    assert r.status_code == 400

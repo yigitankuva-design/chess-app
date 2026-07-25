@@ -619,19 +619,26 @@ def _validate_board_exercises(exercises: list) -> None:
             _squares("target_squares")
 
         elif ex_type == "move_piece":
-            piece_sq = ex.get("piece_square")
-            if piece_sq not in chess.SQUARE_NAMES:
-                raise HTTPException(status_code=400, detail=f"Geçersiz taş karesi: {piece_sq}")
-            if board.piece_at(chess.parse_square(piece_sq)) is None:
-                raise HTTPException(status_code=400, detail=f"{piece_sq} karesinde taş yok")
-            for target in _squares("target_squares"):
-                move = chess.Move.from_uci(piece_sq + target)
-                if move not in board.legal_moves:
+            # Yeni format: SAN hamle dizisi. Başlangıç pozisyonundan itibaren
+            # her hamle sırayla oynatılır; kural dışı/sıraya aykırı olan reddedilir.
+            # NOT: kurulu python-chess (1.2.0) InvalidMoveError/IllegalMoveError
+            # alt sınıflarını İÇERMİYOR — hem bozuk hem kural dışı SAN için düz
+            # ValueError fırlatıyor (gerçek ortamda doğrulandı).
+            moves = ex.get("moves")
+            if not isinstance(moves, list) or len(moves) < 1:
+                raise HTTPException(status_code=400, detail="En az bir hamle kaydedilmeli")
+            replay_board = chess.Board(fen)
+            for i, san in enumerate(moves):
+                if not isinstance(san, str):
+                    raise HTTPException(status_code=400, detail=f"{i + 1}. hamle geçersiz")
+                try:
+                    parsed = replay_board.parse_san(san)
+                except ValueError:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"{piece_sq}{target} bu pozisyonda kurallara uygun değil "
-                               f"(terfi içeren hamleler desteklenmiyor)",
+                        detail=f"{i + 1}. hamle kurallara uygun değil: {san}",
                     )
+                replay_board.push(parsed)
 
         elif ex_type == "identify_piece":
             hl = ex.get("highlight_square")
