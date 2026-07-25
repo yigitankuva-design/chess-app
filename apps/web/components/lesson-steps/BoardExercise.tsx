@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { playPieceSound } from '@/lib/sounds/pieceSounds';
 import { ChoiceQuestionBody } from './ChoiceQuestionBody';
+import { MovePieceSolver } from './MovePieceSolver';
 
 // ─── Exercise config types ────────────────────────────────────────────────────
 
@@ -344,11 +345,20 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
       </div>
 
       {exercise.type === 'move_piece' && 'moves' in exercise ? (
-        <div className="flex items-center gap-3 py-3 px-4 rounded-xl"
-          style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-          <span className="text-xl leading-none flex-shrink-0">🚧</span>
-          <p className="text-sm font-semibold flex-1">Bu soru türü yakında aktif olacak.</p>
-        </div>
+        <>
+          <MovePieceSolver
+            exercise={exercise}
+            disabled={status !== 'idle'}
+            onSolved={() => succeed()}
+            onWrong={(msg) => failNoRetry(msg)}
+          />
+          {/* Talimat — tahtanın altında kart olarak (diğer tiplerle aynı stil) */}
+          <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
+            style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
+            <span className="text-xl leading-none flex-shrink-0">🎯</span>
+            <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
+          </div>
+        </>
       ) : isBoardExercise(exercise) ? (
         <>
           {/* Board */}

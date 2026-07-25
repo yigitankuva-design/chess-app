@@ -20,13 +20,19 @@ const oldFormat: BoardExerciseConfig = {
   target_squares: ['e4'],
 };
 
-describe('BoardExercise — yeni format move_piece güvenlik placeholder', () => {
-  it('yeni format (moves alanlı) soru placeholder gösterir, tahta render ETMEZ', () => {
+describe('BoardExercise — yeni format move_piece gerçek çözücüyle render edilir', () => {
+  it('yeni format (moves alanlı) soru için çözüm tahtası render edilir', () => {
     const { container } = render(
       <BoardExercise exercises={[newFormat]} done={false} onCorrect={vi.fn()} />,
     );
-    expect(screen.getByText(/yakında aktif olacak/i)).toBeInTheDocument();
-    expect(container.querySelectorAll('[data-square]')).toHaveLength(0);
+    // Artık placeholder değil, gerçek tahta çiziliyor (P5)
+    expect(screen.queryByText(/yakında aktif olacak/i)).not.toBeInTheDocument();
+    expect(container.querySelectorAll('[data-square]')).toHaveLength(64);
+  });
+
+  it('yeni format soruda talimat metni gösterilir', () => {
+    render(<BoardExercise exercises={[newFormat]} done={false} onCorrect={vi.fn()} />);
+    expect(screen.getByText('Taktik çizgiyi oyna')).toBeInTheDocument();
   });
 
   it('yeni format soru render edilirken çökmez (styles guard)', () => {
