@@ -346,7 +346,14 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
 
       {exercise.type === 'move_piece' && 'moves' in exercise ? (
         <>
+          {/*
+            key ZORUNLU: MovePieceSolver oynanan hamleleri kendi state'inde tutuyor.
+            key olmadan React soru değişince aynı örneği yeniden kullanır ve önceki
+            sorunun hamleleri taşınır — sonraki sorunun DOĞRU hamlesi "yanlış" sayılır
+            (canlı doğrulamada bu hata gerçekten yaşandı).
+          */}
           <MovePieceSolver
+            key={currentIdx}
             exercise={exercise}
             disabled={status !== 'idle'}
             onSolved={() => succeed()}

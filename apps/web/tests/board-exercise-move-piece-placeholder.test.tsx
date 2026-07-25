@@ -1,16 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
 
-// Yeni format (P4) — MovePieceEx tipi henüz `moves` tanımlamıyor (P5'te güncellenecek),
-// bu yüzden test verisi kasten cast ediliyor. Çalışma zamanında backend böyle veri döndürebilir.
-const newFormat = {
+const newFormat: BoardExerciseConfig = {
   type: 'move_piece',
   instruction: 'Taktik çizgiyi oyna',
   fen: '6k1/8/5K2/8/5R2/8/8/8 w - - 0 1',
   moves: ['Rh4', 'Kf8'],
-} as unknown as BoardExerciseConfig;
+};
 
 const oldFormat: BoardExerciseConfig = {
   type: 'move_piece',
