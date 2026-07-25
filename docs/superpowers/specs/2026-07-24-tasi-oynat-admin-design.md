@@ -65,10 +65,14 @@ interface MovePieceEx {
 }
 ```
 
-`piece_square`/`target_squares` alanları **admin tarafı tipinden
-kaldırılır** — yeni form bunları hiç üretmez. (Backend şeması zaten
-serbest JSON `content_json` kolonu olduğundan, DB'deki eski satırlar
-etkilenmez; sadece admin panelinin TypeScript tipinden çıkarılıyorlar.)
+`move_piece` **artık `piece_square`/`target_squares` üretmez** — bunların
+yerini `moves` alır.
+
+**DİKKAT:** Bu alanlar admin tarafındaki `BoardExercise` tipinden
+**SİLİNMEZ** — `click_square` hâlâ `target_squares`'ı kullanıyor. Tipe
+sadece `moves?: string[]` **eklenir**; mevcut opsiyonel alanlar olduğu
+gibi kalır. (Backend şeması zaten serbest JSON `content_json` kolonu
+olduğundan DB'deki eski satırlar da etkilenmez.)
 
 ## Admin UI akışı
 
@@ -78,11 +82,78 @@ etkilenmez; sadece admin panelinin TypeScript tipinden çıkarılıyorlar.)
 - `apps/web/components/admin/MoveRecorderBoard.tsx` — "Konumu Kaydet"
   sonrası sürükle-oynat tahtası + Notasyon Tablosu
 
-`ExerciseForm.tsx`'teki mevcut `BoardExerciseFields` içinde, 3 tip
-butonundan (`Kareye tıkla` / `Taşı oynat` / `Taşı tanı`) `Taşı oynat`
-seçiliyse, bugünkü `piece_square` dropdown + `SquarePicker` hedef-kare
-grid'i **kaldırılır**, yerine `<MovePieceFields onSave={...} initial={...} />`
-render edilir. `click_square`/`identify_piece` dalları **hiç değişmez**.
+### `ExerciseForm.tsx` / `BoardExerciseFields` entegrasyonu
+
+**ÇİFT TAHTA HATASI (öz-denetimde bulundu).** Bugünkü `BoardExerciseFields`
+JSX'inde `<BoardEditor .../>` **koşulsuz** render ediliyor — üç tip için de:
+
+```tsx
+<input ... placeholder="Talimat (örn. Piyonu e4'e taşı)" />
+<BoardEditor fen={fen} turn={turn} onChange={setFen} onTurnChange={setTurn} />   {/* koşulsuz! */}
+{type === 'click_square' && (...)}
+{type === 'move_piece' && (...)}
+{type === 'identify_piece' && (...)}
+```
+
+`MovePieceFields` kendi içinde bir `BoardEditor` render ettiğinden, bu
+haliyle "Taşı oynat" seçilince ekranda **iki tahta** görünürdü. Bu yüzden
+dış `BoardEditor` koşullu hale getirilmelidir:
+
+```tsx
+{type !== 'move_piece' && (
+  <BoardEditor fen={fen} turn={turn} onChange={setFen} onTurnChange={setTurn} />
+)}
+```
+
+`move_piece` dalındaki bugünkü `piece_square` dropdown + `SquarePicker`
+hedef-kare grid'i tamamen kaldırılır, yerine `MovePieceFields` gelir.
+`click_square`/`identify_piece` dalları **hiç değişmez**.
+
+**State sahipliği.** `BoardExerciseFields` bugün `fen`/`turn` state'ini
+tutuyor ve `submit()` içinde kullanıyor. `move_piece` için bu yetmez —
+`savedFen` ve `moves` de gerekiyor. Karışıklığı önlemek için:
+`MovePieceFields` fazları ve tahtayı kendi içinde yönetir, ama sonucu
+yukarı bildirir; `BoardExerciseFields` iki yeni state tutar:
+
+```ts
+const [moveFen, setMoveFen] = useState<string | null>(initial?.fen ?? null);
+const [moves, setMoves] = useState<string[]>(initial?.moves ?? []);
+```
+
+`<MovePieceFields fen={moveFen} moves={moves} onChange={(f, m) => { setMoveFen(f); setMoves(m); }} />`
+
+`move_piece` seçiliyken `BoardExerciseFields`'in kendi `fen` state'i
+kullanılmaz (dış `BoardEditor` da render edilmiyor zaten).
+
+**`validate()` değişikliği** — `move_piece` dalı tamamen değişir:
+
+```ts
+if (type === 'move_piece') {
+  if (!moveFen) return 'Önce taşları yerleştirip "Konumu Kaydet"e bas';
+  if (moves.length === 0) return 'En az bir hamle kaydedilmeli';
+}
+```
+
+(Eski `piece_square`/`map[pieceSquare]`/`targets.length` kontrolleri silinir.)
+
+**`submit()` değişikliği** — `move_piece` dalı tamamen değişir:
+
+```ts
+if (type === 'move_piece') {
+  base.fen = moveFen!;        // Konumu Kaydet anındaki pozisyon
+  base.moves = moves;
+}
+```
+
+(Eski `base.piece_square = pieceSquare; base.target_squares = targets;`
+satırı silinir.) `base` nesnesinin ortak kısmı (`type`, `instruction`,
+`difficulty`, `code`, `success_msg`, `fail_msg`) değişmez — ancak ortak
+kısımdaki `fen` ataması `move_piece` için yukarıdaki satırla üzerine
+yazılır.
+
+`BoardExercise` (admin tipi, `ExerciseForm.tsx` içinde) `moves?: string[]`
+alanı kazanır; `piece_square?`/`target_squares?` alanları **kalır**
+(`click_square` hâlâ `target_squares` kullanıyor).
 
 **Faz state makinesi** (`MovePieceFields` içinde):
 
@@ -107,45 +178,74 @@ const [moves, setMoves] = useState<string[]>([]);
 
 **`MoveRecorderBoard`'un iç mantığı:**
 
+**ZORUNLU — `skipValidation: true`.** Bu projenin temeli, Zafer Hoca'nın
+kasten **şahsız** öğretim pozisyonları kullanmasıdır (boş tahta + tek
+piyon; backend'de bu konuda özel bir açıklama notu bile var). Gerçek
+ortamda ölçüldü: `new Chess('8/8/8/8/8/8/4P3/8 w - - 0 1')` şu hatayla
+**çöker**: `Invalid FEN: missing white king`. İkinci argüman verilince
+sorunsuz çalışıyor ve şahsız tahtada SAN üretebiliyor:
+
 ```ts
-const chess = useMemo(() => {
-  const c = new Chess(fen);
-  for (const san of moves) c.move({ ...sanToMoveInput(san) }); // veya doğrudan c.move(san)
-  return c;
-}, [fen, moves]);
+new Chess(fen, { skipValidation: true }) // ← bu olmadan öğretim pozisyonlarında ÇÖKER
 ```
 
-Aslında chess.js'in `.move()` fonksiyonu SAN string'ini DOĞRUDAN kabul
-ediyor (`chess.move('e4')` gibi) — bu yüzden `moves` dizisini SAN
-string'leri olarak saklamak, tahtayı yeniden oluştururken de doğrudan
-`moves.forEach(san => chess.move(san))` ile yeniden oynatılabilir; ayrı
-bir `sanToMoveInput` dönüşümüne gerek yok.
+Bu bileşende `Chess` örneği oluşturulan HER yerde bu seçenek verilmelidir.
 
 Sürükle-bırak (`onPieceDrop` — react-chessboard, `BotGame.tsx`'teki
-`handleDrop` deseniyle birebir aynı yaklaşım):
+`handleDrop` deseniyle aynı yaklaşım):
 
 ```ts
 function handleDrop(from: Square, to: Square): boolean {
-  const next = new Chess(fen);
+  const next = new Chess(fen, { skipValidation: true });
   moves.forEach((san) => next.move(san)); // güncel pozisyona kadar oynat
-  let move;
   try {
-    move = next.move({ from, to, promotion: 'q' }); // terfi her zaman vezir — BotGame/LiveGame ile tutarlı
+    const move = next.move({ from, to, promotion: 'q' }); // terfi her zaman vezir
+    onMovesChange([...moves, move.san]);
+    return true;
   } catch {
-    return false; // kural dışı hamle — sessizce reddedilir, taş yerine döner
+    return false; // kural dışı hamle — taş yerine döner
   }
-  if (!move) return false;
-  onMovesChange([...moves, move.san]);
-  return true;
 }
 ```
 
-Bu, `chess.js`'in kendi kural motorunu (rok, geçerken alma, terfi,
-şah çekme kontrolü) kullanır — elle bir kural kontrolü yazılmıyor.
+Doğrulanmış davranışlar (gerçek ortamda ölçüldü):
+- `.move()` SAN string'ini doğrudan kabul ediyor (`c.move('e4')` çalışıyor)
+  → `moves` dizisi SAN olarak saklanıp `forEach` ile yeniden oynatılabilir.
+- `.move({from, to})` dönen nesne `.san` alanı taşıyor (`e4`, `Rh4`).
+- Kural dışı hamlede `.move()` **`Error` fırlatıyor** (null dönmüyor) →
+  `try/catch` zorunlu, ayrıca `if (!move)` kontrolüne gerek yok.
+
 **Bilinen basitleştirme (mevcut `BotGame.tsx`/`LiveGame.tsx` ile
-tutarlı):** terfi her zaman vezire yapılır, admin farklı bir taşa terfi
-edecek bir hamle kaydedemez. Bu proje genelinde zaten var olan bir
-kısıtlama, P4'e özgü değil.
+tutarlı):** terfi her zaman vezire yapılır. Proje genelinde zaten var
+olan bir kısıtlama, P4'e özgü değil.
+
+### KRİTİK KISIT — sıra kuralı çoklu hamleyi sınırlar
+
+Gerçek ortamda ölçüldü (hem chess.js hem python-chess **aynı** davranıyor):
+tek renkli bir pozisyonda (örn. sadece beyaz piyon) beyaz hamlesini
+yaptıktan sonra sıra siyaha geçer ve **siyahın 0 legal hamlesi olur** —
+yani ikinci bir hamle kaydedilemez.
+
+```
+'8/8/8/8/8/8/4P3/8 w - - 0 1' → e4 → sıra: siyah, siyah legal hamle: 0  (KİLİT)
+'6k1/8/5K2/8/5R2/8/8/8 w'     → Rh4 → siyah legal: 1 → Kf8 → beyaz legal: 19  (AKIYOR)
+```
+
+**Sonuç:** Çoklu hamle dizisi ancak pozisyonda **her iki tarafın da
+oynayabilir taşı varsa** kaydedilebilir. Bu doğal bir satranç kuralı
+sonucudur, bir hata değil — ve kullanıcının orijinal örneği de zaten
+iki taraflı: *"1. Kh4 – Şf8, 2. Kh8 – Şf7"*. Gerçek prod'daki mevcut
+`move_piece` sorusu da iki taraflı (`6k1/8/5K2/8/5R2/8/8/8`).
+
+**Admin UI gereği:** Bu kısıt sessizce yaşanmamalı. `recording` fazında
+sıradaki tarafın legal hamlesi kalmadıysa (`chess.moves().length === 0`),
+Notasyon Tablosunun altında açıklayıcı bir uyarı gösterilir:
+
+> "Sıra siyahta ama siyahın oynayabileceği taş yok. Daha fazla hamle
+> eklemek için 'Konumu Düzenle' ile karşı tarafa da taş yerleştirin."
+
+Böylece Zafer Hoca neden hamle yapamadığını anlar; tahtayı sürükleyip
+hiçbir şey olmamasıyla baş başa kalmaz.
 
 **Notasyon Tablosu render'ı** (3 sütun):
 
@@ -312,16 +412,33 @@ exercise` eski formatta her zaman `false`).
 ## Test stratejisi
 
 **Backend (pytest):**
-- Geçerli hamle dizisi (`['e4', 'e5', 'Nf3']`) kabul edilir.
+- Geçerli hamle dizisi kabul edilir — iki taraflı pozisyonda
+  (`6k1/8/5K2/8/5R2/8/8/8 w - - 0 1`, `['Rh4', 'Kf8']`; gerçek ortamda
+  bu dizinin `parse_san` ile sorunsuz aktığı doğrulandı).
+- **Şahsız öğretim pozisyonu** (`8/8/8/8/8/8/4P3/8 w - - 0 1`, `['e4']`)
+  kabul edilir — `python-chess` şahsız tahtada `parse_san`'i sorunsuz
+  çalıştırıyor (ölçüldü), bu davranış korunmalı.
 - Boş `moves` dizisi reddedilir.
 - Kural dışı bir SAN (`'Qh8'`, mevcut pozisyonda imkansız) reddedilir.
 - Anlamsız bir string (`'zz9'`) reddedilir.
+- Sıraya aykırı hamle (tek renkli pozisyonda ikinci bir beyaz hamle)
+  reddedilir — frontend'in engellediği durumun backend'de de kapalı
+  olduğunu kanıtlar.
 - **Regresyon:** `click_square`/`identify_piece` doğrulaması hiç
   değişmedi — mevcut `test_board_exercises.py` testleri aynen geçmeli.
 
 **Frontend (vitest):**
+- **ŞAHSIZ POZİSYON (en kritik):** `MoveRecorderBoard`, şahsız bir
+  öğretim FEN'iyle (`8/8/8/8/8/8/4P3/8 w - - 0 1`) çökmeden render olur
+  ve e2→e4 sürüklemesi `e4` SAN'ıyla tabloya eklenir. (Bu test,
+  `skipValidation: true` unutulursa hemen kırmızıya döner.)
+- **SIRA KİLİDİ:** tek renkli pozisyonda ilk hamleden sonra "karşı tarafın
+  oynayabileceği taş yok" uyarısı görünür.
 - `MoveRecorderBoard`: geçerli bir sürükle-bırak hamlesi Notasyon
   Tablosuna doğru SAN ile eklenir.
+- İki taraflı pozisyonda (`6k1/8/5K2/8/5R2/8/8/8 w - - 0 1`) art arda
+  iki hamle (`Rh4`, `Kf8`) kaydedilir ve tablo `1. Rh4 | Kf8` satırını
+  gösterir.
 - Kural dışı bir sürükle-bırak hamlesi reddedilir, tabloya eklenmez.
 - "Son Hamleyi Geri Al" son satırı siler, tahta bir önceki pozisyona
   döner.
