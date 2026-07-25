@@ -210,7 +210,8 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
         styles[selected] = { backgroundColor: 'rgba(80,160,255,0.65)', cursor: 'pointer' };
       }
     }
-    if (status === 'success' && exercise.type === 'move_piece') {
+    // 'moves' alanı varsa bu YENİ format (P4) bir soru — target_squares yok, okunursa çöker.
+    if (status === 'success' && exercise.type === 'move_piece' && !('moves' in exercise)) {
       exercise.target_squares.forEach((sq) => {
         styles[sq] = { backgroundColor: 'rgba(100,220,100,0.45)' };
       });
@@ -320,7 +321,13 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
         </span>
       </div>
 
-      {isBoardExercise(exercise) ? (
+      {exercise.type === 'move_piece' && 'moves' in exercise ? (
+        <div className="flex items-center gap-3 py-3 px-4 rounded-xl"
+          style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
+          <span className="text-xl leading-none flex-shrink-0">🚧</span>
+          <p className="text-sm font-semibold flex-1">Bu soru türü yakında aktif olacak.</p>
+        </div>
+      ) : isBoardExercise(exercise) ? (
         <>
           {/* Board */}
           <div className="rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 340, margin: '0 auto' }}>
