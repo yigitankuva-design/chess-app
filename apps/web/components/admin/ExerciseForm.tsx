@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { BoardEditor, EMPTY_FEN, fenToMap } from '@/components/BoardEditor';
 import { ChoiceExerciseFields } from './ChoiceExerciseFields';
+import { MovePieceFields } from './MovePieceFields';
 
 export type ExerciseType = 'click_square' | 'move_piece' | 'identify_piece';
 export type QuestionFamily = 'sentence_question' | 'image_question' | 'konum';
@@ -26,6 +27,8 @@ export interface BoardExercise {
   prompt_image?: string;
   /** Sadece sentence_question/image_question için — cevapların tipi. */
   answer_kind?: 'sentence' | 'image';
+  /** Sadece move_piece için — SAN hamle dizisi (Konumu Kaydet sonrası kaydedilir). */
+  moves?: string[];
 }
 
 interface Props {
@@ -118,7 +121,6 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   );
   const [instruction, setInstruction] = useState(initial?.instruction ?? '');
   const [targets, setTargets] = useState<string[]>(initial?.target_squares ?? []);
-  const [pieceSquare, setPieceSquare] = useState(initial?.piece_square ?? '');
   const [highlight, setHighlight] = useState(initial?.highlight_square ?? '');
   const [options, setOptions] = useState<string[]>(
     initial?.options && initial.options.length > 0 ? initial.options : ['', ''],
@@ -127,6 +129,11 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   const [successMsg, setSuccessMsg] = useState(initial?.success_msg ?? '');
   const [failMsg, setFailMsg] = useState(initial?.fail_msg ?? '');
   const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 1);
+  // Taşı Oynat: null = henüz "Konumu Kaydet"e basılmadı (setup fazı).
+  const [moveFen, setMoveFen] = useState<string | null>(
+    initial?.moves?.length ? (initial.fen ?? null) : null,
+  );
+  const [moves, setMoves] = useState<string[]>(initial?.moves ?? []);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const editing = !!initial;
@@ -142,9 +149,8 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       if (targets.length === 0) return 'En az bir doğru kare seç';
     }
     if (type === 'move_piece') {
-      if (!pieceSquare) return 'Hangi taşın oynayacağını seç';
-      if (!map[pieceSquare]) return 'Seçilen karede taş yok';
-      if (targets.length === 0) return 'En az bir hedef kare seç';
+      if (!moveFen) return 'Önce taşları yerleştirip "Konumu Kaydet"e bas';
+      if (moves.length === 0) return 'En az bir hamle kaydedilmeli';
     }
     if (type === 'identify_piece') {
       if (!highlight) return 'Vurgulanacak kareyi seç';
@@ -166,7 +172,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
     if (type === 'click_square') base.target_squares = targets;
-    if (type === 'move_piece') { base.piece_square = pieceSquare; base.target_squares = targets; }
+    if (type === 'move_piece') { base.fen = moveFen!; base.moves = moves; }
     if (type === 'identify_piece') {
       base.highlight_square = highlight;
       base.options = options.map((o) => o.trim()).filter(Boolean);
@@ -175,8 +181,9 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     try {
       await onSubmit(base);
       if (!editing) {
-        setInstruction(''); setTargets([]); setPieceSquare(''); setHighlight('');
+        setInstruction(''); setTargets([]); setHighlight('');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
+        setMoveFen(null); setMoves([]);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -204,7 +211,11 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
         placeholder="Talimat (örn. Piyonu e4'e taşı)" className="neon-input" />
 
-      <BoardEditor fen={fen} turn={turn} onChange={setFen} onTurnChange={setTurn} />
+      {/* Taşı oynat kendi tahtasını MovePieceFields içinde render ediyor —
+          bu satır koşullanmazsa ekranda İKİ tahta olur. */}
+      {type !== 'move_piece' && (
+        <BoardEditor fen={fen} turn={turn} onChange={setFen} onTurnChange={setTurn} />
+      )}
 
       {type === 'click_square' && (
         <div>
@@ -214,20 +225,11 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       )}
 
       {type === 'move_piece' && (
-        <div className="space-y-2">
-          <div>
-            <p className="text-xs n-muted mb-1">Oynayacak taşın karesi</p>
-            <select value={pieceSquare} onChange={(e) => setPieceSquare(e.target.value)}
-              className="neon-input py-1.5 text-xs max-w-[10rem]">
-              <option value="">seç</option>
-              {squares.map((s) => <option key={s} value={s}>{s} ({fenToMap(fen)[s]})</option>)}
-            </select>
-          </div>
-          <div>
-            <p className="text-xs n-muted mb-1">Hedef kare(ler)</p>
-            <SquarePicker values={targets} onToggle={toggleTarget} />
-          </div>
-        </div>
+        <MovePieceFields
+          fen={moveFen}
+          moves={moves}
+          onChange={(f, m) => { setMoveFen(f); setMoves(m); }}
+        />
       )}
 
       {type === 'identify_piece' && (
