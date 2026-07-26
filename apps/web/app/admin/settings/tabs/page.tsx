@@ -26,6 +26,18 @@ const TAB_CONTENT: Record<TabKey, { href: string; emoji: string; title: string; 
   eglence: null,
 };
 
+/** Maç Yap kartının 4 alt penceresi. Aynı anda tek pencere açık.
+ *  Açılış Listesi yönetimi "Açılış Pratiği Yap"ın altındadır; diğerleri iskelet. */
+const PLAY_SUBSECTIONS: { key: string; emoji: string; title: string;
+  content: { href: string; emoji: string; title: string; desc: string } | null }[] = [
+  { key: 'friend',     emoji: '🤝', title: 'Arkadaşınla Oyna',   content: null },
+  { key: 'bot',        emoji: '🤖', title: 'Bota Karşı Oyna',    content: null },
+  { key: 'opening',    emoji: '📖', title: 'Açılış Pratiği Yap',
+    content: { href: '/admin/openings', emoji: '📖', title: 'Açılış Listesi',
+               desc: 'Açılış pratiği için açılış ekle ve kaldır' } },
+  { key: 'tournament', emoji: '🏆', title: 'Turnuvaya Katıl',    content: null },
+];
+
 export default function AdminTabsPage() {
   const { reload } = useSettings();
   const [tabs, setTabs] = useState<AppSettingsData['tabs']>(DEFAULT_SETTINGS.tabs);
@@ -38,6 +50,8 @@ export default function AdminTabsPage() {
   const [saving, setSaving] = useState(false);
   /** Tek seferde yalnızca bir kart açık (akordiyon) — sporcu ana sayfasıyla aynı dil. */
   const [openKey, setOpenKey] = useState<TabKey | null>(null);
+  /** Maç Yap içindeki açık alt pencere; null = hepsi kapalı (tek-açık kuralı). */
+  const [openPlaySub, setOpenPlaySub] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -162,7 +176,7 @@ export default function AdminTabsPage() {
                   style={{
                     width: 60,
                     height: 60,
-                    fontSize: '0.65rem',
+                    fontSize: '0.975rem',  // %50 buyutuldu (0.65 -> 0.975)
                     letterSpacing: '0.04em',
                     border: `2px solid ${m.color}`,
                     color: m.color,
@@ -176,7 +190,45 @@ export default function AdminTabsPage() {
               {/* Sekmenin yönetim ekranı — yalnızca açıkken */}
               {open && (
                 <div className="mt-3 pt-3 border-t border-white/10">
-                  {content ? (
+                  {key === 'play' ? (
+                    <div className="space-y-2">
+                      {PLAY_SUBSECTIONS.map((sub) => {
+                        const subOpen = openPlaySub === sub.key;
+                        return (
+                          <div key={sub.key} className="rounded-lg border border-white/10 bg-white/[0.03]">
+                            <button type="button"
+                              onClick={() => setOpenPlaySub((p) => (p === sub.key ? null : sub.key))}
+                              aria-expanded={subOpen}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
+                              <span className="text-lg leading-none">{sub.emoji}</span>
+                              <span className="text-sm font-semibold n-text flex-1">{sub.title}</span>
+                              <span className="text-xs n-muted">{subOpen ? '▴' : '▾'}</span>
+                            </button>
+                            {subOpen && (
+                              <div className="px-3 pb-3">
+                                {sub.content ? (
+                                  <Link href={sub.content.href}
+                                    className="flex items-center gap-3 p-3 rounded-lg hover:brightness-125 transition-all"
+                                    style={{ background: `${m.color}1a`, border: `1px solid ${m.color}66` }}>
+                                    <span className="text-xl leading-none">{sub.content.emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-semibold" style={{ color: m.color }}>{sub.content.title}</p>
+                                      <p className="text-xs n-muted">{sub.content.desc}</p>
+                                    </div>
+                                    <span className="text-sm" style={{ color: m.color }}>→</span>
+                                  </Link>
+                                ) : (
+                                  <p className="text-sm n-muted">
+                                    İçerik yönetimi yakında — bu bölüm için ekran hazırlanıyor.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : content ? (
                     <Link href={content.href}
                       className="flex items-center gap-3 p-3 rounded-lg hover:brightness-125 transition-all"
                       style={{ background: `${m.color}1a`, border: `1px solid ${m.color}66` }}>
