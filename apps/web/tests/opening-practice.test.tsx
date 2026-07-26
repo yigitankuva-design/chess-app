@@ -22,51 +22,86 @@ beforeEach(() => {
   })));
 });
 
-describe('OpeningPractice', () => {
-  it('önce rakip türü sorulur (Bota Karşı / Arkadaşına Karşı)', () => {
+/** Bot kartini acar ve acilis listesinin yuklenmesini bekler. */
+async function openBotCard() {
+  fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
+  await waitFor(() => expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument());
+}
+
+describe('OpeningPractice — akordiyon', () => {
+  it('başlangıçta iki dış kart kapalıdır', () => {
     render(<OpeningPractice onMatched={vi.fn()} />);
-    expect(screen.getByText('Bota Karşı Pratik Yap')).toBeInTheDocument();
-    expect(screen.getByText('Arkadaşına Karşı Pratik Yap')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ })).toBeInTheDocument();
+    // Govdeler kapali: ic kartlarin basliklari DOM'da yok
+    expect(screen.queryByText('1. Açılış Konumunu Seç')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('challenge-screen')).not.toBeInTheDocument();
   });
 
-  it('rakip seçilince açılış listesi yüklenir', async () => {
+  it('bot kartı açılınca 1. ve 2. kartlar görünür, açılış listesi yüklenir', async () => {
     render(<OpeningPractice onMatched={vi.fn()} />);
-    fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
-    await waitFor(() => expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument());
+    await openBotCard();
+    expect(screen.getByText('1. Açılış Konumunu Seç')).toBeInTheDocument();
+    expect(screen.getByText('2. Maç Kriterlerini Seç')).toBeInTheDocument();
   });
 
-  it('açılış seçilince maç kriterleri sorulur', async () => {
+  it('KİLİT: açılış seçilmeden 2. kart açılmaz', async () => {
     render(<OpeningPractice onMatched={vi.fn()} />);
-    fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
-    await waitFor(() => screen.getByText('İtalyan Açılışı'));
+    await openBotCard();
+    const criteriaBtn = screen.getByRole('button', { name: /2\. Maç Kriterlerini Seç/ });
+    expect(criteriaBtn).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(criteriaBtn);
+    expect(screen.queryByRole('button', { name: 'Düzey 1' })).not.toBeInTheDocument();
+  });
+
+  it('açılış seçilince 1. kart kapanır, ✓ özet çıkar, 2. kart kendiliğinden açılır', async () => {
+    render(<OpeningPractice onMatched={vi.fn()} />);
+    await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
+    // 1. kart kapandi: listedeki secenek artik DOM'da degil
+    expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
+    // Ozet basliga tasindi
+    expect(screen.getByText('✓ İtalyan Açılışı')).toBeInTheDocument();
+    // 2. kart acildi
     expect(screen.getByRole('button', { name: 'Düzey 1' })).toBeInTheDocument();
   });
 
-  it('bot dalında maç seçilen açılışın FENiyle başlar', async () => {
+  it('kapanan 1. karta tekrar tıklanınca açılış değiştirilebilir', async () => {
     render(<OpeningPractice onMatched={vi.fn()} />);
-    fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
-    await waitFor(() => screen.getByText('İtalyan Açılışı'));
+    await openBotCard();
+    fireEvent.click(screen.getByText('İtalyan Açılışı'));
+    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Konumunu Seç/ }));
+    expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument();
+  });
+
+  it('maç seçilen açılışın FENiyle başlar', async () => {
+    render(<OpeningPractice onMatched={vi.fn()} />);
+    await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
     fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
-    const game = screen.getByTestId('bot-game');
-    expect(game.getAttribute('data-start-fen')).toBe(FEN);
+    expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
   });
 
-  it('arkadaş dalında davet ekranı gösterilir', async () => {
+  it('arkadaş kartı açılınca davet ekranı görünür (açılış seçtirmeden)', () => {
     render(<OpeningPractice onMatched={vi.fn()} />);
-    fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
-    await waitFor(() => screen.getByText('İtalyan Açılışı'));
-    fireEvent.click(screen.getByText('İtalyan Açılışı'));
+    fireEvent.click(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ }));
     expect(screen.getByTestId('challenge-screen')).toBeInTheDocument();
   });
 
-  it('açılış listesi boşsa bilgi mesajı gösterilir', async () => {
+  it('dış akordiyon tek-açık: arkadaş açılınca bot kapanır', async () => {
+    render(<OpeningPractice onMatched={vi.fn()} />);
+    await openBotCard();
+    fireEvent.click(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ }));
+    expect(screen.queryByText('1. Açılış Konumunu Seç')).not.toBeInTheDocument();
+    expect(screen.getByTestId('challenge-screen')).toBeInTheDocument();
+  });
+
+  it('REGRESYON: açılış listesi boşsa bilgi mesajı gösterilir', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [] })));
     render(<OpeningPractice onMatched={vi.fn()} />);
-    fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
+    fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     await waitFor(() =>
       expect(screen.getByText(/henüz açılış eklemedi/i)).toBeInTheDocument(),
     );

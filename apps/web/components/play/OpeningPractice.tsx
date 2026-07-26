@@ -4,6 +4,9 @@ import { BotGame } from '@/components/BotGame';
 import { ChallengeScreen } from '@/components/ChallengeScreen';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
+import { StepCard } from '@/components/play/StepCard';
+import { isCriteriaUnlocked, openingSummary } from '@/lib/play/openingSteps';
+import type { BotStepKey } from '@/lib/play/openingSteps';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
 import type { MatchedInfo } from '@/lib/hooks/use-lobby';
@@ -11,15 +14,16 @@ import type { MatchedInfo } from '@/lib/hooks/use-lobby';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface Opening { id: number; name: string; start_fen: string }
-type Opponent = 'bot' | 'friend';
 
 interface Props {
   onMatched: (info: MatchedInfo) => void;
 }
 
-/** Acilis pratigi akisi (madde h.3): rakip turu -> acilis -> kriterler -> mac. */
+/** Acilis pratigi: sirali ve kilitli acilir kartlar (akordiyon).
+ *  Dis katman: bot / arkadas. Ic katman (bot): acilis -> kriterler. */
 export function OpeningPractice({ onMatched }: Props) {
-  const [opponent, setOpponent] = useState<Opponent | null>(null);
+  const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
+  const [openInner, setOpenInner] = useState<BotStepKey | null>('opening');
   const [openings, setOpenings] = useState<Opening[] | null>(null);
   const [chosen, setChosen] = useState<Opening | null>(null);
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
@@ -34,82 +38,85 @@ export function OpeningPractice({ onMatched }: Props) {
     }
   }, []);
 
+  // Acilislar YALNIZCA bot karti acildiginda yuklenir — gereksiz istek atilmaz.
   useEffect(() => {
-    if (opponent && openings === null) void loadOpenings();
-  }, [opponent, openings, loadOpenings]);
+    if (openOuter === 'bot' && openings === null) void loadOpenings();
+  }, [openOuter, openings, loadOpenings]);
 
-  // ── Adım 1: rakip türü ─────────────────────────────────────────────────────
-  if (!opponent) {
+  // Kriterler secildi -> mac basladi; akordiyon yerini tahtaya birakir.
+  if (criteria && chosen) {
     return (
-      <div className="space-y-3">
-        {([['bot', '🤖', 'Bota Karşı Pratik Yap'], ['friend', '🤝', 'Arkadaşına Karşı Pratik Yap']] as const)
-          .map(([val, emoji, label]) => (
-            <button key={val} type="button" onClick={() => setOpponent(val)}
-              className="t-card-i w-full flex items-center gap-4 px-4 py-4 text-left">
-              <span className="text-2xl">{emoji}</span>
-              <span className="font-semibold text-sm flex-1">{label}</span>
-            </button>
-          ))}
-      </div>
+      <BotGame
+        skillLevel={criteria.level.skill}
+        depth={criteria.level.depth}
+        timeControl={criteria.timeControl}
+        studentColor={color}
+        startFen={chosen.start_fen}
+        onGameEnd={() => {}}
+      />
     );
   }
 
-  // ── Adım 2: açılış seçimi ──────────────────────────────────────────────────
-  if (!chosen) {
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-semibold t-muted uppercase tracking-wide">Açılış Konumunu Belirle</p>
-        {openings === null && <p className="text-sm t-muted">Yükleniyor…</p>}
-        {openings?.length === 0 && (
-          <p className="text-sm t-muted">Zafer Hoca henüz açılış eklemedi.</p>
-        )}
-        {openings?.map((o) => (
-          <button key={o.id} type="button" onClick={() => setChosen(o)}
-            className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left">
-            <span className="text-xl">📖</span>
-            <span className="font-medium text-sm flex-1">{o.name}</span>
-          </button>
-        ))}
-        <button type="button" onClick={() => setOpponent(null)}
-          className="t-btn-ghost px-4 py-2 text-xs">
-          ← Rakip türü
-        </button>
-      </div>
-    );
-  }
-
-  // ── Adım 3: kriterler ──────────────────────────────────────────────────────
-  if (!criteria) {
-    // Arkadaş dalında renk/kriter seçimi ChallengeScreen içinde yapılır.
-    if (opponent === 'friend') {
-      return <ChallengeScreen onMatched={onMatched} />;
-    }
-    return (
-      <div className="space-y-3">
-        <p className="text-xs font-semibold t-muted uppercase tracking-wide">
-          {chosen.name} — Maç Kriterlerini Belirle
-        </p>
-        <MatchCriteria
-          startLabel="Pratiğe Başla"
-          onStart={(v) => { setCriteria(v); setColor(resolveColor(v.colorChoice)); }}
-        />
-        <button type="button" onClick={() => setChosen(null)}
-          className="t-btn-ghost px-4 py-2 text-xs">
-          ← Açılış seç
-        </button>
-      </div>
-    );
-  }
-
-  // ── Adım 4: maç (bot) ──────────────────────────────────────────────────────
   return (
-    <BotGame
-      skillLevel={criteria.level.skill}
-      depth={criteria.level.depth}
-      timeControl={criteria.timeControl}
-      studentColor={color}
-      startFen={chosen.start_fen}
-      onGameEnd={() => {}}
-    />
+    <div className="space-y-3">
+      <StepCard
+        emoji="🤖"
+        title="Bota Karşı Pratik Yap"
+        open={openOuter === 'bot'}
+        onToggle={() => setOpenOuter((p) => (p === 'bot' ? null : 'bot'))}
+      >
+        <div className="space-y-3">
+          <StepCard
+            stepNumber={1}
+            title="Açılış Konumunu Seç"
+            summary={openingSummary(chosen?.name ?? null)}
+            open={openInner === 'opening'}
+            onToggle={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
+          >
+            <div className="space-y-2">
+              {openings === null && <p className="text-sm t-muted">Yükleniyor…</p>}
+              {openings?.length === 0 && (
+                <p className="text-sm t-muted">Zafer Hoca henüz açılış eklemedi.</p>
+              )}
+              {openings?.map((o) => (
+                <button key={o.id} type="button"
+                  onClick={() => { setChosen(o); setOpenInner('criteria'); }}
+                  className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left">
+                  <span className="text-xl">📖</span>
+                  <span className="font-medium text-sm flex-1">{o.name}</span>
+                </button>
+              ))}
+            </div>
+          </StepCard>
+
+          <StepCard
+            stepNumber={2}
+            title="Maç Kriterlerini Seç"
+            open={openInner === 'criteria'}
+            locked={!isCriteriaUnlocked(chosen?.name ?? null)}
+            onToggle={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
+          >
+            <MatchCriteria
+              startLabel="Pratiğe Başla"
+              onStart={(v) => {
+                // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
+                if (!chosen) return;
+                setCriteria(v);
+                setColor(resolveColor(v.colorChoice));
+              }}
+            />
+          </StepCard>
+        </div>
+      </StepCard>
+
+      <StepCard
+        emoji="🤝"
+        title="Arkadaşına Karşı Pratik Yap"
+        open={openOuter === 'friend'}
+        onToggle={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
+      >
+        <ChallengeScreen onMatched={onMatched} />
+      </StepCard>
+    </div>
   );
 }
