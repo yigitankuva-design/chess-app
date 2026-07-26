@@ -50,6 +50,14 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
     }
   }
 
+  async function handlePromptImagePaste(e: React.ClipboardEvent) {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'));
+    if (!item) return;
+    const file = item.getAsFile();
+    if (!file) return;
+    await onPromptImageFile(file);
+  }
+
   async function onOptionImageFile(i: number, file: File | undefined) {
     if (!file) return;
     setImgErr(null);
@@ -115,6 +123,16 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
             className="inline-block px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
             Görsel seç
           </label>
+          <div
+            role="button"
+            tabIndex={0}
+            onPaste={handlePromptImagePaste}
+            className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs
+              border border-dashed border-white/25 text-white/50 cursor-text
+              focus:border-cyan-400 focus:text-cyan-200 outline-none ml-2"
+          >
+            📋 Buraya tıkla, sonra Ctrl+V ile yapıştır
+          </div>
           {promptImage && (
             <img src={promptImage} alt="Soru görseli önizleme" style={{ maxWidth: 200, maxHeight: 150, objectFit: 'contain' }} />
           )}
