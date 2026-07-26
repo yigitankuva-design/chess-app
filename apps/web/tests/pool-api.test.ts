@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POOL_CATEGORIES, fetchPoolImages, addPoolImage } from '@/lib/admin/poolApi';
+import { POOL_CATEGORIES, fetchPoolImages, addPoolImage, deletePoolImage } from '@/lib/admin/poolApi';
 
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'test-token' }));
 
@@ -79,5 +79,34 @@ describe('addPoolImage', () => {
   it('ağ hatası fırlatırsa false döner', async () => {
     global.fetch = vi.fn(() => Promise.reject(new Error('ağ yok'))) as never;
     expect(await addPoolImage('Bitkiler', TINY)).toBe(false);
+  });
+});
+
+describe('deletePoolImage', () => {
+  it('doğru URL, method ve token ile DELETE eder', async () => {
+    const spy = vi.fn((_url: string, _init: RequestInit) =>
+      Promise.resolve({ ok: true, json: async () => ({ deleted: true }) }));
+    global.fetch = spy as never;
+    await deletePoolImage(42);
+    const [url, init] = spy.mock.calls[0];
+    expect(String(url)).toContain('/admin/pool-images/42');
+    expect(init.method).toBe('DELETE');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
+  });
+
+  it('başarıda true döner', async () => {
+    global.fetch = vi.fn(() =>
+      Promise.resolve({ ok: true, json: async () => ({ deleted: true }) })) as never;
+    expect(await deletePoolImage(1)).toBe(true);
+  });
+
+  it('başarısızlıkta false döner', async () => {
+    global.fetch = vi.fn(() => Promise.resolve({ ok: false, json: async () => ({}) })) as never;
+    expect(await deletePoolImage(1)).toBe(false);
+  });
+
+  it('ağ hatası fırlatırsa false döner', async () => {
+    global.fetch = vi.fn(() => Promise.reject(new Error('ağ yok'))) as never;
+    expect(await deletePoolImage(1)).toBe(false);
   });
 });

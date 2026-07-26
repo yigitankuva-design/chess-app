@@ -60,3 +60,21 @@ export async function addPoolImage(category: string, dataUri: string): Promise<b
     return false;
   }
 }
+
+/**
+ * Görseli havuzdan siler. Başarılıysa true döner.
+ *
+ * Bu işlem mevcut soruları bozmaz — soru kaydedilirken görselin data-URI'si
+ * sorunun içine kopyalanır, havuza referans tutulmaz.
+ */
+export async function deletePoolImage(id: number): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/admin/pool-images/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
