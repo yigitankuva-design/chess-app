@@ -5,6 +5,8 @@ import type { Square } from 'chess.js';
 import { ChessBoard } from './ChessBoard';
 import { getToken } from '@/lib/auth-storage';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
+import { formatGameResult } from '@/lib/play/resultText';
+import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
 
 interface Props { gameId: number; myColor: 'white' | 'black'; }
 
@@ -13,7 +15,9 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [fen, setFen] = useState(chessRef.current.fen());
   const [status, setStatus] = useState<'active' | 'over'>('active');
   const [info, setInfo] = useState<string>('');
+  const [resultLine, setResultLine] = useState<string>('');
   const [drawOffered, setDrawOffered] = useState(false);
+  const [myOffersUsed, setMyOffersUsed] = useState(0);
 
   const token = typeof window !== 'undefined' ? getToken() : null;
   const url = token ? `${wsBase()}/ws/game/${gameId}?token=${encodeURIComponent(token)}` : null;
@@ -26,7 +30,8 @@ export function LiveGame({ gameId, myColor }: Props) {
       is_stalemate?: boolean;
       result?: string;
       by_resign?: boolean;
-      by_child_id?: number | string;
+      offers_used?: number;
+      max_offers?: number;
     };
     const t = msg?.type;
     if (t === 'move_made') {
@@ -34,21 +39,27 @@ export function LiveGame({ gameId, myColor }: Props) {
       if (msg.fen_after && chess.fen() !== msg.fen_after) {
         try { chess.load(msg.fen_after); setFen(msg.fen_after); } catch { /* ignore */ }
       }
+      // Mat/pat'ta sonuc satiri game_over mesajiyla gelir; burada sadece bilgi.
       if (msg.is_checkmate) { setStatus('over'); setInfo('Mat! Oyun bitti.'); }
-      else if (msg.is_stalemate) { setStatus('over'); setInfo('Pat! Berabere.'); }
+      else if (msg.is_stalemate) { setStatus('over'); setInfo('Pat!'); }
     } else if (t === 'game_over') {
       setStatus('over');
-      const r = msg.result;
-      const iWon = (r === '1-0' && myColor === 'white') || (r === '0-1' && myColor === 'black');
-      setInfo(msg.by_resign
-        ? (iWon ? 'Rakip teslim oldu, kazandın! 🎉' : 'Teslim oldun.')
-        : r === '1/2-1/2' ? 'Berabere 🤝' : (iWon ? 'Kazandın! 🎉' : 'Kaybettin.'));
+      setResultLine(formatGameResult(msg.result));
+      setInfo(msg.by_resign ? 'Maç terk edildi.' : '');
     } else if (t === 'opponent_disconnected') {
       setInfo('Rakip bağlantısı koptu.');
     } else if (t === 'invalid_move') {
       setFen(chessRef.current.fen());
     } else if (t === 'draw_offered') {
       setDrawOffered(true);
+    } else if (t === 'draw_declined') {
+      setInfo('Rakip beraberlik teklifini reddetti.');
+    } else if (t === 'draw_offer_sent') {
+      setMyOffersUsed(msg.offers_used ?? 0);
+      setInfo('Beraberlik teklifi gönderildi.');
+    } else if (t === 'draw_offer_rejected') {
+      setMyOffersUsed(msg.max_offers ?? 3);
+      setInfo('Beraberlik teklif hakkın kalmadı.');
     }
   });
 
@@ -62,44 +73,65 @@ export function LiveGame({ gameId, myColor }: Props) {
     if (!move) return false;
     setFen(chess.fen());
     send({ type: 'move', uci: `${from}${to}` });
-    if (chess.isCheckmate()) { setStatus('over'); setInfo('Mat! Kazandın! 🎉'); }
     return true;
   }
+
+  const canOffer = canOfferDraw(myOffersUsed);
 
   return (
     <div className="max-w-2xl mx-auto px-4 space-y-3">
       <ChessBoard fen={fen} interactive={status === 'active'} onPieceDrop={handleDrop} boardOrientation={myColor} />
+
       {drawOffered && status === 'active' && (
-        <div className="t-ok p-3 flex items-center justify-between">
-          <span className="text-sm">Rakip beraberlik teklif etti</span>
-          <button
-            onClick={() => { send({ type: 'accept_draw' }); setDrawOffered(false); }}
-            className="text-xs underline font-medium"
-          >
-            Kabul et
-          </button>
+        <div className="t-ok p-3 space-y-2">
+          <p className="text-sm font-semibold">Rakip beraberlik teklif etti</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { send({ type: 'accept_draw' }); setDrawOffered(false); }}
+              className="t-btn px-4 py-2 text-sm"
+            >
+              Kabul Et
+            </button>
+            <button
+              type="button"
+              onClick={() => { send({ type: 'decline_draw' }); setDrawOffered(false); }}
+              className="t-btn-ghost px-4 py-2 text-sm"
+            >
+              Kabul Etme
+            </button>
+          </div>
         </div>
       )}
+
       {status === 'over' ? (
-        <div className="t-ok p-4 text-center font-bold">{info}</div>
-      ) : (
-        <div className="flex gap-2 justify-center">
-          <button
-            onClick={() => send({ type: 'offer_draw' })}
-            className="t-btn-ghost px-4 py-2 text-sm"
-          >
-            Beraberlik teklif et
-          </button>
-          <button
-            onClick={() => { if (confirm('Teslim olmak istiyor musun?')) send({ type: 'resign' }); }}
-            className="t-btn px-4 py-2 text-sm"
-            style={{ background: 'var(--t-err-bg, #ef4444)', color: '#fff' }}
-          >
-            Teslim ol
-          </button>
+        <div className="t-ok p-4 text-center space-y-1">
+          {resultLine && <p className="text-lg font-bold">{resultLine}</p>}
+          {info && <p className="text-sm t-muted">{info}</p>}
         </div>
+      ) : (
+        <>
+          <div className="flex gap-2 justify-center">
+            <button
+              type="button"
+              disabled={!canOffer}
+              onClick={() => send({ type: 'offer_draw' })}
+              className="t-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
+            >
+              Beraberlik Teklif Et ({offersLeft(myOffersUsed)})
+            </button>
+            <button
+              type="button"
+              onClick={() => { if (confirm('Maçı terk etmek istiyor musun? Maçı kaybedeceksin.')) send({ type: 'resign' }); }}
+              className="t-btn px-4 py-2 text-sm"
+              style={{ background: 'var(--t-err-bg, #ef4444)', color: '#fff' }}
+            >
+              Terk Et
+            </button>
+          </div>
+          {info && <p className="text-center text-sm t-muted">{info}</p>}
+        </>
       )}
-      {info && status === 'active' && <p className="text-center text-sm t-muted">{info}</p>}
     </div>
   );
 }
