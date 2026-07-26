@@ -11,6 +11,10 @@ describe('ChoiceExerciseFields', () => {
     const optionInputs = screen.getAllByPlaceholderText(/\d\. şık/);
     fireEvent.change(optionInputs[0], { target: { value: 'L şeklinde' } });
     fireEvent.change(optionInputs[1], { target: { value: 'Düz çizgide' } });
+    // Adim kilidi: "Belirle" adimlari BILFIIL tiklanmali (kullanicinin 3b maddesi).
+    fireEvent.click(screen.getByText('2 seçenek'));
+    fireEvent.click(screen.getByText('Cümle'));
+    fireEvent.click(screen.getByText('Kolay'));
     fireEvent.click(screen.getByText('Soruyu ekle'));
 
     // submit() async — waitFor ile bekle (çıplak `await Promise.resolve()` güvenilir değil)
@@ -41,20 +45,22 @@ describe('ChoiceExerciseFields', () => {
     expect((radiosAfter[0] as HTMLInputElement).checked).toBe(true);
   });
 
-  it('boş cevapla gönderim engellenir, hata mesajı gösterilir', () => {
+  it('boş cevapla gönderim ADIM KİLİDİYLE engellenir', () => {
     const onSubmit = vi.fn();
     render(<ChoiceExerciseFields kind="sentence_question" onSubmit={onSubmit} />);
     fireEvent.change(screen.getByPlaceholderText(/Soru cümlesi/), { target: { value: 'x' } });
+    // Cevaplar bos: buton kilitli, eksik adim ekranda.
+    expect(screen.getByText('Soruyu ekle')).toBeDisabled();
     fireEvent.click(screen.getByText('Soruyu ekle'));
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByText(/doldurulmalı/)).toBeInTheDocument();
+    // Eksik satiri ILK eksigi yazar: talimat dolu, sirada "Seçenek Sayısını Belirle" var.
+    expect(screen.getByText(/Eksik: 2\. Seçenek Sayısını Belirle/)).toBeInTheDocument();
   });
 
-  it('image_question: soru metni boşken de gönderim engellenmez (opsiyonel)', () => {
+  it('image_question: görsel seçilmeden ilk eksik adım "Soru Görseli Seç"tir', () => {
     const onSubmit = vi.fn();
     render(<ChoiceExerciseFields kind="image_question" onSubmit={onSubmit} />);
-    fireEvent.click(screen.getByText('Soruyu ekle'));
-    // Görsel seçilmediği için "Soru görseli gerekli" hatası beklenir — instruction eksikliği DEĞİL.
-    expect(screen.getByText(/Soru görseli gerekli/)).toBeInTheDocument();
+    expect(screen.getByText('Soruyu ekle')).toBeDisabled();
+    expect(screen.getByText(/Eksik: 1\. Soru Görseli Seç/)).toBeInTheDocument();
   });
 });

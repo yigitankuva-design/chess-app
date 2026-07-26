@@ -4,6 +4,8 @@ import type { BoardExercise, QuestionFamily } from './ExerciseForm';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
 import { PoolPicker } from './PoolPicker';
+import { choiceSteps, firstIncomplete, allDone } from '@/lib/admin/questionSteps';
+import { StepList } from './StepList';
 import { POOL_CATEGORIES, addPoolImage } from '@/lib/admin/poolApi';
 
 /** Bolum taslagi: Zafer hoca baska bolume gecip dondugunde yazdiklarini
@@ -19,6 +21,9 @@ export interface ChoiceDraft {
   successMsg: string;
   failMsg: string;
   difficulty: number;
+  optionCountChosen: boolean;
+  answerKindChosen: boolean;
+  difficultyChosen: boolean;
 }
 
 interface Props {
@@ -48,6 +53,10 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   const [successMsg, setSuccessMsg] = useState(draft?.successMsg ?? initial?.success_msg ?? '');
   const [failMsg, setFailMsg] = useState(draft?.failMsg ?? initial?.fail_msg ?? '');
   const [difficulty, setDifficulty] = useState(draft?.difficulty ?? initial?.difficulty ?? 1);
+  /** "Belirle" adimlari BILFIIL tiklama ister; duzenlemede tamam sayilir (KURAL #3). */
+  const [optionCountChosen, setOptionCountChosen] = useState(draft?.optionCountChosen ?? !!initial);
+  const [answerKindChosen, setAnswerKindChosen] = useState(draft?.answerKindChosen ?? !!initial);
+  const [difficultyChosen, setDifficultyChosen] = useState(draft?.difficultyChosen ?? !!initial);
   const [err, setErr] = useState<string | null>(null);
   const [imgErr, setImgErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -61,6 +70,13 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   const [poolAddCategory, setPoolAddCategory] = useState('');
   const [poolAddMsg, setPoolAddMsg] = useState<string | null>(null);
   const editing = !!initial;
+  const steps = choiceSteps(
+    { instruction, promptImage, optionCountChosen, answerKindChosen,
+      options, answerKind, difficultyChosen },
+    kind,
+  );
+  const missing = firstIncomplete(steps);
+  const gateOpen = allDone(steps);
 
   // Taslak her degisimde yukari yazilir — bolum degisince form sifirdan
   // kurulsa da (key), yazilanlar ExerciseForm'da yasamaya devam eder.
@@ -68,10 +84,12 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
     onDraftChange?.({
       instruction, promptImage, optionCount, answerKind,
       options, correctIndex, successMsg, failMsg, difficulty,
+      optionCountChosen, answerKindChosen, difficultyChosen,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instruction, promptImage, optionCount, answerKind, options,
-      correctIndex, successMsg, failMsg, difficulty]);
+      correctIndex, successMsg, failMsg, difficulty,
+      optionCountChosen, answerKindChosen, difficultyChosen]);
 
   function setCount(n: 2 | 3 | 4) {
     setOptionCount(n);
@@ -152,6 +170,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
       if (!editing) {
         setInstruction(''); setPromptImage(''); setOptionCount(2); setAnswerKind('sentence');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
+        setOptionCountChosen(false); setAnswerKindChosen(false); setDifficultyChosen(false);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -161,6 +180,11 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
 
   return (
     <div className="space-y-4">
+      <StepList
+        steps={steps}
+        missingNo={missing?.no ?? null}
+        ariaLabel={kind === 'sentence_question' ? 'Cümle Ekle adımları' : 'Görüntü Ekle adımları'}
+      />
       {kind === 'sentence_question' ? (
         <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
           placeholder="Soru cümlesi (örn. Atın hareket şekli nasıldır?)" className="neon-input" />
@@ -225,7 +249,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
         <p className="text-xs n-muted mb-1">Seçenek sayısı</p>
         <div className="flex gap-2">
           {([2, 3, 4] as const).map((n) => (
-            <button key={n} type="button" onClick={() => setCount(n)}
+            <button key={n} type="button" onClick={() => { setCount(n); setOptionCountChosen(true); }}
               className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
                 optionCount === n ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
               }`}>{n} seçenek</button>
@@ -237,7 +261,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
         <p className="text-xs n-muted mb-1">Cevap tipi</p>
         <div className="flex gap-2">
           {([['sentence', 'Cümle'], ['image', 'Görüntü']] as const).map(([k, label]) => (
-            <button key={k} type="button" onClick={() => setAnswerKind(k)}
+            <button key={k} type="button" onClick={() => { setAnswerKind(k); setAnswerKindChosen(true); }}
               className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
                 answerKind === k ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
               }`}>{label}</button>
@@ -296,7 +320,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
         <p className="text-xs n-muted mb-1">Sorunun Zorluk Düzeyini Belirle</p>
         <div className="flex flex-wrap gap-2">
           {DIFFICULTY_LABELS.map(([val, label]) => (
-            <button key={val} type="button" onClick={() => setDifficulty(val)}
+            <button key={val} type="button" onClick={() => { setDifficulty(val); setDifficultyChosen(true); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
                 nearestDifficultyValue(difficulty) === val ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
               }`}>{label}</button>
@@ -306,10 +330,13 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
 
       {err && <p className="text-rose-400 text-sm">{err}</p>}
       <div className="flex items-center gap-2">
-        <button type="button" onClick={submit} disabled={saving}
+        <button type="button" onClick={submit} disabled={saving || !gateOpen}
           className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-50 text-sm transition-colors">
           {saving ? 'Kaydediliyor...' : editing ? 'Soruyu kaydet' : 'Soruyu ekle'}
         </button>
+        {!gateOpen && missing && (
+          <span className="text-xs n-muted">Eksik: {missing.no}. {missing.label}</span>
+        )}
         {editing && onCancel && (
           <button type="button" onClick={onCancel}
             className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
