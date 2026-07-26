@@ -10,6 +10,8 @@ import { LEVELS, ALL_TIMES } from '@/lib/play/levels';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
+import { usePresenceCount } from '@/lib/presence/PresenceContext';
+import { ActivePlayersBadge } from '@/components/play/ActivePlayersBadge';
 
 type Mode = 'friend' | 'bot' | 'opening' | 'tournament';
 
@@ -37,6 +39,7 @@ export default function PlayPage() {
 
 function PlayInner() {
   useTabGuard('play');
+  const activeCount = usePresenceCount();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -80,7 +83,12 @@ function PlayInner() {
             className="t-card-i w-full flex items-center gap-4 px-4 py-4 text-left">
             <span className="text-2xl">{c.emoji}</span>
             <div className="flex-1">
-              <p className="font-semibold text-sm">{c.title}</p>
+              <p className="font-semibold text-sm flex items-center gap-2">
+                {c.title}
+                {c.mode === 'friend' && activeCount !== null && (
+                  <ActivePlayersBadge count={activeCount} />
+                )}
+              </p>
               <p className="text-xs t-muted mt-0.5">{c.subtitle}</p>
             </div>
             <ChevronRight />

@@ -9,6 +9,8 @@ import { isModeUnlocked, isSubtopicUnlocked } from '@/lib/practice/unlock';
 import type { PracticeMode, ScoreMap } from '@/lib/practice/unlock';
 import { fetchLessonScores } from '@/lib/practice/practiceApi';
 import { HOME_BOT_LEVELS as BOT_LEVELS, HOME_TEMPO_GROUPS as TIME_GROUPS } from './botShortcut';
+import { usePresenceCount } from '@/lib/presence/PresenceContext';
+import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayersBadge';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -209,6 +211,7 @@ function Branch({ offset, children }: { offset: number; children: React.ReactNod
 
 export default function ChildHomePage() {
   const { settings } = useSettings();
+  const activeCount = usePresenceCount();
   // Tek seferde yalnızca bir sekme açık (akordiyon)
   const [openTab, setOpenTab] = useState<TabKey | null>(null);
   const showLevels = openTab === 'lessons';
@@ -393,10 +396,17 @@ export default function ChildHomePage() {
             {/* Arkadaşla Oyna — kriter ekranıyla teklif akışına gider */}
             <Link href="/play?mode=friend" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
               <span className="flex items-center justify-center flex-shrink-0"
-                style={{ ...raised(999, 4), width: 44, height: 44, color: 'var(--t-text-1)' }}>
+                style={{
+                  ...raised(999, 4), width: 44, height: 44,
+                  // Sayi bilinmiyorken varsayilan renk korunur (uydurma renk yok).
+                  color: activeCount === null ? 'var(--t-text-1)' : activeColor(activeCount),
+                }}>
                 <IconFriends s={20} />
               </span>
-              <span className="font-bold text-sm" style={{ color: 'var(--t-text-1)' }}>Arkadaşla Oyna</span>
+              <span className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--t-text-1)' }}>
+                Arkadaşla Oyna
+                {activeCount !== null && <ActivePlayersBadge count={activeCount} />}
+              </span>
             </Link>
 
             <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
