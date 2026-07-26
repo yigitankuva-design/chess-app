@@ -418,3 +418,48 @@ async def test_move_piece_non_string_move_rejected(client, db):
          "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": [42]},
     ])
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_yeni_soru_tipleri_uc_modda_da_kabul_edilir(client, db):
+    """Madde 4: Cümle/Görüntü soru formatı Süreli Pratik ve Kendini Test Et'te de
+    kullanılabilmeli. Üç liste de AYNI doğrulamadan geçiyor (admin.py:686) —
+    bu test o güvenceyi kilitler."""
+    les = await _lesson(db, order=73)
+    tok = await _teacher_token(client, email="be_newtypes@t.com")
+    sentence = {"type": "sentence_question", "instruction": "Atın hareketi?",
+                "answer_kind": "sentence", "options": ["L şeklinde", "Düz"],
+                "correct_index": 0}
+    image = {"type": "image_question", "instruction": "Hangisi at?",
+             "prompt_image": "data:image/png;base64,AAAA", "answer_kind": "sentence",
+             "options": ["At", "Fil"], "correct_index": 0}
+    r = await client.post(
+        f"/admin/lessons/{les.id}/steps",
+        headers={"Authorization": f"Bearer {tok}"},
+        json={"type": "explanation", "content_json": {
+            "title": "T", "body": "b",
+            "board_exercises": [sentence, image],
+            "board_exercises_timed": [sentence, image],
+            "board_exercises_test": [sentence, image],
+        }},
+    )
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_gecersiz_cumle_sorusu_kendini_test_modunda_da_reddedilir(client, db):
+    """Kendini Test Et listesindeki bozuk Cümle sorusu da reddedilmeli."""
+    les = await _lesson(db, order=74)
+    tok = await _teacher_token(client, email="be_testbad@t.com")
+    r = await client.post(
+        f"/admin/lessons/{les.id}/steps",
+        headers={"Authorization": f"Bearer {tok}"},
+        json={"type": "explanation", "content_json": {
+            "title": "T", "body": "b",
+            "board_exercises_test": [
+                {"type": "sentence_question", "instruction": "Soru?",
+                 "answer_kind": "sentence", "options": ["tek şık"], "correct_index": 0},
+            ],
+        }},
+    )
+    assert r.status_code == 400
