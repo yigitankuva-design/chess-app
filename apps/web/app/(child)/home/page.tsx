@@ -8,6 +8,7 @@ import type { TabKey } from '@/lib/settings/defaults';
 import { isModeUnlocked, isSubtopicUnlocked } from '@/lib/practice/unlock';
 import type { PracticeMode, ScoreMap } from '@/lib/practice/unlock';
 import { fetchLessonScores } from '@/lib/practice/practiceApi';
+import { HOME_BOT_LEVELS as BOT_LEVELS, HOME_TEMPO_GROUPS as TIME_GROUPS } from './botShortcut';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -32,22 +33,6 @@ const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '�
 
 /** Admin'in eklediği ek sekmeler için sırayla kullanılan renkler */
 const CUSTOM_TAB_COLORS = ['#fbbf24', '#2dd4bf', '#fb7185', '#60a5fa', '#c084fc'];
-
-/* Maç Yap hiyerarşisi — /play sayfasındaki gerçek seçeneklerle birebir */
-const BOT_LEVELS = [
-  { label: 'Çok Kolay', skill: 0,  depth: 1,  bars: 1 },
-  { label: 'Kolay',     skill: 3,  depth: 4,  bars: 2 },
-  { label: 'Orta',      skill: 8,  depth: 8,  bars: 3 },
-  { label: 'Zor',       skill: 14, depth: 10, bars: 4 },
-  { label: 'Çok Zor',   skill: 20, depth: 12, bars: 5 },
-];
-
-const TIME_GROUPS = [
-  { cat: 'Yıldırım', color: '#fbbf24', items: ['3+2', '5+0', '5+3'] },
-  { cat: 'Hızlı',    color: '#38bdf8', items: ['10+0', '10+5', '15+10'] },
-  { cat: 'Klasik',   color: '#2dd4bf', items: ['30+0', '30+10', '30+20'] },
-  { cat: 'Süresiz',  color: '#a78bfa', items: [] as string[] },
-];
 
 /* ── Modern çizgi ikonlar (emoji yerine) ─────────────────────────────── */
 const svgBase = {
@@ -420,10 +405,9 @@ export default function ChildHomePage() {
             {openBot && (() => {
               const bot = BOT_LEVELS.find((b) => b.skill === openSkill) ?? null;
               const tempo = TIME_GROUPS.find((t) => t.cat === openTempo) ?? null;
-              const unlimited = tempo?.items.length === 0;
-              const ready = !!bot && !!tempo && (unlimited || !!selTime);
+              const ready = !!bot && !!tempo && !!selTime;
               const href = ready
-                ? `/play?skill=${bot!.skill}&depth=${bot!.depth}&tc=${unlimited ? 'suresiz' : encodeURIComponent(selTime!)}`
+                ? `/play?skill=${bot!.skill}&depth=${bot!.depth}&tc=${encodeURIComponent(selTime!)}`
                 : '#';
 
               return (
