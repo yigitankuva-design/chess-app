@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { BoardExercise, QuestionFamily } from './ExerciseForm';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
+import { PoolPicker } from './PoolPicker';
 
 interface Props {
   kind: Extract<QuestionFamily, 'sentence_question' | 'image_question'>;
@@ -28,6 +29,12 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
   const [err, setErr] = useState<string | null>(null);
   const [imgErr, setImgErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /**
+   * Hangi görsel slotu için havuz paneli açık? 'prompt' = soru görseli,
+   * sayı = o indeksli şık, null = kapalı. Aynı anda YALNIZCA BİR panel açık
+   * olabilir — birden fazla şık için ayrı ayrı panel açılırsa ekran karışır.
+   */
+  const [openPoolFor, setOpenPoolFor] = useState<'prompt' | number | null>(null);
   const editing = !!initial;
 
   function setCount(n: 2 | 3 | 4) {
@@ -121,8 +128,13 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
             onChange={(e) => onPromptImageFile(e.target.files?.[0])} />
           <label htmlFor="prompt-image-input"
             className="inline-block px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
-            Görsel seç
+            Bilgisayardan Seç
           </label>
+          <button type="button"
+            onClick={() => setOpenPoolFor((p) => (p === 'prompt' ? null : 'prompt'))}
+            className="ml-2 px-3 py-1.5 rounded-lg text-xs bg-cyan-400/10 text-cyan-200 border border-cyan-400/40 hover:bg-cyan-400/20">
+            Havuzdan Seç
+          </button>
           <div
             role="button"
             tabIndex={0}
@@ -133,6 +145,12 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
           >
             📋 Buraya tıkla, sonra Ctrl+V ile yapıştır
           </div>
+          {openPoolFor === 'prompt' && (
+            <PoolPicker
+              onSelect={(uri) => setPromptImage(uri)}
+              onClose={() => setOpenPoolFor(null)}
+            />
+          )}
           {promptImage && (
             <img src={promptImage} alt="Soru görseli önizleme" style={{ maxWidth: 200, maxHeight: 150, objectFit: 'contain' }} />
           )}
@@ -176,14 +194,27 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
               <input value={o} onChange={(e) => setOptions(options.map((x, j) => (j === i ? e.target.value : x)))}
                 placeholder={`${i + 1}. şık`} className="neon-input flex-1" />
             ) : (
-              <div className="flex-1 flex items-center gap-2">
-                <input type="file" accept="image/*" className="hidden" id={`option-image-${i}`}
-                  onChange={(e) => onOptionImageFile(i, e.target.files?.[0])} />
-                <label htmlFor={`option-image-${i}`}
-                  className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
-                  {o ? 'Değiştir' : 'Görsel seç'}
-                </label>
-                {o && <img src={o} alt={`${i + 1}. şık önizleme`} style={{ maxWidth: 60, maxHeight: 45, objectFit: 'contain' }} />}
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input type="file" accept="image/*" className="hidden" id={`option-image-${i}`}
+                    onChange={(e) => onOptionImageFile(i, e.target.files?.[0])} />
+                  <label htmlFor={`option-image-${i}`}
+                    className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
+                    {o ? 'Değiştir' : 'Bilgisayardan Seç'}
+                  </label>
+                  <button type="button"
+                    onClick={() => setOpenPoolFor((p) => (p === i ? null : i))}
+                    className="px-3 py-1.5 rounded-lg text-xs bg-cyan-400/10 text-cyan-200 border border-cyan-400/40 hover:bg-cyan-400/20">
+                    Havuzdan Seç
+                  </button>
+                  {o && <img src={o} alt={`${i + 1}. şık önizleme`} style={{ maxWidth: 60, maxHeight: 45, objectFit: 'contain' }} />}
+                </div>
+                {openPoolFor === i && (
+                  <PoolPicker
+                    onSelect={(uri) => setOptions((prev) => prev.map((x, j) => (j === i ? uri : x)))}
+                    onClose={() => setOpenPoolFor(null)}
+                  />
+                )}
               </div>
             )}
           </div>
