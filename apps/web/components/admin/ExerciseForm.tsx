@@ -227,6 +227,10 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
 
       {type === 'move_piece' && (
         <MovePieceFields
+          setupFen={fen}
+          onSetupFenChange={setFen}
+          setupTurn={turn}
+          onSetupTurnChange={setTurn}
           fen={moveFen}
           moves={moves}
           onChange={(f, m) => { setMoveFen(f); setMoves(m); }}

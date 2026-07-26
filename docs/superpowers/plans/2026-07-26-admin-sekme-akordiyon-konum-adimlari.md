@@ -346,7 +346,12 @@ describe('Admin Sekmeler — akordiyon', () => {
 
   it('her kartta dairesel AÇ düğmesi vardır', async () => {
     await renderPage();
-    expect(screen.getAllByRole('button', { name: 'AÇ' })).toHaveLength(4);
+    // NOT: aria-label varken erişilebilir ad "AÇ" değil, tam label metnidir
+    // (örn. "Maç Yap sekmesini aç") — bu yüzden role sorgusu değil metin sorgusu kullanılır.
+    for (const label of ['Maç Yap', 'Dersler', 'Analiz Et', 'Eğlence']) {
+      const btn = screen.getByLabelText(`${label} sekmesini aç`);
+      expect(btn).toHaveTextContent('AÇ');
+    }
   });
 
   it('kart kapalı başlar — Ders İçeriği linki görünmez', async () => {
