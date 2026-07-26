@@ -5,7 +5,9 @@ import { ChoiceExerciseFields } from './ChoiceExerciseFields';
 import type { ChoiceDraft } from './ChoiceExerciseFields';
 import { MovePieceFields } from './MovePieceFields';
 import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
-import { movePieceSteps, firstIncompleteStep, allStepsDone } from '@/lib/admin/movePieceSteps';
+import { movePieceSteps, firstIncompleteStep, allStepsDone, hasPieces } from '@/lib/admin/movePieceSteps';
+import { clickSquareSteps, firstIncomplete, allDone } from '@/lib/admin/questionSteps';
+import { StepList } from './StepList';
 import type { MovePieceStepState } from '@/lib/admin/movePieceSteps';
 
 export type ExerciseType = 'click_square' | 'move_piece' | 'identify_piece';
@@ -145,6 +147,12 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   const [successMsg, setSuccessMsg] = useState(initial?.success_msg ?? '');
   const [failMsg, setFailMsg] = useState(initial?.fail_msg ?? '');
   const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 1);
+  // Kareye Tıkla: null = konum henüz kaydedilmedi (diz fazı). Düzenlemede kayıtlı.
+  const [savedFen, setSavedFen] = useState<string | null>(
+    initial?.type === 'click_square' ? (initial.fen ?? null) : null,
+  );
+  /** Hamle sırasına BİLFİİL tıklandı mı? Varsayılan Beyaz — tıklama şart (tuzak). */
+  const [turnChosen, setTurnChosen] = useState(!!initial);
   // Taşı Oynat: null = henüz "Konumu Kaydet"e basılmadı (setup fazı).
   const [moveFen, setMoveFen] = useState<string | null>(
     initial?.moves?.length ? (initial.fen ?? null) : null,
@@ -170,6 +178,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     if (!instruction.trim()) return 'Talimat gerekli';
     const map = fenToMap(fen);
     if (type === 'click_square') {
+      if (!savedFen) return 'Önce taşları yerleştirip "Konumu Kaydet"e bas';
       if (targets.length === 0) return 'En az bir doğru kare seç';
     }
     if (type === 'move_piece') {
@@ -195,7 +204,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     if (initial?.code) base.code = initial.code;
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
-    if (type === 'click_square') base.target_squares = targets;
+    if (type === 'click_square') { base.fen = savedFen!; base.target_squares = targets; }
     if (type === 'move_piece') { base.fen = moveFen!; base.moves = moves; }
     if (type === 'identify_piece') {
       base.highlight_square = highlight;
@@ -208,6 +217,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
         setInstruction(''); setTargets([]); setHighlight('');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
         setMoveFen(null); setMoves([]); setNotationSaved(false); setDifficultyChosen(false);
+        setSavedFen(null); setTurnChosen(false);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -218,12 +228,21 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   const squares = Object.keys(fenToMap(fen)).sort();
 
   const stepState: MovePieceStepState = {
-    instruction, setupFen: fen, moveFen, moves, notationSaved, difficultyChosen,
+    instruction, setupFen: fen, turnChosen, moveFen, moves, notationSaved, difficultyChosen,
   };
   const steps = movePieceSteps(stepState);
-  const missing = firstIncompleteStep(stepState);
-  /** Kilit YALNIZCA Taşı Oynat'a uygulanır; diğer iki tip eskisi gibi çalışır. */
-  const gateOpen = type !== 'move_piece' || allStepsDone(stepState);
+  const clickSteps = clickSquareSteps({
+    instruction, setupFen: fen, turnChosen, savedFen, targets, difficultyChosen,
+  });
+  const missing = type === 'click_square'
+    ? firstIncomplete(clickSteps)
+    : firstIncompleteStep(stepState);
+  /** Kilit iki Konum tipine de uygulanır (kullanıcının 3e maddesi). */
+  const gateOpen = type === 'move_piece'
+    ? allStepsDone(stepState)
+    : type === 'click_square'
+      ? allDone(clickSteps)
+      : true;
 
   return (
     <div className="space-y-4">
@@ -233,7 +252,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           ['move_piece', 'Taşı oynat'],
         ] as [ExerciseType, string][]).map(([t, label]) => (
           <button key={t} type="button" disabled={editing}
-            onClick={() => { setType(t); setTargets([]); setErr(null); }}
+            onClick={() => { setType(t); setTargets([]); setSavedFen(null); setErr(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
               type === t ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
             } ${editing ? 'opacity-60 cursor-not-allowed' : ''}`}>{label}</button>
@@ -248,27 +267,10 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       </div>
 
       {type === 'move_piece' && (
-        <ol className="grid gap-1.5" aria-label="Taşı Oynat adımları">
-          {steps.map((st) => {
-            const active = !st.done && st.no === missing?.no;
-            return (
-              <li key={st.no} className="flex items-center gap-2 text-xs"
-                style={{ opacity: st.done || active ? 1 : 0.45 }}>
-                <span className="flex items-center justify-center rounded-full flex-shrink-0 font-bold"
-                  style={{
-                    width: 20, height: 20, fontSize: '0.65rem',
-                    border: `1.5px solid ${st.done ? '#34d399' : 'rgba(255,255,255,0.25)'}`,
-                    color: st.done ? '#34d399' : 'rgba(255,255,255,0.6)',
-                  }}>
-                  {st.done ? '✓' : st.no}
-                </span>
-                <span style={{ color: st.done ? '#34d399' : undefined }}>
-                  {st.no}. {st.label}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        <StepList steps={steps} missingNo={missing?.no ?? null} ariaLabel="Taşı Oynat adımları" />
+      )}
+      {type === 'click_square' && (
+        <StepList steps={clickSteps} missingNo={missing?.no ?? null} ariaLabel="Kareye Tıkla adımları" />
       )}
 
       <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
@@ -276,12 +278,30 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
 
       {/* Taşı oynat kendi tahtasını MovePieceFields içinde render ediyor —
           bu satır koşullanmazsa ekranda İKİ tahta olur. */}
-      {type !== 'move_piece' && (
-        <BoardEditor fen={fen} turn={turn} onChange={setFen} onTurnChange={setTurn} />
+      {type !== 'move_piece' && (type !== 'click_square' || savedFen === null) && (
+        <BoardEditor fen={fen} turn={turn} onChange={setFen}
+          onTurnChange={(t) => { setTurn(t); setTurnChosen(true); }} />
       )}
 
-      {type === 'click_square' && (
-        <div>
+      {type === 'click_square' && savedFen === null && (
+        <button type="button" disabled={!hasPieces(fen)}
+          onClick={() => setSavedFen(fen)}
+          className="px-4 py-2 rounded-lg text-sm bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-40 transition-colors">
+          Konumu Kaydet
+        </button>
+      )}
+
+      {type === 'click_square' && savedFen !== null && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <span className="text-xs" style={{ color: '#34d399' }}>Konum kaydedildi ✓</span>
+            {/* Konum degisirse eski kareler gecersiz olabilir — kareler BILINCLI sifirlanir. */}
+            <button type="button"
+              onClick={() => { setSavedFen(null); setTargets([]); }}
+              className="px-3 py-1 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+              Konumu Değiştir
+            </button>
+          </div>
           <p className="text-xs n-muted mb-1">Doğru kare(ler) — birden çok seçebilirsin</p>
           <SquarePicker values={targets} onToggle={toggleTarget} />
         </div>
@@ -292,7 +312,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           setupFen={fen}
           onSetupFenChange={setFen}
           setupTurn={turn}
-          onSetupTurnChange={setTurn}
+          onSetupTurnChange={(t) => { setTurn(t); setTurnChosen(true); }}
           fen={moveFen}
           moves={moves}
           onChange={(f, m) => { setMoveFen(f); setMoves(m); }}

@@ -23,12 +23,13 @@ describe('ExerciseForm — Taşı oynat entegrasyonu', () => {
     expect(screen.queryByText('Oynayacak taşın karesi')).not.toBeInTheDocument();
   });
 
-  it('REGRESYON: Kareye tıkla hâlâ tahta + hedef-kare seçici gösterir', () => {
+  it('REGRESYON: Kareye tıkla dizme tahtasını gösterir; seçici KAYITTAN sonra gelir', () => {
     const { container } = render(<ExerciseForm onSubmit={vi.fn()} />);
     fireEvent.click(screen.getByText('Konum ekle'));
-    // varsayılan zaten click_square
+    // varsayılan zaten click_square — diz fazında tahta var, seçici yok
     expect(container.querySelectorAll('[data-square]')).toHaveLength(64);
-    expect(screen.getByText(/Doğru kare\(ler\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/Doğru kare\(ler\)/)).not.toBeInTheDocument();
+    expect(screen.getByText('Konumu Kaydet')).toBeInTheDocument();
   });
 
   it('YENİ soruda "Taşı tanı" düğmesi YOKTUR', () => {
@@ -71,16 +72,18 @@ describe('ExerciseForm — Taşı oynat 6 adımlı akış', () => {
     return Array.from(list.querySelectorAll('li')).map((li) => li.textContent ?? '');
   }
 
-  it('altı adım da sırayla ve doğru etiketlerle listelenir', () => {
+  it('sekiz adım da sırayla ve doğru etiketlerle listelenir', () => {
     openMovePiece();
     const texts = stepTexts();
-    expect(texts).toHaveLength(6);
-    expect(texts[0]).toContain('1. Talimat Ekle');
+    expect(texts).toHaveLength(8);
+    expect(texts[0]).toContain('1. Talimatı Gir');
     expect(texts[1]).toContain('2. Konum Diz');
-    expect(texts[2]).toContain('3. Konumu Kaydet');
-    expect(texts[3]).toContain('4. Cevap Hamlelerini Yap ve Notasyon Oluştur');
-    expect(texts[4]).toContain('5. Notasyonu Kaydet');
-    expect(texts[5]).toContain('6. Zorluk Düzeyinin Seçimini Yap');
+    expect(texts[2]).toContain('3. Hamle Sırasını Belirle');
+    expect(texts[3]).toContain('4. Konumu Kaydet');
+    expect(texts[4]).toContain('5. Cevap Hamlelerini Yap ve Notasyon Oluştur');
+    expect(texts[5]).toContain('6. Notasyonu Kaydet');
+    expect(texts[6]).toContain('7. Zorluk Düzeyini Belirle');
+    expect(texts[7]).toContain('8. Soruyu Ekle');
   });
 
   it('REGRESYON: Kareye tıkla seçiliyken adım listesi GÖSTERİLMEZ', () => {
@@ -105,7 +108,7 @@ describe('ExerciseForm — Taşı oynat 6 adımlı akış', () => {
 
   it('eksik olan ilk adımı ekranda yazar', () => {
     openMovePiece();
-    expect(screen.getByText(/Eksik: 1\. Talimat Ekle/)).toBeInTheDocument();
+    expect(screen.getByText(/Eksik: 1\. Talimatı Gir/)).toBeInTheDocument();
   });
 
   it('talimat girilince eksik adım 2ye ilerler', () => {
@@ -114,12 +117,19 @@ describe('ExerciseForm — Taşı oynat 6 adımlı akış', () => {
     expect(screen.getByText(/Eksik: 2\. Konum Diz/)).toBeInTheDocument();
   });
 
-  it('TUZAK: zorluk varsayılanı 1 olsa da tıklanmadıkça adım 6 tamamlanmaz', () => {
+  it('TUZAK: zorluk varsayılanı 1 olsa da tıklanmadıkça adım 7 tamamlanmaz', () => {
     openMovePiece();
     // Zorluk state'i varsayılan 1 ("Kolay") — ama BİLFİİL tıklanmadı.
-    expect(stepTexts()[5]).not.toContain('✓');
+    expect(stepTexts()[6]).not.toContain('✓');
     fireEvent.click(screen.getByText('Kolay'));
-    expect(stepTexts()[5]).toContain('✓');
+    expect(stepTexts()[6]).toContain('✓');
+  });
+
+  it('TUZAK: hamle sırası tıklanmadıkça adım 3 tamamlanmaz', () => {
+    openMovePiece();
+    expect(stepTexts()[2]).not.toContain('✓');
+    fireEvent.click(screen.getByText('Siyah'));
+    expect(stepTexts()[2]).toContain('✓');
   });
 
   it('talimat girilince adım 1 tik alır', () => {
