@@ -9,16 +9,22 @@ TINY_PNG = (
 )
 
 
-def test_kategori_listesi_on_iki_tanedir():
-    assert len(POOL_CATEGORIES) == 12
+def test_kategori_listesi_on_bir_tanedir():
+    """Madde 3c ile "Gök Cisimleri" kaldırıldı: 12 -> 11."""
+    assert len(POOL_CATEGORIES) == 11
 
 
 def test_kategori_listesi_kullanicinin_istedigi_adlardir():
     assert POOL_CATEGORIES == [
         "Geometrik Şekiller", "Satranç Tahtası", "Satranç Taşları", "Hayvanlar",
-        "Bitkiler", "Taşıtlar", "Gezegenler", "Meslekler", "Gök Cisimleri",
+        "Bitkiler", "Taşıtlar", "Gezegenler", "Meslekler",
         "Satranç Şampiyonları", "Harfler", "Rakamlar",
     ]
+
+
+def test_gok_cisimleri_artik_gecerli_kategori_degil():
+    """Kaldırılan kategoriye yeni görsel eklenememeli."""
+    assert "Gök Cisimleri" not in POOL_CATEGORIES
 
 
 def test_pool_image_modeli_tablo_adi_ve_alanlari():
