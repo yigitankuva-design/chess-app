@@ -62,9 +62,11 @@ Kullanıcı Taşı Tanı'yı istemiyor.
 - Davranış üç bölümde de **aynı ve öngörülebilir** olur.
 
 **Taslak korunması:** `key` değişince React durumu çöpe atar — Zafer hoca yanlışlıkla
-bölüm değiştirirse yazdıkları kaybolur. Bunu önlemek için `ExerciseForm` üç bölümün
-taslağını **kendi üstünde** saklar (bölüm başına bir taslak nesnesi, module-level değil
-bileşen state'i):
+bölüm değiştirirse yazdıkları kaybolur. Bunu önlemek için `ExerciseForm` **Cümle ve
+Görüntü** bölümlerinin taslağını kendi üstünde saklar (bölüm başına bir taslak nesnesi).
+**Konum bölümüne taslak yapılmaz** — bilinçli: tahta durumu (`moveFen`, hamleler, adım
+kilidi) yarım kopyalanırsa sıralı adım kilidi tutarsızlaşır ve bozuk soru üretilebilir;
+Konum zaten bugün de bölüm değişiminde sıfırlanıyordu, davranış değişmez.
 
 ```tsx
 /** Bolum basina taslak: bolum degisince form sifirdan kurulur ama onceki
