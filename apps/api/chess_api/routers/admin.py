@@ -1,6 +1,7 @@
 from datetime import datetime
 import chess
 from fastapi import APIRouter, Depends, HTTPException, Body
+from pydantic import BaseModel
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
@@ -23,6 +24,7 @@ from chess_api.schemas.auth import (
 )
 from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult
+from chess_api.models.opening import Opening
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -889,3 +891,53 @@ async def admin_patch_settings(
     await db.commit()
     await db.refresh(row)
     return row.data
+
+
+# ---------------------------------------------------------------------------
+# Acilis pratigi: acilis listesi (Zafer Hoca girer)
+# ---------------------------------------------------------------------------
+
+class OpeningCreateRequest(BaseModel):
+    name: str
+    start_fen: str
+
+
+def _validate_fen(fen: str) -> None:
+    """FEN'i python-chess ile dogrular; bozuk pozisyon kaydedilmez."""
+    try:
+        chess.Board(fen)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Geçersiz FEN")
+
+
+@router.post("/openings", status_code=201)
+async def create_opening(
+    payload: OpeningCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Açılış adı gerekli")
+    _validate_fen(payload.start_fen)
+    op_row = Opening(name=name, start_fen=payload.start_fen)
+    db.add(op_row)
+    await db.commit()
+    await db.refresh(op_row)
+    return {"id": op_row.id, "name": op_row.name, "start_fen": op_row.start_fen}
+
+
+@router.delete("/openings/{opening_id}")
+async def delete_opening(
+    opening_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = await db.get(Opening, opening_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Opening not found")
+    await db.delete(row)
+    await db.commit()
+    return {"deleted": True}
