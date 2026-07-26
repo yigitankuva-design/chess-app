@@ -4,6 +4,8 @@ import { BoardEditor, EMPTY_FEN, fenToMap } from '@/components/BoardEditor';
 import { ChoiceExerciseFields } from './ChoiceExerciseFields';
 import { MovePieceFields } from './MovePieceFields';
 import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
+import { movePieceSteps, firstIncompleteStep, allStepsDone } from '@/lib/admin/movePieceSteps';
+import type { MovePieceStepState } from '@/lib/admin/movePieceSteps';
 
 export type ExerciseType = 'click_square' | 'move_piece' | 'identify_piece';
 export type QuestionFamily = 'sentence_question' | 'image_question' | 'konum';
@@ -137,6 +139,12 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   const [moves, setMoves] = useState<string[]>(initial?.moves ?? []);
   /** Adım 5 — mevcut soruyu düzenlerken kayıtlı notasyon zaten onaylı sayılır (KURAL #3). */
   const [notationSaved, setNotationSaved] = useState(!!initial?.moves?.length);
+  /**
+   * Adım 6 — zorluk etiketine BİLFİİL tıklandı mı? `difficulty` varsayılanı 1 olduğu
+   * için sayıya bakmak yetmez. Mevcut soruyu düzenlerken kayıtlı bir değer zaten var,
+   * hocayı tekrar tıklamaya zorlamak regresyon olur (KURAL #3) — bu yüzden true başlar.
+   */
+  const [difficultyChosen, setDifficultyChosen] = useState(!!initial);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const editing = !!initial;
@@ -186,7 +194,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       if (!editing) {
         setInstruction(''); setTargets([]); setHighlight('');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
-        setMoveFen(null); setMoves([]); setNotationSaved(false);
+        setMoveFen(null); setMoves([]); setNotationSaved(false); setDifficultyChosen(false);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -195,6 +203,14 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   }
 
   const squares = Object.keys(fenToMap(fen)).sort();
+
+  const stepState: MovePieceStepState = {
+    instruction, setupFen: fen, moveFen, moves, notationSaved, difficultyChosen,
+  };
+  const steps = movePieceSteps(stepState);
+  const missing = firstIncompleteStep(stepState);
+  /** Kilit YALNIZCA Taşı Oynat'a uygulanır; diğer iki tip eskisi gibi çalışır. */
+  const gateOpen = type !== 'move_piece' || allStepsDone(stepState);
 
   return (
     <div className="space-y-4">
@@ -210,6 +226,30 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
             }`}>{label}</button>
         ))}
       </div>
+
+      {type === 'move_piece' && (
+        <ol className="grid gap-1.5" aria-label="Taşı Oynat adımları">
+          {steps.map((st) => {
+            const active = !st.done && st.no === missing?.no;
+            return (
+              <li key={st.no} className="flex items-center gap-2 text-xs"
+                style={{ opacity: st.done || active ? 1 : 0.45 }}>
+                <span className="flex items-center justify-center rounded-full flex-shrink-0 font-bold"
+                  style={{
+                    width: 20, height: 20, fontSize: '0.65rem',
+                    border: `1.5px solid ${st.done ? '#34d399' : 'rgba(255,255,255,0.25)'}`,
+                    color: st.done ? '#34d399' : 'rgba(255,255,255,0.6)',
+                  }}>
+                  {st.done ? '✓' : st.no}
+                </span>
+                <span style={{ color: st.done ? '#34d399' : undefined }}>
+                  {st.no}. {st.label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
       <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
         placeholder="Talimat (örn. Piyonu e4'e taşı)" className="neon-input" />
@@ -280,7 +320,8 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
         <p className="text-xs n-muted mb-1">Sorunun Zorluk Düzeyini Belirle</p>
         <div className="flex flex-wrap gap-2">
           {DIFFICULTY_LABELS.map(([val, label]) => (
-            <button key={val} type="button" onClick={() => setDifficulty(val)}
+            <button key={val} type="button"
+              onClick={() => { setDifficulty(val); setDifficultyChosen(true); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
                 nearestDifficultyValue(difficulty) === val ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
               }`}>{label}</button>
@@ -289,11 +330,14 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       </div>
 
       {err && <p className="text-rose-400 text-sm">{err}</p>}
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={submit} disabled={saving}
-          className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-50 text-sm transition-colors">
+      <div className="flex items-center gap-2 flex-wrap">
+        <button type="button" onClick={submit} disabled={saving || !gateOpen}
+          className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-40 text-sm transition-colors">
           {saving ? 'Kaydediliyor...' : editing ? 'Soruyu kaydet' : 'Soruyu ekle'}
         </button>
+        {!gateOpen && missing && (
+          <span className="text-xs n-muted">Eksik: {missing.no}. {missing.label}</span>
+        )}
         {editing && onCancel && (
           <button type="button" onClick={onCancel}
             className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
