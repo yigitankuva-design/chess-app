@@ -49,7 +49,15 @@ function PlayInner() {
     ? { level: quickLevel, timeControl: quickTc, colorChoice: 'white' }
     : null;
 
-  const [mode, setMode] = useState<Mode | null>(quickStart ? 'bot' : null);
+  // Ana sayfadaki maç türü kartından gelinmişse o akışı doğrudan aç.
+  const modeParam = searchParams.get('mode');
+  const initialMode: Mode | null = quickStart
+    ? 'bot'
+    : MODE_CARDS.some((c) => c.mode === modeParam)
+      ? (modeParam as Mode)
+      : null;
+
+  const [mode, setMode] = useState<Mode | null>(initialMode);
   const [botCriteria, setBotCriteria] = useState<MatchCriteriaValue | null>(quickStart);
   const [botColor, setBotColor] = useState<PieceColor>(
     quickStart ? resolveColor(quickStart.colorChoice) : 'w',
