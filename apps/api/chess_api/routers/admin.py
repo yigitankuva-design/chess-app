@@ -1,6 +1,6 @@
 from datetime import datetime
 import chess
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Response
 from pydantic import BaseModel
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +25,8 @@ from chess_api.schemas.auth import (
 from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult
 from chess_api.models.opening import Opening
+from chess_api.models.pool_image import PoolImage
+from chess_api.pool_categories import POOL_CATEGORIES
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -941,3 +943,43 @@ async def delete_opening(
     await db.delete(row)
     await db.commit()
     return {"deleted": True}
+
+
+class PoolImageCreateRequest(BaseModel):
+    category: str
+    data_uri: str
+
+
+@router.post("/pool-images")
+async def add_pool_image(
+    payload: PoolImageCreateRequest,
+    response: Response,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Görseli havuza ekler. Aynı kategoride aynı bayt dizisi zaten varsa YENİ
+    satır eklenmez, mevcut kayıt döner (created=False).
+
+    Dedup birebir bayt eslesmesidir; gorsel benzerligi tespiti YOKTUR (spec).
+    """
+    _ensure_admin(current)
+    if payload.category not in POOL_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Geçersiz kategori")
+    _check_data_uri_size(payload.data_uri, "Havuz görseli")
+
+    existing = (
+        await db.execute(
+            select(PoolImage).where(
+                PoolImage.category == payload.category,
+                PoolImage.data_uri == payload.data_uri,
+            )
+        )
+    ).scalars().first()
+    if existing:
+        return {"id": existing.id, "category": existing.category, "created": False}
+
+    row = PoolImage(category=payload.category, data_uri=payload.data_uri)
+    db.add(row)
+    await db.commit()
+    response.status_code = 201
+    return {"id": row.id, "category": row.category, "created": True}
