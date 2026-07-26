@@ -27,6 +27,25 @@
 
 ---
 
+## Ölçülen gerçekler (varsayım değil)
+
+Bu plan yazılırken aşağıdakiler `react-chessboard` kaynağı okunarak ve happy-dom
+içinde gerçek bir sonda testiyle **ölçüldü**; implementer bunlara güvenebilir:
+
+1. **`fireEvent.contextMenu(square)` gerçekten `onSquareRightClick` tetikliyor.**
+   Ölçüm çıktısı: `onSquareRightClick calls: [[{"piece":null,"square":"e4"}]]`
+2. **`squareStyles` kareye değil, karenin İÇİNDEKİ overlay div'e uygulanıyor.**
+   Ölçülen DOM: `<div data-square="e4" style="...background-color: #F0D9B5;"><div style="width:100%;height:100%;background-color: rgba(74, 222, 128, 0.55);"></div></div>`
+   → testlerde `square.querySelector('div')` hedeflenmeli, `square`'in kendisi değil.
+3. **happy-dom `rgba(74, 222, 128, 0.55)` değerini aynen koruyor** (yeniden
+   biçimlendirmiyor) → tam string eşitliği (`toBe`) güvenli.
+4. **Ok çizme özelliği sağ-tıkı yutmuyor.** Kütüphanede `isDrawingArrow`
+   yalnızca sağ-tık **farklı bir kareye sürüklendiğinde** true oluyor
+   (`index.esm.js:5431-5437`); aynı kareye sade sağ-tıkta `onSquareRightClick`
+   normal çalışıyor.
+
+---
+
 ## Task 1: `useSquareAnnotations` — saf hook
 
 **Files:**
@@ -46,9 +65,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
 
-function fireRightClick(square: string, mods: { ctrlKey?: boolean; altKey?: boolean } = {}) {
-  // Hook window keydown/keyup ile Ctrl/Alt durumunu takip ediyor;
-  // testte gerçek tuş basımını simüle ediyoruz.
+/** Ctrl/Alt tuşlarını BASILI TUTAR (sağ tık ayrı çağrılır). Hook bu durumu
+ *  window keydown/keyup ile takip ediyor. */
+function holdModifiers(mods: { ctrlKey?: boolean; altKey?: boolean } = {}) {
   if (mods.ctrlKey) window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Control' }));
   if (mods.altKey) window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
 }
@@ -69,21 +88,21 @@ describe('useSquareAnnotations', () => {
 
   it('Ctrl+sağ-tık kareyi kırmızı yapar', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
-    fireRightClick('e4', { ctrlKey: true });
+    holdModifiers({ ctrlKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
     expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(248, 113, 113, 0.55)');
   });
 
   it('Alt+sağ-tık kareyi mavi yapar', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
-    fireRightClick('e4', { altKey: true });
+    holdModifiers({ altKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
     expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(96, 165, 250, 0.55)');
   });
 
   it('Ctrl+Alt+sağ-tık kareyi sarı yapar', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
-    fireRightClick('e4', { ctrlKey: true, altKey: true });
+    holdModifiers({ ctrlKey: true, altKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
     expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(250, 204, 21, 0.55)');
   });
@@ -99,7 +118,7 @@ describe('useSquareAnnotations', () => {
   it('farklı renkle tekrar sağ-tık üzerine yazar (temizlemez)', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
     act(() => result.current.onSquareRightClick({ square: 'e4' })); // yeşil
-    fireRightClick('e4', { ctrlKey: true });
+    holdModifiers({ ctrlKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' })); // kırmızı
     expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(248, 113, 113, 0.55)');
   });
@@ -118,7 +137,7 @@ describe('useSquareAnnotations', () => {
   it('birden fazla kare bağımsız işaretlenebilir', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
-    fireRightClick('d5', { ctrlKey: true });
+    holdModifiers({ ctrlKey: true });
     act(() => result.current.onSquareRightClick({ square: 'd5' }));
     expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(74, 222, 128, 0.55)');
     expect(result.current.squareStyles.d5?.backgroundColor).toBe('rgba(248, 113, 113, 0.55)');
@@ -756,46 +775,64 @@ Kırmızı varsa düzelt ve Step 1'den tekrar başla.
 - Modify: `apps/web/components/admin/ChoiceExerciseFields.tsx`
 - Test: `apps/web/tests/choice-exercise-paste-image.test.tsx`
 
-**Not (dürüstlük):** jsdom/happy-dom gerçek `ClipboardEvent`/`DataTransfer`
-davranışını tam simüle etmez. Test, `React.ClipboardEvent`in `clipboardData.items`
-alanını elle sahte bir nesneyle dolduracak — bu, gerçek tarayıcı davranışının
-YAPISAL olarak doğru bir simülasyonu ama gerçek bir ekran görüntüsü yapıştırma
-Task 9'da tarayıcıda ayrıca doğrulanacak.
+**ÖLÇÜLDÜ — bu testi yazarken dikkat:** `compressImageToDataUri`
+(`lib/imageCompress.ts:27-34`) gerçek `new Image()` + `URL.createObjectURL`
+kullanıyor; happy-dom'da sahte bir `File` **asla yüklenmez**, `onload` hiç
+çalışmaz ve test takılır. Bu yüzden test, görsel sıkıştırma modülünü
+`vi.mock` ile taklit eder — zaten `tests/image-compress.test.ts` sıkıştırmayı
+ayrıca test ediyor. Buradaki testin amacı **"yapıştırılan dosya doğru şekilde
+mevcut görsel hattına yönlendiriliyor mu"**, sıkıştırmanın kendisi değil.
+
+Gerçek bir ekran görüntüsü yapıştırma Task 9'da tarayıcıda ayrıca doğrulanacak.
 
 - [ ] **Step 1: Testi yaz (başarısız olacak)**
 
 `apps/web/tests/choice-exercise-paste-image.test.tsx`:
 
 ```tsx
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+// vi.mock hoisted — import'lardan önce çalışır.
+vi.mock('@/lib/imageCompress', () => ({
+  compressImageToDataUri: vi.fn(async () => 'data:image/jpeg;base64,FAKE'),
+}));
+
 import { ChoiceExerciseFields } from '@/components/admin/ChoiceExerciseFields';
+import { compressImageToDataUri } from '@/lib/imageCompress';
 
 function makeImageFile(): File {
   return new File(['fake-image-bytes'], 'clip.png', { type: 'image/png' });
 }
 
+beforeEach(() => vi.mocked(compressImageToDataUri).mockClear());
+
 describe('ChoiceExerciseFields — Ctrl+V ile görsel yapıştırma', () => {
-  it('yapıştırma alanına resim yapıştırılınca soru görseli olarak ayarlanır', async () => {
+  it('yapıştırılan resim mevcut görsel hattına yönlendirilir ve önizleme çıkar', async () => {
     render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
     const pasteZone = screen.getByText(/Ctrl\+V ile yapıştır/);
 
     const file = makeImageFile();
-    const clipboardData = {
-      items: [{ type: 'image/png', getAsFile: () => file }],
-    };
-    fireEvent.paste(pasteZone, { clipboardData });
+    fireEvent.paste(pasteZone, {
+      clipboardData: { items: [{ type: 'image/png', getAsFile: () => file }] },
+    });
 
     await waitFor(() => {
-      expect(screen.getByAltText('Soru görseli önizleme')).toBeInTheDocument();
+      expect(vi.mocked(compressImageToDataUri)).toHaveBeenCalledWith(file);
+    });
+    await waitFor(() => {
+      const img = screen.getByAltText('Soru görseli önizleme') as HTMLImageElement;
+      expect(img.src).toBe('data:image/jpeg;base64,FAKE');
     });
   });
 
-  it('yapıştırma alanına resim OLMAYAN veri yapıştırılırsa hiçbir şey olmaz', () => {
+  it('resim OLMAYAN veri yapıştırılırsa görsel hattı hiç çağrılmaz', () => {
     render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
     const pasteZone = screen.getByText(/Ctrl\+V ile yapıştır/);
-    const clipboardData = { items: [{ type: 'text/plain', getAsFile: () => null }] };
-    fireEvent.paste(pasteZone, { clipboardData });
+    fireEvent.paste(pasteZone, {
+      clipboardData: { items: [{ type: 'text/plain', getAsFile: () => null }] },
+    });
+    expect(vi.mocked(compressImageToDataUri)).not.toHaveBeenCalled();
     expect(screen.queryByAltText('Soru görseli önizleme')).not.toBeInTheDocument();
   });
 });
@@ -916,3 +953,12 @@ değilse) açıkça belirt (KURAL #1, KURAL #6).
 - Madde (b) bu planda YOKTUR çünkü zaten kodda mevcut (`BoardEditor.tsx:124-132`,
   test kanıtı: `tests/board-editor-click-add.test.tsx:109-115`). Task 9 Step 4'te
   sadece canlıda teyit edilir.
+
+## BİLİNEN SINIR — dokunmatik cihazlar
+
+**Sağ tık, telefon/tablette yoktur.** Bu özellik masaüstünde (fare ile) çalışır.
+Zafer Hoca admin panelini bilgisayardan kullandığı için (a) maddesinin admin
+tarafı sorunsuz; ancak **sporcular uygulamayı tablet/telefondan kullanıyorsa
+renklendirmeyi kullanamazlar.** Bu, isteğin doğal bir sonucudur (sağ tık
+istendi) — sessizce geçilmemesi için buraya yazıldı. Dokunmatik için ayrı bir
+etkileşim (örn. uzun basma) gerekirse ayrı bir istek olarak ele alınmalıdır.
