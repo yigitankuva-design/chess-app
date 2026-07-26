@@ -99,6 +99,8 @@ interface Props {
   exercises: BoardExerciseConfig[];
   done: boolean;
   onCorrect: () => void;
+  /** Oturum bitince (son soru cevaplanınca) bir kez çağrılır — puanlama için. */
+  onFinish?: (result: { correct: number; total: number }) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -145,7 +147,7 @@ function ProgressDots({ total, current, doneCount }: { total: number; current: n
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function BoardExercise({ exercises, done, onCorrect }: Props) {
+export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [doneCount, setDoneCount] = useState(done ? exercises.length : 0);
   const [status, setStatus] = useState<'idle' | 'success' | 'fail'>(done ? 'success' : 'idle');
@@ -181,10 +183,14 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
     // zorunda) bu ikisi zaten eşdeğerdi, bu yüzden davranış değişmiyor.
     if (!isLastQuestion) {
       setShowNext(true);
-    } else if (next >= total) {
-      if (!done) onCorrect();
     } else {
-      setAllAttempted(true);
+      // Oturum bitti — doğru sayısı `next` (bu soru dahil).
+      onFinish?.({ correct: next, total });
+      if (next >= total) {
+        if (!done) onCorrect();
+      } else {
+        setAllAttempted(true);
+      }
     }
   };
 
@@ -205,6 +211,8 @@ export function BoardExercise({ exercises, done, onCorrect }: Props) {
     if (!isLastQuestion) {
       setShowNext(true);
     } else {
+      // Oturum bitti — bu soru YANLIŞ olduğu için doneCount artmadı.
+      onFinish?.({ correct: doneCount, total });
       setAllAttempted(true);
     }
   };
