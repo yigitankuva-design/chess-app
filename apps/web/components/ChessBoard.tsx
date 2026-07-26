@@ -12,6 +12,7 @@ import {
 import { useSettings } from '@/lib/settings/settings-context';
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
+import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
 
 interface ChessBoardProps {
   fen: string;
@@ -41,6 +42,7 @@ export function ChessBoard({
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
   const scrollRef = useRef(0);
   const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { squareStyles: annotationStyles, onSquareRightClick } = useSquareAnnotations(fen);
 
   // Clear selection when FEN changes (after a move)
   useEffect(() => {
@@ -170,7 +172,12 @@ export function ChessBoard({
     };
   });
 
-  const squareStyles = buildSquareStyles(theme, overrides, { light: boardColors.light, dark: boardColors.dark });
+  const squareStyles: Record<string, CSSProperties> = {
+    ...buildSquareStyles(theme, overrides, { light: boardColors.light, dark: boardColors.dark }),
+  };
+  for (const [sq, style] of Object.entries(annotationStyles)) {
+    squareStyles[sq] = { ...squareStyles[sq], ...style };
+  }
 
   const { ranks, files } = coordLabels(boardOrientation);
   const coordFontSize = 'clamp(11px, 3.2vw, 15px)';
@@ -216,6 +223,7 @@ export function ChessBoard({
               onSquareClick: ({ square }) => {
                 handleSquareClick(square as Square);
               },
+              onSquareRightClick,
               squareStyles,
               pieces: pieceSet,
               lightSquareStyle: { backgroundColor: boardColors.light },
