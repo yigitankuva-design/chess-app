@@ -61,7 +61,7 @@ function SquarePicker({ values, onToggle }: { values: string[]; onToggle: (sq: s
             const on = values.includes(sq);
             return (
               <button key={sq} type="button" onClick={() => onToggle(sq)}
-                className={`text-[10px] py-1 rounded transition-colors ${
+                className={`text-[15px] py-1.5 rounded transition-colors ${
                   on ? 'bg-cyan-400/40 text-cyan-100 border border-cyan-400' : 'bg-white/5 text-white/50 hover:bg-white/10'
                 }`}>{sq}</button>
             );
