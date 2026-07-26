@@ -57,3 +57,22 @@ async def test_belirli_oyuncuya_mesaj_gonderilir():
 @pytest.mark.asyncio
 async def test_olmayan_oyuncuya_mesaj_sessizce_yok_sayilir():
     await send_to_player(999, {"type": "x"})  # patlamamali
+
+
+def test_connected_ids_katilan_cocugu_icerir_ayrilani_icermez():
+    """Yayin yapan taraf lobideki herkesi gezebilmeli (teklif panosu icin)."""
+    from chess_api.services.lobby import (
+        join_lobby, leave_lobby, connected_ids, _reset_for_tests,
+    )
+
+    class _Sender:
+        async def send_json(self, data: dict) -> None:
+            pass
+
+    _reset_for_tests()
+    join_lobby(1, "Ayse", _Sender())
+    join_lobby(2, "Mehmet", _Sender())
+    assert sorted(connected_ids()) == [1, 2]
+
+    leave_lobby(1)
+    assert connected_ids() == [2]

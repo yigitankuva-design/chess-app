@@ -44,5 +44,15 @@ async def send_to_player(child_id: int, message: dict) -> bool:
         return False
 
 
+def connected_ids() -> list[int]:
+    """Lobideki tum cocuk id'leri.
+
+    Yayin yapan taraf bunu gezip send_to_player ile HER SPORCUYA KENDI haric
+    listesini gonderir (teklif panosu). _players dis dunyaya kapali kalsin
+    diye yalnizca id'ler donulur.
+    """
+    return list(_players.keys())
+
+
 def _reset_for_tests() -> None:
     _players.clear()
