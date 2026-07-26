@@ -21,7 +21,7 @@ describe('POOL_CATEGORIES', () => {
 
 describe('fetchPoolImages', () => {
   it('kategoriyi URL-kodlayarak sorgular', async () => {
-    const spy = vi.fn(() => Promise.resolve({ ok: true, json: async () => [] }));
+    const spy = vi.fn((_url: string) => Promise.resolve({ ok: true, json: async () => [] }));
     global.fetch = spy as never;
     await fetchPoolImages('Gök Cisimleri');
     expect(spy).toHaveBeenCalledTimes(1);
@@ -53,10 +53,11 @@ describe('fetchPoolImages', () => {
 
 describe('addPoolImage', () => {
   it('token ve doğru gövde ile POST eder', async () => {
-    const spy = vi.fn(() => Promise.resolve({ ok: true, json: async () => ({ created: true }) }));
+    const spy = vi.fn((_url: string, _init: RequestInit) =>
+      Promise.resolve({ ok: true, json: async () => ({ created: true }) }));
     global.fetch = spy as never;
     await addPoolImage('Bitkiler', TINY);
-    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    const [url, init] = spy.mock.calls[0];
     expect(String(url)).toContain('/admin/pool-images');
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
