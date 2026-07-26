@@ -6,6 +6,11 @@ import { ComingSoon } from '@/components/ComingSoon';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
+import { PracticeResult } from '@/components/practice/PracticeResult';
+import { scorePercent } from '@/lib/practice/scoring';
+import { isModeUnlocked, unlockedLabel, UNLOCK_THRESHOLD } from '@/lib/practice/unlock';
+import type { PracticeMode, ScoreMap } from '@/lib/practice/unlock';
+import { fetchLessonScores, submitPracticeResult } from '@/lib/practice/practiceApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -58,6 +63,13 @@ function PratikInner() {
   const [solved, setSolved] = useState(0);
   const [left, setLeft] = useState(TIMED_SECONDS);
   const [timeUp, setTimeUp] = useState(false);
+  /** null = kilit sistemi uygulanmıyor (token yok / sunucuya ulaşılamadı). */
+  const [scores, setScores] = useState<ScoreMap | null>(null);
+  const [orderedStepIds, setOrderedStepIds] = useState<number[]>([]);
+  const [finished, setFinished] = useState<{ correct: number; total: number; score: number } | null>(null);
+  const [unlockedNow, setUnlockedNow] = useState<string | null>(null);
+  /** Tekrar Dene: BoardExercise'ı sıfırdan kurmak için artan sayaç. */
+  const [runId, setRunId] = useState(0);
 
   // Admin'de bu alt konu + mod için yazılan soruları çek
   useEffect(() => {
@@ -69,6 +81,11 @@ function PratikInner() {
         const raw = (step?.content_json?.[mode.field] as BoardExerciseConfig[] | undefined) ?? [];
         const rawPool = Array.isArray(raw) ? raw : [];
         setPoolSize(rawPool.length);
+        // Alt konu sırası: başlıklı explanation adımları — home/page.tsx:270 ile aynı kural.
+        const ordered = (d.steps as StepRow[] | undefined ?? [])
+          .filter((s) => s.type === 'explanation' && (s.content_json as { title?: string } | undefined)?.title)
+          .map((s) => s.id);
+        setOrderedStepIds(ordered);
         // Kodlar ADMİN'DEKİ SIRAYA göre (havuz karıştırılmadan önce) hesaplanır — yoksa
         // öğrenciye gösterilen kod, admin panelindeki dairesel kartla eşleşmez.
         const codes = assignExerciseCodes(rawPool);
@@ -81,6 +98,14 @@ function PratikInner() {
       .catch(() => { setExercises([]); setLoading(false); });
   }, [mode, lessonId, stepId]);
 
+  // Kilit durumu (token yoksa null döner → kilit uygulanmaz)
+  useEffect(() => {
+    if (!lessonId) return;
+    let alive = true;
+    fetchLessonScores(lessonId).then((m) => { if (alive) setScores(m); });
+    return () => { alive = false; };
+  }, [lessonId]);
+
   // Süreli mod sayacı
   useEffect(() => {
     if (!mode?.timed || loading || !exercises?.length || timeUp) return;
@@ -88,6 +113,51 @@ function PratikInner() {
     const t = setTimeout(() => setLeft((v) => v - 1), 1000);
     return () => clearTimeout(t);
   }, [mode, loading, exercises, left, timeUp]);
+
+  // Süre dolunca oturum biter — o ana kadarki doğrular puanlanır.
+  // Kasten yalnızca `timeUp`e bağlı: diğer değerler değiştiğinde tekrar
+  // tetiklenirse aynı oturum iki kez kaydedilir.
+  useEffect(() => {
+    if (!timeUp || finished) return;
+    void handleFinish({ correct: solved, total: exercises?.length ?? 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeUp]);
+
+  const modeKey = slug as PracticeMode;
+
+  /** Oturum bitti: puanı sunucuya yaz, sonuç ekranını hazırla. */
+  async function handleFinish(r: { correct: number; total: number }) {
+    const localScore = scorePercent(r.correct, r.total);
+    const before = scores?.[stepId]?.[modeKey] ?? 0;
+
+    const saved = await submitPracticeResult(stepId, modeKey, r.correct, r.total);
+    const score = saved?.score ?? localScore;
+
+    // Kilit YALNIZCA sunucuya yazılabildiyse açılmış sayılır — aksi halde
+    // öğrenciye açıldı deyip yenilemede kapalı bulmasına yol açardık.
+    const opened = saved !== null && before < UNLOCK_THRESHOLD && score >= UNLOCK_THRESHOLD;
+    setUnlockedNow(opened ? unlockedLabel(modeKey) : null);
+
+    if (saved !== null) {
+      setScores((prev) => ({
+        ...(prev ?? {}),
+        [stepId]: { ...(prev?.[stepId] ?? {}), [modeKey]: saved.best_score },
+      }));
+    }
+    setFinished({ correct: r.correct, total: r.total, score });
+  }
+
+  function handleRetry() {
+    setFinished(null);
+    setUnlockedNow(null);
+    setSolved(0);
+    setLeft(TIMED_SECONDS);
+    setTimeUp(false);
+    setRunId((n) => n + 1);
+  }
+
+  /** Kilit yalnızca skor haritası GERÇEKTEN alındıysa uygulanır. */
+  const locked = scores !== null && !isModeUnlocked(orderedStepIds, stepId, modeKey, scores);
 
   if (!mode) {
     return <ComingSoon emoji="🎯" title="Pratik" description="Bu içerik hazırlanıyor." />;
@@ -142,7 +212,32 @@ function PratikInner() {
         </div>
       )}
 
-      {!loading && exercises && exercises.length > 0 && timeUp && (
+      {!loading && locked && (
+        <div className="t-card-i p-5 text-center rounded-xl">
+          <p className="text-3xl mb-2">🔒</p>
+          <p className="font-bold text-sm mb-1">Bu bölüm henüz kilitli</p>
+          <p className="text-xs t-muted mb-4">
+            {modeKey === 'sureli'
+              ? 'Önce “Süresiz Pratik Yap”ta 85 puan ve üzeri al.'
+              : modeKey === 'test'
+                ? 'Önce “Süreli Pratik Yap”ta 85 puan ve üzeri al.'
+                : 'Önce bir önceki alt konuyu tamamla.'}
+          </p>
+          <Link href="/home" className="t-btn inline-block px-5 py-2.5 text-sm">Ana Sayfaya Dön</Link>
+        </div>
+      )}
+
+      {!loading && !locked && finished && (
+        <PracticeResult
+          correct={finished.correct}
+          total={finished.total}
+          score={finished.score}
+          unlocked={unlockedNow}
+          onRetry={handleRetry}
+        />
+      )}
+
+      {!loading && !locked && !finished && exercises && exercises.length > 0 && timeUp && (
         <div className="t-card-i p-5 text-center rounded-xl">
           <p className="text-3xl mb-2">⏰</p>
           <p className="font-bold text-sm mb-1">Süre doldu!</p>
@@ -151,7 +246,7 @@ function PratikInner() {
         </div>
       )}
 
-      {!loading && exercises && exercises.length > 0 && !timeUp && (
+      {!loading && !locked && !finished && exercises && exercises.length > 0 && !timeUp && (
         <>
           {mode.scored && (
             <p className="text-xs t-muted mb-2">
@@ -165,9 +260,11 @@ function PratikInner() {
             </p>
           )}
           <BoardExercise
+            key={runId}
             exercises={exercises}
             done={false}
             onCorrect={() => setSolved((s) => Math.min(s + 1, exercises.length))}
+            onFinish={handleFinish}
           />
         </>
       )}
