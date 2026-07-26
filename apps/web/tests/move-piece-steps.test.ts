@@ -12,6 +12,7 @@ const BLACK_TURN = '6k1/8/5K2/8/5R2/8/8/8 b - - 0 1';
 const BLANK: MovePieceStepState = {
   instruction: '',
   setupFen: EMPTY,
+  turnChosen: false,
   moveFen: null,
   moves: [],
   notationSaved: false,
@@ -21,6 +22,7 @@ const BLANK: MovePieceStepState = {
 const FULL: MovePieceStepState = {
   instruction: 'Kaleyi h4e oyna',
   setupFen: TWO_SIDED,
+  turnChosen: true,
   moveFen: TWO_SIDED,
   moves: ['Rh4'],
   notationSaved: true,
@@ -42,20 +44,22 @@ describe('hasPieces', () => {
 });
 
 describe('movePieceSteps', () => {
-  it('altı adım döner ve sıra numaraları 1-6 olur', () => {
+  it('sekiz adım döner ve sıra numaraları 1-8 olur', () => {
     const steps = movePieceSteps(BLANK);
-    expect(steps).toHaveLength(6);
-    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(steps).toHaveLength(8);
+    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   it('adım etiketleri kullanıcının istediği metinlerdir', () => {
     expect(movePieceSteps(BLANK).map((s) => s.label)).toEqual([
-      'Talimat Ekle',
+      'Talimatı Gir',
       'Konum Diz',
+      'Hamle Sırasını Belirle',
       'Konumu Kaydet',
       'Cevap Hamlelerini Yap ve Notasyon Oluştur',
       'Notasyonu Kaydet',
-      'Zorluk Düzeyinin Seçimini Yap',
+      'Zorluk Düzeyini Belirle',
+      'Soruyu Ekle',
     ]);
   });
 
@@ -63,7 +67,7 @@ describe('movePieceSteps', () => {
     expect(movePieceSteps(BLANK).every((s) => !s.done)).toBe(true);
   });
 
-  it('tam durumda altı adım da tamamlanmıştır', () => {
+  it('tam durumda sekiz adım da tamamlanmıştır (Soruyu Ekle dahil)', () => {
     expect(movePieceSteps(FULL).every((s) => s.done)).toBe(true);
   });
 
@@ -80,21 +84,31 @@ describe('movePieceSteps', () => {
     expect(movePieceSteps({ ...BLANK, setupFen: TWO_SIDED })[1].done).toBe(true);
   });
 
-  it('adım 3 konum kaydedilince tamamlanır', () => {
-    expect(movePieceSteps({ ...BLANK, moveFen: TWO_SIDED })[2].done).toBe(true);
+  it('TUZAK: adım 3 hamle sırası BİLFİİL seçilmeden tamamlanmaz', () => {
+    expect(movePieceSteps(BLANK)[2].done).toBe(false);
+    expect(movePieceSteps({ ...BLANK, turnChosen: true })[2].done).toBe(true);
   });
 
-  it('adım 4 en az bir hamle varsa tamamlanır', () => {
-    expect(movePieceSteps({ ...BLANK, moves: ['Rh4'] })[3].done).toBe(true);
+  it('adım 4 konum kaydedilince tamamlanır', () => {
+    expect(movePieceSteps({ ...BLANK, moveFen: TWO_SIDED })[3].done).toBe(true);
   });
 
-  it('adım 5 notasyon kaydedilince tamamlanır', () => {
-    expect(movePieceSteps({ ...BLANK, notationSaved: true })[4].done).toBe(true);
+  it('adım 5 en az bir hamle varsa tamamlanır', () => {
+    expect(movePieceSteps({ ...BLANK, moves: ['Rh4'] })[4].done).toBe(true);
   });
 
-  it('TUZAK: adım 6 zorluk BİLFİİL seçilmeden tamamlanmaz', () => {
-    expect(movePieceSteps(BLANK)[5].done).toBe(false);
-    expect(movePieceSteps({ ...BLANK, difficultyChosen: true })[5].done).toBe(true);
+  it('adım 6 notasyon kaydedilince tamamlanır', () => {
+    expect(movePieceSteps({ ...BLANK, notationSaved: true })[5].done).toBe(true);
+  });
+
+  it('TUZAK: adım 7 zorluk BİLFİİL seçilmeden tamamlanmaz', () => {
+    expect(movePieceSteps(BLANK)[6].done).toBe(false);
+    expect(movePieceSteps({ ...BLANK, difficultyChosen: true })[6].done).toBe(true);
+  });
+
+  it('Soruyu Ekle (8) yalnızca diğer yedisi bitince tamamlanır', () => {
+    expect(movePieceSteps(FULL)[7].done).toBe(true);
+    expect(movePieceSteps({ ...FULL, notationSaved: false })[7].done).toBe(false);
   });
 });
 
@@ -103,8 +117,8 @@ describe('firstIncompleteStep / allStepsDone', () => {
     expect(firstIncompleteStep(BLANK)?.no).toBe(1);
   });
 
-  it('yalnızca notasyon eksikse ilk eksik adım 5. adımdır', () => {
-    expect(firstIncompleteStep({ ...FULL, notationSaved: false })?.no).toBe(5);
+  it('yalnızca notasyon eksikse ilk eksik adım 6. adımdır', () => {
+    expect(firstIncompleteStep({ ...FULL, notationSaved: false })?.no).toBe(6);
   });
 
   it('tam durumda eksik adım yoktur', () => {

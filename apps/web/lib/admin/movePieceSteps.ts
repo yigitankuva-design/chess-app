@@ -9,6 +9,11 @@ export interface MovePieceStepState {
   instruction: string;
   /** Adım 2 — dizme tahtasının FEN'i (üst bileşen sahibi, bkz. MovePieceFields). */
   setupFen: string;
+  /**
+   * Adım 3 — hamle sırasına (Beyaz/Siyah) BİLFİİL tıklandı mı?
+   * Varsayılan Beyaz olduğu için değere bakmak yetmez (difficultyChosen ile aynı tuzak).
+   */
+  turnChosen: boolean;
   /** Adım 3 — "Konumu Kaydet" sonrası kilitlenen konum; null = henüz kaydedilmedi. */
   moveFen: string | null;
   /** Adım 4 — kaydedilen SAN hamleleri. */
@@ -30,12 +35,14 @@ export interface StepInfo {
 }
 
 export const MOVE_PIECE_STEP_LABELS = [
-  'Talimat Ekle',
+  'Talimatı Gir',
   'Konum Diz',
+  'Hamle Sırasını Belirle',
   'Konumu Kaydet',
   'Cevap Hamlelerini Yap ve Notasyon Oluştur',
   'Notasyonu Kaydet',
-  'Zorluk Düzeyinin Seçimini Yap',
+  'Zorluk Düzeyini Belirle',
+  'Soruyu Ekle',
 ] as const;
 
 /**
@@ -53,12 +60,15 @@ export function movePieceSteps(s: MovePieceStepState): StepInfo[] {
   const done = [
     s.instruction.trim().length > 0,
     hasPieces(s.setupFen),
+    s.turnChosen,
     s.moveFen !== null,
     s.moves.length > 0,
     s.notationSaved,
     s.difficultyChosen,
   ];
-  return MOVE_PIECE_STEP_LABELS.map((label, i) => ({ no: i + 1, label, done: done[i] }));
+  // "Soruyu Ekle" son satirdir: oncekilerin HEPSI bitince ✓.
+  const all = [...done, done.every(Boolean)];
+  return MOVE_PIECE_STEP_LABELS.map((label, i) => ({ no: i + 1, label, done: all[i] }));
 }
 
 export function firstIncompleteStep(s: MovePieceStepState): StepInfo | null {
