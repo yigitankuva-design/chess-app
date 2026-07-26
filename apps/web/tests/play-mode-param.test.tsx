@@ -13,6 +13,11 @@ vi.mock('@/components/BotGame', () => ({ BotGame: () => <div data-testid="bot-ga
 vi.mock('@/components/ChallengeScreen', () => ({
   ChallengeScreen: () => <div data-testid="challenge-screen" />,
 }));
+// Arkadasla Oyna artik teklif panosunu acar; OfferBoard useLobby -> gercek
+// WebSocket'e uzandigi icin mock'lanmali (happy-dom'da WebSocket yok).
+vi.mock('@/components/play/OfferBoard', () => ({
+  OfferBoard: () => <div data-testid="offer-board" />,
+}));
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: () => <div data-testid="opening-practice" />,
 }));
@@ -25,9 +30,9 @@ function renderWith(qs: string) {
 }
 
 describe('/play — ?mode= ile doğrudan akış açılır', () => {
-  it('mode=friend davet ekranını açar, kart listesini atlar', () => {
+  it('mode=friend teklif panosunu açar, kart listesini atlar', () => {
     renderWith('mode=friend');
-    expect(screen.getByTestId('challenge-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('offer-board')).toBeInTheDocument();
     expect(screen.queryByText('Maç Türü Seç')).not.toBeInTheDocument();
   });
 

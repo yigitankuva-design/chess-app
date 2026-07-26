@@ -16,6 +16,9 @@ vi.mock('@/components/BotGame', () => ({ BotGame: () => <div data-testid="bot-ga
 vi.mock('@/components/ChallengeScreen', () => ({
   ChallengeScreen: () => <div data-testid="challenge-screen" />,
 }));
+vi.mock('@/components/play/OfferBoard', () => ({
+  OfferBoard: () => <div data-testid="offer-board" />,
+}));
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: () => <div>Bota Karşı Pratik Yap</div>,
 }));

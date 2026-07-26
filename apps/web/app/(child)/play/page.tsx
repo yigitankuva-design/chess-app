@@ -2,7 +2,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BotGame } from '@/components/BotGame';
-import { ChallengeScreen } from '@/components/ChallengeScreen';
+import { OfferBoard } from '@/components/play/OfferBoard';
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
@@ -145,7 +145,7 @@ function PlayInner() {
           <p className="font-semibold text-sm">🤝 Arkadaşla Oyna</p>
           {backBtn}
         </div>
-        <ChallengeScreen
+        <OfferBoard
           onMatched={({ gameId, color }) => router.push(`/play/online/${gameId}?color=${color}`)}
         />
       </main>

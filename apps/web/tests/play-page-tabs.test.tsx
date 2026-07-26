@@ -15,6 +15,11 @@ vi.mock('@/components/BotGame', () => ({
 vi.mock('@/components/ChallengeScreen', () => ({
   ChallengeScreen: () => <div data-testid="challenge-screen" />,
 }));
+// Arkadasla Oyna artik teklif panosunu acar; OfferBoard useLobby -> gercek
+// WebSocket'e uzandigi icin mock'lanmali (happy-dom'da WebSocket yok).
+vi.mock('@/components/play/OfferBoard', () => ({
+  OfferBoard: () => <div data-testid="offer-board" />,
+}));
 
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: () => <div>Bota Karşı Pratik Yap</div>,
@@ -38,10 +43,10 @@ describe('/play — 4 sekme (madde a)', () => {
     expect(screen.getByRole('button', { name: 'Rastgele' })).toBeInTheDocument();
   });
 
-  it('Arkadaşla Oyna seçilince davet ekranı açılır', () => {
+  it('Arkadaşla Oyna seçilince teklif panosu açılır', () => {
     render(<PlayPage />);
     fireEvent.click(screen.getByText('Arkadaşla Oyna'));
-    expect(screen.getByTestId('challenge-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('offer-board')).toBeInTheDocument();
   });
 
   it('Turnuvaya Katıl seçilince Yakında mesajı gösterilir', () => {
