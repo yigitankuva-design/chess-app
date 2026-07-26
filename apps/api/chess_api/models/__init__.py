@@ -16,10 +16,12 @@ from chess_api.models.parent import (
 )
 from chess_api.models.app_settings import AppSettings
 from chess_api.models.practice import ChildPracticeResult
+from chess_api.models.opening import Opening
 
 __all__ = [
     "AppSettings",
     "ChildPracticeResult",
+    "Opening",
     "User", "UserRole", "ChildProfile", "Device",
     "Module", "Lesson", "LessonStep", "LessonStepType",
     "ChildLessonProgress", "ChildLessonStepResult", "LessonStatus",

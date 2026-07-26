@@ -37,6 +37,11 @@ class Game(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pgn: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Beraberlik teklifi sayaclari (madde d) — oyuncu basina en fazla 3 teklif.
+    white_draw_offers: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+    black_draw_offers: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+    # Acilis pratigi icin baslangic pozisyonu. None => standart baslangic (geriye uyumlu).
+    start_fen: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
 
 class GameMove(Base):
