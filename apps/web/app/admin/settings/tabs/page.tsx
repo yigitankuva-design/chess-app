@@ -15,6 +15,17 @@ const TAB_META: Record<TabKey, { emoji: string; label: string; desc: string; col
   eglence: { emoji: '🎉', label: 'Eğlence',   color: '#f472b6', desc: 'Bulmaca ve mini oyunlar' },
 };
 
+/**
+ * Sekme açıldığında görünecek yönetim ekranı. null = henüz yönetim ekranı yok.
+ * Yeni bir ekran hazır olduğunda buraya bir satır eklemek yeterlidir.
+ */
+const TAB_CONTENT: Record<TabKey, { href: string; emoji: string; title: string; desc: string } | null> = {
+  lessons: { href: '/admin/content',  emoji: '📘', title: 'Ders İçeriği',   desc: 'Düzey, ders, alt konu ve soruları yönet' },
+  play:    { href: '/admin/openings', emoji: '📖', title: 'Açılış Listesi', desc: 'Açılış pratiği için açılış ekle ve kaldır' },
+  analiz:  null,
+  eglence: null,
+};
+
 export default function AdminTabsPage() {
   const { reload } = useSettings();
   const [tabs, setTabs] = useState<AppSettingsData['tabs']>(DEFAULT_SETTINGS.tabs);
@@ -25,6 +36,8 @@ export default function AdminTabsPage() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /** Tek seferde yalnızca bir kart açık (akordiyon) — sporcu ana sayfasıyla aynı dil. */
+  const [openKey, setOpenKey] = useState<TabKey | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -116,6 +129,8 @@ export default function AdminTabsPage() {
         )}
         {shown.map((key, idx) => {
           const m = TAB_META[key];
+          const open = openKey === key;
+          const content = TAB_CONTENT[key];
           return (
             <div key={key} className="neon-card p-4" style={{ borderColor: m.color }}>
               <div className="flex items-center gap-3">
@@ -136,18 +151,47 @@ export default function AdminTabsPage() {
                 </button>
               </div>
 
-              {/* Dersler sekmesinin içeriği buradan yönetilir */}
-              {key === 'lessons' && (
+              {/* Dairesel AÇ / KAPAT düğmesi — kartın ortasında */}
+              <div className="flex justify-center mt-3">
+                <button
+                  type="button"
+                  onClick={() => setOpenKey((prev) => (prev === key ? null : key))}
+                  aria-expanded={open}
+                  aria-label={`${m.label} sekmesini ${open ? 'kapat' : 'aç'}`}
+                  className="flex items-center justify-center rounded-full font-bold transition-colors"
+                  style={{
+                    width: 60,
+                    height: 60,
+                    fontSize: '0.65rem',
+                    letterSpacing: '0.04em',
+                    border: `2px solid ${m.color}`,
+                    color: m.color,
+                    background: open ? `${m.color}26` : 'transparent',
+                  }}
+                >
+                  {open ? 'KAPAT' : 'AÇ'}
+                </button>
+              </div>
+
+              {/* Sekmenin yönetim ekranı — yalnızca açıkken */}
+              {open && (
                 <div className="mt-3 pt-3 border-t border-white/10">
-                  <Link href="/admin/content"
-                    className="flex items-center gap-3 p-3 rounded-lg bg-cyan-400/10 border border-cyan-400/40 hover:bg-cyan-400/20 transition-colors">
-                    <span className="text-xl leading-none">📘</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-cyan-200">Ders İçeriği</p>
-                      <p className="text-xs n-muted">Düzey, ders, alt konu ve soruları yönet</p>
-                    </div>
-                    <span className="text-cyan-300 text-sm">→</span>
-                  </Link>
+                  {content ? (
+                    <Link href={content.href}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:brightness-125 transition-all"
+                      style={{ background: `${m.color}1a`, border: `1px solid ${m.color}66` }}>
+                      <span className="text-xl leading-none">{content.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: m.color }}>{content.title}</p>
+                        <p className="text-xs n-muted">{content.desc}</p>
+                      </div>
+                      <span className="text-sm" style={{ color: m.color }}>→</span>
+                    </Link>
+                  ) : (
+                    <p className="text-sm n-muted">
+                      İçerik yönetimi yakında — bu sekme için ekleme/düzenleme ekranı hazırlanıyor.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
