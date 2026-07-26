@@ -983,3 +983,24 @@ async def add_pool_image(
     await db.commit()
     response.status_code = 201
     return {"id": row.id, "category": row.category, "created": True}
+
+
+@router.delete("/pool-images/{image_id}")
+async def delete_pool_image(
+    image_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Görseli havuzdan siler.
+
+    Bu islem mevcut sorulari BOZMAZ: soru kaydedilirken gorselin data-URI'si
+    sorunun kendi JSON'ina kopyalanir, havuz id'si referans tutulmaz. Silme
+    yalnizca "bu gorsel bundan sonra secilemez" anlamina gelir.
+    """
+    _ensure_admin(current)
+    row = await db.get(PoolImage, image_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Pool image not found")
+    await db.delete(row)
+    await db.commit()
+    return {"deleted": True}
