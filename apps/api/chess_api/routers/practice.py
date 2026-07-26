@@ -102,3 +102,38 @@ async def practice_detail(
         best_score=row.best_score, best_correct=row.best_correct,
         best_total=row.best_total, attempts_count=row.attempts_count,
     )
+
+
+class ScoreRow(BaseModel):
+    step_id: int
+    mode: str
+    best_score: int
+
+
+class ScoresResponse(BaseModel):
+    scores: list[ScoreRow]
+
+
+@router.get("/lessons/{lesson_id}/scores", response_model=ScoresResponse)
+async def lesson_scores(
+    lesson_id: int,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bu çocuğun, bu dersin tüm alt konularındaki en iyi skorları.
+
+    Frontend bunu ScoreMap'e çevirip kilitleri hesaplar (bkz. lib/practice/unlock.ts).
+    """
+    q = (
+        select(ChildPracticeResult)
+        .join(LessonStep, ChildPracticeResult.lesson_step_id == LessonStep.id)
+        .where(
+            LessonStep.lesson_id == lesson_id,
+            ChildPracticeResult.child_id == child.id,
+        )
+    )
+    rows = (await db.execute(q)).scalars().all()
+    return ScoresResponse(scores=[
+        ScoreRow(step_id=r.lesson_step_id, mode=r.mode, best_score=r.best_score)
+        for r in rows
+    ])
