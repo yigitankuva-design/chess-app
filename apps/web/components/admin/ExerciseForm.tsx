@@ -283,8 +283,9 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           onTurnChange={(t) => { setTurn(t); setTurnChosen(true); }} />
       )}
 
+      {/* Bos tahta da kaydedilebilir — kare ismi sorulari icin (disabled YOK). */}
       {type === 'click_square' && savedFen === null && (
-        <button type="button" disabled={!hasPieces(fen)}
+        <button type="button"
           onClick={() => setSavedFen(fen)}
           className="px-4 py-2 rounded-lg text-sm bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-40 transition-colors">
           Konumu Kaydet

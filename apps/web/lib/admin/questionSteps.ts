@@ -48,9 +48,12 @@ export function choiceSteps(
 }
 
 export function clickSquareSteps(s: ClickSquareStepState): StepInfo[] {
+  // BOS TAHTA MESRUDUR: kare isimleri ogretilen sorularda tahta bos birakilir
+  // ("e4'e tikla"). Bu yuzden Konum Diz, tas dizilince VEYA konum bilerek
+  // kaydedilince tamam sayilir — bos tahta kilit sebebi degildir.
   const base: [string, boolean][] = [
     ['Talimatı Gir', s.instruction.trim().length > 0],
-    ['Konum Diz', hasPieces(s.setupFen)],
+    ['Konum Diz', hasPieces(s.setupFen) || s.savedFen !== null],
     ['Hamle Sırasını Belirle', s.turnChosen],
     ['Konumu Kaydet', s.savedFen !== null],
     ['Doğru Kare(leri) Seç', s.targets.length > 0],

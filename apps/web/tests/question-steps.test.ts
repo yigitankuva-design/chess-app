@@ -68,6 +68,11 @@ describe('clickSquareSteps', () => {
     expect(clickSquareSteps({ ...K, setupFen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' })[1].done).toBe(true);
   });
 
+  it('BOŞ TAHTA MEŞRU: konum kaydedilince Konum Diz de tamam sayılır', () => {
+    // Kare isimleri ogretilen sorular bos tahtada olur ("e4'e tikla").
+    expect(clickSquareSteps({ ...K, savedFen: K.setupFen })[1].done).toBe(true);
+  });
+
   it('Konumu Kaydet ve Doğru Kareler sıralı çalışır', () => {
     const s = clickSquareSteps({ ...K, savedFen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1', targets: ['e4'] });
     expect(s[3].done).toBe(true);
