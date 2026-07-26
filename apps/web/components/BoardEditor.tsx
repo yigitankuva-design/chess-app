@@ -6,6 +6,7 @@ import {
 } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
 import { useMemo, useState } from 'react';
+import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
 
 const { ranks: EDITOR_RANKS, files: EDITOR_FILES_LABELS } = coordLabels('white');
 
@@ -85,6 +86,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
 
   const [selectedPaletteKey, setSelectedPaletteKey] = useState<string | null>(null);
+  const { squareStyles: annotationStyles, onSquareRightClick } = useSquareAnnotations(fen);
 
   function togglePaletteSelection(code: string) {
     setSelectedPaletteKey((prev) => (prev === code ? null : code));
@@ -150,6 +152,8 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
         onPieceDrop: handleDrop,
         onPieceClick: handlePieceClick,
         onSquareClick: handleSquareClick,
+        onSquareRightClick,
+        squareStyles: annotationStyles,
       }}
     >
     <div className="space-y-3">
@@ -211,7 +215,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2" style={{ maxWidth: 440 }}>
         <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
           className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
           Başlangıç konumu
