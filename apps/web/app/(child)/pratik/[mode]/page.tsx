@@ -201,7 +201,7 @@ function PratikInner() {
 
       {loading && <p className="text-sm t-muted">Sorular yükleniyor...</p>}
 
-      {!loading && exercises?.length === 0 && (
+      {!loading && !locked && exercises?.length === 0 && (
         <div className="t-card-i p-5 text-center rounded-xl">
           <p className="text-3xl mb-2">📭</p>
           <p className="font-bold text-sm mb-1">Bu bölümde henüz soru yok</p>

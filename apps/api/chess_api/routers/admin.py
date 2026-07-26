@@ -22,6 +22,7 @@ from chess_api.schemas.auth import (
     StepCreateRequest, StepUpdateRequest, AdminStepDetail,
 )
 from chess_api.models.progress import ChildLessonStepResult
+from chess_api.models.practice import ChildPracticeResult
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -504,13 +505,19 @@ async def delete_lesson(
         select(LessonStep.id).where(LessonStep.lesson_id == lesson_id)
     )).scalars().all()
     results = 0
+    practice_results = 0
     if step_ids:
         results = (await db.execute(
             select(func.count(ChildLessonStepResult.id)).where(
                 ChildLessonStepResult.lesson_step_id.in_(step_ids)
             )
         )).scalar_one()
-    if prog or results:
+        practice_results = (await db.execute(
+            select(func.count(ChildPracticeResult.id)).where(
+                ChildPracticeResult.lesson_step_id.in_(step_ids)
+            )
+        )).scalar_one()
+    if prog or results or practice_results:
         raise HTTPException(
             status_code=409,
             detail="Bu derse ait çocuk ilerlemesi var. Silmek yerine yayından kaldırabilirsiniz.",
@@ -785,8 +792,11 @@ async def delete_step(
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Adımı ve SADECE o adıma ait deneme kayıtlarını siler.
-    Ders tamamlama ilerlemesi (child_lesson_progress) korunur."""
+    """Adımı ve SADECE o adıma ait deneme/pratik kayıtlarını siler.
+    Ders tamamlama ilerlemesi (child_lesson_progress) korunur.
+
+    NOT: child_practice_results.lesson_step_id, lesson_steps'e FK ile bağlı —
+    önce o kayıtlar silinmezse adım silme FK ihlaliyle patlar (KURAL #3)."""
     _ensure_admin(current)
     step = await db.get(LessonStep, step_id)
     if not step:
@@ -798,6 +808,9 @@ async def delete_step(
     )).scalar_one()
     await db.execute(
         delete(ChildLessonStepResult).where(ChildLessonStepResult.lesson_step_id == step_id)
+    )
+    await db.execute(
+        delete(ChildPracticeResult).where(ChildPracticeResult.lesson_step_id == step_id)
     )
     await db.delete(step)
     await db.commit()
