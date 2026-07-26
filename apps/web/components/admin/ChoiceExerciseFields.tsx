@@ -1,32 +1,53 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { BoardExercise, QuestionFamily } from './ExerciseForm';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
 import { PoolPicker } from './PoolPicker';
 import { POOL_CATEGORIES, addPoolImage } from '@/lib/admin/poolApi';
 
+/** Bolum taslagi: Zafer hoca baska bolume gecip dondugunde yazdiklarini
+ *  kaybetmesin diye ExerciseForm'da saklanan alanlar. YALNIZCA yeni soru
+ *  eklerken kullanilir; duzenleme modunda devre disi. */
+export interface ChoiceDraft {
+  instruction: string;
+  promptImage: string;
+  optionCount: 2 | 3 | 4;
+  answerKind: 'sentence' | 'image';
+  options: string[];
+  correctIndex: number;
+  successMsg: string;
+  failMsg: string;
+  difficulty: number;
+}
+
 interface Props {
   kind: Extract<QuestionFamily, 'sentence_question' | 'image_question'>;
   onSubmit: (ex: BoardExercise) => Promise<void>;
   initial?: BoardExercise;
   onCancel?: () => void;
+  /** Yeni soru modunda onceki taslak (varsa) — alan baslangic degerleri. */
+  draft?: ChoiceDraft;
+  /** Her degisimde taslagi yukari yazar. Duzenlemede verilmez. */
+  onDraftChange?: (d: ChoiceDraft) => void;
 }
 
-export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Props) {
-  const [instruction, setInstruction] = useState(initial?.instruction ?? '');
-  const [promptImage, setPromptImage] = useState(initial?.prompt_image ?? '');
+export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft, onDraftChange }: Props) {
+  const [instruction, setInstruction] = useState(draft?.instruction ?? initial?.instruction ?? '');
+  const [promptImage, setPromptImage] = useState(draft?.promptImage ?? initial?.prompt_image ?? '');
   const [optionCount, setOptionCount] = useState<2 | 3 | 4>(
-    ((initial?.options?.length ?? 2) as 2 | 3 | 4),
+    draft?.optionCount ?? ((initial?.options?.length ?? 2) as 2 | 3 | 4),
   );
-  const [answerKind, setAnswerKind] = useState<'sentence' | 'image'>(initial?.answer_kind ?? 'sentence');
+  const [answerKind, setAnswerKind] = useState<'sentence' | 'image'>(
+    draft?.answerKind ?? initial?.answer_kind ?? 'sentence',
+  );
   const [options, setOptions] = useState<string[]>(
-    initial?.options && initial.options.length > 0 ? initial.options : ['', ''],
+    draft?.options ?? (initial?.options && initial.options.length > 0 ? initial.options : ['', '']),
   );
-  const [correctIndex, setCorrectIndex] = useState(initial?.correct_index ?? 0);
-  const [successMsg, setSuccessMsg] = useState(initial?.success_msg ?? '');
-  const [failMsg, setFailMsg] = useState(initial?.fail_msg ?? '');
-  const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 1);
+  const [correctIndex, setCorrectIndex] = useState(draft?.correctIndex ?? initial?.correct_index ?? 0);
+  const [successMsg, setSuccessMsg] = useState(draft?.successMsg ?? initial?.success_msg ?? '');
+  const [failMsg, setFailMsg] = useState(draft?.failMsg ?? initial?.fail_msg ?? '');
+  const [difficulty, setDifficulty] = useState(draft?.difficulty ?? initial?.difficulty ?? 1);
   const [err, setErr] = useState<string | null>(null);
   const [imgErr, setImgErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -40,6 +61,17 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
   const [poolAddCategory, setPoolAddCategory] = useState('');
   const [poolAddMsg, setPoolAddMsg] = useState<string | null>(null);
   const editing = !!initial;
+
+  // Taslak her degisimde yukari yazilir — bolum degisince form sifirdan
+  // kurulsa da (key), yazilanlar ExerciseForm'da yasamaya devam eder.
+  useEffect(() => {
+    onDraftChange?.({
+      instruction, promptImage, optionCount, answerKind,
+      options, correctIndex, successMsg, failMsg, difficulty,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instruction, promptImage, optionCount, answerKind, options,
+      correctIndex, successMsg, failMsg, difficulty]);
 
   function setCount(n: 2 | 3 | 4) {
     setOptionCount(n);

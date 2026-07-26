@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { BoardEditor, EMPTY_FEN, fenToMap } from '@/components/BoardEditor';
 import { ChoiceExerciseFields } from './ChoiceExerciseFields';
+import type { ChoiceDraft } from './ChoiceExerciseFields';
 import { MovePieceFields } from './MovePieceFields';
 import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
 import { movePieceSteps, firstIncompleteStep, allStepsDone } from '@/lib/admin/movePieceSteps';
@@ -79,6 +80,10 @@ function SquarePicker({ values, onToggle }: { values: string[]; onToggle: (sq: s
 export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
   const [family, setFamily] = useState<QuestionFamily>(() => familyOf(initial));
   const editing = !!initial;
+  /** Bolum basina taslak. SADECE yeni soru modunda; form kapaninca ucar (YAGNI).
+   *  Konum'a taslak BILINCLI yok: tahta durumu yarim kopyalanirsa adim kilidi
+   *  tutarsizlasir (spec 3.1). */
+  const choiceDrafts = useRef<Partial<Record<'sentence_question' | 'image_question', ChoiceDraft>>>({});
 
   return (
     <div className="neon-card neon-green p-5 space-y-4">
@@ -104,9 +109,17 @@ export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
       </div>
 
       {family === 'konum' ? (
-        <BoardExerciseFields onSubmit={onSubmit} initial={initial} onCancel={onCancel} />
+        <BoardExerciseFields key="konum" onSubmit={onSubmit} initial={initial} onCancel={onCancel} />
       ) : (
-        <ChoiceExerciseFields kind={family} onSubmit={onSubmit} initial={initial} onCancel={onCancel} />
+        <ChoiceExerciseFields
+          key={family}
+          kind={family}
+          onSubmit={onSubmit}
+          initial={initial}
+          onCancel={onCancel}
+          draft={editing ? undefined : choiceDrafts.current[family]}
+          onDraftChange={editing ? undefined : (d) => { choiceDrafts.current[family] = d; }}
+        />
       )}
     </div>
   );
