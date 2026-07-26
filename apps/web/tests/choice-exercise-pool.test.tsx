@@ -99,6 +99,76 @@ describe('ChoiceExerciseFields — şık görselleri için iki kaynak', () => {
   });
 });
 
+describe('ChoiceExerciseFields — havuza da ekle satırı', () => {
+  /**
+   * Dosya yükleme akışı canvas/Image gerektirdiği için happy-dom'da gerçekten
+   * çalışmıyor; bunun yerine havuzdan seçim yapılır — her iki yol da aynı
+   * `promptImage` state'ini doldurur, satırın görünme koşulu odur.
+   */
+  async function pickFromPool() {
+    render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Havuzdan Seç' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hayvanlar' }));
+    await waitFor(() => expect(screen.getAllByRole('img').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByRole('img')[0]);
+    await waitFor(() =>
+      expect(screen.getByAltText('Soru görseli önizleme')).toBeInTheDocument(),
+    );
+  }
+
+  it('görsel yokken satır görünmez', () => {
+    render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
+    expect(screen.queryByText(/Havuza da eklensin mi/i)).not.toBeInTheDocument();
+  });
+
+  it('görsel seçilince satır görünür', async () => {
+    await pickFromPool();
+    expect(screen.getByText(/Havuza da eklensin mi/i)).toBeInTheDocument();
+  });
+
+  it('kategori seçilmeden Havuza Ekle düğmesi kapalıdır', async () => {
+    await pickFromPool();
+    expect(screen.getByRole('button', { name: 'Havuza Ekle' })).toBeDisabled();
+  });
+
+  it('kategori seçilince düğme açılır', async () => {
+    await pickFromPool();
+    fireEvent.change(screen.getByLabelText('Havuz kategorisi'), {
+      target: { value: 'Bitkiler' },
+    });
+    expect(screen.getByRole('button', { name: 'Havuza Ekle' })).toBeEnabled();
+  });
+
+  it('Havuza Ekle doğru kategori ve görselle addPoolImage çağırır', async () => {
+    await pickFromPool();
+    fireEvent.change(screen.getByLabelText('Havuz kategorisi'), {
+      target: { value: 'Bitkiler' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Havuza Ekle' }));
+    await waitFor(() => expect(addPoolImage).toHaveBeenCalledWith('Bitkiler', POOL_IMG));
+  });
+
+  it('başarıda onay mesajı gösterir', async () => {
+    addPoolImage.mockResolvedValue(true);
+    await pickFromPool();
+    fireEvent.change(screen.getByLabelText('Havuz kategorisi'), {
+      target: { value: 'Bitkiler' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Havuza Ekle' }));
+    await waitFor(() => expect(screen.getByText(/havuza eklendi/i)).toBeInTheDocument());
+  });
+
+  it('başarısızlıkta hata mesajı gösterir', async () => {
+    addPoolImage.mockResolvedValue(false);
+    await pickFromPool();
+    fireEvent.change(screen.getByLabelText('Havuz kategorisi'), {
+      target: { value: 'Bitkiler' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Havuza Ekle' }));
+    await waitFor(() => expect(screen.getByText(/eklenemedi/i)).toBeInTheDocument());
+  });
+});
+
 describe('ChoiceExerciseFields — regresyon', () => {
   it('Cümle sorusunda görsel seçici hiç görünmez', () => {
     render(<ChoiceExerciseFields kind="sentence_question" onSubmit={vi.fn()} />);

@@ -4,6 +4,7 @@ import type { BoardExercise, QuestionFamily } from './ExerciseForm';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
 import { PoolPicker } from './PoolPicker';
+import { POOL_CATEGORIES, addPoolImage } from '@/lib/admin/poolApi';
 
 interface Props {
   kind: Extract<QuestionFamily, 'sentence_question' | 'image_question'>;
@@ -35,6 +36,9 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
    * olabilir — birden fazla şık için ayrı ayrı panel açılırsa ekran karışır.
    */
   const [openPoolFor, setOpenPoolFor] = useState<'prompt' | number | null>(null);
+  /** "Havuza da eklensin mi?" satırı — yalnızca soru görseli için, opsiyonel. */
+  const [poolAddCategory, setPoolAddCategory] = useState('');
+  const [poolAddMsg, setPoolAddMsg] = useState<string | null>(null);
   const editing = !!initial;
 
   function setCount(n: 2 | 3 | 4) {
@@ -52,9 +56,16 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
     setImgErr(null);
     try {
       setPromptImage(await compressImageToDataUri(file));
+      setPoolAddMsg(null);
     } catch {
       setImgErr('Görsel çok büyük, daha küçük bir görsel seçin');
     }
+  }
+
+  async function saveToPool() {
+    setPoolAddMsg(null);
+    const ok = await addPoolImage(poolAddCategory, promptImage);
+    setPoolAddMsg(ok ? 'Havuza eklendi ✓' : 'Havuza eklenemedi');
   }
 
   async function handlePromptImagePaste(e: React.ClipboardEvent) {
@@ -147,12 +158,31 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
           </div>
           {openPoolFor === 'prompt' && (
             <PoolPicker
-              onSelect={(uri) => setPromptImage(uri)}
+              onSelect={(uri) => { setPromptImage(uri); setPoolAddMsg(null); }}
               onClose={() => setOpenPoolFor(null)}
             />
           )}
           {promptImage && (
             <img src={promptImage} alt="Soru görseli önizleme" style={{ maxWidth: 200, maxHeight: 150, objectFit: 'contain' }} />
+          )}
+          {promptImage && (
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <span className="n-muted">Havuza da eklensin mi?</span>
+              <select
+                aria-label="Havuz kategorisi"
+                value={poolAddCategory}
+                onChange={(e) => { setPoolAddCategory(e.target.value); setPoolAddMsg(null); }}
+                className="neon-input py-1 text-xs"
+              >
+                <option value="">Kategori seç</option>
+                {POOL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <button type="button" onClick={saveToPool} disabled={!poolAddCategory}
+                className="px-3 py-1 rounded-lg text-xs bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-40">
+                Havuza Ekle
+              </button>
+              {poolAddMsg && <span className="n-muted">{poolAddMsg}</span>}
+            </div>
           )}
           <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
             placeholder="Açıklama (opsiyonel)" className="neon-input" />
