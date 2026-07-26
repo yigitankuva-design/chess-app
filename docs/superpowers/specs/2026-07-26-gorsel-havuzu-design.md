@@ -75,22 +75,42 @@ POOL_CATEGORIES = [
 
 **Dosya:** `apps/api/alembic/versions/20260726_PoolImages_add.py` (yeni)
 
-`upgrade()`: yalnızca `op.create_table('pool_images', ...)`. `downgrade()`: `op.drop_table`.
-**TRUNCATE/DELETE yok** — bu tablo `modules`/`lessons`/... müfredat tablolarından değil,
-KURAL #4 kapsamı dışında ama yine de disiplin aynı: migration veri silmez.
+`revision = 'PoolImages'`, `down_revision = 'PlayFeatures'` (doğrulandı: mevcut tek head
+`PlayFeatures`). `upgrade()`: yalnızca `op.create_table('pool_images', ...)`.
+`downgrade()`: `op.drop_table`.
+
+**TRUNCATE/DELETE yok** — bu tablo müfredat tablolarından biri değil, yani
+`tests/test_migration_guard.py` kapsamı dışında; ama disiplin aynı: migration veri silmez.
+Guard testi bu migration'la kırılmaz (kontrol edildi: yalnızca `modules`, `lessons`,
+`lesson_steps`, `child_lesson_progress`, `child_lesson_step_results` üzerindeki
+TRUNCATE/DELETE'e bakıyor).
+
+### Model kaydı
+
+`apps/api/chess_api/models/__init__.py` — `PoolImage` import edilip `__all__`'a eklenir
+(`Opening` ile aynı desen). Seed script'i `from chess_api.models import PoolImage` ile
+kullanabilsin diye zorunlu.
 
 ### Seed script (migration'dan AYRI, ayrı bir adımda çalıştırılır)
 
-**Dosya:** `apps/api/scripts/seed_pool_images.py` (yeni) — 66 SVG ikonu (11 kategori × 6,
-Satranç Şampiyonları hariç) doğrudan Python içinde tanımlı SVG string'leri olarak tutar,
-her biri için `data:image/svg+xml;utf8,<...>` biçiminde data-URI üretip tabloya ekler.
-Idempotent: `category+data_uri` zaten varsa atlar (migration'ı tekrar tekrar çalıştırmak
-tekrar tekrar aynı 66 satırı eklemez).
+Mevcut `scripts/seed_badges.py` deseninin birebir aynısı (doğrulandı: veri ayrı JSON
+dosyasında, script idempotent, `python -m scripts.X` ile çalışır):
 
-**Neden migration içinde değil:** Alembic migration'ları şema değişikliği için; 66 satırlık
-SVG içeriğini migration dosyasına gömmek onu okunaksız ve dev/prod ortamları arasında
-senkron tutulması zor hale getirirdi. Ayrı script, deploy sonrası bir kere elle çalıştırılır
-(tıpkı `_ensure_admin` gibi tek seferlik idempotent işlemler).
+- **`apps/api/scripts/pool-images-data.json`** (yeni) — 66 kaydın verisi:
+  `[{"category": "Hayvanlar", "data_uri": "data:image/svg+xml;base64,..."}, ...]`
+- **`apps/api/scripts/seed_pool_images.py`** (yeni) — JSON'u okur, `get_session_factory()`
+  ile tabloya yazar. Idempotent: aynı `category` + `data_uri` çifti varsa atlar. Çalıştırma:
+  `python -m scripts.seed_pool_images`
+
+**SVG'ler base64 ile gömülür, düz metin ile DEĞİL.** Sebep: `data:image/svg+xml;utf8,<svg
+fill="#fff">` biçiminde bir URI'de `#` karakteri tarayıcı tarafından fragment başlangıcı
+sayılır ve görsel sessizce bozulur — renk kodları (`#34d399` vb.) tam olarak bu karakteri
+içerir. `;base64,` tüm kaçış problemlerini ortadan kaldırır.
+
+**Neden migration içinde değil:** Alembic migration'ları şema değişikliği içindir; 66
+kayıtlık SVG içeriğini migration dosyasına gömmek onu okunaksız ve ortamlar arasında senkron
+tutulması zor hale getirirdi. Projede zaten bu ayrım var (`seed_badges.py`,
+`seed_curriculum.py` migration değil, ayrı script).
 
 ### Endpoint'ler
 
