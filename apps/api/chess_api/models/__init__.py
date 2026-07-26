@@ -17,11 +17,13 @@ from chess_api.models.parent import (
 from chess_api.models.app_settings import AppSettings
 from chess_api.models.practice import ChildPracticeResult
 from chess_api.models.opening import Opening
+from chess_api.models.pool_image import PoolImage
 
 __all__ = [
     "AppSettings",
     "ChildPracticeResult",
     "Opening",
+    "PoolImage",
     "User", "UserRole", "ChildProfile", "Device",
     "Module", "Lesson", "LessonStep", "LessonStepType",
     "ChildLessonProgress", "ChildLessonStepResult", "LessonStatus",
