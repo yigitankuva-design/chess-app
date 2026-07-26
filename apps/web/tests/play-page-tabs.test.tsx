@@ -16,6 +16,10 @@ vi.mock('@/components/ChallengeScreen', () => ({
   ChallengeScreen: () => <div data-testid="challenge-screen" />,
 }));
 
+vi.mock('@/components/play/OpeningPractice', () => ({
+  OpeningPractice: () => <div>Bota Karşı Pratik Yap</div>,
+}));
+
 import PlayPage from '@/app/(child)/play/page';
 
 describe('/play — 4 sekme (madde a)', () => {
@@ -46,10 +50,10 @@ describe('/play — 4 sekme (madde a)', () => {
     expect(screen.getByText(/yakında/i)).toBeInTheDocument();
   });
 
-  it('Açılışı Pratiği Yap seçilince Yakında mesajı gösterilir', () => {
+  it('Açılışı Pratiği Yap seçilince rakip türü sorulur', () => {
     render(<PlayPage />);
     fireEvent.click(screen.getByText('Açılışı Pratiği Yap'));
-    expect(screen.getByText(/yakında/i)).toBeInTheDocument();
+    expect(screen.getByText('Bota Karşı Pratik Yap')).toBeInTheDocument();
   });
 
   it('Bota Karşı akışında kriterler seçilip başlatılınca oyun render edilir', () => {

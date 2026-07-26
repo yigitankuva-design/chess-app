@@ -3,6 +3,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BotGame } from '@/components/BotGame';
 import { ChallengeScreen } from '@/components/ChallengeScreen';
+import { OpeningPractice } from '@/components/play/OpeningPractice';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
 import { LEVELS, ALL_TIMES } from '@/lib/play/levels';
@@ -113,11 +114,9 @@ function PlayInner() {
           <p className="font-semibold text-sm">📖 Açılışı Pratiği Yap</p>
           {backBtn}
         </div>
-        <div className="t-card-i p-5 text-center space-y-2">
-          <p className="text-3xl">🚧</p>
-          <p className="font-bold text-sm">Yakında</p>
-          <p className="text-xs t-muted">Açılış pratiği hazırlanıyor.</p>
-        </div>
+        <OpeningPractice
+          onMatched={({ gameId, color }) => router.push(`/play/online/${gameId}?color=${color}`)}
+        />
       </main>
     );
   }
