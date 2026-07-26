@@ -15,6 +15,8 @@ function setup(over: Partial<React.ComponentProps<typeof MovePieceFields>> = {})
     fen: null as string | null,
     moves: [] as string[],
     onChange: vi.fn(),
+    notationSaved: false,
+    onNotationSavedChange: vi.fn(),
     ...over,
   };
   render(<MovePieceFields {...props} />);
@@ -65,5 +67,41 @@ describe('MovePieceFields', () => {
     const props = setup({ setupFen: TWO_SIDED, fen: TWO_SIDED, moves: ['Rh4', 'Kf8'] });
     fireEvent.click(screen.getByText('Konumu Düzenle'));
     expect(props.onChange).toHaveBeenCalledWith(null, []);
+  });
+});
+
+describe('MovePieceFields — Notasyonu Kaydet (adım 5)', () => {
+  it('hamle yokken "Notasyonu Kaydet" devre dışıdır', () => {
+    setup({ setupFen: TWO_SIDED, fen: TWO_SIDED, moves: [] });
+    expect(screen.getByText('Notasyonu Kaydet')).toBeDisabled();
+  });
+
+  it('hamle varken "Notasyonu Kaydet" etkindir', () => {
+    setup({ setupFen: TWO_SIDED, fen: TWO_SIDED, moves: ['Rh4'] });
+    expect(screen.getByText('Notasyonu Kaydet')).toBeEnabled();
+  });
+
+  it('"Notasyonu Kaydet" tıklanınca üst bileşene true bildirilir', () => {
+    const props = setup({ setupFen: TWO_SIDED, fen: TWO_SIDED, moves: ['Rh4'] });
+    fireEvent.click(screen.getByText('Notasyonu Kaydet'));
+    expect(props.onNotationSavedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('notationSaved true iken kaydedilen notasyon cevap olarak gösterilir', () => {
+    setup({ setupFen: TWO_SIDED, fen: TWO_SIDED, moves: ['Rh4', 'Kf8'], notationSaved: true });
+    expect(screen.getByText('1. Rh4 Kf8')).toBeInTheDocument();
+    expect(screen.getByText(/Kaydedilen cevap notasyonu/)).toBeInTheDocument();
+  });
+
+  it('notationSaved true iken tahta ve kaydet butonu gösterilmez (kilitli)', () => {
+    setup({ setupFen: TWO_SIDED, fen: TWO_SIDED, moves: ['Rh4'], notationSaved: true });
+    expect(screen.queryByText('Notasyon Tablosu')).not.toBeInTheDocument();
+    expect(screen.queryByText('Notasyonu Kaydet')).not.toBeInTheDocument();
+  });
+
+  it('"Notasyonu Düzenle" kilidi açar', () => {
+    const props = setup({ setupFen: TWO_SIDED, fen: TWO_SIDED, moves: ['Rh4'], notationSaved: true });
+    fireEvent.click(screen.getByText('Notasyonu Düzenle'));
+    expect(props.onNotationSavedChange).toHaveBeenCalledWith(false);
   });
 });

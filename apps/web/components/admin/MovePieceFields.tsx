@@ -1,6 +1,7 @@
 'use client';
 import { BoardEditor } from '@/components/BoardEditor';
 import { MoveRecorderBoard } from './MoveRecorderBoard';
+import { formatNotation } from '@/lib/admin/movePieceSteps';
 
 interface Props {
   /** Adım 2 — dizme tahtası. Durum ÜST BİLEŞENDE tutulur (tek doğruluk kaynağı). */
@@ -12,6 +13,9 @@ interface Props {
   fen: string | null;
   moves: string[];
   onChange: (fen: string | null, moves: string[]) => void;
+  /** Adım 5 — notasyon cevap olarak kilitlendi mi? */
+  notationSaved: boolean;
+  onNotationSavedChange: (v: boolean) => void;
 }
 
 /**
@@ -26,7 +30,8 @@ interface Props {
  * bileşende yaşar, çünkü adım listesi ("Konum Diz" tamamlandı mı?) orada hesaplanır.
  */
 export function MovePieceFields({
-  setupFen, onSetupFenChange, setupTurn, onSetupTurnChange, fen, moves, onChange,
+  setupFen, onSetupFenChange, setupTurn, onSetupTurnChange,
+  fen, moves, onChange, notationSaved, onNotationSavedChange,
 }: Props) {
   if (fen === null) {
     return (
@@ -46,6 +51,22 @@ export function MovePieceFields({
     );
   }
 
+  // Adım 5 tamam: notasyon cevap olarak kilitlendi — tahta salt-okunur olur.
+  if (notationSaved) {
+    return (
+      <div className="space-y-3">
+        <div className="p-3 rounded-lg bg-cyan-400/10 border border-cyan-400/40">
+          <p className="text-xs n-muted mb-1">Kaydedilen cevap notasyonu</p>
+          <p className="font-mono text-sm text-cyan-200">{formatNotation(fen, moves)}</p>
+        </div>
+        <button type="button" onClick={() => onNotationSavedChange(false)}
+          className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+          Notasyonu Düzenle
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
@@ -58,6 +79,11 @@ export function MovePieceFields({
         </button>
       </div>
       <MoveRecorderBoard fen={fen} moves={moves} onMovesChange={(m) => onChange(fen, m)} />
+      <button type="button" disabled={moves.length === 0}
+        onClick={() => onNotationSavedChange(true)}
+        className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-40 text-sm transition-colors">
+        Notasyonu Kaydet
+      </button>
     </div>
   );
 }

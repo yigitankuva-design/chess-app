@@ -135,6 +135,8 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     initial?.moves?.length ? (initial.fen ?? null) : null,
   );
   const [moves, setMoves] = useState<string[]>(initial?.moves ?? []);
+  /** Adım 5 — mevcut soruyu düzenlerken kayıtlı notasyon zaten onaylı sayılır (KURAL #3). */
+  const [notationSaved, setNotationSaved] = useState(!!initial?.moves?.length);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const editing = !!initial;
@@ -184,7 +186,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       if (!editing) {
         setInstruction(''); setTargets([]); setHighlight('');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
-        setMoveFen(null); setMoves([]);
+        setMoveFen(null); setMoves([]); setNotationSaved(false);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -234,6 +236,8 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           fen={moveFen}
           moves={moves}
           onChange={(f, m) => { setMoveFen(f); setMoves(m); }}
+          notationSaved={notationSaved}
+          onNotationSavedChange={setNotationSaved}
         />
       )}
 
