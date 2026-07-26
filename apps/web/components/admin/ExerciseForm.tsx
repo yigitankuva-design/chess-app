@@ -214,17 +214,24 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {([
           ['click_square', 'Kareye tıkla'],
           ['move_piece', 'Taşı oynat'],
-          ['identify_piece', 'Taşı tanı'],
         ] as [ExerciseType, string][]).map(([t, label]) => (
-          <button key={t} type="button" onClick={() => { setType(t); setTargets([]); setErr(null); }}
+          <button key={t} type="button" disabled={editing}
+            onClick={() => { setType(t); setTargets([]); setErr(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
               type === t ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
-            }`}>{label}</button>
+            } ${editing ? 'opacity-60 cursor-not-allowed' : ''}`}>{label}</button>
         ))}
+        {/* Tasi Tani YENI soruda yok; eski soru duzenlenirken rozetle gosterilir.
+            Tip birligi ve validate/submit dallari YASIYOR — eski sorular calisir. */}
+        {editing && type === 'identify_piece' && (
+          <span className="px-2.5 py-1 rounded-lg text-xs border border-amber-400/50 text-amber-200 bg-amber-400/10">
+            🏷 Bu soru &quot;Taşı tanı&quot; tipinde — yeni eklenemez
+          </span>
+        )}
       </div>
 
       {type === 'move_piece' && (

@@ -31,12 +31,32 @@ describe('ExerciseForm — Taşı oynat entegrasyonu', () => {
     expect(screen.getByText(/Doğru kare\(ler\)/)).toBeInTheDocument();
   });
 
-  it('REGRESYON: Taşı tanı hâlâ tahta + vurgu seçici gösterir', () => {
-    const { container } = render(<ExerciseForm onSubmit={vi.fn()} />);
+  it('YENİ soruda "Taşı tanı" düğmesi YOKTUR', () => {
+    render(<ExerciseForm onSubmit={vi.fn()} />);
     fireEvent.click(screen.getByText('Konum ekle'));
-    fireEvent.click(screen.getByText('Taşı tanı'));
-    expect(container.querySelectorAll('[data-square]')).toHaveLength(64);
-    expect(screen.getByText(/Vurgulanacak kare/)).toBeInTheDocument();
+    expect(screen.getByText('Kareye tıkla')).toBeInTheDocument();
+    expect(screen.getByText('Taşı oynat')).toBeInTheDocument();
+    expect(screen.queryByText('Taşı tanı')).not.toBeInTheDocument();
+  });
+
+  it('ESKİ Taşı tanı sorusu düzenlemede açılır: rozet görünür, tip düğmeleri kilitli', () => {
+    render(
+      <ExerciseForm
+        onSubmit={vi.fn()}
+        initial={{
+          type: 'identify_piece',
+          instruction: 'Bu taş nedir?',
+          fen: '8/8/8/4N3/8/8/8/8 w - - 0 1',
+          highlight_square: 'e5',
+          options: ['At', 'Fil'],
+          correct_index: 0,
+          difficulty: 1,
+        }}
+      />,
+    );
+    expect(screen.getByText(/Bu soru "Taşı tanı" tipinde/)).toBeInTheDocument();
+    const btn = screen.getByRole('button', { name: 'Kareye tıkla' });
+    expect(btn).toBeDisabled();
   });
 });
 
@@ -69,10 +89,12 @@ describe('ExerciseForm — Taşı oynat 6 adımlı akış', () => {
     expect(screen.queryByLabelText('Taşı Oynat adımları')).not.toBeInTheDocument();
   });
 
-  it('REGRESYON: Taşı tanı seçiliyken adım listesi GÖSTERİLMEZ', () => {
-    render(<ExerciseForm onSubmit={vi.fn()} />);
-    fireEvent.click(screen.getByText('Konum ekle'));
-    fireEvent.click(screen.getByText('Taşı tanı'));
+  it('REGRESYON: eski Taşı tanı sorusu düzenlenirken adım listesi GÖSTERİLMEZ', () => {
+    render(<ExerciseForm onSubmit={vi.fn()} initial={{
+      type: 'identify_piece', instruction: 'Bu taş nedir?',
+      fen: '8/8/8/4N3/8/8/8/8 w - - 0 1', highlight_square: 'e5',
+      options: ['At', 'Fil'], correct_index: 0,
+    }} />);
     expect(screen.queryByLabelText('Taşı Oynat adımları')).not.toBeInTheDocument();
   });
 
