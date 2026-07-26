@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
 from sqlalchemy import select
 from chess_api.database import get_session_factory
 from chess_api.services.jwt import decode_token, TokenInvalid
@@ -8,6 +8,10 @@ from chess_api.services.game_room import get_room, remove_room
 from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
+from chess_api.services.lobby import (
+    join_lobby, leave_lobby, online_players, send_to_player,
+)
+from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
     Game, GameMove, GameType, GameStatus, GameResult, ChildProfile,
 )
@@ -252,3 +256,95 @@ async def _handle_decline_draw(game_id, child_id, room):
         if not game or game.status != GameStatus.active:
             return
     await room.broadcast({"type": "draw_declined", "by_child_id": child_id}, exclude=child_id)
+
+
+@router.get("/lobby/online")
+async def lobby_online(child: ChildProfile = Depends(get_current_child)):
+    """Ilk yuklemede aktif sporcu listesi; canli guncelleme WS uzerinden gelir."""
+    return {"players": online_players(exclude=child.id)}
+
+
+async def _resolve_display_name(child_id: int) -> str:
+    async with get_session_factory()() as db:
+        child = await db.get(ChildProfile, child_id)
+        return child.display_name if child else "Sporcu"
+
+
+async def _handle_challenge(child_id: int, msg: dict) -> None:
+    """Belirli bir sporcuya mac daveti (madde b)."""
+    target = msg.get("target_child_id")
+    if not isinstance(target, int):
+        return
+    name = await _resolve_display_name(child_id)
+    await send_to_player(target, {
+        "type": "challenge_received",
+        "from_child_id": child_id,
+        "from_name": name,
+        "criteria": msg.get("criteria") or {},
+    })
+
+
+async def _handle_challenge_accept(child_id: int, msg: dict) -> None:
+    """Daveti kabul et: oyunu olustur ve iki tarafa da bildir.
+
+    RENGI DAVET EDEN (challenger) belirler; kabul eden sadece onu alir.
+    criteria.color: 'w' => challenger beyaz, 'b' => challenger siyah.
+    """
+    challenger = msg.get("from_child_id")
+    if not isinstance(challenger, int):
+        return
+    criteria = msg.get("criteria") or {}
+    challenger_is_white = criteria.get("color", "w") == "w"
+    white_id = challenger if challenger_is_white else child_id
+    black_id = child_id if challenger_is_white else challenger
+
+    game_id = await _create_human_game(white_id, black_id)
+
+    await send_to_player(challenger, {
+        "type": "matched", "game_id": game_id,
+        "color": "white" if challenger_is_white else "black",
+        "opponent_id": child_id,
+    })
+    await send_to_player(child_id, {
+        "type": "matched", "game_id": game_id,
+        "color": "black" if challenger_is_white else "white",
+        "opponent_id": challenger,
+    })
+
+
+async def _handle_challenge_decline(child_id: int, msg: dict) -> None:
+    challenger = msg.get("from_child_id")
+    if isinstance(challenger, int):
+        await send_to_player(challenger, {
+            "type": "challenge_declined", "by_child_id": child_id,
+        })
+
+
+@router.websocket("/ws/lobby")
+async def lobby_ws(websocket: WebSocket, token: str = Query(...)):
+    await websocket.accept()
+    child_id = _child_id_from_token(token)
+    if not child_id:
+        await websocket.send_json({"type": "error", "message": "auth"})
+        await websocket.close(code=4401)
+        return
+
+    name = await _resolve_display_name(child_id)
+    join_lobby(child_id, name, websocket)
+    await websocket.send_json({"type": "lobby_joined", "players": online_players(exclude=child_id)})
+
+    try:
+        while True:
+            msg = await websocket.receive_json()
+            mtype = msg.get("type")
+            if mtype == "challenge":
+                await _handle_challenge(child_id, msg)
+            elif mtype == "challenge_accept":
+                await _handle_challenge_accept(child_id, msg)
+            elif mtype == "challenge_decline":
+                await _handle_challenge_decline(child_id, msg)
+    except WebSocketDisconnect:
+        leave_lobby(child_id)
+    except Exception:
+        logger.exception("lobby_ws error")
+        leave_lobby(child_id)
