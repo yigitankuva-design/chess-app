@@ -300,7 +300,7 @@ export default function AdminStepEditorPage() {
                           ) : (
                             <div className="pl-2">
                               {/* Soru kodları — dairesel kartlar, satırda 10 adet. Bir koda tıklayınca o soru düzenlenir. */}
-                              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(10, minmax(0, 1fr))' }}>
+                              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' }}>
                                 {list.map((ex, idx) => {
                                   const editingThis = editingExercise?.stepId === s.id
                                     && editingExercise.field === mode.field && editingExercise.idx === idx;
@@ -311,7 +311,7 @@ export default function AdminStepEditorPage() {
                                       onClick={() => setEditingExercise(editingThis ? null : { stepId: s.id, field: mode.field, idx })}
                                       className="aspect-square rounded-full flex items-center justify-center font-mono font-bold transition-all"
                                       style={{
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.85rem',
                                         border: `1.5px solid ${mode.color}`,
                                         background: editingThis ? mode.color : `color-mix(in srgb, ${mode.color} 12%, transparent)`,
                                         color: editingThis ? '#0b0f1a' : mode.color,
