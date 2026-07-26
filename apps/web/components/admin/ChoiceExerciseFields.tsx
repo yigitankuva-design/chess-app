@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { BoardExercise, QuestionFamily } from './ExerciseForm';
 import { compressImageToDataUri } from '@/lib/imageCompress';
+import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabels';
 
 interface Props {
   kind: Extract<QuestionFamily, 'sentence_question' | 'image_question'>;
@@ -183,13 +184,12 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel }: Prop
       <div>
         <p className="text-xs n-muted mb-1">Sorunun Zorluk Düzeyini Belirle</p>
         <div className="flex flex-wrap gap-2">
-          {[1, 2, 3, 4, 5].map((d) => (
-            <button key={d} type="button" onClick={() => setDifficulty(d)}
-              className={`w-9 h-9 rounded-lg text-sm font-bold border transition-colors ${
-                difficulty === d ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
-              }`}>{d}</button>
+          {DIFFICULTY_LABELS.map(([val, label]) => (
+            <button key={val} type="button" onClick={() => setDifficulty(val)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                nearestDifficultyValue(difficulty) === val ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+              }`}>{label}</button>
           ))}
-          <span className="text-xs n-muted self-center">1 en kolay · 5 en zor</span>
         </div>
       </div>
 
