@@ -1,4 +1,5 @@
 import logging
+import random
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
 from sqlalchemy import select
 from chess_api.database import get_session_factory
@@ -9,8 +10,12 @@ from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
 from chess_api.services.lobby import (
-    join_lobby, leave_lobby, online_players, send_to_player,
+    join_lobby, leave_lobby, online_players, send_to_player, connected_ids,
 )
+from chess_api.services.offers import (
+    create_offer, cancel_offer, list_offers, take_offer, my_offer,
+)
+from chess_api.services.offer_sides import resolve_sides
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
     Game, GameMove, GameType, GameStatus, GameResult, ChildProfile,
@@ -320,6 +325,80 @@ async def _handle_challenge_decline(child_id: int, msg: dict) -> None:
         })
 
 
+async def _broadcast_offers() -> None:
+    """Panoyu lobideki HERKESE gonderir.
+
+    Her sporcu KENDI teklifi HARIC listeyi gorur (offers) + varsa KENDI
+    teklifini ayri alanda gorur (my_offer) — "Teklifin panoda" satiri icin.
+
+    send_to_player kopmus sokette sessizce False dondurdugu icin ayri hata
+    yonetimi gerekmez (mevcut davranis).
+    """
+    for cid in connected_ids():
+        await send_to_player(cid, {
+            "type": "offers",
+            "offers": list_offers(exclude=cid),
+            "my_offer": my_offer(cid),
+        })
+
+
+async def _handle_offer_create(child_id: int, msg: dict) -> None:
+    name = await _resolve_display_name(child_id)
+    try:
+        create_offer(
+            child_id=child_id,
+            display_name=name,
+            tempo=str(msg.get("tempo") or ""),
+            tc_label=str(msg.get("tc_label") or ""),
+            tc_base=int(msg.get("tc_base") or 0),
+            tc_increment=int(msg.get("tc_increment") or 0),
+            color=str(msg.get("color") or "random"),
+        )
+    except (ValueError, TypeError):
+        return  # gecersiz teklif sessizce yok sayilir; pano degismez
+    await _broadcast_offers()
+
+
+async def _handle_offer_cancel(child_id: int) -> None:
+    cancel_offer(child_id)
+    await _broadcast_offers()
+
+
+async def _handle_offer_take(child_id: int, msg: dict) -> None:
+    """Panodan teklif alma. Teklif cekilemezse basana offer_gone doner."""
+    owner = msg.get("child_id")
+    if not isinstance(owner, int) or owner == child_id:
+        await send_to_player(child_id, {"type": "offer_gone"})
+        return
+
+    offer = take_offer(owner)
+    if offer is None:
+        await send_to_player(child_id, {"type": "offer_gone"})
+        return
+    if owner not in connected_ids():
+        # Teklif sahibi tam bu sirada koptu; teklif zaten cekildi.
+        await send_to_player(child_id, {"type": "offer_gone"})
+        await _broadcast_offers()
+        return
+
+    white_id, black_id = resolve_sides(
+        offer["color"], owner, child_id, coin=random.random() < 0.5,
+    )
+    game_id = await _create_human_game(white_id, black_id)
+
+    await send_to_player(owner, {
+        "type": "matched", "game_id": game_id,
+        "color": "white" if white_id == owner else "black",
+        "opponent_id": child_id,
+    })
+    await send_to_player(child_id, {
+        "type": "matched", "game_id": game_id,
+        "color": "white" if white_id == child_id else "black",
+        "opponent_id": owner,
+    })
+    await _broadcast_offers()
+
+
 @router.websocket("/ws/lobby")
 async def lobby_ws(websocket: WebSocket, token: str = Query(...)):
     await websocket.accept()
@@ -331,7 +410,12 @@ async def lobby_ws(websocket: WebSocket, token: str = Query(...)):
 
     name = await _resolve_display_name(child_id)
     join_lobby(child_id, name, websocket)
-    await websocket.send_json({"type": "lobby_joined", "players": online_players(exclude=child_id)})
+    await websocket.send_json({
+        "type": "lobby_joined",
+        "players": online_players(exclude=child_id),
+        "offers": list_offers(exclude=child_id),
+        "my_offer": my_offer(child_id),
+    })
 
     try:
         while True:
@@ -343,8 +427,18 @@ async def lobby_ws(websocket: WebSocket, token: str = Query(...)):
                 await _handle_challenge_accept(child_id, msg)
             elif mtype == "challenge_decline":
                 await _handle_challenge_decline(child_id, msg)
+            elif mtype == "offer_create":
+                await _handle_offer_create(child_id, msg)
+            elif mtype == "offer_cancel":
+                await _handle_offer_cancel(child_id)
+            elif mtype == "offer_take":
+                await _handle_offer_take(child_id, msg)
     except WebSocketDisconnect:
         leave_lobby(child_id)
+        cancel_offer(child_id)
+        await _broadcast_offers()
     except Exception:
         logger.exception("lobby_ws error")
         leave_lobby(child_id)
+        cancel_offer(child_id)
+        await _broadcast_offers()
