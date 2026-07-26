@@ -79,8 +79,12 @@ CEO'nun verdiği (kullanıcı soruyu yanıtlamadı, karar açıkça bildirildi) 
   soluk görünür ve `aria-disabled="true"` taşır; tıklama hiçbir şey yapmaz.
 - **Otomatik ilerleme:** açılış seçilir seçilmez 1. kart kapanır, 2. kart açılır.
 - **Geri dönüş:** 1. kart başlığına tekrar tıklanırsa açılır ve açılış değiştirilebilir.
-  Açılış değişince **kriter seçimi sıfırlanmaz** — sporcunun emeği çöpe gitmez; sadece
-  1. kartın özet metni güncellenir.
+  Seçilen açılış (`chosen`) korunur; yeni bir açılışa tıklanana kadar özet metni durur.
+- **Kabul edilen sınır:** 1. karta geri dönüldüğünde 2. kart kapanır ve `MatchCriteria`
+  DOM'dan çıkar; içindeki **düzey/tempo/renk seçimi sıfırlanır**. Sporcu 2. karta
+  döndüğünde bunları yeniden seçer. Bunu engellemek `MatchCriteria`'yı kontrollü bileşene
+  çevirmeyi gerektirirdi; o bileşen **üç ayrı akışta** (bota karşı, arkadaşla, açılış
+  pratiği) paylaşılıyor ve bu proje ona dokunmuyor (§2). Kayıp küçük, risk büyüktü.
 - **Özet:** tamamlanan kartın başlığında seçilen değer görünür (`✓ İtalyan Açılışı`).
 
 ### 4.2 Kilit yalnızca görsel değildir
