@@ -13,9 +13,6 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/lib/settings/useTabGuard', () => ({ useTabGuard: () => {} }));
 vi.mock('@/components/BotGame', () => ({ BotGame: () => <div data-testid="bot-game" /> }));
-vi.mock('@/components/ChallengeScreen', () => ({
-  ChallengeScreen: () => <div data-testid="challenge-screen" />,
-}));
 vi.mock('@/components/play/OfferBoard', () => ({
   OfferBoard: () => <div data-testid="offer-board" />,
 }));

@@ -12,9 +12,6 @@ vi.mock('@/components/BotGame', () => ({
   BotGame: () => <div data-testid="bot-game" />,
 }));
 
-vi.mock('@/components/ChallengeScreen', () => ({
-  ChallengeScreen: () => <div data-testid="challenge-screen" />,
-}));
 // Arkadasla Oyna artik teklif panosunu acar; OfferBoard useLobby -> gercek
 // WebSocket'e uzandigi icin mock'lanmali (happy-dom'da WebSocket yok).
 vi.mock('@/components/play/OfferBoard', () => ({

@@ -9,8 +9,8 @@ let offers: LobbyOffer[] = [];
 let myOffer: LobbyOffer | null = null;
 let notice = '';
 
-vi.mock('@/lib/hooks/use-lobby', () => ({
-  useLobby: () => ({
+vi.mock('@/lib/lobby/LobbyContext', () => ({
+  useLobbyContext: () => ({
     players: [], incoming: null, offers, myOffer, notice,
     createOffer, cancelOffer, takeOffer,
     challenge: vi.fn(), acceptChallenge: vi.fn(), declineChallenge: vi.fn(),
@@ -39,13 +39,13 @@ beforeEach(() => {
 
 describe('OfferBoard', () => {
   it('pano boşken bilgilendirme metni gösterir', () => {
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     expect(screen.getByText(/Şu an açık teklif yok/)).toBeInTheDocument();
   });
 
   it('teklifleri ad ve özetiyle listeler', () => {
     offers = [AYSE, MEHMET];
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     expect(screen.getByText('Ayşe')).toBeInTheDocument();
     expect(screen.getByText('Mehmet')).toBeInTheDocument();
     expect(screen.getByText('⚡ Yıldırım · 5+0 · Sen: ⚫ Siyah')).toBeInTheDocument();
@@ -53,19 +53,19 @@ describe('OfferBoard', () => {
 
   it('her teklif satırında bir OYNA düğmesi vardır', () => {
     offers = [AYSE, MEHMET];
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     expect(screen.getAllByRole('button', { name: /teklifini al/ })).toHaveLength(2);
   });
 
   it('OYNA doğru child_id ile takeOffer çağırır', () => {
     offers = [AYSE, MEHMET];
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     fireEvent.click(screen.getByLabelText('Mehmet teklifini al'));
     expect(takeOffer).toHaveBeenCalledWith(9);
   });
 
   it('Maç Teklif Et formu açılır ve createOffer doğru değerlerle çağrılır', () => {
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     fireEvent.click(screen.getByRole('button', { name: /Maç Teklif Et/ }));
     fireEvent.click(screen.getByRole('button', { name: '10+5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Siyah' }));
@@ -76,7 +76,7 @@ describe('OfferBoard', () => {
   });
 
   it('süre seçilmeden Teklifi Yayınla basılamaz', () => {
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     fireEvent.click(screen.getByRole('button', { name: /Maç Teklif Et/ }));
     fireEvent.click(screen.getByRole('button', { name: /Teklifi Yayınla/ }));
     expect(createOffer).not.toHaveBeenCalled();
@@ -84,20 +84,20 @@ describe('OfferBoard', () => {
 
   it('kendi teklifi varken "Teklifin panoda" satırı ve iptal düğmesi çıkar', () => {
     myOffer = AYSE;
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     expect(screen.getByText('Teklifin panoda')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Teklifini İptal Et/ }));
     expect(cancelOffer).toHaveBeenCalledTimes(1);
   });
 
   it('kendi teklifi yokken "Teklifin panoda" satırı ÇIKMAZ', () => {
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     expect(screen.queryByText('Teklifin panoda')).not.toBeInTheDocument();
   });
 
   it('offer_gone uyarısı ekranda gösterilir', () => {
     notice = 'Bu teklif alındı. Başka bir teklif seç.';
-    render(<OfferBoard onMatched={vi.fn()} />);
+    render(<OfferBoard />);
     expect(screen.getByText(/Bu teklif alındı/)).toBeInTheDocument();
   });
 });

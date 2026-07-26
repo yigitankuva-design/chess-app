@@ -1,22 +1,18 @@
 'use client';
 import { useState } from 'react';
-import { useLobby } from '@/lib/hooks/use-lobby';
-import type { MatchedInfo } from '@/lib/hooks/use-lobby';
+import { useLobbyContext } from '@/lib/lobby/LobbyContext';
 import { offerSummary, tempoEmoji } from '@/lib/play/offers';
 import { TIME_GROUPS } from '@/lib/play/levels';
 import type { TimeControl } from '@/components/BotGame';
 import { COLOR_CHOICES } from '@/lib/play/color';
 import type { ColorChoice } from '@/lib/play/color';
 
-interface Props {
-  onMatched: (info: MatchedInfo) => void;
-}
-
 /** Teklif panosu: acik teklifleri listeler, tek dokunusla mac baslatir,
- *  uygun teklif yoksa sporcunun kendi teklifini birakmasini saglar. */
-export function OfferBoard({ onMatched }: Props) {
+ *  uygun teklif yoksa sporcunun kendi teklifini birakmasini saglar.
+ *  Mac yonlendirmesi LobbyProvider'da — bu bilesen onMatched ALMAZ. */
+export function OfferBoard() {
   const { offers, myOffer, notice, createOffer, cancelOffer, takeOffer } =
-    useLobby({ onMatched });
+    useLobbyContext();
   const [formOpen, setFormOpen] = useState(false);
   const [tc, setTc] = useState<{ tempo: string; item: TimeControl } | null>(null);
   const [color, setColor] = useState<ColorChoice>('random');

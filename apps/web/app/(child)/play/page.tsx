@@ -130,9 +130,7 @@ function PlayInner() {
           <p className="font-semibold text-sm">📖 Açılışı Pratiği Yap</p>
           {backBtn}
         </div>
-        <OpeningPractice
-          onMatched={({ gameId, color }) => router.push(`/play/online/${gameId}?color=${color}`)}
-        />
+        <OpeningPractice />
       </main>
     );
   }
@@ -145,9 +143,7 @@ function PlayInner() {
           <p className="font-semibold text-sm">🤝 Arkadaşla Oyna</p>
           {backBtn}
         </div>
-        <OfferBoard
-          onMatched={({ gameId, color }) => router.push(`/play/online/${gameId}?color=${color}`)}
-        />
+        <OfferBoard />
       </main>
     );
   }

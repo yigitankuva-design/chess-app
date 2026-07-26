@@ -7,8 +7,8 @@ vi.mock('@/components/BotGame', () => ({
   ),
 }));
 
-vi.mock('@/components/ChallengeScreen', () => ({
-  ChallengeScreen: () => <div data-testid="challenge-screen" />,
+vi.mock('@/components/play/FriendChallenge', () => ({
+  FriendChallenge: () => <div data-testid="friend-challenge" />,
 }));
 
 import { OpeningPractice } from '@/components/play/OpeningPractice';
@@ -30,23 +30,23 @@ async function openBotCard() {
 
 describe('OpeningPractice — akordiyon', () => {
   it('başlangıçta iki dış kart kapalıdır', () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ })).toBeInTheDocument();
     // Govdeler kapali: ic kartlarin basliklari DOM'da yok
     expect(screen.queryByText('1. Açılış Konumunu Seç')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('challenge-screen')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('friend-challenge')).not.toBeInTheDocument();
   });
 
   it('bot kartı açılınca 1. ve 2. kartlar görünür, açılış listesi yüklenir', async () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     await openBotCard();
     expect(screen.getByText('1. Açılış Konumunu Seç')).toBeInTheDocument();
     expect(screen.getByText('2. Maç Kriterlerini Seç')).toBeInTheDocument();
   });
 
   it('KİLİT: açılış seçilmeden 2. kart açılmaz', async () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     await openBotCard();
     const criteriaBtn = screen.getByRole('button', { name: /2\. Maç Kriterlerini Seç/ });
     expect(criteriaBtn).toHaveAttribute('aria-disabled', 'true');
@@ -55,7 +55,7 @@ describe('OpeningPractice — akordiyon', () => {
   });
 
   it('açılış seçilince 1. kart kapanır, ✓ özet çıkar, 2. kart kendiliğinden açılır', async () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
     // 1. kart kapandi: listedeki secenek artik DOM'da degil
@@ -67,7 +67,7 @@ describe('OpeningPractice — akordiyon', () => {
   });
 
   it('kapanan 1. karta tekrar tıklanınca açılış değiştirilebilir', async () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
     fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Konumunu Seç/ }));
@@ -75,7 +75,7 @@ describe('OpeningPractice — akordiyon', () => {
   });
 
   it('maç seçilen açılışın FENiyle başlar', async () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
     fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
@@ -84,23 +84,23 @@ describe('OpeningPractice — akordiyon', () => {
     expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
   });
 
-  it('arkadaş kartı açılınca davet ekranı görünür (açılış seçtirmeden)', () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+  it('arkadaş kartı açılınca arkadaş seçme ekranı görünür (açılış seçtirmeden)', () => {
+    render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ }));
-    expect(screen.getByTestId('challenge-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('friend-challenge')).toBeInTheDocument();
   });
 
   it('dış akordiyon tek-açık: arkadaş açılınca bot kapanır', async () => {
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     await openBotCard();
     fireEvent.click(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ }));
     expect(screen.queryByText('1. Açılış Konumunu Seç')).not.toBeInTheDocument();
-    expect(screen.getByTestId('challenge-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('friend-challenge')).toBeInTheDocument();
   });
 
   it('REGRESYON: açılış listesi boşsa bilgi mesajı gösterilir', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [] })));
-    render(<OpeningPractice onMatched={vi.fn()} />);
+    render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     await waitFor(() =>
       expect(screen.getByText(/henüz açılış eklemedi/i)).toBeInTheDocument(),

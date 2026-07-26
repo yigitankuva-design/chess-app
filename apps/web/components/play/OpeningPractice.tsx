@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { BotGame } from '@/components/BotGame';
-import { ChallengeScreen } from '@/components/ChallengeScreen';
+import { FriendChallenge } from '@/components/play/FriendChallenge';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
 import { StepCard } from '@/components/play/StepCard';
@@ -9,19 +9,14 @@ import { isCriteriaUnlocked, openingSummary } from '@/lib/play/openingSteps';
 import type { BotStepKey } from '@/lib/play/openingSteps';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
-import type { MatchedInfo } from '@/lib/hooks/use-lobby';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface Opening { id: number; name: string; start_fen: string }
 
-interface Props {
-  onMatched: (info: MatchedInfo) => void;
-}
-
 /** Acilis pratigi: sirali ve kilitli acilir kartlar (akordiyon).
  *  Dis katman: bot / arkadas. Ic katman (bot): acilis -> kriterler. */
-export function OpeningPractice({ onMatched }: Props) {
+export function OpeningPractice() {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   const [openInner, setOpenInner] = useState<BotStepKey | null>('opening');
   const [openings, setOpenings] = useState<Opening[] | null>(null);
@@ -115,7 +110,7 @@ export function OpeningPractice({ onMatched }: Props) {
         open={openOuter === 'friend'}
         onToggle={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
       >
-        <ChallengeScreen onMatched={onMatched} />
+        <FriendChallenge />
       </StepCard>
     </div>
   );
