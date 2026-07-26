@@ -5,6 +5,9 @@ import { getAthleteName } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
 import { visibleTabsInOrder } from '@/lib/settings/defaults';
 import type { TabKey } from '@/lib/settings/defaults';
+import { isModeUnlocked, isSubtopicUnlocked } from '@/lib/practice/unlock';
+import type { PracticeMode, ScoreMap } from '@/lib/practice/unlock';
+import { fetchLessonScores } from '@/lib/practice/practiceApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -218,6 +221,8 @@ export default function ChildHomePage() {
   const [lessonsByLevel, setLessonsByLevel] = useState<Record<number, LessonSummary[]>>({});
   const [openLessonId, setOpenLessonId] = useState<number | null>(null);
   const [subtopicsByLesson, setSubtopicsByLesson] = useState<Record<number, Subtopic[]>>({});
+  /** lessonId → skor haritası. null değer = kilit uygulanmaz (token yok). */
+  const [scoresByLesson, setScoresByLesson] = useState<Record<number, ScoreMap | null>>({});
   const [openSubtopic, setOpenSubtopic] = useState<{ lessonId: number; stepId: number; title: string } | null>(null);
 
   // Maç Yap: Oyun türü → Zorluk → Tempo → Süre
@@ -270,6 +275,8 @@ export default function ChildHomePage() {
         .filter((s: { type: string; content_json?: { title?: string } }) => s.type === 'explanation' && s.content_json?.title)
         .map((s: { id: number; content_json: { title: string } }) => ({ stepId: s.id, title: s.content_json.title }));
       setSubtopicsByLesson((prev) => ({ ...prev, [lessonId]: subs }));
+      const scoreMap = await fetchLessonScores(lessonId);
+      setScoresByLesson((prev) => ({ ...prev, [lessonId]: scoreMap }));
     } catch {
       setSubtopicsByLesson((prev) => ({ ...prev, [lessonId]: [] }));
     }
@@ -593,6 +600,14 @@ export default function ChildHomePage() {
                       {lessons?.map((les) => {
                         const lessonOpen = openLessonId === les.id;
                         const subs = subtopicsByLesson[les.id];
+                        const lessonScores = scoresByLesson[les.id];
+                        const orderedStepIds = (subs ?? []).map((s) => s.stepId);
+                        /** Kilit YALNIZCA skor haritası gerçekten alındıysa uygulanır. */
+                        const subLocked = (stepId: number) =>
+                          lessonScores != null && !isSubtopicUnlocked(orderedStepIds, stepId, lessonScores);
+                        const modeLocked = (stepId: number, slug: string) =>
+                          lessonScores != null &&
+                          !isModeUnlocked(orderedStepIds, stepId, slug as PracticeMode, lessonScores);
                         return (
                           <div key={les.id}>
                             <PathNode
@@ -613,7 +628,7 @@ export default function ChildHomePage() {
                                     <div key={sub.stepId}>
                                       <PathNode
                                         emoji={SUBTOPIC_EMOJIS[si % SUBTOPIC_EMOJIS.length]}
-                                        label={sub.title}
+                                        label={subLocked(sub.stepId) ? `🔒 ${sub.title}` : sub.title}
                                         active={subOpen}
                                         size={32}
                                         onClick={() => toggleSubtopic(les.id, sub)}
@@ -622,27 +637,43 @@ export default function ChildHomePage() {
                                       {subOpen && (
                                         <div style={{ marginLeft: 15, paddingLeft: 17, borderLeft: `2px dashed ${SH_LIGHT}`, marginTop: 10 }}>
                                           <div className="grid grid-cols-2 gap-3">
-                                            {PRACTICE_MODES.map((m, idx) => (
-                                              <Link
-                                                key={m.slug}
-                                                href={`/pratik/${m.slug}?konu=${encodeURIComponent(sub.title)}&step=${sub.stepId}&ders=${les.id}`}
-                                                style={{
-                                                  ...raised(14),
-                                                  padding: '0.85rem 0.5rem',
-                                                  display: 'flex',
-                                                  flexDirection: 'column',
-                                                  alignItems: 'center',
-                                                  gap: '0.35rem',
-                                                  textDecoration: 'none',
-                                                  gridColumn: idx === PRACTICE_MODES.length - 1 ? '1 / -1' : undefined,
-                                                }}
-                                              >
-                                                <span className="text-2xl leading-none">{m.emoji}</span>
-                                                <span className="text-[0.68rem] font-bold text-center leading-tight" style={{ color: m.color }}>
-                                                  {m.label}
-                                                </span>
-                                              </Link>
-                                            ))}
+                                            {PRACTICE_MODES.map((m, idx) => {
+                                              const isLocked = modeLocked(sub.stepId, m.slug);
+                                              const boxStyle = {
+                                                ...raised(14),
+                                                padding: '0.85rem 0.5rem',
+                                                display: 'flex',
+                                                flexDirection: 'column' as const,
+                                                alignItems: 'center',
+                                                gap: '0.35rem',
+                                                textDecoration: 'none',
+                                                gridColumn: idx === PRACTICE_MODES.length - 1 ? '1 / -1' : undefined,
+                                                opacity: isLocked ? 0.45 : 1,
+                                              };
+                                              const inner = (
+                                                <>
+                                                  <span className="text-2xl leading-none">
+                                                    {isLocked ? '🔒' : m.emoji}
+                                                  </span>
+                                                  <span className="text-[0.68rem] font-bold text-center leading-tight"
+                                                    style={{ color: m.color }}>
+                                                    {m.label}
+                                                  </span>
+                                                </>
+                                              );
+                                              // Kilitliyken Link YOK — tıklama tamamen devre dışı.
+                                              return isLocked ? (
+                                                <div key={m.slug} style={boxStyle} aria-disabled="true">{inner}</div>
+                                              ) : (
+                                                <Link
+                                                  key={m.slug}
+                                                  href={`/pratik/${m.slug}?konu=${encodeURIComponent(sub.title)}&step=${sub.stepId}&ders=${les.id}`}
+                                                  style={boxStyle}
+                                                >
+                                                  {inner}
+                                                </Link>
+                                              );
+                                            })}
                                           </div>
                                         </div>
                                       )}
