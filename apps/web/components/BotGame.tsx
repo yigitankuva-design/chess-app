@@ -16,6 +16,10 @@ interface Props {
   skillLevel: number;
   depth: number;
   timeControl?: TimeControl | null;
+  /** Sporcunun oynadigi renk (madde f). Varsayilan 'w' — eski cagrilar bozulmaz. */
+  studentColor?: 'w' | 'b';
+  /** Acilis pratigi icin baslangic pozisyonu. Verilmezse standart baslangic. */
+  startFen?: string;
   onGameEnd: (result: 'win' | 'loss' | 'draw') => void;
 }
 
@@ -45,8 +49,9 @@ function Clock({ seconds, active, label }: { seconds: number; active: boolean; l
   );
 }
 
-export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
-  const chessRef = useRef(new Chess());
+export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd }: Props) {
+  const chessRef = useRef(new Chess(startFen));
+  const botColor = studentColor === 'w' ? 'b' : 'w';
   const engineRef = useRef<StockfishEngine | null>(null);
   const gameIdRef = useRef<number | null>(null);
   const [fen, setFen] = useState(chessRef.current.fen());
@@ -81,12 +86,30 @@ export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
       } catch { /* offline OK */ }
 
       if (!cancelled) setStatus('playing');
+
+      // Sporcu siyahsa beyaz (bot) baslar — ilk hamleyi otomatik oynat.
+      if (!cancelled && chessRef.current.turn() === botColor) {
+        setThinking(true);
+        try {
+          const uci = await eng.bestMove(chessRef.current.fen(), depth);
+          if (uci && uci !== '(none)') {
+            chessRef.current.move({
+              from: uci.slice(0, 2) as Square,
+              to: uci.slice(2, 4) as Square,
+              promotion: 'q',
+            });
+            setFen(chessRef.current.fen());
+            await persistMove(uci);
+          }
+        } catch { /* motor hatasi oyunu kilitlemez */ }
+        if (!cancelled) setThinking(false);
+      }
     })();
     return () => {
       cancelled = true;
       engineRef.current?.destroy();
     };
-  }, [skillLevel]);
+  }, [skillLevel, depth, botColor]);
 
   // ── Clock tick ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -102,16 +125,18 @@ export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
   // ── Flag (time-out) detection ───────────────────────────────────────────────
   useEffect(() => {
     if (!tc || status !== 'playing') return;
-    if (whiteTime <= 0) {
+    const studentTime = studentColor === 'w' ? whiteTime : blackTime;
+    const botTime = studentColor === 'w' ? blackTime : whiteTime;
+    if (studentTime <= 0) {
       setStatus('over');
       setResultText('⏰ Süren bitti — Bot kazandı.');
       onGameEnd('loss');
-    } else if (blackTime <= 0) {
+    } else if (botTime <= 0) {
       setStatus('over');
       setResultText('⏰ Botun süresi bitti — Kazandın! 🎉');
       onGameEnd('win');
     }
-  }, [whiteTime, blackTime, status, tc, onGameEnd]);
+  }, [whiteTime, blackTime, status, tc, onGameEnd, studentColor]);
 
   async function persistMove(uci: string) {
     const gid = gameIdRef.current;
@@ -130,9 +155,10 @@ export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
     const chess = chessRef.current;
     setStatus('over');
     if (chess.isCheckmate()) {
-      const childWon = chess.turn() === 'b';
-      setResultText(childWon ? '🎉 Kazandın! Mat!' : '😔 Bot kazandı.');
-      onGameEnd(childWon ? 'win' : 'loss');
+      // Mat olan taraf SIRASI GELEN taraftir; sporcu mat edildiyse kaybetti.
+      const studentWon = chess.turn() === botColor;
+      setResultText(studentWon ? '🎉 Kazandın! Mat!' : '😔 Bot kazandı.');
+      onGameEnd(studentWon ? 'win' : 'loss');
     } else {
       setResultText('🤝 Berabere.');
       onGameEnd('draw');
@@ -150,7 +176,11 @@ export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
     }
     if (!move) return false;
     setFen(chess.fen());
-    if (tc) setWhiteTime((t) => t + tc.increment); // increment after child's move
+    if (tc) {
+      // Hamleyi yapan SPORCU — kendi rengine gore artis eklenir.
+      if (studentColor === 'w') setWhiteTime((t) => t + tc.increment);
+      else setBlackTime((t) => t + tc.increment);
+    }
 
     void (async () => {
       await persistMove(`${from}${to}`);
@@ -162,7 +192,10 @@ export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
         try {
           chess.move({ from: botUci.slice(0, 2) as Square, to: botUci.slice(2, 4) as Square, promotion: 'q' });
           setFen(chess.fen());
-          if (tc) setBlackTime((t) => t + tc.increment); // increment after bot's move
+          if (tc) {
+            if (botColor === 'w') setWhiteTime((t) => t + tc.increment);
+            else setBlackTime((t) => t + tc.increment);
+          }
           await persistMove(botUci);
         } catch { /* ignore */ }
       }
@@ -182,14 +215,15 @@ export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
     );
   }
 
-  const childTurn = chessRef.current.turn() === 'w';
+  const childTurn = chessRef.current.turn() === studentColor;
 
   return (
     <div className="max-w-2xl mx-auto px-4">
       {/* Bot clock (top) */}
       {tc && (
         <div className="max-w-sm mx-auto mb-2">
-          <Clock seconds={blackTime} active={!childTurn && status === 'playing'} label="🤖 Bot" />
+          <Clock seconds={botColor === 'w' ? whiteTime : blackTime}
+            active={!childTurn && status === 'playing'} label="🤖 Bot" />
         </div>
       )}
 
@@ -201,12 +235,18 @@ export function BotGame({ skillLevel, depth, timeControl, onGameEnd }: Props) {
         )}
       </div>
 
-      <ChessBoard fen={fen} interactive={status === 'playing' && !thinking} onPieceDrop={handleDrop} />
+      <ChessBoard
+        fen={fen}
+        interactive={status === 'playing' && !thinking}
+        onPieceDrop={handleDrop}
+        boardOrientation={studentColor === 'w' ? 'white' : 'black'}
+      />
 
       {/* Child clock (bottom) */}
       {tc && (
         <div className="max-w-sm mx-auto mt-2">
-          <Clock seconds={whiteTime} active={childTurn && status === 'playing'} label="🧒 Sen" />
+          <Clock seconds={studentColor === 'w' ? whiteTime : blackTime}
+            active={childTurn && status === 'playing'} label="🧒 Sen" />
         </div>
       )}
 
