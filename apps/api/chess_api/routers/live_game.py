@@ -116,7 +116,9 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             elif mtype == "resign":
                 await _handle_resign(game_id, child_id, white_id, black_id, room)
             elif mtype == "offer_draw":
-                await room.broadcast({"type": "draw_offered", "by_child_id": child_id}, exclude=child_id)
+                await _handle_offer_draw(game_id, child_id, white_id, room)
+            elif mtype == "decline_draw":
+                await _handle_decline_draw(game_id, child_id, room)
             elif mtype == "accept_draw":
                 await _handle_draw(game_id, room)
     except WebSocketDisconnect:
@@ -183,6 +185,15 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
         "by_child_id": child_id,
     })
 
+    # Mat/pat da bir SONUCtur — frontend'in sonuc bildirimi (1-0 / 0-1 /
+    # 1/2-1/2) game_over mesajina bagli, bu yuzden burada da yayinlanir.
+    if result["is_checkmate"] or result["is_stalemate"]:
+        async with get_session_factory()() as db:
+            finished = await db.get(Game, game_id)
+            final = finished.result.value if finished and finished.result else None
+        if final:
+            await room.broadcast({"type": "game_over", "result": final, "by_resign": False})
+
 
 async def _handle_resign(game_id, child_id, white_id, black_id, room):
     async with get_session_factory()() as db:
@@ -204,3 +215,40 @@ async def _handle_draw(game_id, room):
         game.result = GameResult.draw
         await db.commit()
     await room.broadcast({"type": "game_over", "result": "1/2-1/2"})
+
+
+MAX_DRAW_OFFERS = 3
+
+
+async def _handle_offer_draw(game_id, child_id, white_id, room):
+    """Beraberlik teklifi (madde d). Oyuncu basina en fazla 3 teklif."""
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game or game.status != GameStatus.active:
+            return
+        is_white = child_id == white_id
+        used = game.white_draw_offers if is_white else game.black_draw_offers
+        if used >= MAX_DRAW_OFFERS:
+            await room.send_to(child_id, {
+                "type": "draw_offer_rejected", "reason": "limit",
+                "max_offers": MAX_DRAW_OFFERS,
+            })
+            return
+        if is_white:
+            game.white_draw_offers = used + 1
+        else:
+            game.black_draw_offers = used + 1
+        offers_used = used + 1
+        await db.commit()
+
+    await room.send_to(child_id, {"type": "draw_offer_sent", "offers_used": offers_used})
+    await room.broadcast({"type": "draw_offered", "by_child_id": child_id}, exclude=child_id)
+
+
+async def _handle_decline_draw(game_id, child_id, room):
+    """Beraberlik teklifini reddetme (madde d). Oyun DEVAM EDER."""
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game or game.status != GameStatus.active:
+            return
+    await room.broadcast({"type": "draw_declined", "by_child_id": child_id}, exclude=child_id)
