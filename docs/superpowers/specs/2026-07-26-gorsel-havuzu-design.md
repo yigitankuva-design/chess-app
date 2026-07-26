@@ -114,24 +114,26 @@ tutulması zor hale getirirdi. Projede zaten bu ayrım var (`seed_badges.py`,
 
 ### Endpoint'ler
 
-**Dosya:** `apps/api/chess_api/routers/pool_images.py` (yeni) — `openings.py` ile aynı desen:
+Projenin yerleşik deseni (`Opening` ile birebir aynı, koddan doğrulandı): **herkese açık
+okuma** kendi router dosyasında, **admin yazma** `admin.py` içinde (o router'ın zaten
+`prefix="/admin"` tanımı var).
+
+**`apps/api/chess_api/routers/pool_images.py` (yeni)** — yalnızca okuma:
 
 ```python
 @router.get("/pool-images")
 async def list_pool_images(category: str | None = None, db: AsyncSession = Depends(get_db)):
-    # category verilirse filtrelenir, verilmezse hepsi döner (küçük veri seti, sorun değil)
-    ...
-
-@router.post("/admin/pool-images")
-async def add_pool_image(body: PoolImageCreateRequest, ...):
-    # _ensure_admin ile teacher-only
-    # category POOL_CATEGORIES içinde değilse 400
-    # data_uri _check_data_uri_size ile doğrulanır (mevcut fonksiyon yeniden kullanılır)
-    # AYNI data_uri zaten o kategoride varsa: yeni satır eklenmez, mevcut kayıt döner (dedup)
-    ...
+    # category verilirse filtrelenir, verilmezse hepsi döner (küçük veri seti)
 ```
 
-`main.py`'a `pool_images_router` eklenir (openings_router gibi).
+**`apps/api/chess_api/routers/admin.py` (değişir)** — yazma, `@router.post("/pool-images")`
+olarak (prefix ile `/admin/pool-images` olur):
+- `_ensure_admin(current)` ile teacher-only
+- `category` `POOL_CATEGORIES` içinde değilse 400
+- `data_uri` mevcut `_check_data_uri_size` ile doğrulanır (yeniden kullanım, DRY)
+- Aynı `category` + `data_uri` çifti zaten varsa yeni satır **eklenmez**, mevcut kayıt döner
+
+`main.py`'a `pool_images_router` eklenir (`openings_router` gibi).
 
 ---
 
