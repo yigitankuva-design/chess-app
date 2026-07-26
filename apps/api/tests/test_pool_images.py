@@ -27,3 +27,18 @@ def test_pool_image_modeli_tablo_adi_ve_alanlari():
     assert PoolImage.__tablename__ == "pool_images"
     cols = set(PoolImage.__table__.columns.keys())
     assert cols == {"id", "category", "data_uri"}
+
+
+@pytest.mark.asyncio
+async def test_bos_havuz_bos_liste_doner(client):
+    r = await client.get("/pool-images")
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+@pytest.mark.asyncio
+async def test_havuz_listesi_kimlik_dogrulamasi_gerektirmez(client):
+    """Liste admin panelinde token'lı çağrılır ama uç /openings gibi açıktır —
+    ayrı bir yetki katmanı eklemenin faydası yok, veri gizli değil."""
+    r = await client.get("/pool-images")
+    assert r.status_code == 200
