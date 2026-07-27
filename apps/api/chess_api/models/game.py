@@ -42,6 +42,14 @@ class Game(Base):
     black_draw_offers: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
     # Acilis pratigi icin baslangic pozisyonu. None => standart baslangic (geriye uyumlu).
     start_fen: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # ── Mac saati (insan-insan maclar). HEPSI NULL OLABILIR: eski maclarda
+    # bos kalir ve saat mantigi HIC calismaz (geriye donuk uyum, KURAL #3).
+    # Milisaniye kullanilir; saniyeyle tutulursa her hamlede yuvarlama kaybi olur.
+    base_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    increment_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    white_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    black_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_clock_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class GameMove(Base):
