@@ -1,5 +1,6 @@
 import logging
 import random
+from datetime import datetime, timezone
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
 from sqlalchemy import select
 from chess_api.database import get_session_factory
@@ -16,6 +17,7 @@ from chess_api.services.offers import (
     create_offer, cancel_offer, list_offers, take_offer, my_offer,
 )
 from chess_api.services.offer_sides import resolve_sides
+from chess_api.services.clock import ClockState, apply_move, is_flagged
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
     Game, GameMove, GameType, GameStatus, GameResult, ChildProfile,
@@ -35,18 +37,76 @@ def _child_id_from_token(token: str) -> int | None:
     return payload.get("child_profile_id")
 
 
-async def _create_human_game(white_child_id: int, black_child_id: int) -> int:
+async def _create_human_game(white_child_id: int, black_child_id: int,
+                             base_ms: int | None = None,
+                             increment_ms: int | None = None) -> int:
+    """Insan-insan mac kaydi.
+
+    base_ms verilirse saat de kurulur. Varsayilanlar None oldugu icin mevcut
+    cagiranlar (kuyruk akisi) aynen calisir — saatsiz mac acilir.
+    """
     async with get_session_factory()() as db:
         game = Game(
             type=GameType.human,
             white_child_id=white_child_id,
             black_child_id=black_child_id,
             status=GameStatus.active,
+            base_ms=base_ms,
+            increment_ms=increment_ms,
+            white_ms=base_ms,
+            black_ms=base_ms,
+            last_clock_at=datetime.utcnow() if base_ms is not None else None,
         )
         db.add(game)
         await db.commit()
         await db.refresh(game)
         return game.id
+
+
+def _epoch(dt: datetime) -> float:
+    """Naive UTC datetime -> epoch saniye. Veritabanina datetime.utcnow() ile
+    yaziliyor (naive), bu yuzden UTC oldugu ACIKCA soylenir."""
+    return dt.replace(tzinfo=timezone.utc).timestamp()
+
+
+def _clock_state(game: Game) -> ClockState | None:
+    """Macin saat durumu; saatsiz macta None."""
+    if game.base_ms is None or game.last_clock_at is None:
+        return None
+    return ClockState(
+        white_ms=game.white_ms or 0,
+        black_ms=game.black_ms or 0,
+        last_at=_epoch(game.last_clock_at),
+        increment_ms=game.increment_ms or 0,
+    )
+
+
+async def _apply_clock_on_move(db, game: Game, white_to_move: bool) -> bool:
+    """Hamlede saati isler. Sure bittiyse True doner (hamle islenmemeli).
+
+    Saatsiz macta hicbir sey yapmaz ve False doner.
+    """
+    st = _clock_state(game)
+    if st is None:
+        return False
+    now = datetime.utcnow()
+    if is_flagged(st, white_to_move, _epoch(now)):
+        return True
+    new = apply_move(st, white_to_move, _epoch(now))
+    game.white_ms = new.white_ms
+    game.black_ms = new.black_ms
+    game.last_clock_at = now
+    await db.commit()
+    return False
+
+
+def _clock_payload(game: Game, white_to_move: bool) -> dict:
+    return {
+        "type": "clock",
+        "white_ms": game.white_ms,
+        "black_ms": game.black_ms,
+        "white_to_move": white_to_move,
+    }
 
 
 @router.websocket("/ws/queue")
@@ -116,6 +176,22 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
     room.join(child_id, websocket)
     await room.broadcast({"type": "player_joined", "child_id": child_id})
 
+    # Katilana macin kimlik ve saat bilgisi — isimler burada gider.
+    async with get_session_factory()() as db:
+        g = await db.get(Game, game_id)
+        w = await db.get(ChildProfile, g.white_child_id) if g.white_child_id else None
+        b = await db.get(ChildProfile, g.black_child_id) if g.black_child_id else None
+        current_fen, _ = await _current_fen_and_ply(db, game_id)
+        await websocket.send_json({
+            "type": "game_info",
+            "white_name": w.display_name if w else "Sporcu",
+            "black_name": b.display_name if b else "Sporcu",
+            "white_ms": g.white_ms,
+            "black_ms": g.black_ms,
+            "increment_ms": g.increment_ms,
+            "white_to_move": current_fen.split()[1] == "w",
+        })
+
     try:
         while True:
             msg = await websocket.receive_json()
@@ -130,6 +206,8 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
                 await _handle_decline_draw(game_id, child_id, room)
             elif mtype == "accept_draw":
                 await _handle_draw(game_id, room)
+            elif mtype == "flag":
+                await _handle_flag(game_id, room)
     except WebSocketDisconnect:
         room.leave(child_id)
         await room.broadcast({"type": "opponent_disconnected", "child_id": child_id})
@@ -155,10 +233,29 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
             await room.send_to(child_id, {"type": "error", "message": "not_your_turn"})
             return
 
+        # (1) Sure bittiyse hamle HIC islenmez, mac kapanir.
+        _st = _clock_state(game)
+        if _st is not None and is_flagged(_st, whites_turn, _epoch(datetime.utcnow())):
+            game.status = GameStatus.finished
+            game.result = GameResult.black_wins if whites_turn else GameResult.white_wins
+            game.finished_at = datetime.utcnow()
+            await db.commit()
+            await room.broadcast({
+                "type": "game_over",
+                "result": game.result.value,
+                "by_resign": False,
+                "by_flag": True,
+            })
+            return
+
         result = validate_move(current_fen, uci)
         if not result:
             await room.send_to(child_id, {"type": "invalid_move"})
             return
+
+        # (2) Hamle GECERLI — saati simdi islet. Artirim yalnizca gercek
+        # hamleye verilir; gecersiz hamle denemeleri sure kazandirmaz.
+        await _apply_clock_on_move(db, game, whites_turn)
 
         db.add(GameMove(
             game_id=game_id, ply=ply, san=result["san"],
@@ -194,6 +291,14 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
         "by_child_id": child_id,
     })
 
+    # Hamle sonrasi guncel saat (saatsiz macta bu blok atlanir).
+    async with get_session_factory()() as db2:
+        fresh = await db2.get(Game, game_id)
+        if fresh and fresh.base_ms is not None:
+            await room.broadcast(
+                _clock_payload(fresh, result["fen_after"].split()[1] == "w")
+            )
+
     # Mat/pat da bir SONUCtur — frontend'in sonuc bildirimi (1-0 / 0-1 /
     # 1/2-1/2) game_over mesajina bagli, bu yuzden burada da yayinlanir.
     if result["is_checkmate"] or result["is_stalemate"]:
@@ -202,6 +307,30 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
             final = finished.result.value if finished and finished.result else None
         if final:
             await room.broadcast({"type": "game_over", "result": final, "by_resign": False})
+
+
+async def _handle_flag(game_id: int, room) -> None:
+    """'Rakibimin suresi bitti' iddiasi. SUNUCU KENDI HESABIYLA DOGRULAR;
+    tutmazsa hicbir sey yapilmaz (sessiz). Istemciye asla guvenilmez."""
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game or game.status != GameStatus.active:
+            return
+        st = _clock_state(game)
+        if st is None:
+            return
+        current_fen, _ = await _current_fen_and_ply(db, game_id)
+        white_to_move = current_fen.split()[1] == "w"
+        if not is_flagged(st, white_to_move, _epoch(datetime.utcnow())):
+            return  # sahte iddia
+        game.status = GameStatus.finished
+        game.result = GameResult.black_wins if white_to_move else GameResult.white_wins
+        game.finished_at = datetime.utcnow()
+        await db.commit()
+        final = game.result.value
+    await room.broadcast({
+        "type": "game_over", "result": final, "by_resign": False, "by_flag": True,
+    })
 
 
 async def _handle_resign(game_id, child_id, white_id, black_id, room):
@@ -303,7 +432,13 @@ async def _handle_challenge_accept(child_id: int, msg: dict) -> None:
     white_id = challenger if challenger_is_white else child_id
     black_id = child_id if challenger_is_white else challenger
 
-    game_id = await _create_human_game(white_id, black_id)
+    base_s = criteria.get("tc_base")
+    inc_s = criteria.get("tc_increment")
+    game_id = await _create_human_game(
+        white_id, black_id,
+        base_ms=int(base_s) * 1000 if isinstance(base_s, int) and base_s > 0 else None,
+        increment_ms=int(inc_s) * 1000 if isinstance(inc_s, int) else 0,
+    )
 
     await send_to_player(challenger, {
         "type": "matched", "game_id": game_id,
@@ -384,7 +519,14 @@ async def _handle_offer_take(child_id: int, msg: dict) -> None:
     white_id, black_id = resolve_sides(
         offer["color"], owner, child_id, coin=random.random() < 0.5,
     )
-    game_id = await _create_human_game(white_id, black_id)
+    # Teklifteki tempo saniye cinsinden; saat ms ile calisir.
+    # tc_base = 0 => saatsiz mac (or None). tc_increment 0 GECERLI bir degerdir.
+    _base = int(offer.get("tc_base") or 0)
+    game_id = await _create_human_game(
+        white_id, black_id,
+        base_ms=_base * 1000 if _base > 0 else None,
+        increment_ms=int(offer.get("tc_increment") or 0) * 1000,
+    )
 
     await send_to_player(owner, {
         "type": "matched", "game_id": game_id,
