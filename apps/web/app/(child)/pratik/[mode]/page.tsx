@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { ComingSoon } from '@/components/ComingSoon';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
+import { sessionKey, loadSession, saveSession, clearSession } from '@/lib/play/practiceSession';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 import { PracticeResult } from '@/components/practice/PracticeResult';
 import { scorePercent } from '@/lib/practice/scoring';
@@ -70,6 +71,8 @@ function PratikInner() {
   const [unlockedNow, setUnlockedNow] = useState<string | null>(null);
   /** Tekrar Dene: BoardExercise'ı sıfırdan kurmak için artan sayaç. */
   const [runId, setRunId] = useState(0);
+  /** Yenilemeden sonra kalinan soru sirasi (madde 4/9). */
+  const [startIndex, setStartIndex] = useState(0);
 
   // Admin'de bu alt konu + mod için yazılan soruları çek
   useEffect(() => {
@@ -90,9 +93,21 @@ function PratikInner() {
         // öğrenciye gösterilen kod, admin panelindeki dairesel kartla eşleşmez.
         const codes = assignExerciseCodes(rawPool);
         const pool = rawPool.map((ex, i) => ({ ...ex, code: ex.code ?? codes[i] }));
+        // Sayfa YENILENDIYSE ayni soru setiyle ve ayni sirada devam edilir
+        // (madde 4 ve 9); yeni oturumda havuzdan yeniden secilir.
+        const key = sessionKey(stepId, slug);
+        const saved = loadSession<BoardExerciseConfig>(key);
+        if (saved) {
+          setExercises(saved.items);
+          setStartIndex(saved.index);
+          setLoading(false);
+          return;
+        }
         // Süresiz mod: havuzdan her seferinde rastgele 20 soru
         const picked = mode.randomPick > 0 ? shuffle(pool).slice(0, mode.randomPick) : pool;
         setExercises(picked);
+        setStartIndex(0);
+        saveSession(key, { items: picked, index: 0 });
         setLoading(false);
       })
       .catch(() => { setExercises([]); setLoading(false); });
@@ -154,6 +169,9 @@ function PratikInner() {
     setLeft(TIMED_SECONDS);
     setTimeUp(false);
     setRunId((n) => n + 1);
+    // Yeni tur: saklanan oturum silinir, sporcu 1. sorudan baslar.
+    clearSession(sessionKey(stepId, slug));
+    setStartIndex(0);
   }
 
   /** Kilit yalnızca skor haritası GERÇEKTEN alındıysa uygulanır. */
@@ -268,6 +286,10 @@ function PratikInner() {
             /* Madde 1: Suresiz Pratik'te bir soru yanlis yapilirsa tekrar
                cozulemez; sporcu "Sonraki Soruya Gec" ile ilerler. */
             noRetry={modeKey === 'suresiz'}
+            initialIndex={startIndex}
+            onIndexChange={(i) => {
+              if (exercises) saveSession(sessionKey(stepId, slug), { items: exercises, index: i });
+            }}
           />
         </>
       )}

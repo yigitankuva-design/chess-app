@@ -60,10 +60,17 @@ export function ChessBoard({
     scrollRef.current = y;
     if (scrollLockRef.current) clearTimeout(scrollLockRef.current);
     const handler = () => { window.scrollTo(0, y); };
-    window.addEventListener('scroll', handler, { passive: true });
-    scrollLockRef.current = setTimeout(() => {
+    /* Sporcu tekerlegi cevirirse kaydirmak ISTIYOR demektir — kilit ANINDA
+       kalkar (madde 11). Yoksa tahtaya tiklayip kaydirmaya calisan sporcu
+       sayfayi oynatamiyordu. */
+    const release = () => {
       window.removeEventListener('scroll', handler);
-    }, ms);
+      window.removeEventListener('wheel', release);
+      if (scrollLockRef.current) clearTimeout(scrollLockRef.current);
+    };
+    window.addEventListener('scroll', handler, { passive: true });
+    window.addEventListener('wheel', release, { passive: true });
+    scrollLockRef.current = setTimeout(release, ms);
   }, []);
 
   const saveScroll = useCallback(() => {
@@ -210,7 +217,10 @@ export function ChessBoard({
 
         <div
           className="aspect-square flex-1 relative"
-          style={{ touchAction: 'none', ...BOARD_STYLE }}
+          /* Madde 11: 'none' dokunmatikte sayfa kaydirmayi TAMAMEN engelliyordu.
+             'pan-y' ile parmakla yukari-asagi kaydirma calisir; tasi tiklayarak
+             oynatma ve yatay surukleme bozulmaz. */
+          style={{ touchAction: 'pan-y', ...BOARD_STYLE }}
           onPointerDown={(e) => { lockScroll(400); onPointerDown(e); }}
           onPointerUp={onPointerUp}
           onContextMenu={(e) => e.preventDefault()}

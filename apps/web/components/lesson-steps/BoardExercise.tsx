@@ -104,6 +104,10 @@ interface Props {
   /** true ise yanlış cevaptan sonra soru TEKRAR ÇÖZÜLEMEZ; sporcu
    *  "Sonraki Soruya Geç" ile ilerler (madde 1 — Süresiz Pratik). */
   noRetry?: boolean;
+  /** Sayfa yenilenince kalınan soruya dönmek için başlangıç sırası (madde 4/9). */
+  initialIndex?: number;
+  /** Soru değişince çağrılır — üst sayfa sırayı saklayabilsin. */
+  onIndexChange?: (index: number) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -150,8 +154,14 @@ function ProgressDots({ total, current, doneCount }: { total: number; current: n
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function BoardExercise({ exercises, done, onCorrect, onFinish, noRetry = false }: Props) {
-  const [currentIdx, setCurrentIdx] = useState(0);
+export function BoardExercise({
+  exercises, done, onCorrect, onFinish, noRetry = false,
+  initialIndex = 0, onIndexChange,
+}: Props) {
+  // Sinirlar icinde tutulur: kayitli sira soru sayisindan buyukse patlamaz.
+  const [currentIdx, setCurrentIdx] = useState(
+    initialIndex > 0 && initialIndex < exercises.length ? initialIndex : 0,
+  );
   const [doneCount, setDoneCount] = useState(done ? exercises.length : 0);
   const [status, setStatus] = useState<'idle' | 'success' | 'fail'>(done ? 'success' : 'idle');
   const [feedback, setFeedback] = useState('');
@@ -176,6 +186,10 @@ export function BoardExercise({ exercises, done, onCorrect, onFinish, noRetry = 
     setShowNext(false);
     setClickedSquare(null);
     setFailLocked(false);
+    onIndexChange?.(currentIdx);
+    // onIndexChange kasten bagimlilikta DEGIL: her renderda yeni fonksiyon
+    // gelirse efekt bosuna tekrar calisir ve durum sifirlanir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIdx, done]);
 
   const succeed = (piece?: string | null) => {

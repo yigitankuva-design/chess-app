@@ -8,7 +8,7 @@ import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
 import { LEVELS, ALL_TIMES } from '@/lib/play/levels';
 import { resolveColor } from '@/lib/play/color';
-import type { PieceColor } from '@/lib/play/color';
+import type { PieceColor, ColorChoice } from '@/lib/play/color';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
 import { usePresenceCount } from '@/lib/presence/PresenceContext';
 import { ActivePlayersBadge } from '@/components/play/ActivePlayersBadge';
@@ -48,8 +48,13 @@ function PlayInner() {
   const tcParam = searchParams.get('tc');
   const quickLevel = skillParam !== null ? LEVELS.find((l) => l.skill === Number(skillParam)) : undefined;
   const quickTc = tcParam ? ALL_TIMES.find((t) => t.label === tcParam) : undefined;
+  const colorParam = searchParams.get('color');
+  const quickColor: ColorChoice =
+    colorParam === 'white' || colorParam === 'black' || colorParam === 'random'
+      ? colorParam
+      : 'white';
   const quickStart: MatchCriteriaValue | null = quickLevel && quickTc
-    ? { level: quickLevel, timeControl: quickTc, colorChoice: 'white' }
+    ? { level: quickLevel, timeControl: quickTc, colorChoice: quickColor }
     : null;
 
   // Ana sayfadaki maç türü kartından gelinmişse o akışı doğrudan aç.
@@ -67,10 +72,26 @@ function PlayInner() {
   );
   const [gameKey, setGameKey] = useState(0);
 
+  /** Secimleri ADRESE yazar. Boylece F5/yenile sonrasi sporcu ayni ekranda
+   *  kalir; React durumu kaybolsa da adres bilgiyi tasir (madde 4 ve 9). */
+  function writeUrl(next: { mode?: Mode | null; criteria?: MatchCriteriaValue | null }) {
+    const q = new URLSearchParams();
+    const m = next.mode !== undefined ? next.mode : mode;
+    if (m) q.set('mode', m);
+    const c = next.criteria !== undefined ? next.criteria : botCriteria;
+    if (c) {
+      q.set('skill', String(c.level.skill));
+      q.set('tc', c.timeControl.label);
+      q.set('color', c.colorChoice);
+    }
+    router.replace(q.toString() ? `/play?${q}` : '/play');
+  }
+
   function startBot(v: MatchCriteriaValue) {
     setBotCriteria(v);
     setBotColor(resolveColor(v.colorChoice));
     setGameKey((k) => k + 1);
+    writeUrl({ mode: 'bot', criteria: v });
   }
 
   // ── Mod seçimi (4 kart) ────────────────────────────────────────────────────
@@ -79,7 +100,7 @@ function PlayInner() {
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-3">
         <p className="text-xs font-semibold t-muted uppercase tracking-widest">Maç Türü Seç</p>
         {MODE_CARDS.map((c) => (
-          <button key={c.mode} onClick={() => setMode(c.mode)}
+          <button key={c.mode} onClick={() => { setMode(c.mode); writeUrl({ mode: c.mode, criteria: null }); }}
             className="t-card-i w-full flex items-center gap-4 px-4 py-4 text-left">
             <span className="text-2xl">{c.emoji}</span>
             <div className="flex-1">
@@ -102,7 +123,7 @@ function PlayInner() {
    *  cunku ust cubuktaki geri oku /play'den tamamen cikarir — Mac Yap
    *  icindeki gecisler adres degistirmiyor. */
   const backBtn = (
-    <button onClick={() => { setMode(null); setBotCriteria(null); }}
+    <button onClick={() => { setMode(null); setBotCriteria(null); writeUrl({ mode: null, criteria: null }); }}
       aria-label="Maç türü seçimine dön"
       className="t-btn-ghost text-base px-3 py-1.5">
       ←
@@ -173,7 +194,8 @@ function PlayInner() {
           🤖 Bot — Düzey {botCriteria.level.level} · {botCriteria.timeControl.label} ·{' '}
           {botColor === 'w' ? 'Beyaz' : 'Siyah'}
         </p>
-        <button onClick={() => setBotCriteria(null)} className="t-btn-ghost text-xs px-3 py-1.5">
+        <button onClick={() => { setBotCriteria(null); writeUrl({ mode: 'bot', criteria: null }); }}
+          className="t-btn-ghost text-xs px-3 py-1.5">
           Ayarları değiştir
         </button>
       </div>

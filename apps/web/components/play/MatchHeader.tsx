@@ -29,8 +29,9 @@ function ClockBox({
       data-low={low ? 'true' : 'false'}
       className="t-card-i flex flex-col items-center justify-center gap-0.5 flex-shrink-0"
       style={{
-        width: '5.5rem',
-        height: '5.5rem',
+        /* Madde 11: kucuk telefonlarda kareler daralir, isim kartina yer kalir. */
+        width: 'clamp(3.9rem, 17vw, 5.5rem)',
+        height: 'clamp(3.9rem, 17vw, 5.5rem)',
         border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
         background: active ? 'var(--t-surface-2)' : undefined,
       }}
