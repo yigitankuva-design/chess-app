@@ -57,6 +57,9 @@ export function LiveGame({ gameId, myColor }: Props) {
       start_fen?: string | null;
       moves?: string[];
       san?: string;
+      fen?: string;
+      message?: string;
+      status?: string;
     };
     const t = msg?.type;
     if (t === 'move_made') {
@@ -79,6 +82,12 @@ export function LiveGame({ gameId, myColor }: Props) {
       // bildirdigi konuma kurulur. Yeniden baglanmada da dogru konum gelir.
       setStartFen(typeof msg.start_fen === 'string' ? msg.start_fen : null);
       if (Array.isArray(msg.moves)) setSanList(msg.moves.map(String));
+      // Mac bitmisse ekran bunu SOYLER; aksi halde sporcu bitmis macta
+      // hamle yapmaya calisip "olmuyor" der.
+      if (msg.status && msg.status !== 'active') {
+        setStatus('over');
+        setResultLine(formatGameResult(msg.result));
+      }
       if (typeof msg.current_fen === 'string' && msg.current_fen) {
         try { chessRef.current.load(msg.current_fen); setFen(msg.current_fen); }
         catch { /* bozuk FEN gelirse standart konumda kalinir */ }
@@ -95,8 +104,14 @@ export function LiveGame({ gameId, myColor }: Props) {
       setInfo(msg.by_resign ? 'Maç terk edildi.' : '');
     } else if (t === 'opponent_disconnected') {
       setInfo('Rakip bağlantısı koptu.');
-    } else if (t === 'invalid_move') {
-      setFen(chessRef.current.fen());
+    } else if (t === 'invalid_move' || t === 'error') {
+      // Sunucu hamleyi kabul etmedi. Iyimser oynadigimiz tas GERI ALINIR ve
+      // tahta sunucunun konumuna donerr; yoksa istemci sunucudan kopar ve
+      // sporcu bir daha hamle yapamaz (bildirilen "2. hamle olmuyor").
+      resyncTo(msg.fen);
+      setInfo(msg.message === 'not_your_turn'
+        ? 'Sıra sende değil.'
+        : 'Bu hamle kabul edilmedi.');
     } else if (t === 'draw_offered') {
       setDrawOffered(true);
     } else if (t === 'draw_declined') {
@@ -134,6 +149,20 @@ export function LiveGame({ gameId, myColor }: Props) {
       send({ type: 'flag' });
     }
   }, [whiteMs, blackMs, whiteToMove, clockless, status, myColor, send]);
+
+  /** Tahtayi sunucunun bildirdigi konuma sabitler. FEN gelmediyse en azindan
+   *  son gecerli konuma geri doner. */
+  function resyncTo(serverFen?: string) {
+    const chess = chessRef.current;
+    if (serverFen) {
+      try { chess.load(serverFen); } catch { chess.undo(); }
+    } else {
+      chess.undo();
+    }
+    const now = chess.fen();
+    setFen(now);
+    setWhiteToMove(now.split(' ')[1] === 'w');
+  }
 
   function applyMyMove(from: Square, to: Square, promo?: PromotionPiece): boolean {
     const chess = chessRef.current;

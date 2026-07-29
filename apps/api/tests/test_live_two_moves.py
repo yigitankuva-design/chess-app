@@ -87,3 +87,55 @@ async def test_saat_her_hamlede_dogru_tarafa_yazilir(env):
     # 1. hamleden sonra sıra siyahta, 2. hamleden sonra beyazda.
     assert clocks[0]["white_to_move"] is False
     assert clocks[1]["white_to_move"] is True
+
+
+@pytest.mark.asyncio
+async def test_reddedilen_hamle_OTORITE_KONUMU_tasir(env):
+    """İstemci iyimser oynadığı taşı geri alabilsin diye ret mesajlarında
+    sunucunun konumu bulunmalı. Yoksa istemci sunucudan kopar ve sporcu bir
+    daha hamle yapamaz — bildirilen "2. hamleyi yapamıyorum" bu."""
+    from chess_api.routers.live_game import _create_human_game, _handle_move
+
+    gid = await _create_human_game(1, 2, base_ms=1_800_000, increment_ms=0)
+    room = FakeRoom()
+
+    # Sırası olmayan oynadı.
+    await _handle_move(gid, 2, 1, 2, {"uci": "e7e5"}, room)
+    _, m = room.direct[-1]
+    assert m["type"] == "error" and m["message"] == "not_your_turn"
+    assert m["fen"].split()[1] == "w"
+
+    # Kuralsız hamle.
+    await _handle_move(gid, 1, 1, 2, {"uci": "a1a8"}, room)
+    _, m2 = room.direct[-1]
+    assert m2["type"] == "invalid_move"
+    assert m2["fen"].split()[1] == "w"
+
+
+@pytest.mark.asyncio
+async def test_game_info_bitmis_maci_bildirir(env):
+    """Bitmiş maça yeniden bağlanan sporcu ekranda canlı maç görmemeli."""
+    from chess_api.routers.live_game import _create_human_game
+    from chess_api.models.game import Game, GameStatus, GameResult
+    from fastapi.testclient import TestClient
+    from chess_api.main import create_app
+    from chess_api.services.jwt import encode_token
+    from datetime import datetime
+
+    gid = await _create_human_game(1, 2, base_ms=1_800_000, increment_ms=0)
+    async with env() as db:
+        g = await db.get(Game, gid)
+        g.status = GameStatus.finished
+        g.result = GameResult.black_wins
+        g.finished_at = datetime.utcnow()
+        await db.commit()
+
+    token = encode_token({"child_profile_id": 1, "role": "child"})
+    client = TestClient(create_app())
+    with client.websocket_connect(f"/ws/game/{gid}?token={token}") as ws:
+        msg = ws.receive_json()
+        while msg["type"] != "game_info":
+            msg = ws.receive_json()
+
+    assert msg["status"] == "finished"
+    assert msg["result"] == "0-1"      # istemcinin sonuc metni bu degeri bekliyor

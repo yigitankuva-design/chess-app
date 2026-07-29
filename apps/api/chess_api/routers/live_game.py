@@ -208,6 +208,10 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             "start_fen": g.start_fen,
             "moves": [m.san for m in past],
             "current_fen": current_fen,
+            # Bitmis maca yeniden baglanan sporcu bunu GORMELI; yoksa ekran
+            # canli mac gibi durur ve hamle denemesi sessizce bosa gider.
+            "status": g.status.value,
+            "result": g.result.value if g.result else None,
         })
 
     try:
@@ -244,11 +248,18 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
 
         # Turn check
         whites_turn = current_fen.split()[1] == "w"
+        # Reddedilen hamlede istemci kendi tahtasini GERI ALABILSIN diye
+        # otorite konum mesaja eklenir; yoksa istemci sunucudan kopar ve
+        # sporcu bir daha hamle yapamaz.
         if whites_turn and child_id != white_id:
-            await room.send_to(child_id, {"type": "error", "message": "not_your_turn"})
+            await room.send_to(child_id, {
+                "type": "error", "message": "not_your_turn", "fen": current_fen,
+            })
             return
         if not whites_turn and child_id != black_id:
-            await room.send_to(child_id, {"type": "error", "message": "not_your_turn"})
+            await room.send_to(child_id, {
+                "type": "error", "message": "not_your_turn", "fen": current_fen,
+            })
             return
 
         # (1) Sure bittiyse hamle HIC islenmez, mac kapanir.
@@ -268,7 +279,7 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
 
         result = validate_move(current_fen, uci)
         if not result:
-            await room.send_to(child_id, {"type": "invalid_move"})
+            await room.send_to(child_id, {"type": "invalid_move", "fen": current_fen})
             return
 
         # (2) Hamle GECERLI — saati simdi islet. Artirim yalnizca gercek
