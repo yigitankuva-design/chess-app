@@ -160,7 +160,7 @@ function PlayInner() {
           <p className="font-semibold text-sm">🤖 Bota Karşı Oyna</p>
           {backBtn}
         </div>
-        <MatchCriteria startLabel="Oyuna Başla" onStart={startBot} />
+        <MatchCriteria startLabel="Maça Başla" onStart={startBot} />
       </main>
     );
   }

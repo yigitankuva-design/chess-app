@@ -81,7 +81,9 @@ export function FriendChallenge() {
         open={open === 'criteria'}
         onToggle={() => setOpen((p) => (p === 'criteria' ? null : 'criteria'))}
       >
+        {/* Madde 7: insana karsi DUZEY anlamsiz — sadece Tempo-Sure-Renk. */}
         <MatchCriteria
+          showLevel={false}
           startLabel="Kriterleri Onayla"
           onStart={(v) => { setCriteria(v); setOpen('friend'); }}
         />

@@ -63,7 +63,7 @@ describe('/play — 4 sekme (madde a)', () => {
     fireEvent.click(screen.getByText('Bota Karşı Oyna'));
     fireEvent.click(screen.getByRole('button', { name: 'Düzey 4' }));
     fireEvent.click(screen.getByRole('button', { name: '10+0' }));
-    fireEvent.click(screen.getByRole('button', { name: /Oyuna Başla/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Maça Başla/ }));
     expect(screen.getByTestId('bot-game')).toBeInTheDocument();
   });
 });
