@@ -2,13 +2,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
+import { MatchHeader } from '@/components/play/MatchHeader';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
 import type { PromotionPiece } from '@/lib/play/promotion';
 import { ChessBoard } from './ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
-import { getToken } from '@/lib/auth-storage';
+import { getToken, getAthleteName } from '@/lib/auth-storage';
 
 export interface TimeControl {
   base: number;       // seconds on the clock at start
@@ -29,30 +30,6 @@ interface Props {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-function fmtTime(s: number): string {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, '0')}`;
-}
-
-function Clock({ seconds, active, label }: { seconds: number; active: boolean; label: string }) {
-  const low = seconds <= 15;
-  return (
-    <div className="flex items-center justify-between px-4 py-2 rounded-xl"
-      style={{
-        background: active ? 'var(--t-accent)' : 'var(--t-surface-2)',
-        color: active ? '#fff' : low ? '#dc2626' : 'var(--t-text)',
-        border: '1px solid var(--t-border)',
-        transition: 'background 0.2s',
-      }}>
-      <span className="text-xs font-medium opacity-80">{label}</span>
-      <span className="text-lg font-bold tabular-nums" style={{ fontVariantNumeric: 'tabular-nums' }}>
-        {fmtTime(seconds)}
-      </span>
-    </div>
-  );
-}
-
 export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd }: Props) {
   const chessRef = useRef(new Chess(startFen));
   const botColor = studentColor === 'w' ? 'b' : 'w';
@@ -60,6 +37,8 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const gameIdRef = useRef<number | null>(null);
   const [fen, setFen] = useState(chessRef.current.fen());
   const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
+  // Sporcunun adi girişte saklaniyor; yoksa nötr bir etiket kullanilir.
+  const [studentName] = useState(() => getAthleteName() || 'Sen');
   const [thinking, setThinking] = useState(false);
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
   const [resultText, setResultText] = useState<string>('');
@@ -238,17 +217,17 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     );
   }
 
-  const childTurn = chessRef.current.turn() === studentColor;
-
   return (
     <div className="max-w-2xl mx-auto px-4">
-      {/* Bot clock (top) */}
-      {tc && (
-        <div className="max-w-sm mx-auto mb-2">
-          <Clock seconds={botColor === 'w' ? whiteTime : blackTime}
-            active={!childTurn && status === 'playing'} label="🤖 Bot" />
-        </div>
-      )}
+      {/* Madde 3: uc kart tahtanin USTUNDE — kare/dikdortgen/kare. */}
+      <MatchHeader
+        whiteName={studentColor === 'w' ? studentName : 'Bot'}
+        blackName={studentColor === 'w' ? 'Bot' : studentName}
+        whiteMs={tc ? whiteTime * 1000 : null}
+        blackMs={tc ? blackTime * 1000 : null}
+        whiteToMove={chessRef.current.turn() === 'w'}
+        running={status === 'playing'}
+      />
 
       <div className="h-7 flex items-center justify-center mb-2">
         {thinking && (
@@ -280,13 +259,6 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
         />
       )}
 
-      {/* Child clock (bottom) */}
-      {tc && (
-        <div className="max-w-sm mx-auto mt-2">
-          <Clock seconds={studentColor === 'w' ? whiteTime : blackTime}
-            active={childTurn && status === 'playing'} label="🧒 Sen" />
-        </div>
-      )}
 
       {status === 'over' && (
         <div className="mt-4 t-ok p-4 text-center text-lg font-bold">

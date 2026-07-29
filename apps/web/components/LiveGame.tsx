@@ -7,7 +7,7 @@ import { getToken } from '@/lib/auth-storage';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
 import { formatGameResult } from '@/lib/play/resultText';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
-import { PlayerClock } from '@/components/play/PlayerClock';
+import { MatchHeader } from '@/components/play/MatchHeader';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, toUci } from '@/lib/play/promotion';
@@ -165,19 +165,17 @@ export function LiveGame({ gameId, myColor }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 space-y-3">
-      <PlayerClock
-        name={myColor === 'white' ? blackName : whiteName}
-        ms={myColor === 'white' ? blackMs : whiteMs}
-        active={myColor === 'white' ? !whiteToMove : whiteToMove}
+      {/* Madde 3: uc kart tahtanin USTUNDE — kare/dikdortgen/kare. */}
+      <MatchHeader
+        whiteName={whiteName}
+        blackName={blackName}
+        whiteMs={whiteMs}
+        blackMs={blackMs}
+        whiteToMove={whiteToMove}
+        running={status === 'active'}
       />
 
       <ChessBoard fen={fen} interactive={status === 'active'} onPieceDrop={handleDrop} boardOrientation={myColor} />
-
-      <PlayerClock
-        name={myColor === 'white' ? whiteName : blackName}
-        ms={myColor === 'white' ? whiteMs : blackMs}
-        active={myColor === 'white' ? whiteToMove : !whiteToMove}
-      />
 
       {/* Madde 1: tum hamleler tahtanin ALTINDA. */}
       <MoveList san={sanList} startFen={startFen} />
