@@ -101,6 +101,9 @@ interface Props {
   onCorrect: () => void;
   /** Oturum bitince (son soru cevaplanınca) bir kez çağrılır — puanlama için. */
   onFinish?: (result: { correct: number; total: number }) => void;
+  /** true ise yanlış cevaptan sonra soru TEKRAR ÇÖZÜLEMEZ; sporcu
+   *  "Sonraki Soruya Geç" ile ilerler (madde 1 — Süresiz Pratik). */
+  noRetry?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,7 +150,7 @@ function ProgressDots({ total, current, doneCount }: { total: number; current: n
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
+export function BoardExercise({ exercises, done, onCorrect, onFinish, noRetry = false }: Props) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [doneCount, setDoneCount] = useState(done ? exercises.length : 0);
   const [status, setStatus] = useState<'idle' | 'success' | 'fail'>(done ? 'success' : 'idle');
@@ -156,6 +159,9 @@ export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
   const [showNext, setShowNext] = useState(false);
   const [clickedSquare, setClickedSquare] = useState<string | null>(null);
   const [allAttempted, setAllAttempted] = useState(false);
+  /** Madde 1: Suresiz Pratik'te yanlis cevaptan sonra tekrar deneme YOK;
+   *  soru kilitlenir, sporcu "Sonraki Soruya Geç" ile ilerler. */
+  const [failLocked, setFailLocked] = useState(false);
 
   const exercise = exercises[currentIdx] ?? exercises[0];
   const total = exercises.length;
@@ -169,6 +175,7 @@ export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
     setSelected(null);
     setShowNext(false);
     setClickedSquare(null);
+    setFailLocked(false);
   }, [currentIdx, done]);
 
   const succeed = (piece?: string | null) => {
@@ -198,6 +205,16 @@ export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
     setStatus('fail');
     setFeedback(msg);
     setSelected(null);
+    if (noRetry) {
+      setFailLocked(true);
+      if (!isLastQuestion) {
+        setShowNext(true);
+      } else {
+        // Son soru yanlis: dogru sayisi ARTMAZ, oturum burada biter.
+        onFinish?.({ correct: doneCount, total });
+        setAllAttempted(true);
+      }
+    }
     setTimeout(() => setStatus('idle'), 1800);
   };
 
@@ -257,7 +274,8 @@ export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
   // ── Tahta tıklama ────────────────────────────────────────────────────────
   const onSquareClick = ({ square, piece }: { square: string; piece: { pieceType: string } | null }) => {
     if (!isBoardExercise(exercise)) return;
-    if (status === 'success') return;
+    // Yanlis cevaptan sonra (noRetry) tahta da KILITLI kalir.
+    if (status === 'success' || failLocked) return;
     // Kareye Tıkla'da yanlış cevaptan sonra soru kilitlenir (tekrar deneme yok).
     // Diğer tipler (ör. Taşı Oynat) fail penceresinde hemen tekrar denenebilmeye devam eder.
     if (exercise.type === 'click_square' && status === 'fail') return;
@@ -297,7 +315,7 @@ export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
 
   // ── Seçenek tıklama (sentence_question / image_question) ──────────────────
   const onChoiceAnswer = (i: number) => {
-    if (status === 'success' || isBoardExercise(exercise)) return;
+    if (status === 'success' || failLocked || isBoardExercise(exercise)) return;
     if (i === exercise.correct_index) {
       succeed();
     } else {
@@ -461,7 +479,7 @@ export function BoardExercise({ exercises, done, onCorrect, onFinish }: Props) {
           onClick={goNext}
           className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
           style={{ background: 'var(--t-accent)', color: '#fff' }}>
-          Sonraki Soru →
+          {failLocked ? 'Sonraki Soruya Geç →' : 'Sonraki Soru →'}
         </button>
       )}
     </div>

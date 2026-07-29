@@ -13,6 +13,8 @@ import { useSettings } from '@/lib/settings/settings-context';
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
+import { useBoardArrows } from '@/lib/chess/useBoardArrows';
+import { arrowLine } from '@/lib/chess/arrowGeometry';
 
 interface ChessBoardProps {
   fen: string;
@@ -43,6 +45,8 @@ export function ChessBoard({
   const scrollRef = useRef(0);
   const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { squareStyles: annotationStyles, onSquareRightClick } = useSquareAnnotations(fen);
+  // Madde 7: oklar kendimiz ciziyoruz — kutuphane At hamlesini "L" cizer.
+  const { arrows, onPointerDown, onPointerUp, guardSquarePaint } = useBoardArrows(fen);
 
   // Clear selection when FEN changes (after a move)
   useEffect(() => {
@@ -207,7 +211,9 @@ export function ChessBoard({
         <div
           className="aspect-square flex-1 relative"
           style={{ touchAction: 'none', ...BOARD_STYLE }}
-          onPointerDown={() => lockScroll(400)}
+          onPointerDown={(e) => { lockScroll(400); onPointerDown(e); }}
+          onPointerUp={onPointerUp}
+          onContextMenu={(e) => e.preventDefault()}
         >
           <Chessboard
             options={{
@@ -223,7 +229,10 @@ export function ChessBoard({
               onSquareClick: ({ square }) => {
                 handleSquareClick(square as Square);
               },
-              onSquareRightClick,
+              onSquareRightClick: guardSquarePaint(onSquareRightClick),
+              // Kutuphanenin oklari KAPALI: At hamlesini L cizdigi icin
+              // (madde 7) ok cizimini kendi katmanimiz yapar.
+              allowDrawingArrows: false,
               squareStyles,
               pieces: pieceSet,
               lightSquareStyle: { backgroundColor: boardColors.light },
@@ -231,6 +240,35 @@ export function ChessBoard({
               showNotation: false,
             }}
           />
+
+          {/* Ok katmani: taslarin USTUNDE ama tiklamayi ENGELLEMEZ. */}
+          {arrows.length > 0 && (
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 8 8"
+              preserveAspectRatio="none"
+              className="absolute inset-0 w-full h-full"
+              style={{ pointerEvents: 'none' }}
+            >
+              <defs>
+                {arrows.map((a, i) => (
+                  <marker key={i} id={`bsa-ok-${i}`} markerWidth="3.2" markerHeight="3.2"
+                    refX="2.2" refY="1.6" orient="auto">
+                    <path d="M0,0 L3.2,1.6 L0,3.2 z" fill={a.color} />
+                  </marker>
+                ))}
+              </defs>
+              {arrows.map((a, i) => {
+                const l = arrowLine(a.from, a.to, boardOrientation);
+                if (!l) return null;
+                return (
+                  <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+                    stroke={a.color} strokeWidth={0.16} strokeLinecap="round"
+                    markerEnd={`url(#bsa-ok-${i})`} />
+                );
+              })}
+            </svg>
+          )}
         </div>
       </div>
 

@@ -265,6 +265,9 @@ function PratikInner() {
             done={false}
             onCorrect={() => setSolved((s) => Math.min(s + 1, exercises.length))}
             onFinish={handleFinish}
+            /* Madde 1: Suresiz Pratik'te bir soru yanlis yapilirsa tekrar
+               cozulemez; sporcu "Sonraki Soruya Gec" ile ilerler. */
+            noRetry={modeKey === 'suresiz'}
           />
         </>
       )}
