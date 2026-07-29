@@ -37,3 +37,28 @@ describe('MoveList — tahta altındaki notasyon (madde 1/3)', () => {
     expect(notation()).toBe('3. … – Af6');
   });
 });
+
+describe('MoveList — satır sonunda alt satıra iner', () => {
+  it('TUZAK: ayırıcı BÖLÜNMEZ BOŞLUK olmamalı', () => {
+    // Once ', ' kullaniliyordu; nowrap ile birlesince satir HIC
+    // bolunmuyor ve notasyon yatay olarak akip gidiyordu.
+    render(<MoveList san={['e4', 'e5', 'Nf3', 'Nc6']} />);
+    const metin = screen.getByLabelText('Hamleler').textContent!;
+    expect(metin).not.toContain(' ');
+    expect(metin).toContain(', ');
+  });
+
+  it('her hamle çifti kendi içinde bölünmez, ayırıcı boşluk dışarıda kalır', () => {
+    render(<MoveList san={['e4', 'e5', 'Nf3', 'Nc6']} />);
+    const nowrap = screen.getByLabelText('Hamleler')
+      .querySelectorAll('.whitespace-nowrap');
+    expect(nowrap).toHaveLength(2);                 // iki hamle cifti
+    expect(nowrap[0].textContent).toBe('1. e4 – e5,');
+    expect(nowrap[0].textContent).not.toMatch(/ $/); // bosluk icinde DEGIL
+  });
+
+  it('notasyon kartı tahtayla aynı genişlikte sınırlanır', () => {
+    render(<MoveList san={['e4']} />);
+    expect(screen.getByLabelText('Hamleler').className).toContain('max-w-[600px]');
+  });
+});
