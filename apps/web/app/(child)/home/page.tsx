@@ -5,7 +5,9 @@ import { getAthleteName } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
 import { visibleTabsInOrder } from '@/lib/settings/defaults';
 import type { TabKey } from '@/lib/settings/defaults';
-import { isModeUnlocked, isSubtopicUnlocked } from '@/lib/practice/unlock';
+import {
+  isModeUnlocked, isSubtopicUnlocked, isLessonCompleted, isLessonUnlocked,
+} from '@/lib/practice/unlock';
 import type { PracticeMode, ScoreMap } from '@/lib/practice/unlock';
 import { fetchLessonScores } from '@/lib/practice/practiceApi';
 import { HOME_BOT_LEVELS as BOT_LEVELS, HOME_TEMPO_GROUPS as TIME_GROUPS } from './botShortcut';
@@ -264,9 +266,17 @@ export default function ChildHomePage() {
     try {
       const lessons: LessonSummary[] = await fetch(`${API_BASE}/modules/${levelId}/lessons`).then((r) => (r.ok ? r.json() : []));
       setLessonsByLevel((prev) => ({ ...prev, [levelId]: Array.isArray(lessons) ? lessons : [] }));
+      // Madde 10: ders kilidi "onceki ders bitti mi" sorusuna dayanir; bu yuzden
+      // bu duzeydeki TUM derslerin alt konu ve skor bilgisi onceden cekilir.
+      if (Array.isArray(lessons)) {
+        void Promise.all(lessons.map((l) => loadSubtopics(l.id)));
+      }
     } catch {
       setLessonsByLevel((prev) => ({ ...prev, [levelId]: [] }));
     }
+    // loadSubtopics kasten bagimlilikta degil: [] ile olusturuldugu icin
+    // kimligi hic degismez, eklemek sonsuz yeniden olusturma riski yaratir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSubtopics = useCallback(async (lessonId: number) => {
@@ -629,6 +639,17 @@ export default function ChildHomePage() {
                       {lessons?.length === 0 && <p className="text-xs t-muted py-1">Bu düzeyde henüz ders yok.</p>}
                       {lessons?.map((les) => {
                         const lessonOpen = openLessonId === les.id;
+                        /* Madde 10: onceki ders bitmediyse bu ders KILITLI. */
+                        const lessonLocked = !isLessonUnlocked(
+                          (lessons ?? []).map((l) => l.id),
+                          les.id,
+                          Object.fromEntries((lessons ?? []).map((l) => {
+                            const st = (subtopicsByLesson[l.id] ?? []).map((x) => x.stepId);
+                            const sc = scoresByLesson[l.id];
+                            // null da "henuz bilinmiyor" demektir — kilit uygulanmaz.
+                            return [l.id, sc == null ? undefined : isLessonCompleted(st, sc)];
+                          })),
+                        );
                         const subs = subtopicsByLesson[les.id];
                         const lessonScores = scoresByLesson[les.id];
                         const orderedStepIds = (subs ?? []).map((s) => s.stepId);
@@ -642,11 +663,16 @@ export default function ChildHomePage() {
                           <div key={les.id}>
                             <PathNode
                               emoji="📘"
-                              label={les.title}
+                              label={lessonLocked ? `🔒 ${les.title}` : les.title}
                               active={lessonOpen}
                               size={36}
-                              onClick={() => toggleLesson(les.id)}
+                              onClick={() => { if (!lessonLocked) toggleLesson(les.id); }}
                             />
+                            {lessonLocked && (
+                              <p className="text-xs t-muted py-1">
+                                Bir önceki dersi tamamlaman gerekiyor.
+                              </p>
+                            )}
 
                             {lessonOpen && (
                               <Branch offset={17}>

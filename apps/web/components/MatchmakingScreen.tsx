@@ -46,8 +46,9 @@ export function MatchmakingScreen({ onCancel }: { onCancel: () => void }) {
   const [tempo, setTempo] = useState<Tempo | null>(null);
 
   if (!tempo) {
+    // Madde 5: secim alani her bolumde AYNI genislikte (max-w-lg).
     return (
-      <div className="max-w-md mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
         <p className="font-semibold text-sm">🤝 Arkadaş Ara</p>
         {/* Duzey insana karsi anlamsiz; yalnizca Tempo-Sure-Renk sorulur. */}
         <MatchCriteria

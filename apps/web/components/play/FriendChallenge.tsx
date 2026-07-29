@@ -109,6 +109,7 @@ export function FriendChallenge({ openingStep }: Props = {}) {
       <StepCard
         stepNumber={n(1)}
         title="Maç Kriterlerini Belirle"
+        flush
         summary={criteria ? `✓ ${criteria.timeControl.label}` : null}
         open={open === 'criteria'}
         locked={criteriaLocked}

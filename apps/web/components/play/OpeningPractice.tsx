@@ -93,6 +93,7 @@ export function OpeningPractice() {
           <StepCard
             stepNumber={2}
             title="Maç Kriterlerini Seç"
+            flush
             open={openInner === 'criteria'}
             locked={!isCriteriaUnlocked(chosen?.name ?? null)}
             onToggle={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}

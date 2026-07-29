@@ -13,13 +13,18 @@ interface Props {
   open: boolean;
   /** Kilitliyse soluk gorunur ve tiklama onToggle cagirmaz. */
   locked?: boolean;
+  /** Icerik yan bosluksuz cizilir. Kriter secim alani (MatchCriteria) kendi
+   *  kartlarini tasidigi icin ustune bir kart daha binmesin — boylece secim
+   *  alani her bolumde AYNI genislikte gorunur (madde 5). */
+  flush?: boolean;
   onToggle: () => void;
   children: ReactNode;
 }
 
 /** Sirali akordiyon karti. Is mantigi YOK — acik/kilitli kararini cagiran verir. */
 export function StepCard({
-  title, emoji, stepNumber, summary, open, locked = false, onToggle, children,
+  title, emoji, stepNumber, summary, open, locked = false, flush = false,
+  onToggle, children,
 }: Props) {
   const label = stepNumber === undefined ? title : `${stepNumber}. ${title}`;
   return (
@@ -37,7 +42,7 @@ export function StepCard({
         {summary && <span className="text-xs t-muted">{summary}</span>}
         <span className="text-sm t-muted" aria-hidden="true">{open ? '▴' : '▾'}</span>
       </button>
-      {open && <div className="px-4 pb-4">{children}</div>}
+      {open && <div className={flush ? 'pb-1' : 'px-4 pb-4'}>{children}</div>}
     </div>
   );
 }

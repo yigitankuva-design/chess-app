@@ -52,3 +52,43 @@ export function unlockedLabel(mode: PracticeMode): string {
   if (mode === 'sureli') return 'Kendini Test Et';
   return 'Sonraki alt konu';
 }
+
+/**
+ * Bir DERS tamamlandı mı? Kural: dersin SON alt konusunda "Kendini Test Et"
+ * 85+ ise ders bitmiştir — alt konu zinciri zaten öncekileri zorunlu kılar.
+ *
+ * scores henüz alınmadıysa (undefined) false döner; çağıran bu durumda KİLİT
+ * UYGULAMAZ (yükleniyor diye öğrenciyi dışarıda bırakmayız).
+ *
+ * Alt konusu olmayan ders TAMAMLANMIŞ sayılır: içeriği olmayan bir ders
+ * sonraki dersleri kilitlemesin (KURAL #3).
+ */
+export function isLessonCompleted(
+  orderedStepIds: number[], scores: ScoreMap | undefined,
+): boolean {
+  if (!scores) return false;
+  if (orderedStepIds.length === 0) return true;
+  const last = orderedStepIds[orderedStepIds.length - 1];
+  return bestScore(scores, last, 'test') >= UNLOCK_THRESHOLD;
+}
+
+/**
+ * Ders açık mı? İlk ders her zaman açıktır; sonrakiler bir ÖNCEKİ dersin
+ * tamamlanmasını gerektirir (madde 10 — "1. dersi bitirmeden diğerine giriş
+ * olmasın").
+ *
+ * completedById'de önceki dersin bilgisi YOKSA (veri henüz gelmedi) ders
+ * AÇIK sayılır — eksik veri yüzünden erişim kesilmez.
+ */
+export function isLessonUnlocked(
+  orderedLessonIds: number[],
+  lessonId: number,
+  completedById: Record<number, boolean | undefined>,
+): boolean {
+  const idx = orderedLessonIds.indexOf(lessonId);
+  if (idx <= 0) return true;
+  const prev = orderedLessonIds[idx - 1];
+  const known = completedById[prev];
+  if (known === undefined) return true;
+  return known;
+}
