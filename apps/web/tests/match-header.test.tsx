@@ -13,8 +13,38 @@ const base = {
 describe('MatchHeader — tahta üstü üç kart (madde 3)', () => {
   it('iki isim de ortadaki kartta görünür', () => {
     render(<MatchHeader {...base} />);
-    expect(screen.getByText('Zafer Dinç')).toBeInTheDocument();
-    expect(screen.getByText('Hasan Yiğit')).toBeInTheDocument();
+    // Ad hem orta kartta hem "Sıra:" satırında geçebilir.
+    expect(screen.getAllByText(/Zafer Dinç/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Hasan Yiğit/).length).toBeGreaterThan(0);
+  });
+
+  it('hangi saatin kime ait olduğu YAZAR', () => {
+    render(<MatchHeader {...base} />);
+    expect(screen.getByLabelText('Zafer Dinç saati')).toHaveTextContent('Beyaz');
+    expect(screen.getByLabelText('Hasan Yiğit saati')).toHaveTextContent('Siyah');
+  });
+
+  it('sıra kimde olduğu yazar', () => {
+    render(<MatchHeader {...base} />);
+    expect(screen.getByText('Sıra: Zafer Dinç')).toBeInTheDocument();
+  });
+
+  it('me verilince "Sıra sende" / "Sıra rakipte" yazar', () => {
+    const { rerender } = render(<MatchHeader {...base} me="white" />);
+    expect(screen.getByText('Sıra sende')).toBeInTheDocument();
+    rerender(<MatchHeader {...base} me="black" />);
+    expect(screen.getByText('Sıra rakipte: Zafer Dinç')).toBeInTheDocument();
+  });
+
+  it('me verilince kendi adının yanında (Sen) yazar', () => {
+    render(<MatchHeader {...base} me="black" />);
+    expect(screen.getByText(/Hasan Yiğit \(Sen\)/)).toBeInTheDocument();
+  });
+
+  it('maç bitince sıra cümlesi yerine "Maç bitti" yazar', () => {
+    render(<MatchHeader {...base} me="white" running={false} />);
+    expect(screen.getByText('Maç bitti')).toBeInTheDocument();
+    expect(screen.queryByText('Sıra sende')).not.toBeInTheDocument();
   });
 
   it('iki saat de gösterilir', () => {

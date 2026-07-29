@@ -173,6 +173,7 @@ export function LiveGame({ gameId, myColor }: Props) {
         blackMs={blackMs}
         whiteToMove={whiteToMove}
         running={status === 'active'}
+        me={myColor}
       />
 
       <ChessBoard fen={fen} interactive={status === 'active'} onPieceDrop={handleDrop} boardOrientation={myColor} />
