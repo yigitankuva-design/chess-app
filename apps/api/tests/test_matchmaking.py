@@ -13,7 +13,9 @@ def _clean():
     reset_rooms()
 
 
-async def _fake_create_game(white_id, black_id):
+async def _fake_create_game(white_id, black_id, base_ms=None, increment_ms=0):
+    # Imza gercek _create_human_game ile ayni: find_match saat degerlerini
+    # her zaman gecer (temposuz kuyrukta base_ms None gelir).
     return 12345  # fake game id
 
 

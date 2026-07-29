@@ -18,6 +18,10 @@ DEFAULT_WAIT_TIMEOUT = 60.0  # seconds
 class MatchTicket:
     child_id: int
     rating: int
+    # Secilen tempo (saniye). None => saatsiz. Farkli tempolar ESLESMEZ:
+    # 3+2 isteyen sporcu 30+0'a dusmemeli.
+    tc_base: int | None = None
+    tc_increment: int = 0
     event: asyncio.Event = field(default_factory=asyncio.Event)
     game_id: int | None = None
     color: str | None = None          # 'white' | 'black'
@@ -37,12 +41,15 @@ def _reset_for_tests() -> None:
 async def find_match(
     child_id: int,
     rating: int,
-    create_game: Callable[[int, int], Awaitable[int]],
+    create_game: Callable[..., Awaitable[int]],
     wait_timeout: float = DEFAULT_WAIT_TIMEOUT,
+    tc_base: int | None = None,
+    tc_increment: int = 0,
 ) -> MatchTicket:
     """Find an opponent or wait.
 
-    create_game(white_child_id, black_child_id) -> game_id (async).
+    create_game(white_child_id, black_child_id, base_ms=..., increment_ms=...)
+    -> game_id (async). Saat degerleri secilen tempodan hesaplanir.
     Returns a resolved MatchTicket (game_id/color/opponent set) on match,
     or an unresolved ticket (game_id is None) on timeout.
     """
@@ -53,9 +60,15 @@ async def find_match(
                 continue
             if w.event.is_set():
                 continue
+            if w.tc_base != tc_base or w.tc_increment != tc_increment:
+                continue
             if abs(w.rating - rating) <= RATING_TOLERANCE:
                 # Pair them. Waiter is white (joined first), newcomer is black.
-                game_id = await create_game(w.child_id, child_id)
+                game_id = await create_game(
+                    w.child_id, child_id,
+                    base_ms=tc_base * 1000 if tc_base else None,
+                    increment_ms=tc_increment * 1000,
+                )
                 w.game_id = game_id
                 w.color = "white"
                 w.opponent_id = child_id
@@ -63,7 +76,8 @@ async def find_match(
                     _waiting.remove(w)
                 w.event.set()
 
-                mine = MatchTicket(child_id=child_id, rating=rating)
+                mine = MatchTicket(child_id=child_id, rating=rating,
+                                   tc_base=tc_base, tc_increment=tc_increment)
                 mine.game_id = game_id
                 mine.color = "black"
                 mine.opponent_id = w.child_id
@@ -71,7 +85,8 @@ async def find_match(
                 return mine
 
         # No match — enqueue self
-        mine = MatchTicket(child_id=child_id, rating=rating)
+        mine = MatchTicket(child_id=child_id, rating=rating,
+                           tc_base=tc_base, tc_increment=tc_increment)
         _waiting.append(mine)
 
     # Wait outside the lock

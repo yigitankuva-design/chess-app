@@ -112,7 +112,9 @@ def _clock_payload(game: Game, white_to_move: bool) -> dict:
 
 
 @router.websocket("/ws/queue")
-async def queue_ws(websocket: WebSocket, token: str = Query(...)):
+async def queue_ws(websocket: WebSocket, token: str = Query(...),
+                   tc_base: int | None = Query(None),
+                   tc_increment: int = Query(0)):
     await websocket.accept()
     child_id = _child_id_from_token(token)
     if not child_id:
@@ -125,7 +127,11 @@ async def queue_ws(websocket: WebSocket, token: str = Query(...)):
 
     rating = 800  # TODO: read from ChildRank in a later iteration
     try:
-        ticket = await find_match(child_id, rating, _create_human_game, wait_timeout=60.0)
+        ticket = await find_match(
+            child_id, rating, _create_human_game, wait_timeout=60.0,
+            tc_base=tc_base if tc_base and tc_base > 0 else None,
+            tc_increment=tc_increment if tc_increment > 0 else 0,
+        )
         if ticket.game_id is not None:
             await websocket.send_json({
                 "type": "matched",
