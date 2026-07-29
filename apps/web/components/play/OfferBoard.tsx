@@ -68,8 +68,12 @@ export function OfferBoard() {
         </p>
       ) : (
         <div className="space-y-2">
-          {offers.map((o) => (
-            <div key={o.child_id} className="t-card-i flex items-center gap-3 px-4 py-3">
+          {offers.map((o, i) => (
+            /* Madde 8: teklifler arasinda YATAY CIZGI — ilk teklifin ustune
+               konmaz, yoksa baslikla kart arasinda gereksiz cizgi olur. */
+            <div key={o.child_id} className={i > 0 ? 'pt-2' : undefined}
+              style={i > 0 ? { borderTop: '1px solid var(--t-border)' } : undefined}>
+            <div className="t-card-i flex items-center gap-3 px-4 py-3">
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{o.display_name}</p>
                 <p className="text-xs t-muted mt-0.5">{offerSummary(o)}</p>
@@ -86,6 +90,7 @@ export function OfferBoard() {
               >
                 OYNA
               </button>
+            </div>
             </div>
           ))}
         </div>

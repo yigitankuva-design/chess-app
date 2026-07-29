@@ -1,19 +1,20 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { toMoveRows, parseFenStart } from '@/lib/play/moveList';
+import { parseFenStart } from '@/lib/play/moveList';
+import { turkishMovePairs } from '@/lib/play/sanTr';
 
 interface Props {
-  /** Oynanan hamleler (SAN), sirasiyla. */
+  /** Oynanan hamleler (SAN, chess.js'ten İngilizce gelir). */
   san: string[];
   /** Macin basladigi konum — acilis pratiginde standart degildir. */
   startFen?: string | null;
 }
 
-/** Tahtanin ALTINDA duran hamle notasyonu (madde 1).
- *  Uzun maclarda sayfa buyumesin diye kendi icinde kayar; son hamle
- *  otomatik gorunur kalir. */
+/** Tahtanin ALTINDA duran hamle notasyonu (madde 1/3).
+ *  Hamleler YAN YANA akar, satir bitince alt satirdan devam eder:
+ *  "1. e4 – e5, 2. Af3 – Ac6, 3. Fc4 – Fc5 …"  Yazim TURKCEDIR. */
 export function MoveList({ san, startFen }: Props) {
-  const rows = toMoveRows(san, parseFenStart(startFen));
+  const pairs = turkishMovePairs(san, parseFenStart(startFen));
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,19 +27,19 @@ export function MoveList({ san, startFen }: Props) {
       <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-2">
         Hamleler
       </p>
-      {rows.length === 0 ? (
+      {pairs.length === 0 ? (
         <p className="text-sm t-muted">Henüz hamle yapılmadı.</p>
       ) : (
-        <div ref={boxRef} className="max-h-40 overflow-y-auto">
-          <ol className="text-sm font-mono space-y-0.5">
-            {rows.map((r) => (
-              <li key={r.no} className="flex gap-3">
-                <span className="t-muted w-8 flex-shrink-0 text-right">{r.no}.</span>
-                <span className="w-16">{r.white ?? '…'}</span>
-                <span className="w-16">{r.black ?? ''}</span>
-              </li>
+        <div ref={boxRef} className="max-h-32 overflow-y-auto">
+          {/* Akici yazi: satir dolunca kendiliginden alt satira gecer. */}
+          <p className="text-sm font-mono leading-relaxed">
+            {pairs.map((p, i) => (
+              <span key={p.no} className="whitespace-nowrap">
+                <span className="t-muted">{p.no}.</span> {p.text}
+                {i < pairs.length - 1 ? ', ' : ''}
+              </span>
             ))}
-          </ol>
+          </p>
         </div>
       )}
     </section>

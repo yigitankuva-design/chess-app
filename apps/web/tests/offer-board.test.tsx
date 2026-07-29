@@ -101,3 +101,14 @@ describe('OfferBoard', () => {
     expect(screen.getByText(/Bu teklif alındı/)).toBeInTheDocument();
   });
 });
+
+describe('OfferBoard — teklifler arasında yatay çizgi (madde 8)', () => {
+  it('ikinci ve sonraki tekliflerin üstünde ayırıcı vardır, ilkinde yoktur', () => {
+    offers = [AYSE, MEHMET];
+    render(<OfferBoard />);
+    const ilk = screen.getByText('Ayşe').closest('div')!.parentElement!.parentElement!;
+    const ikinci = screen.getByText('Mehmet').closest('div')!.parentElement!.parentElement!;
+    expect(ilk.style.borderTop).toBe('');
+    expect(ikinci.style.borderTop).not.toBe('');
+  });
+});

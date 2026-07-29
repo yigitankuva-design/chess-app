@@ -69,21 +69,23 @@ export function MatchHeader({
   const tag = (side: 'white' | 'black') => (me === side ? ' (Sen)' : '');
 
   return (
-    <div className="flex items-stretch gap-2 mb-2">
+    // Madde 2: uc kart bulundugu alanda ORTALANIR (mx-auto + justify-center)
+    // ve tahtayla ayni genislikte kalir.
+    <div className="flex items-stretch justify-center gap-2 mb-2 mx-auto w-full max-w-[600px]">
       <ClockBox
         name={whiteName} ms={whiteMs} active={running && whiteToMove}
         symbol="♔" colorLabel="Beyaz"
       />
 
-      <div className="t-card-i flex-1 min-w-0 flex flex-col items-center justify-center px-3 text-center gap-0.5">
-        <p className="font-semibold text-sm truncate w-full">
-          ♔ {whiteName}{tag('white')}
-        </p>
-        <p className="font-semibold text-sm truncate w-full">
-          ♚ {blackName}{tag('black')}
+      {/* Madde 2: isimler ALT ALTA degil YAN YANA — "Zafer Dinç – Hasan Yiğit" */}
+      <div className="t-card-i flex-1 min-w-0 flex flex-col items-center justify-center px-3 text-center gap-1">
+        <p className="font-semibold text-sm flex items-center justify-center gap-1.5 flex-wrap">
+          <span className="truncate">♔ {whiteName}{tag('white')}</span>
+          <span className="t-muted">–</span>
+          <span className="truncate">♚ {blackName}{tag('black')}</span>
         </p>
         <p
-          className="text-xs font-bold mt-1 truncate w-full"
+          className="text-xs font-bold truncate w-full"
           style={{ color: running ? 'var(--t-accent)' : 'var(--t-muted)' }}
         >
           {turnLine}

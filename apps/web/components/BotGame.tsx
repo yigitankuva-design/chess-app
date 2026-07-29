@@ -6,6 +6,8 @@ import { MatchHeader } from '@/components/play/MatchHeader';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
+import { botAcceptsDraw } from '@/lib/play/botDraw';
+import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
 import type { PromotionPiece } from '@/lib/play/promotion';
 import { ChessBoard } from './ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
@@ -37,6 +39,10 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const gameIdRef = useRef<number | null>(null);
   const [fen, setFen] = useState(chessRef.current.fen());
   const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
+  /** Madde 6: bota karsi da terk ve beraberlik hakki. Hak sayisi insan
+   *  maclariyla AYNI kuraldan gelir (drawOffers.ts) — iki yerde iki sayi olmaz. */
+  const [drawOffersUsed, setDrawOffersUsed] = useState(0);
+  const [drawNote, setDrawNote] = useState('');
   // Sporcunun adi girişte saklaniyor; yoksa nötr bir etiket kullanilir.
   const [studentName] = useState(() => getAthleteName() || 'Sen');
   const [thinking, setThinking] = useState(false);
@@ -146,6 +152,24 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     } else {
       setResultText('🤝 Berabere.');
       onGameEnd('draw');
+    }
+  }
+
+  function resignToBot() {
+    setStatus('over');
+    setResultText('🏳️ Maçı terk ettin — Bot kazandı.');
+    onGameEnd('loss');
+  }
+
+  function offerDrawToBot() {
+    if (!canOfferDraw(drawOffersUsed)) return;
+    setDrawOffersUsed((n) => n + 1);
+    if (botAcceptsDraw(chessRef.current.fen(), botColor)) {
+      setStatus('over');
+      setResultText('🤝 Bot beraberliği kabul etti.');
+      onGameEnd('draw');
+    } else {
+      setDrawNote('Bot beraberliği reddetti.');
     }
   }
 
@@ -260,9 +284,31 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
       )}
 
 
-      {status === 'over' && (
+      {status === 'over' ? (
         <div className="mt-4 t-ok p-4 text-center text-lg font-bold">
           {resultText}
+        </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <div className="flex gap-2 justify-center">
+            <button
+              type="button"
+              disabled={!canOfferDraw(drawOffersUsed)}
+              onClick={offerDrawToBot}
+              className="t-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
+            >
+              Beraberlik Teklif Et ({offersLeft(drawOffersUsed)})
+            </button>
+            <button
+              type="button"
+              onClick={() => { if (confirm('Maçı terk etmek istiyor musun? Maçı kaybedeceksin.')) resignToBot(); }}
+              className="t-btn px-4 py-2 text-sm"
+              style={{ background: 'var(--t-err-bg, #ef4444)', color: '#fff' }}
+            >
+              Terk Et
+            </button>
+          </div>
+          {drawNote && <p className="text-center text-sm t-muted">{drawNote}</p>}
         </div>
       )}
     </div>
