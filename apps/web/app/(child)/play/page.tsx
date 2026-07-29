@@ -98,10 +98,14 @@ function PlayInner() {
     );
   }
 
+  /** 4 karta donus. "Maç Türü" YAZISI kaldirildi (madde 4 ve 8); ok kaldi
+   *  cunku ust cubuktaki geri oku /play'den tamamen cikarir — Mac Yap
+   *  icindeki gecisler adres degistirmiyor. */
   const backBtn = (
     <button onClick={() => { setMode(null); setBotCriteria(null); }}
-      className="t-btn-ghost text-xs px-3 py-1.5">
-      ← Maç Türü
+      aria-label="Maç türü seçimine dön"
+      className="t-btn-ghost text-base px-3 py-1.5">
+      ←
     </button>
   );
 

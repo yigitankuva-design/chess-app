@@ -67,3 +67,27 @@ describe('/play — 4 sekme (madde a)', () => {
     expect(screen.getByTestId('bot-game')).toBeInTheDocument();
   });
 });
+
+describe('/play — "Maç Türü" yazısı kaldırıldı (madde 4 ve 8)', () => {
+  /** Geri dönüş DÜĞMESİ duruyor, sadece yazısı gitti — sporcu 4 karta
+   *  dönebilmeli, yoksa o ekranda mahsur kalır. */
+  it('Arkadaşla Oyna içinde "Maç Türü" YAZISI yoktur', () => {
+    render(<PlayPage />);
+    fireEvent.click(screen.getByText('Arkadaşla Oyna'));
+    expect(screen.queryByText(/Maç Türü/)).not.toBeInTheDocument();
+  });
+
+  it('Açılışı Pratiği Yap içinde "Maç Türü" YAZISI yoktur', () => {
+    render(<PlayPage />);
+    fireEvent.click(screen.getByText('Açılışı Pratiği Yap'));
+    expect(screen.queryByText(/Maç Türü/)).not.toBeInTheDocument();
+  });
+
+  it('geri düğmesi DURUYOR ve 4 kart listesine döner', () => {
+    render(<PlayPage />);
+    fireEvent.click(screen.getByText('Arkadaşla Oyna'));
+    fireEvent.click(screen.getByLabelText('Maç türü seçimine dön'));
+    expect(screen.getByText('Maç Türü Seç')).toBeInTheDocument();
+    expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
+  });
+});
