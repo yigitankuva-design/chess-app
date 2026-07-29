@@ -9,6 +9,9 @@ import { formatGameResult } from '@/lib/play/resultText';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
 import { PlayerClock } from '@/components/play/PlayerClock';
 import { MoveList } from '@/components/play/MoveList';
+import { PromotionPicker } from '@/components/play/PromotionPicker';
+import { isPromotionMove, toUci } from '@/lib/play/promotion';
+import type { PromotionPiece } from '@/lib/play/promotion';
 
 interface Props { gameId: number; myColor: 'white' | 'black'; }
 
@@ -27,6 +30,7 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [whiteToMove, setWhiteToMove] = useState(true);
   const [sanList, setSanList] = useState<string[]>([]);
   const [startFen, setStartFen] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
   /** Bayrak bir kez gonderilir; her tikta tekrar gonderilmez. */
   const flagSentRef = useRef(false);
 
@@ -131,17 +135,30 @@ export function LiveGame({ gameId, myColor }: Props) {
     }
   }, [whiteMs, blackMs, whiteToMove, clockless, status, myColor, send]);
 
+  function applyMyMove(from: Square, to: Square, promo?: PromotionPiece): boolean {
+    const chess = chessRef.current;
+    let move;
+    try { move = chess.move({ from, to, promotion: promo }); } catch { return false; }
+    if (!move) return false;
+    setFen(chess.fen());
+    // Notasyona BURADA eklenmez: room.broadcast exclude kullanmiyor, kendi
+    // hamlem de move_made ile geri geliyor — eklersem liste ikiye katlanir.
+    // Terfi harfi UCI'ye MUTLAKA girer, yoksa sunucu vezire terfi eder.
+    send({ type: 'move', uci: toUci(from, to, promo) });
+    return true;
+  }
+
   function handleDrop(from: Square, to: Square): boolean {
     if (status !== 'active') return false;
     const chess = chessRef.current;
     const myTurn = (chess.turn() === 'w' && myColor === 'white') || (chess.turn() === 'b' && myColor === 'black');
     if (!myTurn) return false;
-    let move;
-    try { move = chess.move({ from, to, promotion: 'q' }); } catch { return false; }
-    if (!move) return false;
-    setFen(chess.fen());
-    send({ type: 'move', uci: `${from}${to}` });
-    return true;
+    // Terfide once tas sorulur (madde 2).
+    if (isPromotionMove(chess.get(from), to)) {
+      setPending({ from, to });
+      return false;
+    }
+    return applyMyMove(from, to);
   }
 
   const canOffer = canOfferDraw(myOffersUsed);
@@ -164,6 +181,17 @@ export function LiveGame({ gameId, myColor }: Props) {
 
       {/* Madde 1: tum hamleler tahtanin ALTINDA. */}
       <MoveList san={sanList} startFen={startFen} />
+
+      {pending && (
+        <PromotionPicker
+          onPick={(piece) => {
+            const p = pending;
+            setPending(null);
+            applyMyMove(p.from, p.to, piece);
+          }}
+          onCancel={() => setPending(null)}
+        />
+      )}
 
       {drawOffered && status === 'active' && (
         <div className="t-ok p-3 space-y-2">

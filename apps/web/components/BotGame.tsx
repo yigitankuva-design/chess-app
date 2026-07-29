@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { MoveList } from '@/components/play/MoveList';
+import { PromotionPicker } from '@/components/play/PromotionPicker';
+import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
+import type { PromotionPiece } from '@/lib/play/promotion';
 import { ChessBoard } from './ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { getToken } from '@/lib/auth-storage';
@@ -56,6 +59,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const engineRef = useRef<StockfishEngine | null>(null);
   const gameIdRef = useRef<number | null>(null);
   const [fen, setFen] = useState(chessRef.current.fen());
+  const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
   const [thinking, setThinking] = useState(false);
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
   const [resultText, setResultText] = useState<string>('');
@@ -166,12 +170,13 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     }
   }
 
-  function handleDrop(from: Square, to: Square): boolean {
-    if (thinking || status !== 'playing') return false;
+  /** Sporcunun hamlesini uygular. promo verilmezse terfi YAPILMAZ —
+   *  terfi karari applyStudentMove'a gelmeden once verilir. */
+  function applyStudentMove(from: Square, to: Square, promo?: PromotionPiece): boolean {
     const chess = chessRef.current;
     let move;
     try {
-      move = chess.move({ from, to, promotion: 'q' });
+      move = chess.move({ from, to, promotion: promo });
     } catch {
       return false;
     }
@@ -184,14 +189,20 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     }
 
     void (async () => {
-      await persistMove(`${from}${to}`);
+      // Terfi harfi UCI'ye MUTLAKA girer; yoksa sunucu baska hamle kaydeder.
+      await persistMove(toUci(from, to, promo));
       if (chess.isGameOver()) { finish(); return; }
 
       setThinking(true);
       const botUci = await engineRef.current!.bestMove(chess.fen(), depth);
       if (botUci && botUci !== '(none)') {
         try {
-          chess.move({ from: botUci.slice(0, 2) as Square, to: botUci.slice(2, 4) as Square, promotion: 'q' });
+          // Motor ata da terfi edebilir; UCI'deki harf neyse o uygulanir.
+          chess.move({
+            from: botUci.slice(0, 2) as Square,
+            to: botUci.slice(2, 4) as Square,
+            promotion: promotionFromUci(botUci),
+          });
           setFen(chess.fen());
           if (tc) {
             if (botColor === 'w') setWhiteTime((t) => t + tc.increment);
@@ -205,6 +216,17 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     })();
 
     return true;
+  }
+
+  function handleDrop(from: Square, to: Square): boolean {
+    if (thinking || status !== 'playing') return false;
+    // Terfi ise once tas sorulur (madde 2). Tahta hamleyi kabul etmis
+    // gorunmemeli, yoksa pencere acikken tas ortada kalir.
+    if (isPromotionMove(chessRef.current.get(from), to)) {
+      setPending({ from, to });
+      return false;
+    }
+    return applyStudentMove(from, to);
   }
 
   if (status === 'loading') {
@@ -246,6 +268,17 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
       {/* Madde 1: tum hamleler tahtanin ALTINDA. Bu bilesende chess.load()
           cagrilmadigi icin chess.js gecmisi bozulmaz, dogrudan okunur. */}
       <MoveList san={chessRef.current.history()} startFen={startFen} />
+
+      {pending && (
+        <PromotionPicker
+          onPick={(piece) => {
+            const p = pending;
+            setPending(null);
+            applyStudentMove(p.from, p.to, piece);
+          }}
+          onCancel={() => setPending(null)}
+        />
+      )}
 
       {/* Child clock (bottom) */}
       {tc && (
