@@ -39,7 +39,8 @@ def _child_id_from_token(token: str) -> int | None:
 
 async def _create_human_game(white_child_id: int, black_child_id: int,
                              base_ms: int | None = None,
-                             increment_ms: int | None = None) -> int:
+                             increment_ms: int | None = None,
+                             start_fen: str | None = None) -> int:
     """Insan-insan mac kaydi.
 
     base_ms verilirse saat de kurulur. Varsayilanlar None oldugu icin mevcut
@@ -56,6 +57,7 @@ async def _create_human_game(white_child_id: int, black_child_id: int,
             white_ms=base_ms,
             black_ms=base_ms,
             last_clock_at=datetime.utcnow() if base_ms is not None else None,
+            start_fen=start_fen,
         )
         db.add(game)
         await db.commit()
@@ -152,7 +154,9 @@ async def _current_fen_and_ply(db, game_id: int) -> tuple[str, int]:
     )).scalar_one_or_none()
     if last:
         return last.fen_after, last.ply + 1
-    return INITIAL_FEN, 1
+    # Hamle yoksa macin KENDI baslangic konumu (acilis pratigi); yoksa standart.
+    game = await db.get(Game, game_id)
+    return (game.start_fen if game and game.start_fen else INITIAL_FEN), 1
 
 
 @router.websocket("/ws/game/{game_id}")
@@ -190,6 +194,8 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             "black_ms": g.black_ms,
             "increment_ms": g.increment_ms,
             "white_to_move": current_fen.split()[1] == "w",
+            "start_fen": g.start_fen,
+            "current_fen": current_fen,
         })
 
     try:
@@ -434,10 +440,13 @@ async def _handle_challenge_accept(child_id: int, msg: dict) -> None:
 
     base_s = criteria.get("tc_base")
     inc_s = criteria.get("tc_increment")
+    # Acilis pratiginden gelen davetlerde tahta o acilisin konumundan baslar.
+    start_fen = criteria.get("start_fen")
     game_id = await _create_human_game(
         white_id, black_id,
         base_ms=int(base_s) * 1000 if isinstance(base_s, int) and base_s > 0 else None,
         increment_ms=int(inc_s) * 1000 if isinstance(inc_s, int) else 0,
+        start_fen=start_fen if isinstance(start_fen, str) and start_fen else None,
     )
 
     await send_to_player(challenger, {

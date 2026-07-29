@@ -61,3 +61,4 @@ apps/web/public/workbox-*.js
 apps/web/public/workbox-*.js.map
 apps/web/public/worker-*.js
 apps/web/public/worker-*.js.map
+.vercel

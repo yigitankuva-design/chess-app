@@ -46,6 +46,7 @@ export function LiveGame({ gameId, myColor }: Props) {
       black_ms?: number;
       increment_ms?: number;
       white_to_move?: boolean;
+      current_fen?: string;
     };
     const t = msg?.type;
     if (t === 'move_made') {
@@ -62,6 +63,12 @@ export function LiveGame({ gameId, myColor }: Props) {
       setWhiteMs(typeof msg.white_ms === 'number' ? msg.white_ms : null);
       setBlackMs(typeof msg.black_ms === 'number' ? msg.black_ms : null);
       setWhiteToMove(msg.white_to_move !== false);
+      // Acilis pratiginde tahta standart konumdan BASLAMAZ; sunucunun
+      // bildirdigi konuma kurulur. Yeniden baglanmada da dogru konum gelir.
+      if (typeof msg.current_fen === 'string' && msg.current_fen) {
+        try { chessRef.current.load(msg.current_fen); setFen(msg.current_fen); }
+        catch { /* bozuk FEN gelirse standart konumda kalinir */ }
+      }
     } else if (t === 'clock') {
       // Sunucudan gelen deger YEREL sayimin UZERINE yazilir — otorite sunucu.
       setWhiteMs(typeof msg.white_ms === 'number' ? msg.white_ms : null);

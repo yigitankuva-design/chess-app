@@ -33,10 +33,29 @@ export function OpeningPractice() {
     }
   }, []);
 
-  // Acilislar YALNIZCA bot karti acildiginda yuklenir — gereksiz istek atilmaz.
+  // Acilislar YALNIZCA bir dal acildiginda yuklenir — gereksiz istek atilmaz.
+  // Madde 6: arkadas dalinda da acilis secildigi icin o dal da tetikler.
   useEffect(() => {
-    if (openOuter === 'bot' && openings === null) void loadOpenings();
+    if (openOuter !== null && openings === null) void loadOpenings();
   }, [openOuter, openings, loadOpenings]);
+
+  /** Acilis listesi iki dalda da AYNI — tek yerde durur, kopyalanmaz. */
+  const openingList = (onPicked: () => void) => (
+    <div className="space-y-2">
+      {openings === null && <p className="text-sm t-muted">Yükleniyor…</p>}
+      {openings?.length === 0 && (
+        <p className="text-sm t-muted">Zafer Hoca henüz açılış eklemedi.</p>
+      )}
+      {openings?.map((o) => (
+        <button key={o.id} type="button"
+          onClick={() => { setChosen(o); onPicked(); }}
+          className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left">
+          <span className="text-xl">📖</span>
+          <span className="font-medium text-sm flex-1">{o.name}</span>
+        </button>
+      ))}
+    </div>
+  );
 
   // Kriterler secildi -> mac basladi; akordiyon yerini tahtaya birakir.
   if (criteria && chosen) {
@@ -68,20 +87,7 @@ export function OpeningPractice() {
             open={openInner === 'opening'}
             onToggle={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
           >
-            <div className="space-y-2">
-              {openings === null && <p className="text-sm t-muted">Yükleniyor…</p>}
-              {openings?.length === 0 && (
-                <p className="text-sm t-muted">Zafer Hoca henüz açılış eklemedi.</p>
-              )}
-              {openings?.map((o) => (
-                <button key={o.id} type="button"
-                  onClick={() => { setChosen(o); setOpenInner('criteria'); }}
-                  className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left">
-                  <span className="text-xl">📖</span>
-                  <span className="font-medium text-sm flex-1">{o.name}</span>
-                </button>
-              ))}
-            </div>
+            {openingList(() => setOpenInner('criteria'))}
           </StepCard>
 
           <StepCard
@@ -110,7 +116,15 @@ export function OpeningPractice() {
         open={openOuter === 'friend'}
         onToggle={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
       >
-        <FriendChallenge />
+        {/* Madde 6: arkadas dalinda sira 1) Acilis 2) Kriterler 3) Arkadas */}
+        <FriendChallenge
+          openingStep={{
+            render: openingList,
+            summary: openingSummary(chosen?.name ?? null),
+            picked: chosen !== null,
+            startFen: chosen?.start_fen ?? null,
+          }}
+        />
       </StepCard>
     </div>
   );

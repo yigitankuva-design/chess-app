@@ -11,12 +11,12 @@ import { getToken } from '@/lib/auth-storage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-type StepKey = 'criteria' | 'friend';
+type StepKey = 'opening' | 'criteria' | 'friend';
 
 /** Kriterleri WS'e gonderilecek sade nesneye cevirir (renk burada cozulur).
  *  ChallengeScreen'den TASINDI — alan adlari sunucudaki
  *  _handle_challenge_accept ile eslesmek zorunda, degistirilmez. */
-function criteriaPayload(v: MatchCriteriaValue) {
+function criteriaPayload(v: MatchCriteriaValue, startFen?: string | null) {
   return {
     color: resolveColor(v.colorChoice),
     skill: v.level.skill,
@@ -24,13 +24,29 @@ function criteriaPayload(v: MatchCriteriaValue) {
     tc_label: v.timeControl.label,
     tc_base: v.timeControl.base,
     tc_increment: v.timeControl.increment,
+    // Acilis pratiginden gelindiyse tahta o konumdan baslar.
+    start_fen: startFen ?? null,
   };
 }
 
-/** Arkadasa karsi pratik: sirali iki kart — kriterler, sonra arkadas secimi. */
-export function FriendChallenge() {
+interface Props {
+  /** Acilis pratiginden gelindiyse 1. adim olarak acilis secimi gosterilir.
+   *  Verilmezse (Arkadasla Oyna gibi duz akislar) o adim HIC cizilmez. */
+  openingStep?: {
+    render: (onPicked: () => void) => React.ReactNode;
+    summary: string | null;
+    picked: boolean;
+    startFen: string | null;
+  };
+}
+
+/** Arkadasa karsi pratik. Madde 6 sirasi:
+ *  1) Acilis Konumu Sec  2) Mac Kriterlerini Belirle  3) Arkadasini Sec */
+export function FriendChallenge({ openingStep }: Props = {}) {
   const { players, challenge } = useLobbyContext();
-  const [open, setOpen] = useState<StepKey | null>('criteria');
+  const [open, setOpen] = useState<StepKey | null>(
+    openingStep ? 'opening' : 'criteria',
+  );
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
   const [all, setAll] = useState<Athlete[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -55,9 +71,13 @@ export function FriendChallenge() {
 
   function sendChallenge() {
     if (!criteria || !selected || !selected.online) return;
-    challenge(selected.child_id, criteriaPayload(criteria));
+    challenge(selected.child_id, criteriaPayload(criteria, openingStep?.startFen));
     setWaitingFor(selected.display_name);
   }
+
+  /** Adim numaralari acilis adimi varsa 1 kayar. */
+  const n = (base: 1 | 2) => (openingStep ? base + 1 : base);
+  const criteriaLocked = openingStep ? !openingStep.picked : false;
 
   if (waitingFor) {
     return (
@@ -74,11 +94,24 @@ export function FriendChallenge() {
 
   return (
     <div className="space-y-3">
+      {openingStep && (
+        <StepCard
+          stepNumber={1}
+          title="Açılış Konumunu Seç"
+          summary={openingStep.summary}
+          open={open === 'opening'}
+          onToggle={() => setOpen((p) => (p === 'opening' ? null : 'opening'))}
+        >
+          {openingStep.render(() => setOpen('criteria'))}
+        </StepCard>
+      )}
+
       <StepCard
-        stepNumber={1}
+        stepNumber={n(1)}
         title="Maç Kriterlerini Belirle"
         summary={criteria ? `✓ ${criteria.timeControl.label}` : null}
         open={open === 'criteria'}
+        locked={criteriaLocked}
         onToggle={() => setOpen((p) => (p === 'criteria' ? null : 'criteria'))}
       >
         {/* Madde 7: insana karsi DUZEY anlamsiz — sadece Tempo-Sure-Renk. */}
@@ -90,7 +123,7 @@ export function FriendChallenge() {
       </StepCard>
 
       <StepCard
-        stepNumber={2}
+        stepNumber={n(2)}
         title="Arkadaşını Seç"
         summary={selected ? `✓ ${selected.display_name}` : null}
         open={open === 'friend'}
