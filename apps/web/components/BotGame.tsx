@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
+import { MoveList } from '@/components/play/MoveList';
 import { ChessBoard } from './ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { getToken } from '@/lib/auth-storage';
@@ -241,6 +242,10 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
         onPieceDrop={handleDrop}
         boardOrientation={studentColor === 'w' ? 'white' : 'black'}
       />
+
+      {/* Madde 1: tum hamleler tahtanin ALTINDA. Bu bilesende chess.load()
+          cagrilmadigi icin chess.js gecmisi bozulmaz, dogrudan okunur. */}
+      <MoveList san={chessRef.current.history()} startFen={startFen} />
 
       {/* Child clock (bottom) */}
       {tc && (

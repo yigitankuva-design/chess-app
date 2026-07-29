@@ -186,6 +186,11 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
         w = await db.get(ChildProfile, g.white_child_id) if g.white_child_id else None
         b = await db.get(ChildProfile, g.black_child_id) if g.black_child_id else None
         current_fen, _ = await _current_fen_and_ply(db, game_id)
+        # Yeniden baglanan sporcu notasyon listesini bastan gorur.
+        past = (await db.execute(
+            select(GameMove).where(GameMove.game_id == game_id)
+            .order_by(GameMove.ply.asc())
+        )).scalars().all()
         await websocket.send_json({
             "type": "game_info",
             "white_name": w.display_name if w else "Sporcu",
@@ -195,6 +200,7 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             "increment_ms": g.increment_ms,
             "white_to_move": current_fen.split()[1] == "w",
             "start_fen": g.start_fen,
+            "moves": [m.san for m in past],
             "current_fen": current_fen,
         })
 

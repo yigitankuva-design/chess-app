@@ -8,6 +8,7 @@ import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
 import { formatGameResult } from '@/lib/play/resultText';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
 import { PlayerClock } from '@/components/play/PlayerClock';
+import { MoveList } from '@/components/play/MoveList';
 
 interface Props { gameId: number; myColor: 'white' | 'black'; }
 
@@ -24,6 +25,8 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [whiteMs, setWhiteMs] = useState<number | null>(null);
   const [blackMs, setBlackMs] = useState<number | null>(null);
   const [whiteToMove, setWhiteToMove] = useState(true);
+  const [sanList, setSanList] = useState<string[]>([]);
+  const [startFen, setStartFen] = useState<string | null>(null);
   /** Bayrak bir kez gonderilir; her tikta tekrar gonderilmez. */
   const flagSentRef = useRef(false);
 
@@ -47,10 +50,15 @@ export function LiveGame({ gameId, myColor }: Props) {
       increment_ms?: number;
       white_to_move?: boolean;
       current_fen?: string;
+      start_fen?: string | null;
+      moves?: string[];
+      san?: string;
     };
     const t = msg?.type;
     if (t === 'move_made') {
       const chess = chessRef.current;
+      // chess.load() gecmisi SILER; notasyon bu yuzden ayrica biriktirilir.
+      if (typeof msg.san === 'string') setSanList((p) => [...p, msg.san as string]);
       if (msg.fen_after && chess.fen() !== msg.fen_after) {
         try { chess.load(msg.fen_after); setFen(msg.fen_after); } catch { /* ignore */ }
       }
@@ -65,6 +73,8 @@ export function LiveGame({ gameId, myColor }: Props) {
       setWhiteToMove(msg.white_to_move !== false);
       // Acilis pratiginde tahta standart konumdan BASLAMAZ; sunucunun
       // bildirdigi konuma kurulur. Yeniden baglanmada da dogru konum gelir.
+      setStartFen(typeof msg.start_fen === 'string' ? msg.start_fen : null);
+      if (Array.isArray(msg.moves)) setSanList(msg.moves.map(String));
       if (typeof msg.current_fen === 'string' && msg.current_fen) {
         try { chessRef.current.load(msg.current_fen); setFen(msg.current_fen); }
         catch { /* bozuk FEN gelirse standart konumda kalinir */ }
@@ -151,6 +161,9 @@ export function LiveGame({ gameId, myColor }: Props) {
         ms={myColor === 'white' ? whiteMs : blackMs}
         active={myColor === 'white' ? whiteToMove : !whiteToMove}
       />
+
+      {/* Madde 1: tum hamleler tahtanin ALTINDA. */}
+      <MoveList san={sanList} startFen={startFen} />
 
       {drawOffered && status === 'active' && (
         <div className="t-ok p-3 space-y-2">
