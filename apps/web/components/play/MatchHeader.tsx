@@ -27,8 +27,15 @@ function ClockBox({
       aria-label={`${name} saati`}
       data-active={active ? 'true' : 'false'}
       data-low={low ? 'true' : 'false'}
-      className="t-card-i flex flex-col items-center justify-center gap-0.5 flex-shrink-0"
+      className="t-card-i gap-0.5 flex-shrink-0"
       style={{
+        /* .t-card-i "display: block" veriyor ve Tailwind'in flex/flex-col
+           siniflarini eziyor (olculdu: kutu icindeki uc oge yan yana dizilip
+           ekrandan tasiyordu). Satir ici stil her zaman kazanir. */
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         /* Madde 11: kucuk telefonlarda kareler daralir, isim kartina yer kalir. */
         width: 'clamp(3.9rem, 17vw, 5.5rem)',
         height: 'clamp(3.9rem, 17vw, 5.5rem)',
@@ -79,11 +86,17 @@ export function MatchHeader({
       />
 
       {/* Madde 2: isimler ALT ALTA degil YAN YANA — "Zafer Dinç – Hasan Yiğit" */}
-      <div className="t-card-i flex-1 min-w-0 flex flex-col items-center justify-center px-3 text-center gap-1">
-        <p className="font-semibold text-sm flex items-center justify-center gap-1.5 flex-wrap">
-          <span className="truncate">♔ {whiteName}{tag('white')}</span>
-          <span className="t-muted">–</span>
-          <span className="truncate">♚ {blackName}{tag('black')}</span>
+      <div className="t-card-i flex-1 min-w-0 overflow-hidden px-2 text-center gap-1"
+        style={{
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+        {/* min-w-0 SART: truncate yazilar daralamazsa orta kart sisip sagdaki
+            saati ekranin DISINA itiyordu (olculdu: telefonda 17px yatay tasma). */}
+        <p className="font-semibold text-sm flex items-center justify-center gap-1 flex-wrap max-w-full">
+          <span className="truncate min-w-0">♔ {whiteName}{tag('white')}</span>
+          <span className="t-muted flex-shrink-0">–</span>
+          <span className="truncate min-w-0">♚ {blackName}{tag('black')}</span>
         </p>
         <p
           className="text-xs font-bold truncate w-full"
