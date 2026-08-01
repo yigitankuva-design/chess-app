@@ -1,5 +1,7 @@
 'use client';
 import type { ChoiceTypeConfig } from './BoardExercise';
+import { EmptyBoardGrid } from '@/components/chess/EmptyBoardGrid';
+import { toneToFilter } from '@/lib/chess/imagePlacement';
 
 interface Props {
   exercise: ChoiceTypeConfig;
@@ -12,12 +14,44 @@ export function ChoiceQuestionBody({ exercise, disabled, onAnswer }: Props) {
     : exercise.options.length === 3 ? 'grid-cols-3'
     : 'grid-cols-2';
 
+  const hasPlacement = exercise.type === 'image_question' && exercise.image_x !== undefined;
+
   return (
     <>
-      {exercise.type === 'image_question' && (
+      {exercise.type === 'image_question' && !hasPlacement && (
         <div className="rounded-xl overflow-hidden" style={{ maxWidth: 340, margin: '0 auto' }}>
           <img src={exercise.prompt_image} alt="Soru görseli"
             style={{ width: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }} />
+        </div>
+      )}
+
+      {exercise.type === 'image_question' && hasPlacement && (
+        <div style={{ maxWidth: 340, margin: '0 auto' }}>
+          {exercise.image_show_board !== false ? (
+            <EmptyBoardGrid>
+              <img src={exercise.prompt_image} alt="Soru görseli" draggable={false}
+                style={{
+                  position: 'absolute',
+                  left: `${exercise.image_x}%`, top: `${exercise.image_y}%`,
+                  width: `${exercise.image_w}%`, height: `${exercise.image_h}%`,
+                  transform: 'translate(-50%, -50%)',
+                  filter: toneToFilter(exercise.image_tone ?? 0),
+                  objectFit: 'contain',
+                }} />
+            </EmptyBoardGrid>
+          ) : (
+            <div className="relative w-full" style={{ aspectRatio: '1 / 1' }}>
+              <img src={exercise.prompt_image} alt="Soru görseli" draggable={false}
+                style={{
+                  position: 'absolute',
+                  left: `${exercise.image_x}%`, top: `${exercise.image_y}%`,
+                  width: `${exercise.image_w}%`, height: `${exercise.image_h}%`,
+                  transform: 'translate(-50%, -50%)',
+                  filter: toneToFilter(exercise.image_tone ?? 0),
+                  objectFit: 'contain',
+                }} />
+            </div>
+          )}
         </div>
       )}
 
