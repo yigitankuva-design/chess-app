@@ -7,6 +7,8 @@ import { PoolPicker } from './PoolPicker';
 import { choiceSteps, firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import { StepList } from './StepList';
 import { POOL_CATEGORIES, addPoolImage } from '@/lib/admin/poolApi';
+import { ImagePlacer } from './ImagePlacer';
+import { type ImagePlacement, DEFAULT_PLACEMENT, clampPlacement } from '@/lib/chess/imagePlacement';
 
 /** Bolum taslagi: Zafer hoca baska bolume gecip dondugunde yazdiklarini
  *  kaybetmesin diye ExerciseForm'da saklanan alanlar. YALNIZCA yeni soru
@@ -24,6 +26,8 @@ export interface ChoiceDraft {
   optionCountChosen: boolean;
   answerKindChosen: boolean;
   difficultyChosen: boolean;
+  imagePlacement: ImagePlacement;
+  imageShowBoard: boolean;
 }
 
 interface Props {
@@ -53,6 +57,15 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   const [successMsg, setSuccessMsg] = useState(draft?.successMsg ?? initial?.success_msg ?? '');
   const [failMsg, setFailMsg] = useState(draft?.failMsg ?? initial?.fail_msg ?? '');
   const [difficulty, setDifficulty] = useState(draft?.difficulty ?? initial?.difficulty ?? 1);
+  const [placement, setPlacement] = useState<ImagePlacement>(
+    draft?.imagePlacement ?? clampPlacement({
+      x: initial?.image_x, y: initial?.image_y, w: initial?.image_w,
+      h: initial?.image_h, tone: initial?.image_tone,
+    }),
+  );
+  const [showBoard, setShowBoard] = useState(
+    draft?.imageShowBoard ?? initial?.image_show_board ?? true,
+  );
   /** "Belirle" adimlari BILFIIL tiklama ister; duzenlemede tamam sayilir (KURAL #3). */
   const [optionCountChosen, setOptionCountChosen] = useState(draft?.optionCountChosen ?? !!initial);
   const [answerKindChosen, setAnswerKindChosen] = useState(draft?.answerKindChosen ?? !!initial);
@@ -85,11 +98,13 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
       instruction, promptImage, optionCount, answerKind,
       options, correctIndex, successMsg, failMsg, difficulty,
       optionCountChosen, answerKindChosen, difficultyChosen,
+      imagePlacement: placement, imageShowBoard: showBoard,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instruction, promptImage, optionCount, answerKind, options,
       correctIndex, successMsg, failMsg, difficulty,
-      optionCountChosen, answerKindChosen, difficultyChosen]);
+      optionCountChosen, answerKindChosen, difficultyChosen,
+      placement, showBoard]);
 
   function setCount(n: 2 | 3 | 4) {
     setOptionCount(n);
@@ -140,6 +155,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   function validate(): string | null {
     if (kind === 'sentence_question' && !instruction.trim()) return 'Soru metni gerekli';
     if (kind === 'image_question' && !promptImage) return 'Soru görseli gerekli';
+    if (kind === 'image_question' && !instruction.trim()) return 'Talimat gerekli';
     if (answerKind === 'sentence') {
       if (options.some((o) => !o.trim())) return 'Tüm cevap seçenekleri doldurulmalı';
     } else {
@@ -161,7 +177,15 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
       correct_index: correctIndex,
       difficulty,
     };
-    if (kind === 'image_question') base.prompt_image = promptImage;
+    if (kind === 'image_question') {
+      base.prompt_image = promptImage;
+      base.image_x = placement.x;
+      base.image_y = placement.y;
+      base.image_w = placement.w;
+      base.image_h = placement.h;
+      base.image_tone = placement.tone;
+      base.image_show_board = showBoard;
+    }
     if (initial?.code) base.code = initial.code;
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
@@ -171,6 +195,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
         setInstruction(''); setPromptImage(''); setOptionCount(2); setAnswerKind('sentence');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
         setOptionCountChosen(false); setAnswerKindChosen(false); setDifficultyChosen(false);
+        setPlacement(DEFAULT_PLACEMENT); setShowBoard(true);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -248,8 +273,19 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
               {poolAddMsg && <span className="n-muted">{poolAddMsg}</span>}
             </div>
           )}
+          {promptImage && (
+            <div className="space-y-2">
+              <ImagePlacer uri={promptImage} placement={placement} onChange={setPlacement} />
+              <label className="flex items-center gap-2 text-xs n-muted">
+                <input type="checkbox" checked={showBoard}
+                  onChange={(e) => setShowBoard(e.target.checked)}
+                  className="h-4 w-4 accent-cyan-400" />
+                Sporcu tahtayı da görsün
+              </label>
+            </div>
+          )}
           <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-            placeholder="Açıklama (opsiyonel)" className="neon-input" />
+            placeholder="Talimat" className="neon-input" />
         </div>
       )}
 
