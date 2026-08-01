@@ -93,6 +93,12 @@ export interface ImageQuestionEx {
   fail_msg?: string;
   code?: string;
   difficulty?: number;
+  image_x?: number;
+  image_y?: number;
+  image_w?: number;
+  image_h?: number;
+  image_tone?: number;
+  image_show_board?: boolean;
 }
 
 export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;

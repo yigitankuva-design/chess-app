@@ -35,6 +35,15 @@ export interface BoardExercise {
   answer_kind?: 'sentence' | 'image';
   /** Sadece move_piece için — SAN hamle dizisi (Konumu Kaydet sonrası kaydedilir). */
   moves?: string[];
+  /** Sadece image_question için — görselin tahta üzerindeki konumu/boyutu/tonu
+   *  (yüzde 0-100, tone 0-10). Yoksa eski düz görünüm kullanılır (KURAL #3). */
+  image_x?: number;
+  image_y?: number;
+  image_w?: number;
+  image_h?: number;
+  image_tone?: number;
+  /** Sporcu ekranında boş tahta arka planı gösterilsin mi (varsayılan true). */
+  image_show_board?: boolean;
 }
 
 interface Props {
