@@ -548,6 +548,21 @@ def _check_data_uri_size(value: object, field_label: str) -> None:
 CHOICE_EXERCISE_TYPES = ("sentence_question", "image_question")
 
 
+def _validate_image_placement(ex: dict) -> None:
+    """image_x/y/w/h/tone/show_board hepsi OPSİYONEL — verilmişse aralık kontrolü.
+    Eski sorularda bu alanlar hiç yok; o durumda hiçbir kontrol tetiklenmez (KURAL #3)."""
+    ranges = (("image_x", 0, 100), ("image_y", 0, 100),
+              ("image_w", 5, 90), ("image_h", 5, 90), ("image_tone", 0, 10))
+    for field, lo, hi in ranges:
+        if field in ex and ex[field] is not None:
+            val = ex[field]
+            if not isinstance(val, (int, float)) or isinstance(val, bool) or val < lo or val > hi:
+                raise HTTPException(status_code=400, detail=f"{field} {lo}-{hi} arasında olmalı")
+    if "image_show_board" in ex and ex["image_show_board"] is not None:
+        if not isinstance(ex["image_show_board"], bool):
+            raise HTTPException(status_code=400, detail="image_show_board doğru/yanlış olmalı")
+
+
 def _validate_choice_exercise(ex: dict, ex_type: str) -> None:
     """sentence_question / image_question doğrulaması — tahtaya bağımlı değil."""
     if ex_type == "image_question":
@@ -555,6 +570,7 @@ def _validate_choice_exercise(ex: dict, ex_type: str) -> None:
         if not img:
             raise HTTPException(status_code=400, detail="Görsel soru için görsel gerekli")
         _check_data_uri_size(img, "Soru görseli")
+        _validate_image_placement(ex)
     else:  # sentence_question
         if not (ex.get("instruction") or "").strip():
             raise HTTPException(status_code=400, detail="Cümle sorusu için soru metni gerekli")

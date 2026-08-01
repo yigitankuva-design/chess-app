@@ -463,3 +463,57 @@ async def test_gecersiz_cumle_sorusu_kendini_test_modunda_da_reddedilir(client, 
         }},
     )
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_image_question_accepts_placement_fields(client, db):
+    les = await _lesson(db, order=200)
+    tok = await _teacher_token(client, email="placement1@t.com")
+    small_img = "data:image/png;base64," + "A" * 100
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "Fili şu kareye sür",
+         "prompt_image": small_img, "answer_kind": "sentence",
+         "options": ["a", "b"], "correct_index": 0,
+         "image_x": 60, "image_y": 40, "image_w": 30, "image_h": 30,
+         "image_tone": 5, "image_show_board": True},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_image_question_placement_fields_optional(client, db):
+    """Eski sorular gibi hiç placement alanı göndermeden de kabul edilmeli (KURAL #3)."""
+    les = await _lesson(db, order=201)
+    tok = await _teacher_token(client, email="placement2@t.com")
+    small_img = "data:image/png;base64," + "A" * 100
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
+         "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_image_question_rejects_out_of_range_placement(client, db):
+    les = await _lesson(db, order=202)
+    tok = await _teacher_token(client, email="placement3@t.com")
+    small_img = "data:image/png;base64," + "A" * 100
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
+         "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0,
+         "image_x": 150},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_image_question_rejects_non_bool_show_board(client, db):
+    les = await _lesson(db, order=203)
+    tok = await _teacher_token(client, email="placement4@t.com")
+    small_img = "data:image/png;base64," + "A" * 100
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
+         "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0,
+         "image_show_board": "yes"},
+    ])
+    assert r.status_code == 400
