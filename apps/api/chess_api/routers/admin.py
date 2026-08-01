@@ -904,6 +904,15 @@ class OpeningCreateRequest(BaseModel):
     start_fen: str
 
 
+class OpeningUpdateRequest(BaseModel):
+    name: str
+    start_fen: str
+
+
+class OpeningMoveRequest(BaseModel):
+    direction: str  # 'up' | 'down'
+
+
 def _validate_fen(fen: str) -> None:
     """FEN'i python-chess ile dogrular; bozuk pozisyon kaydedilmez."""
     try:
@@ -923,11 +932,72 @@ async def create_opening(
     if not name:
         raise HTTPException(status_code=400, detail="Açılış adı gerekli")
     _validate_fen(payload.start_fen)
-    op_row = Opening(name=name, start_fen=payload.start_fen)
+    # Yeni acilis listenin SONUNA eklenir (madde 8 siralamasi bozulmasin).
+    max_order = (await db.execute(select(func.max(Opening.sort_order)))).scalar() or 0
+    op_row = Opening(name=name, start_fen=payload.start_fen, sort_order=max_order + 1)
     db.add(op_row)
     await db.commit()
     await db.refresh(op_row)
     return {"id": op_row.id, "name": op_row.name, "start_fen": op_row.start_fen}
+
+
+@router.patch("/openings/{opening_id}")
+async def update_opening(
+    opening_id: int,
+    payload: OpeningUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Zafer Hoca'nin daha once eklenmis bir acilisin adini/FEN'ini duzeltmesi
+    icin (madde 7). Var olan maclarin start_fen'ini ETKILEMEZ — o deger her
+    macta ayrica kopyalanip saklanir."""
+    _ensure_admin(current)
+    row = await db.get(Opening, opening_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Opening not found")
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Açılış adı gerekli")
+    _validate_fen(payload.start_fen)
+    row.name = name
+    row.start_fen = payload.start_fen
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "name": row.name, "start_fen": row.start_fen}
+
+
+@router.post("/openings/{opening_id}/move")
+async def move_opening(
+    opening_id: int,
+    payload: OpeningMoveRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Acilisi bir komsusuyla YER DEGISTIRIR (madde 8). Listenin ucundaki
+    acilis o yonde hareket ettirilmeye calisilirsa sessizce hicbir sey
+    yapilmaz — hata degil, zaten en uctadir."""
+    _ensure_admin(current)
+    if payload.direction not in ("up", "down"):
+        raise HTTPException(status_code=400, detail="direction 'up' veya 'down' olmalı")
+    row = await db.get(Opening, opening_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Opening not found")
+
+    all_rows = (await db.execute(
+        select(Opening).order_by(Opening.sort_order, Opening.id)
+    )).scalars().all()
+    idx = next((i for i, r in enumerate(all_rows) if r.id == opening_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Opening not found")
+
+    neighbor_idx = idx - 1 if payload.direction == "up" else idx + 1
+    if neighbor_idx < 0 or neighbor_idx >= len(all_rows):
+        return {"moved": False}
+
+    neighbor = all_rows[neighbor_idx]
+    row.sort_order, neighbor.sort_order = neighbor.sort_order, row.sort_order
+    await db.commit()
+    return {"moved": True}
 
 
 @router.delete("/openings/{opening_id}")

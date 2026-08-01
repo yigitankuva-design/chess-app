@@ -44,9 +44,45 @@ export default function AdminStepEditorPage() {
   const [qOptions, setQOptions] = useState<string[]>(['', '']);
   const [qCorrect, setQCorrect] = useState(0);
 
-  const [openExercises, setOpenExercises] = useState<number | null>(null);
-  const [openMode, setOpenMode] = useState<{ stepId: number; field: string } | null>(null);
-  const [editingExercise, setEditingExercise] = useState<{ stepId: number; field: string; idx: number } | null>(null);
+  // Madde 2: sayfa yenilenince (F5) hangi alt konu/mod/soru acikti — o pozisyonda
+  // kalinsin. sessionStorage: sekme kapaninca temizlenir, ama F5'te KALICIDIR.
+  const uiKey = `bsa:admin-ders:${lessonId}`;
+  function loadUiState(): {
+    openExercises: number | null;
+    openMode: { stepId: number; field: string } | null;
+    editingExercise: { stepId: number; field: string; idx: number } | null;
+  } {
+    if (typeof window === 'undefined') return { openExercises: null, openMode: null, editingExercise: null };
+    try {
+      const raw = sessionStorage.getItem(uiKey);
+      if (!raw) return { openExercises: null, openMode: null, editingExercise: null };
+      const p = JSON.parse(raw);
+      return {
+        openExercises: typeof p.openExercises === 'number' ? p.openExercises : null,
+        openMode: p.openMode ?? null,
+        editingExercise: p.editingExercise ?? null,
+      };
+    } catch {
+      return { openExercises: null, openMode: null, editingExercise: null };
+    }
+  }
+  const initialUi = loadUiState();
+  const [openExercises, setOpenExercises] = useState<number | null>(initialUi.openExercises);
+  const [openMode, setOpenMode] = useState<{ stepId: number; field: string } | null>(initialUi.openMode);
+  const [editingExercise, setEditingExercise] = useState<{ stepId: number; field: string; idx: number } | null>(initialUi.editingExercise);
+
+  // TEK bir yerden, DEGISIM SONRASI (commit edilmis state ile) yazilir.
+  // Onceki surum her setter'in KENDI ICINDE ayrica sessionStorage'a yaziyordu;
+  // bir tikta setOpenExercises+setOpenMode+setEditingExercise ARKA ARKAYA
+  // cagrilinca her cagri BIR ONCEKI (henuz commit edilmemis) state'i okuyup
+  // uzerine yaziyordu — son yazan STALE degeri kaydedip pozisyonu bir adim
+  // GERI dusuruyordu (F5'te yanlis sekmede acilma). useEffect her zaman
+  // COMMIT EDILMIS son degerleri gorur, bu yuzden asla stale okumaz.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(uiKey, JSON.stringify({ openExercises, openMode, editingExercise }));
+    } catch { /* kota dolu olabilir */ }
+  }, [uiKey, openExercises, openMode, editingExercise]);
 
   const refresh = useCallback(async () => {
     const token = getToken();

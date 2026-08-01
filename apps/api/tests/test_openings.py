@@ -63,3 +63,108 @@ async def test_ogretmen_acilis_siler(client):
 async def test_tokensiz_ekleme_engellenir(client):
     r = await client.post("/admin/openings", json={"name": "X", "start_fen": VALID_FEN})
     assert r.status_code in (401, 403)
+
+
+# ── Madde 7: duzenleme ──────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_ogretmen_acilisi_duzenler(client):
+    tok = await _teacher_token(client, "op6@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    created = await client.post("/admin/openings", headers=h,
+                                json={"name": "Eski Ad", "start_fen": VALID_FEN})
+    oid = created.json()["id"]
+
+    r = await client.patch(f"/admin/openings/{oid}", headers=h,
+                           json={"name": "Yeni Ad", "start_fen": VALID_FEN})
+    assert r.status_code == 200
+    assert r.json()["name"] == "Yeni Ad"
+
+    listing = await client.get("/openings")
+    assert listing.json()[0]["name"] == "Yeni Ad"
+
+
+@pytest.mark.asyncio
+async def test_duzenlemede_gecersiz_fen_reddedilir(client):
+    tok = await _teacher_token(client, "op7@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    created = await client.post("/admin/openings", headers=h,
+                                json={"name": "A", "start_fen": VALID_FEN})
+    oid = created.json()["id"]
+    r = await client.patch(f"/admin/openings/{oid}", headers=h,
+                           json={"name": "A", "start_fen": "bozuk"})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_olmayan_acilisi_duzenlemek_404_doner(client):
+    tok = await _teacher_token(client, "op8@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    r = await client.patch("/admin/openings/999999", headers=h,
+                           json={"name": "A", "start_fen": VALID_FEN})
+    assert r.status_code == 404
+
+
+# ── Madde 8: siralama ────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_yeni_acilislar_ekleme_sirasinda_listelenir(client):
+    tok = await _teacher_token(client, "op9@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    await client.post("/admin/openings", headers=h, json={"name": "Birinci", "start_fen": VALID_FEN})
+    await client.post("/admin/openings", headers=h, json={"name": "İkinci", "start_fen": VALID_FEN})
+    await client.post("/admin/openings", headers=h, json={"name": "Üçüncü", "start_fen": VALID_FEN})
+    listing = await client.get("/openings")
+    assert [o["name"] for o in listing.json()] == ["Birinci", "İkinci", "Üçüncü"]
+
+
+@pytest.mark.asyncio
+async def test_asagi_tasima_komsuyla_yer_degistirir(client):
+    tok = await _teacher_token(client, "op10@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    a = await client.post("/admin/openings", headers=h, json={"name": "A", "start_fen": VALID_FEN})
+    b = await client.post("/admin/openings", headers=h, json={"name": "B", "start_fen": VALID_FEN})
+    await client.post("/admin/openings", headers=h, json={"name": "C", "start_fen": VALID_FEN})
+
+    r = await client.post(f"/admin/openings/{a.json()['id']}/move", headers=h,
+                          json={"direction": "down"})
+    assert r.status_code == 200 and r.json()["moved"] is True
+
+    listing = await client.get("/openings")
+    assert [o["name"] for o in listing.json()] == ["B", "A", "C"]
+
+
+@pytest.mark.asyncio
+async def test_yukari_tasima_komsuyla_yer_degistirir(client):
+    tok = await _teacher_token(client, "op11@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    await client.post("/admin/openings", headers=h, json={"name": "A", "start_fen": VALID_FEN})
+    b = await client.post("/admin/openings", headers=h, json={"name": "B", "start_fen": VALID_FEN})
+
+    r = await client.post(f"/admin/openings/{b.json()['id']}/move", headers=h,
+                          json={"direction": "up"})
+    assert r.status_code == 200 and r.json()["moved"] is True
+
+    listing = await client.get("/openings")
+    assert [o["name"] for o in listing.json()] == ["B", "A"]
+
+
+@pytest.mark.asyncio
+async def test_TUZAK_listenin_ucundaki_tasima_sessizce_hicbir_sey_yapmaz(client):
+    """En basttaki acilis yukari, en sondaki asagi tasinmaya calisilirsa
+    hata FIRLATILMAZ — cagiran zaten en ucta oldugunu bilir."""
+    tok = await _teacher_token(client, "op12@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    a = await client.post("/admin/openings", headers=h, json={"name": "A", "start_fen": VALID_FEN})
+    b = await client.post("/admin/openings", headers=h, json={"name": "B", "start_fen": VALID_FEN})
+
+    r_top = await client.post(f"/admin/openings/{a.json()['id']}/move", headers=h,
+                              json={"direction": "up"})
+    assert r_top.status_code == 200 and r_top.json()["moved"] is False
+
+    r_bottom = await client.post(f"/admin/openings/{b.json()['id']}/move", headers=h,
+                                 json={"direction": "down"})
+    assert r_bottom.status_code == 200 and r_bottom.json()["moved"] is False
+
+    listing = await client.get("/openings")
+    assert [o["name"] for o in listing.json()] == ["A", "B"]

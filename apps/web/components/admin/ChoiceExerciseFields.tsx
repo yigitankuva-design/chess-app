@@ -219,7 +219,15 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
             />
           )}
           {promptImage && (
-            <img src={promptImage} alt="Soru görseli önizleme" style={{ maxWidth: 200, maxHeight: 150, objectFit: 'contain' }} />
+            <div className="flex items-start gap-2">
+              <img src={promptImage} alt="Soru görseli önizleme" style={{ maxWidth: 200, maxHeight: 150, objectFit: 'contain' }} />
+              {/* Madde 1: görsel eklendikten sonra tek başına SİLİNEBİLSİN —
+                  "Değiştir" zaten dosya seçtirir, bu sadece kaldırır. */}
+              <button type="button" onClick={() => setPromptImage('')}
+                className="px-2 py-1 rounded-lg text-xs bg-rose-400/10 text-rose-300 border border-rose-400/40 hover:bg-rose-400/20">
+                Görseli Sil
+              </button>
+            </div>
           )}
           {promptImage && (
             <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -294,6 +302,14 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
                     Havuzdan Seç
                   </button>
                   {o && <img src={o} alt={`${i + 1}. şık önizleme`} style={{ maxWidth: 60, maxHeight: 45, objectFit: 'contain' }} />}
+                  {o && (
+                    <button type="button"
+                      onClick={() => setOptions((prev) => prev.map((x, j) => (j === i ? '' : x)))}
+                      aria-label={`${i + 1}. şık görselini sil`}
+                      className="px-2 py-1 rounded-lg text-xs bg-rose-400/10 text-rose-300 border border-rose-400/40 hover:bg-rose-400/20">
+                      Sil
+                    </button>
+                  )}
                 </div>
                 {openPoolFor === i && (
                   <PoolPicker

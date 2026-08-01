@@ -31,6 +31,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const auth = useAuth();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  /** Madde 3: telefon/tablette kenar çubuğu varsayılan KAPALI — gizli menü
+   *  düğmesiyle açılır. Masaüstünde (md+) her zaman görünür kalır. */
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -38,11 +41,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setReady(true);
   }, [router]);
 
+  // Sayfa değişince (bir menü öğesine tıklanınca) mobil menü otomatik kapanır.
+  useEffect(() => { setNavOpen(false); }, [pathname]);
+
   if (!ready) return <p className="p-6 neon-shell n-muted">Yükleniyor...</p>;
 
   return (
-    <div className="neon-shell flex min-h-screen">
-      <aside className="w-56 shrink-0 flex flex-col border-r border-white/10 bg-black/40 backdrop-blur-sm">
+    <div className="neon-shell flex min-h-screen md:overflow-visible">
+      {/* Madde 3: telefon/tablette üstte sabit bir çubuk — menü aç/kapa. */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-black/70 backdrop-blur-sm border-b border-white/10">
+        <p className="font-bold text-sm text-cyan-200">AGEP Admin</p>
+        <button
+          type="button"
+          onClick={() => setNavOpen((v) => !v)}
+          aria-label={navOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+          className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-white/80 border border-white/15"
+        >
+          {navOpen ? '✕' : '☰'}
+        </button>
+      </div>
+      {navOpen && (
+        <div
+          onClick={() => setNavOpen(false)}
+          className="md:hidden fixed inset-0 z-20 bg-black/60"
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`w-64 md:w-56 shrink-0 flex flex-col border-r border-white/10 bg-black/90 md:bg-black/40 backdrop-blur-sm
+          fixed md:static top-0 bottom-0 left-0 z-30 md:z-auto
+          transition-transform duration-200 md:translate-x-0
+          ${navOpen ? 'translate-x-0' : '-translate-x-full'} overflow-y-auto`}
+      >
         <div className="p-4 border-b border-white/10 text-center">
           <p className="text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-300 to-indigo-400 drop-shadow-[0_0_14px_rgba(34,211,238,0.45)]">
             Admin Paneli
@@ -102,7 +132,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+      {/* Madde 3: mobil sabit üst çubuğun altında kalmasın (pt-16); md+'da normal. */}
+      <main className="flex-1 min-w-0 p-4 pt-16 md:p-6 md:pt-6 overflow-x-auto">{children}</main>
     </div>
   );
 }

@@ -18,6 +18,8 @@ export interface ClickSquareEx {
   fail_msg?: string;
   /** 3 haneli soru kodu — admin panelinde atanır, öğrenciye üstte gösterilir. */
   code?: string;
+  /** 1=Kolay, 3=Orta, 5=Zor — pratik havuzundan zorluk dağılımıyla seçim için. */
+  difficulty?: number;
 }
 
 /** Eski format: "şu taşı şu karelerden birine taşı" (tek hamle). */
@@ -31,6 +33,7 @@ export interface MovePieceLegacyEx {
   success_msg?: string;
   fail_msg?: string;
   code?: string;
+  difficulty?: number;
 }
 
 /** Yeni format (P4): SAN hamle dizisi — sporcu çizgiyi oynar. */
@@ -42,6 +45,7 @@ export interface MovePieceSequenceEx {
   success_msg?: string;
   fail_msg?: string;
   code?: string;
+  difficulty?: number;
 }
 
 /**
@@ -60,6 +64,7 @@ export interface IdentifyPieceEx {
   correct_index: number;
   success_msg?: string;
   code?: string;
+  difficulty?: number;
 }
 
 export interface SentenceQuestionEx {
@@ -71,6 +76,7 @@ export interface SentenceQuestionEx {
   success_msg?: string;
   fail_msg?: string;
   code?: string;
+  difficulty?: number;
 }
 
 export interface ImageQuestionEx {
@@ -84,6 +90,7 @@ export interface ImageQuestionEx {
   success_msg?: string;
   fail_msg?: string;
   code?: string;
+  difficulty?: number;
 }
 
 export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;

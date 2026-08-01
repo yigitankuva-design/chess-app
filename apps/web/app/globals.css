@@ -361,7 +361,13 @@ body {
   pointer-events: none;
   z-index: 0;
 }
-.neon-shell > * { position: relative; z-index: 1; }
+/* :not(.fixed):not(.absolute) SART — bu kural globals.css'te KATMANSIZ
+   (unlayered) yazildigi icin Tailwind'in @layer utilities icindeki .fixed/
+   .absolute siniflarini EZERDI (CSS Cascade Layers'ta katmansiz kurallar
+   ozgulluk/sira farketmeksizin her zaman onceliklidir). Olculdu: admin
+   panelindeki mobil kenar cubugu bu yuzden position:relative'de kaliyor ve
+   ekrani yatay tasiriyordu (madde 3). */
+.neon-shell > *:not(.fixed):not(.absolute) { position: relative; z-index: 1; }
 
 .neon-card {
   --glow: 168,85,247;

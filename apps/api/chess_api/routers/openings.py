@@ -11,5 +11,7 @@ router = APIRouter(tags=["openings"])
 async def list_openings(db: AsyncSession = Depends(get_db)):
     """Sporcu mac kurarken acilis secer — kimlik dogrulamasi gerekmez
     (mufredat listesi gibi herkese acik, /modules ile ayni desen)."""
-    rows = (await db.execute(select(Opening).order_by(Opening.id))).scalars().all()
+    rows = (await db.execute(
+        select(Opening).order_by(Opening.sort_order, Opening.id)
+    )).scalars().all()
     return [{"id": o.id, "name": o.name, "start_fen": o.start_fen} for o in rows]

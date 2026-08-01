@@ -6,6 +6,9 @@ import { ComingSoon } from '@/components/ComingSoon';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
 import { sessionKey, loadSession, saveSession, clearSession } from '@/lib/play/practiceSession';
+import { pickWeighted, UNTIMED_MIX, TIMED_MIX, TEST_MIX } from '@/lib/play/questionPicker';
+import type { DifficultyBucket } from '@/lib/play/questionPicker';
+import { loadPreviousCodes, saveShownCodes } from '@/lib/play/practiceHistory';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 import { PracticeResult } from '@/components/practice/PracticeResult';
 import { scorePercent } from '@/lib/practice/scoring';
@@ -20,23 +23,15 @@ const MODES: Record<string, {
   emoji: string; title: string; field: string; timed: boolean; scored: boolean;
   /** Havuzdan rastgele kaç soru seçilsin (0 = hepsi, sırayla) */
   randomPick: number;
+  /** Zorluk dağılımı (madde 4/5/6) — randomPick 0 ise kullanılmaz. */
+  mix: DifficultyBucket;
 }> = {
-  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, randomPick: 20 },
-  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, randomPick: 0 },
-  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  randomPick: 0 },
+  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, randomPick: 20, mix: UNTIMED_MIX },
+  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, randomPick: 20, mix: TIMED_MIX },
+  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  randomPick: 20, mix: TEST_MIX },
 };
 
 const TIMED_SECONDS = 300; // Süreli mod: 5 dakika
-
-/** Fisher–Yates karıştırma — her girişte farklı sıra/soru seti için. */
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 interface StepRow { id: number; type: string; content_json?: Record<string, unknown> }
 
@@ -103,11 +98,23 @@ function PratikInner() {
           setLoading(false);
           return;
         }
-        // Süresiz mod: havuzdan her seferinde rastgele 20 soru
-        const picked = mode.randomPick > 0 ? shuffle(pool).slice(0, mode.randomPick) : pool;
+        // Havuzdan zorluk dagilimina gore secim (madde 4/5/6): mumkunse
+        // bir onceki turda gosterilen sorulardan farkli.
+        const previousCodes = loadPreviousCodes(stepId, slug);
+        const picked = mode.randomPick > 0
+          ? pickWeighted(
+              pool, mode.mix,
+              (ex) => (ex as { difficulty?: number }).difficulty,
+              (ex) => ex.code ?? '',
+              previousCodes,
+            )
+          : pool;
         setExercises(picked);
         setStartIndex(0);
         saveSession(key, { items: picked, index: 0 });
+        if (mode.randomPick > 0) {
+          saveShownCodes(stepId, slug, picked.map((ex) => ex.code ?? '').filter(Boolean));
+        }
         setLoading(false);
       })
       .catch(() => { setExercises([]); setLoading(false); });
