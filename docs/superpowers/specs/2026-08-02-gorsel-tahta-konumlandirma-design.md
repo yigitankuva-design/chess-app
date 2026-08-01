@@ -27,17 +27,38 @@ gerekiyor.
    geçer: adı "Talimat" olur, **zorunlu hale gelir** (soru metni olarak
    kullanılır — `instruction` alanına yazılır). Ayrı ikinci bir metin kutusu
    eklenmez.
+6. **Tahtanın sporcuya gösterilmesi Hoca'nın kararı.** Her soruda ayrı ayrı
+   seçilebilir: bazı sorularda sporcu tahtayı da görür (görsel tahtanın
+   üzerinde durur), bazılarında yalnızca görseli görür (tahta sadece Hoca'nın
+   yerleştirme aracıdır). Admin editörde bir açık/kapalı anahtarı,
+   `image_show_board` alanı olarak kaydedilir. Varsayılan: **açık**.
+
+## Mevcut kodda bulunan tutarsızlık (bu iş kapsamında düzeltilir)
+
+`lib/admin/questionSteps.ts:38`'deki `choiceSteps` "Talimatı Gir" adımını
+**zaten her iki soru tipi için de zorunlu** tutuyor ve tamamlanmadıkça "Soruyu
+ekle" butonunu kilitliyor. Ancak `ChoiceExerciseFields.tsx:252`'deki input'un
+etiketi `"Açıklama (opsiyonel)"` diyor. Zafer Hoca "opsiyonel" yazan kutuyu boş
+bırakıyor, buton kilitli kalıyor ve sebebini göremiyor. Kapsam kararı 5 bu
+tutarsızlığı ortadan kaldırır — `questionSteps.ts` DEĞİŞMEZ, yalnızca etiket ve
+zorunluluk bilgisi doğrusuyla değiştirilir.
 
 ## Mimari
 
 ### Yeni bileşen: `apps/web/components/admin/ImagePlacer.tsx`
 
-- Saf sunum bileşeni: `{ uri, x, y, w, h, tone, onChange }` prop'ları alır
-  (`x,y` = görselin merkezi, `w,h` = boyutu — hepsi tahta genişliğinin/
-  yüksekliğinin YÜZDESİ olarak, 0-100).
+- Saf sunum bileşeni: `{ uri, x, y, w, h, tone, showBoard, onChange }` prop'ları
+  alır (`x,y` = görselin merkezi, `w,h` = boyutu — hepsi tahta genişliğinin/
+  yüksekliğinin YÜZDESİ olarak, 0-100). `showBoard` yalnızca sporcu ekranındaki
+  görünümü belirler; editörde tahta Hoca'ya **her zaman** gösterilir (yerleştirme
+  referansı olmadan sürüklemek anlamsız olurdu).
 - 8×8 dama deseni arka plan — `lib/chess/boardSkin.ts`'teki `getBoardColors`
   ile mevcut tahta renk temasıyla tutarlı; gerçek `react-chessboard`/`chess.js`
   kullanılmaz (taş yok, sadece görsel referans ızgarası — YAGNI).
+- Bu dama deseni, admin editörü ile sporcu ekranının **aynı** görüntüyü vermesi
+  için ayrı ve küçük bir `components/chess/EmptyBoardGrid.tsx` bileşenine
+  çıkarılır; hem `ImagePlacer` hem `ChoiceQuestionBody` onu kullanır. Böylece
+  Hoca'nın editörde gördüğü yerleşim, sporcunun gördüğüyle birebir eşleşir.
 - `<img>` mutlak konumlu (`position: absolute`, `left/top` = x/y%,
   `width/height` = w/h%, `transform: translate(-50%,-50%)`).
 - Sürükleme: pointer event'leriyle (`onPointerDown/Move/Up`) serbest hareket.
@@ -52,21 +73,23 @@ gerekiyor.
 ### Veri modeli — geriye uyumlu opsiyonel alanlar
 
 `BoardExercise` tipine (`ExerciseForm.tsx`) ve backend şemasına
-(`chess_api/routers/admin.py`) 5 yeni **opsiyonel** alan:
+(`chess_api/routers/admin.py`) 6 yeni **opsiyonel** alan:
 
 ```
-image_x?: number    // 0-100, merkez X yüzdesi
-image_y?: number    // 0-100, merkez Y yüzdesi
-image_w?: number     // 5-90, genişlik yüzdesi
-image_h?: number     // 5-90, yükseklik yüzdesi
-image_tone?: number  // 0-10 tam sayı, gri tonlama
+image_x?: number          // 0-100, merkez X yüzdesi
+image_y?: number          // 0-100, merkez Y yüzdesi
+image_w?: number          // 5-90, genişlik yüzdesi
+image_h?: number          // 5-90, yükseklik yüzdesi
+image_tone?: number       // 0-10 tam sayı, gri tonlama
+image_show_board?: boolean // sporcu tahtayı da görsün mü (varsayılan true)
 ```
 
 Bu alanlar `undefined` olduğunda (mevcut ~tüm eski `image_question` soruları):
-görsel eskisi gibi ortalanmış, sabit varsayılan boyutta (örn. %40×%40), ton=0
-render edilir. **Hiçbir eski soru bozulmaz** (KURAL #3) — migration gerekmez,
-çünkü içerik zaten JSON alanında saklanıyor (`_validate_choice_exercise`,
-admin.py:551, loose dict validation).
+görsel **eskisi gibi**, `ChoiceQuestionBody`'nin bugünkü düz `<img>` görünümüyle
+(maxWidth 340, ortalanmış, tahtasız) render edilir. Yani eski sorular yeni tahta
+görünümüne GEÇMEZ — davranış birebir korunur. **Hiçbir eski soru bozulmaz**
+(KURAL #3) — migration gerekmez, çünkü içerik zaten JSON alanında saklanıyor
+(`_validate_choice_exercise`, admin.py:551, gevşek dict doğrulaması).
 
 Backend `_validate_choice_exercise` içine sayı aralığı kontrolü eklenir
 (alanlar varsa 0-100/0-10 aralığında olmalı; yoksa hata verilmez — opsiyonel).
@@ -74,16 +97,21 @@ Backend `_validate_choice_exercise` içine sayı aralığı kontrolü eklenir
 ### Değişen mevcut dosyalar
 
 - `ChoiceExerciseFields.tsx`: "Soru Görseli" seçildiğinde altına `ImagePlacer`
-  render edilir; "Açıklama (opsiyonel)" input'u kaldırılıp yerine zorunlu
-  "Talimat" input'u gelir (aynı `instruction` state'i, sadece placeholder/
-  zorunluluk değişir — `validate()` fonksiyonunda `image_question` için de
-  boş kontrolü eklenir).
-- `lib/admin/questionSteps.ts` (`choiceSteps`): "Talimat" adımı image_question
-  için de zorunlu adım listesine eklenir (şu an sadece sentence_question'da
-  zorunlu).
+  ve "Sporcu tahtayı da görsün" anahtarı render edilir; "Açıklama (opsiyonel)"
+  input'unun etiketi zorunlu "Talimat" olur (aynı `instruction` state'i, sadece
+  placeholder değişir — adım kilidi zaten mevcut, bkz. yukarıdaki tutarsızlık
+  bölümü). `validate()`'e `image_question` için de boş talimat kontrolü eklenir
+  (ikinci savunma hattı).
+- `lib/admin/questionSteps.ts`: **DEĞİŞMEZ** — "Talimatı Gir" adımı zaten her iki
+  tip için de zorunlu (satır 38).
 - `components/lesson-steps/ChoiceQuestionBody.tsx` (sporcunun gördüğü ekran):
-  `prompt_image`'ı artık `image_x/y/w/h/tone` alanlarına göre konumlandırılmış
-  render eder; alanlar yoksa eski ortalanmış görünüme düşer.
+  yerleşim alanları varsa görseli `image_x/y/w/h/tone`'a göre konumlandırılmış
+  render eder; `image_show_board` true ise arkasında boş tahta deseni de çizilir.
+  Alanlar yoksa bugünkü düz `<img>` görünümü aynen korunur.
+- `components/lesson-steps/BoardExercise.tsx`: `ImageQuestionEx` tipine 6 yeni
+  opsiyonel alan eklenir.
+- `components/admin/ExerciseForm.tsx`: `BoardExercise` tipine aynı 6 alan; kayıt
+  gövdesine (`submit`) yazılır.
 
 ## Test planı
 
@@ -92,9 +120,12 @@ Backend `_validate_choice_exercise` içine sayı aralığı kontrolü eklenir
 - `ImagePlacer.tsx` için: varsayılan render, sürükleme sonrası `onChange`
   çağrısı, ton slider'ının filter değerini değiştirmesi.
 - `ChoiceExerciseFields.tsx`: Talimat boşken kaydet butonu kilitli, doldurunca
-  açılıyor (mevcut `choiceSteps`/`StepList` desenine uygun).
+  açılıyor (mevcut `choiceSteps`/`StepList` desenine uygun); "Sporcu tahtayı
+  görsün" anahtarının kayıt gövdesine yansıması.
 - `ChoiceQuestionBody.tsx`: `image_x/y/w/h/tone` verilince doğru stil
-  uygulanıyor; verilmeyince eski (ortalanmış) görünüm korunuyor (regresyon).
+  uygulanıyor; `image_show_board` true iken tahta çiziliyor, false iken
+  çizilmiyor; alanlar HİÇ verilmeyince bugünkü düz `<img>` görünümü birebir
+  korunuyor (KURAL #3 regresyon testi).
 - Backend: `_validate_choice_exercise` yeni alan aralık testleri
   (`test_board_exercises.py`).
 - Tam kapı: `npx tsc --noEmit && npx next lint && npx vitest run` (apps/web),
