@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { thresholdMessage } from '@/lib/practice/scoring';
+import { ChessBoard } from '@/components/ChessBoard';
+import type { ResultHeadline } from '@/lib/practice/resultHeadline';
 
 interface Props {
   correct: number;
@@ -10,14 +11,49 @@ interface Props {
   /** Bu oturumda açılan kilidin adı, yoksa null. */
   unlocked: string | null;
   onRetry: () => void;
+  /** Madde 7: arka planda matlaşan tahtanın gösterdiği konum. */
+  boardFen: string;
+  /** Madde 7: tahtanın üzerinde beliren büyük renkli mesaj. */
+  headline: ResultHeadline;
 }
 
-/** Oturum sonu dökümü. Saf sunum — puanlama/kilit kararı vermez. */
-export function PracticeResult({ correct, total, score, unlocked, onRetry }: Props) {
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+/**
+ * Oturum sonu dökümü (madde 7). Saf sunum — puanlama/kilit kararı vermez.
+ *
+ * Tasarım: satranç tahtası renkleri MATLAŞIP beyazlaşır (grayscale +
+ * brightness filtresi), üzerinde puan eşiğine göre kırmızı ("tekrar yap")
+ * veya yeşil ("bir sonrakine geçebilirsin") büyük punto bir mesaj belirir.
+ */
+export function PracticeResult({
+  correct, total, score, unlocked, onRetry, boardFen, headline,
+}: Props) {
+  const toneColor = headline.tone === 'success' ? '#16a34a' : '#dc2626';
+
   return (
     <div className="t-card-i p-5 text-center rounded-xl">
-      <p className="text-3xl mb-2">🏁</p>
-      <p className="font-extrabold text-base mb-1">{thresholdMessage(score)}</p>
+      {/* Matlaşan tahta + üzerindeki büyük mesaj */}
+      <div className="relative mx-auto mb-4" style={{ maxWidth: 320 }}>
+        <div
+          aria-hidden="true"
+          style={{ filter: 'grayscale(1) brightness(2.2) contrast(0.55)', opacity: 0.6, pointerEvents: 'none' }}
+        >
+          <ChessBoard fen={boardFen || START_FEN} interactive={false} />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <p
+            className="font-black leading-tight"
+            style={{
+              fontSize: 'clamp(1.05rem, 6vw, 1.6rem)',
+              color: toneColor,
+              textShadow: '0 1px 3px rgba(255,255,255,0.9), 0 0 14px rgba(255,255,255,0.9)',
+            }}
+          >
+            {headline.text}
+          </p>
+        </div>
+      </div>
 
       <p className="text-sm mb-1">
         <b style={{ color: 'var(--t-accent)' }}>{correct} / {total}</b> doğru

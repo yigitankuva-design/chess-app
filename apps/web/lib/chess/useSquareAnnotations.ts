@@ -32,6 +32,7 @@ function colorForModifiers(ctrl: boolean, alt: boolean): AnnotationColor {
 export function useSquareAnnotations(resetKey: unknown): {
   squareStyles: Record<string, CSSProperties>;
   onSquareRightClick: (args: { square: string }) => void;
+  clearAnnotations: () => void;
 } {
   const [marks, setMarks] = useState<Record<string, AnnotationColor>>({});
   const ctrlDown = useRef(false);
@@ -74,5 +75,7 @@ export function useSquareAnnotations(resetKey: unknown): {
     squareStyles[sq] = { backgroundColor: COLORS[color] };
   }
 
-  return { squareStyles, onSquareRightClick };
+  const clearAnnotations = useCallback(() => setMarks({}), []);
+
+  return { squareStyles, onSquareRightClick, clearAnnotations };
 }

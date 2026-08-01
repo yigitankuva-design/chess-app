@@ -22,9 +22,11 @@ beforeEach(() => {
   })));
 });
 
-/** Bot kartini acar ve acilis listesinin yuklenmesini bekler. */
+/** Bot kartini acar, "Acilis Konumunu Sec" basligina tiklar (madde 4: liste
+ *  bastan gizlidir) ve acilis listesinin yuklenmesini bekler. */
 async function openBotCard() {
   fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
+  fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Konumunu Seç/ }));
   await waitFor(() => expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument());
 }
 
@@ -71,7 +73,7 @@ describe('OpeningPractice — akordiyon', () => {
     await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
     fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Konumunu Seç/ }));
-    expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument());
   });
 
   it('maç seçilen açılışın FENiyle başlar', async () => {
@@ -102,6 +104,7 @@ describe('OpeningPractice — akordiyon', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [] })));
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
+    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Konumunu Seç/ }));
     await waitFor(() =>
       expect(screen.getByText(/henüz açılış eklemedi/i)).toBeInTheDocument(),
     );

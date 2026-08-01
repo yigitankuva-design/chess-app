@@ -44,8 +44,11 @@ interface Props {
  *  1) Acilis Konumu Sec  2) Mac Kriterlerini Belirle  3) Arkadasini Sec */
 export function FriendChallenge({ openingStep }: Props = {}) {
   const { players, challenge } = useLobbyContext();
+  // Madde 4: acilis adimi varsa BASTAN KAPALI — sporcu basliga tiklamadan
+  // tum acilislari gormemeli. Acilis adimi yoksa (Arkadasla Oyna) dogrudan
+  // kriter adimi acilir (eskisi gibi).
   const [open, setOpen] = useState<StepKey | null>(
-    openingStep ? 'opening' : 'criteria',
+    openingStep ? null : 'criteria',
   );
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
   const [all, setAll] = useState<Athlete[] | null>(null);

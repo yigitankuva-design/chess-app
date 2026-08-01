@@ -58,9 +58,9 @@ describe('BoardExercise — P3 öncesi taban çizgisi (regresyon güvenlik ağı
     ];
     const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
     fireEvent.click(container.querySelector('[data-square="a1"]')!);
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
     fireEvent.click(container.querySelector('[data-square="a1"]')!);
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
     fireEvent.click(container.querySelector('[data-square="a1"]')!);
     expect(onCorrect).toHaveBeenCalledTimes(1);
   });
@@ -102,9 +102,9 @@ describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar 
     ];
     const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
-    expect(screen.getByText('Sonraki Soru →')).toBeInTheDocument();
+    expect(screen.getByText('Sonraki Soruya Geç')).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 2000)); // mevcut fail() 1.8sn'de idle'a dönerdi
-    expect(screen.getByText('Sonraki Soru →')).toBeInTheDocument(); // hâlâ orada — sıfırlanmadı
+    expect(screen.getByText('Sonraki Soruya Geç')).toBeInTheDocument(); // hâlâ orada — sıfırlanmadı
   });
 
   it('yanlış cevap sonrası tekrar tıklama hiçbir şeyi değiştirmez', () => {
@@ -117,7 +117,7 @@ describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar 
     fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
     fireEvent.click(container.querySelector('[data-square="e4"]')!); // tekrar dene — etkisiz olmalı
     expect(onCorrect).not.toHaveBeenCalled();
-    expect(screen.getByText('Sonraki Soru →')).toBeInTheDocument();
+    expect(screen.getByText('Sonraki Soruya Geç')).toBeInTheDocument();
   });
 
   it("yanlış cevap doneCount'u artırmaz (ilerleme noktası yanlışı doğru saymaz)", () => {
@@ -140,13 +140,13 @@ describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar 
     const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
     // Q1 doğru
     fireEvent.click(container.querySelector('[data-square="e4"]')!);
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
     // Q2 yanlış
     fireEvent.click(container.querySelector('[data-square="a1"]')!);
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
     // Q3 doğru — SON SORU
     fireEvent.click(container.querySelector('[data-square="e4"]')!);
-    expect(screen.queryByText('Sonraki Soru →')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sonraki Soruya Geç')).not.toBeInTheDocument();
     expect(onCorrect).not.toHaveBeenCalled(); // hepsi doğru değildi (Q2 yanlıştı)
     expect(container.textContent).toMatch(/cevapland/i); // yerel "bitti" mesajı
   });
@@ -187,7 +187,7 @@ describe('BoardExercise — succeed() bitiş tespiti currentIdx tabanlı (Task 2
     ];
     const { container } = render(<BoardExercise exercises={exercises} done={false} onCorrect={onCorrect} />);
     fireEvent.click(container.querySelector('[data-square="a1"]')!);
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
     fireEvent.click(container.querySelector('[data-square="a1"]')!);
     expect(onCorrect).toHaveBeenCalledTimes(1);
   });

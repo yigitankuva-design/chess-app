@@ -67,7 +67,17 @@ export function pickWeighted<T>(
   rng: () => number = Math.random,
 ): T[] {
   const count = mix.easy + mix.medium + mix.hard;
-  if (pool.length <= count) return shuffle(pool, rng);
+  // Madde 5: EKRANDAKİ SIRA havuzun kendi (admin'deki) sırasıdır — "1. soru"
+  // gerçekten havuzdaki 1. soru olmalı. Önceden burada sonuç KARIŞTIRILIYORDU;
+  // Zafer Hoca Süresiz Pratik'i incelerken önce 4. sorunun geldiğini
+  // gördü. Rastgelelik SADECE hangi 20 sorunun seçileceğinde kalır
+  // (madde 4/5/6), seçilenlerin gösterim sırası pool indeksine göre sabittir.
+  const poolIndex = new Map<string, number>();
+  pool.forEach((item, i) => poolIndex.set(idOf(item), i));
+  const byOriginalOrder = (items: T[]): T[] =>
+    [...items].sort((a, b) => (poolIndex.get(idOf(a)) ?? 0) - (poolIndex.get(idOf(b)) ?? 0));
+
+  if (pool.length <= count) return pool;
 
   const seen = new Set(previousIds);
   const byBucket: Record<Bucket, T[]> = { easy: [], medium: [], hard: [] };
@@ -97,5 +107,5 @@ export function pickWeighted<T>(
     result.push(...picked);
   }
 
-  return shuffle(result, rng);
+  return byOriginalOrder(result);
 }

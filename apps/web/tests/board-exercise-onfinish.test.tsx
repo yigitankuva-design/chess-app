@@ -21,7 +21,7 @@ describe('BoardExercise onFinish', () => {
         onCorrect={vi.fn()} onFinish={onFinish} />,
     );
     click(container, 'e2');
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
     click(container, 'e2');
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(onFinish).toHaveBeenCalledWith({ correct: 2, total: 2 });
@@ -34,7 +34,7 @@ describe('BoardExercise onFinish', () => {
         onCorrect={vi.fn()} onFinish={onFinish} />,
     );
     click(container, 'a1'); // 1. soru YANLIŞ
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
     click(container, 'e2'); // 2. soru doğru
     expect(onFinish).toHaveBeenCalledWith({ correct: 1, total: 2 });
   });

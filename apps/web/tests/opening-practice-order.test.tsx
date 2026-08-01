@@ -39,6 +39,14 @@ describe('Açılış Pratiği — arkadaşa karşı sıra (madde 6)', () => {
     expect(screen.getByText('3. Arkadaşını Seç')).toBeInTheDocument();
   });
 
+  it('madde 4: bot dalında da liste başta gizlidir', async () => {
+    render(<OpeningPractice />);
+    fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
+    expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('1. Açılış Konumunu Seç'));
+    await waitFor(() => screen.getByText('İtalyan Açılışı'));
+  });
+
   it('TUZAK: açılış seçilmeden kriter adımı KİLİTLİDİR', () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
@@ -46,9 +54,19 @@ describe('Açılış Pratiği — arkadaşa karşı sıra (madde 6)', () => {
     expect(card).toHaveAttribute('aria-disabled', 'true');
   });
 
+  it('madde 4: liste başta gizlidir, "Açılış Konumunu Seç" tıklanınca görünür', async () => {
+    render(<OpeningPractice />);
+    fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
+    expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('1. Açılış Konumunu Seç'));
+    await waitFor(() => screen.getByText('İtalyan Açılışı'));
+  });
+
   it('seçilen açılışın start_fen değeri teklifle birlikte gider', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
+    fireEvent.click(screen.getByText('1. Açılış Konumunu Seç'));
 
     await waitFor(() => screen.getByText('İtalyan Açılışı'));
     fireEvent.click(screen.getByText('İtalyan Açılışı'));

@@ -2,9 +2,11 @@
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
+import { Chess } from 'chess.js';
 import { playPieceSound } from '@/lib/sounds/pieceSounds';
 import { ChoiceQuestionBody } from './ChoiceQuestionBody';
 import { MovePieceSolver } from './MovePieceSolver';
+import { MoveList } from '@/components/play/MoveList';
 
 // ─── Exercise config types ────────────────────────────────────────────────────
 
@@ -179,6 +181,9 @@ export function BoardExercise({
   /** Madde 1: Suresiz Pratik'te yanlis cevaptan sonra tekrar deneme YOK;
    *  soru kilitlenir, sporcu "Sonraki Soruya Geç" ile ilerler. */
   const [failLocked, setFailLocked] = useState(false);
+  /** Madde 6: dogru cevaplanan Tasi Oynat (eski format) sorusunun oynanan
+   *  hamlesi — geribildirim karti altindaki notasyon karti icin. */
+  const [playedMove, setPlayedMove] = useState<{ from: string; to: string } | null>(null);
 
   const exercise = exercises[currentIdx] ?? exercises[0];
   const total = exercises.length;
@@ -193,6 +198,7 @@ export function BoardExercise({
     setShowNext(false);
     setClickedSquare(null);
     setFailLocked(false);
+    setPlayedMove(null);
     onIndexChange?.(currentIdx);
     // onIndexChange kasten bagimlilikta DEGIL: her renderda yeni fonksiyon
     // gelirse efekt bosuna tekrar calisir ve durum sifirlanir.
@@ -327,6 +333,7 @@ export function BoardExercise({
         return;
       }
       if (exercise.target_squares.includes(square)) {
+        setPlayedMove({ from: exercise.piece_square, to: square });
         succeed(piece?.pieceType);
       } else {
         fail(exercise.fail_msg ?? 'Yanlış kare! Altın renkli kareye taşı.');
@@ -464,25 +471,11 @@ export function BoardExercise({
         <ChoiceQuestionBody exercise={exercise} disabled={status === 'success'} onAnswer={onChoiceAnswer} />
       )}
 
-      {/* Feedback — dikkat çekici ve ilgi çekici */}
-      {status === 'success' && (
-        <div className="bea-pop relative flex items-center gap-3 py-3.5 px-4 rounded-2xl text-base font-extrabold overflow-visible"
-          style={{
-            background: 'linear-gradient(90deg, #22c55e, #16a34a)',
-            color: '#fff',
-            boxShadow: '0 8px 24px -6px rgba(34,197,94,0.6)',
-          }}>
-          <span className="text-2xl bea-bounce flex-shrink-0">🎉</span>
-          <span>{exercise.success_msg ?? 'Aferin! Doğru yaptın! 👏'}</span>
-          {/* yukarı süzülen emoji patlaması */}
-          <div className="bea-burst pointer-events-none absolute inset-0">
-            {['⭐', '✨', '🎊', '⭐', '✨'].map((e, i) => (
-              <span key={i} style={{ left: `${12 + i * 19}%`, top: '40%', fontSize: 18, animationDelay: `${i * 0.06}s` }}>{e}</span>
-            ))}
-          </div>
-        </div>
-      )}
-      {status === 'fail' && (
+      {/* Yeniden denemenin HALA mumkun oldugu yanlis cevap (showNext=false):
+          eski gecici uyari — 1.8sn sonra kendiliginden kapanir, sporcu ayni
+          soruyu tekrar dener. Madde 6'nin iki-kart tasarimi bunun icin
+          DEGIL — o sadece "sonraki soruya gec" ani icin. */}
+      {status === 'fail' && !showNext && (
         <div className="bea-shake flex items-center gap-3 py-3 px-4 rounded-2xl text-sm font-bold"
           style={{
             background: 'linear-gradient(90deg, #f59e0b, #ef4444)',
@@ -494,14 +487,68 @@ export function BoardExercise({
         </div>
       )}
 
-      {/* Next exercise button */}
-      {showNext && doneCount < total && (
-        <button
-          onClick={goNext}
-          className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
-          style={{ background: 'var(--t-accent)', color: '#fff' }}>
-          {failLocked ? 'Sonraki Soruya Geç →' : 'Sonraki Soru →'}
-        </button>
+      {/* Madde 6: seceneklerin altinda Geribildirim karti — dogru: yesil
+          tik, yanlis: kirmizi çarpı. SONRAKI SORUYA GECILEBILECEGI an
+          (showNext) yaninda "Sonraki Soruya Geç" karti da belirir; son
+          soruda (showNext=false) tek basina, tam genislikte kalir — eski
+          davranista oldugu gibi geri bildirim HER ZAMAN gorunur. */}
+      {(status === 'success' || status === 'fail') && (status === 'success' || showNext) && (
+        <>
+          <div className={showNext && doneCount < total ? 'grid grid-cols-2 gap-2' : ''}>
+            {showNext && doneCount < total && (
+              <button
+                onClick={goNext}
+                className="t-card-i flex flex-col items-center justify-center gap-1.5 py-4 px-2 text-center transition-all"
+                style={{ background: 'var(--t-accent)', color: '#fff', border: 'none' }}
+              >
+                <span className="text-xl leading-none" aria-hidden="true">➡️</span>
+                <span className="text-sm font-bold">Sonraki Soruya Geç</span>
+              </button>
+            )}
+            <div
+              className="t-card-i flex flex-col items-center justify-center gap-1.5 py-4 px-2 text-center"
+              style={{
+                borderColor: status === 'success' ? '#16a34a' : '#dc2626',
+                background: status === 'success'
+                  ? 'color-mix(in srgb, #16a34a 12%, transparent)'
+                  : 'color-mix(in srgb, #dc2626 12%, transparent)',
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{ fontSize: '1.75rem', lineHeight: 1, color: status === 'success' ? '#16a34a' : '#dc2626' }}
+              >
+                {status === 'success' ? '✓' : '✕'}
+              </span>
+              <span className="text-xs font-semibold" style={{ color: status === 'success' ? '#16a34a' : '#dc2626' }}>
+                {status === 'success' ? (exercise.success_msg ?? 'Aferin! Doğru yaptın! 👏') : (feedback || 'Yanlış!')}
+              </span>
+            </div>
+          </div>
+
+          {/* Madde 6: satranç taşı hareketiyle ilgili sorularda, doğru
+              cevapta geri bildirim kartının altında sporcunun hamlesini
+              gösteren notasyon kartı. */}
+          {status === 'success' && (() => {
+            if (!isBoardExercise(exercise) || exercise.type !== 'move_piece') return null;
+            let san: string[] | null = null;
+            if ('moves' in exercise) {
+              san = exercise.moves;
+            } else if (playedMove) {
+              try {
+                // SKIPVALIDATION SART: Zafer Hoca'nin ogretim pozisyonlari
+                // KASTEN sahsiz olabilir (bkz. ChessBoard.tsx). Validasyonlu
+                // constructor "missing king" firlatir, notasyon kartı
+                // SESSIZCE hic gorunmezdi (olculdu — test bunu yakaladi).
+                const chess = new Chess(exercise.fen, { skipValidation: true });
+                const mv = chess.move({ from: playedMove.from, to: playedMove.to, promotion: 'q' });
+                san = mv ? [mv.san] : null;
+              } catch { san = null; }
+            }
+            if (!san || san.length === 0) return null;
+            return <MoveList san={san} startFen={exercise.fen} />;
+          })()}
+        </>
       )}
     </div>
   );

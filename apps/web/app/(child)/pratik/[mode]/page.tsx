@@ -3,8 +3,9 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ComingSoon } from '@/components/ComingSoon';
-import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
+import { BoardExercise, isBoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
+import { resultHeadline } from '@/lib/practice/resultHeadline';
 import { sessionKey, loadSession, saveSession, clearSession } from '@/lib/play/practiceSession';
 import { pickWeighted, UNTIMED_MIX, TIMED_MIX, TEST_MIX } from '@/lib/play/questionPicker';
 import type { DifficultyBucket } from '@/lib/play/questionPicker';
@@ -259,6 +260,9 @@ function PratikInner() {
           score={finished.score}
           unlocked={unlockedNow}
           onRetry={handleRetry}
+          // Madde 7: son sorunun tahtası matlaşarak arka planda kalır.
+          boardFen={[...(exercises ?? [])].reverse().find(isBoardExercise)?.fen ?? ''}
+          headline={resultHeadline(modeKey, finished.score)}
         />
       )}
 

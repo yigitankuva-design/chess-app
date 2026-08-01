@@ -81,3 +81,20 @@ describe('pickWeighted — dağılım (madde 4/5/6)', () => {
     expect(secim.length).toBeGreaterThan(0); // asla bos donmez
   });
 });
+
+describe('pickWeighted — gösterim sırası havuz sırasıyla AYNI (madde 5)', () => {
+  it('TUZAK: seçilen 20 soru havuzdaki ORİJİNAL sıraya göre gösterilir, karışmaz', () => {
+    // Gercek Math.random ile: 4. soru ilk siraya duserse hata yakalanir.
+    const p = [...pool(20, () => 1), ...pool(20, () => 3), ...pool(20, () => 5)];
+    const secim = pickWeighted(p, UNTIMED_MIX, diffOf, idOf, [], Math.random);
+    const secimIdleri = secim.map((q) => q.id);
+    const siraliMi = secimIdleri.every((id, i) => i === 0 || id > secimIdleri[i - 1]);
+    expect(siraliMi).toBe(true);
+  });
+
+  it('havuz count kadar/azsa da orijinal sıra korunur (karıştırılmaz)', () => {
+    const p = pool(5, () => 1);
+    const secim = pickWeighted(p, UNTIMED_MIX, diffOf, idOf, [], Math.random);
+    expect(secim.map((q) => q.id)).toEqual([0, 1, 2, 3, 4]);
+  });
+});

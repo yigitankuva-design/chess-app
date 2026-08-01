@@ -18,7 +18,9 @@ interface Opening { id: number; name: string; start_fen: string }
  *  Dis katman: bot / arkadas. Ic katman (bot): acilis -> kriterler. */
 export function OpeningPractice() {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
-  const [openInner, setOpenInner] = useState<BotStepKey | null>('opening');
+  // Madde 4: acilis listesi BASTAN gorunmez — sporcu "Acilis Konumunu Sec"
+  // basligina tiklamadan tum acilislari gormemeli.
+  const [openInner, setOpenInner] = useState<BotStepKey | null>(null);
   const [openings, setOpenings] = useState<Opening[] | null>(null);
   const [chosen, setChosen] = useState<Opening | null>(null);
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);

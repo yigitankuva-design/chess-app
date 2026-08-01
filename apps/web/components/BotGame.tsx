@@ -6,6 +6,7 @@ import { MatchHeader } from '@/components/play/MatchHeader';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
+import { playMoveSound } from '@/lib/sounds/pieceSounds';
 import { botAcceptsDraw } from '@/lib/play/botDraw';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
 import type { PromotionPiece } from '@/lib/play/promotion';
@@ -185,6 +186,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     }
     if (!move) return false;
     setFen(chess.fen());
+    playMoveSound(); // madde 2: sporcunun hamlesinde nötr tık sesi.
     if (tc) {
       // Hamleyi yapan SPORCU — kendi rengine gore artis eklenir.
       if (studentColor === 'w') setWhiteTime((t) => t + tc.increment);
@@ -207,6 +209,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
             promotion: promotionFromUci(botUci),
           });
           setFen(chess.fen());
+          playMoveSound(); // madde 2: botun hamlesinde de aynı ses.
           if (tc) {
             if (botColor === 'w') setWhiteTime((t) => t + tc.increment);
             else setBlackTime((t) => t + tc.increment);

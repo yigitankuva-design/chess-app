@@ -66,8 +66,8 @@ describe('BoardExercise — soru geçişinde çözücü durumu sıfırlanır', (
     // Soru 1: Rh4 → rakip cevap anahtarından Kf8 oynar → soru tamamlanır
     click('f4');
     click('h4');
-    await waitFor(() => expect(screen.getByText('Sonraki Soru →')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Sonraki Soru →'));
+    await waitFor(() => expect(screen.getByText('Sonraki Soruya Geç')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Sonraki Soruya Geç'));
 
     // Soru 2: kendi ilk hamlesi (Rf5) KABUL EDİLMELİ
     click('f4');

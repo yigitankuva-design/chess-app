@@ -44,9 +44,9 @@ export function ChessBoard({
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
   const scrollRef = useRef(0);
   const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { squareStyles: annotationStyles, onSquareRightClick } = useSquareAnnotations(fen);
+  const { squareStyles: annotationStyles, onSquareRightClick, clearAnnotations } = useSquareAnnotations(fen);
   // Madde 7: oklar kendimiz ciziyoruz — kutuphane At hamlesini "L" cizer.
-  const { arrows, onPointerDown, onPointerUp, guardSquarePaint } = useBoardArrows(fen);
+  const { arrows, onPointerDown, onPointerUp, guardSquarePaint, clearArrows } = useBoardArrows(fen);
 
   // Clear selection when FEN changes (after a move)
   useEffect(() => {
@@ -60,16 +60,21 @@ export function ChessBoard({
     scrollRef.current = y;
     if (scrollLockRef.current) clearTimeout(scrollLockRef.current);
     const handler = () => { window.scrollTo(0, y); };
-    /* Sporcu tekerlegi cevirirse kaydirmak ISTIYOR demektir — kilit ANINDA
-       kalkar (madde 11). Yoksa tahtaya tiklayip kaydirmaya calisan sporcu
-       sayfayi oynatamiyordu. */
+    /* Sporcu tekerlegi cevirir VEYA parmagiyla kaydirmaya baslarsa kaydirmak
+       ISTIYOR demektir — kilit ANINDA kalkar (madde 11/3). 'wheel' fare icin,
+       'touchmove' telefon/tablet icin: touch-action:pan-y tahtada dikey
+       kaydirmaya izin veriyor ama bu kilit oluşan 'scroll' olayini geri
+       ALIYORDU — telefonda tahtaya dokunan sporcu 300-400ms boyunca sayfayi
+       kaydiramiyordu. Ikisi de eklenmezse sadece fare duzelirdi. */
     const release = () => {
       window.removeEventListener('scroll', handler);
       window.removeEventListener('wheel', release);
+      window.removeEventListener('touchmove', release);
       if (scrollLockRef.current) clearTimeout(scrollLockRef.current);
     };
     window.addEventListener('scroll', handler, { passive: true });
     window.addEventListener('wheel', release, { passive: true });
+    window.addEventListener('touchmove', release, { passive: true });
     scrollLockRef.current = setTimeout(release, ms);
   }, []);
 
@@ -118,6 +123,11 @@ export function ChessBoard({
   }
 
   function handleSquareClick(square: Square) {
+    // Madde 1: herhangi bir kareye tiklaninca renkli oklar/kareler kalkar.
+    // interactive=false olsa bile (salt-okunur tahtalarda) calisir; kutuphane
+    // bu geri cagriyi HER durumda tetikler.
+    clearAnnotations();
+    clearArrows();
     if (!interactive) return;
     lockScroll();
 

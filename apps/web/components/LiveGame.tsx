@@ -11,6 +11,7 @@ import { MatchHeader } from '@/components/play/MatchHeader';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, toUci } from '@/lib/play/promotion';
+import { playMoveSound } from '@/lib/sounds/pieceSounds';
 import type { PromotionPiece } from '@/lib/play/promotion';
 
 interface Props { gameId: number; myColor: 'white' | 'black'; }
@@ -67,7 +68,13 @@ export function LiveGame({ gameId, myColor }: Props) {
       // chess.load() gecmisi SILER; notasyon bu yuzden ayrica biriktirilir.
       if (typeof msg.san === 'string') setSanList((p) => [...p, msg.san as string]);
       if (msg.fen_after && chess.fen() !== msg.fen_after) {
-        try { chess.load(msg.fen_after); setFen(msg.fen_after); } catch { /* ignore */ }
+        try {
+          chess.load(msg.fen_after); setFen(msg.fen_after);
+          // Madde 2: SADECE rakibin hamlesinde caliyor — kendi hamlem icin
+          // asagida applyMyMove zaten calar, burda tekrar etmez cunku
+          // chess.fen() bu noktada zaten esitlenmis olur.
+          playMoveSound();
+        } catch { /* ignore */ }
       }
       // Mat/pat'ta sonuc satiri game_over mesajiyla gelir; burada sadece bilgi.
       if (msg.is_checkmate) { setStatus('over'); setInfo('Mat! Oyun bitti.'); }
@@ -170,6 +177,7 @@ export function LiveGame({ gameId, myColor }: Props) {
     try { move = chess.move({ from, to, promotion: promo }); } catch { return false; }
     if (!move) return false;
     setFen(chess.fen());
+    playMoveSound(); // madde 2: kendi hamlemde aninda ses.
     // Notasyona BURADA eklenmez: room.broadcast exclude kullanmiyor, kendi
     // hamlem de move_made ile geri geliyor — eklersem liste ikiye katlanir.
     // Terfi harfi UCI'ye MUTLAKA girer, yoksa sunucu vezire terfi eder.

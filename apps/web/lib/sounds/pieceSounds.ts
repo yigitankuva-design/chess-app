@@ -208,6 +208,35 @@ const SYNTH: Record<string, (c: AudioContext) => void> = {
   N: horse, B: elephant, R: thud, Q: chime, K: horn, P: tap,
 };
 
+/** Maçlarda (Bota Karşı / Arkadaşla) her hamlede çalınan NÖTR ses (madde 2).
+ *  Yukarıdaki at kişnemesi / fil borusu gibi eğlence sesleri SADECE ders
+ *  pratiğinde kullanılır — gerçek maçta rahatsız eder. Burada gerçek bir
+ *  satranç taşının tahtaya konuşuna benzeyen KISA ve ALÇAK sesli bir tık
+ *  çalınır: sporcuyu rahatsız etmeyecek kadar kısık, hamlenin oynandığını
+ *  hissettirecek kadar duyulur. */
+function moveTap(c: AudioContext) {
+  const t0 = c.currentTime;
+  const dur = 0.07;
+  const o = c.createOscillator();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(340, t0);
+  o.frequency.exponentialRampToValueAtTime(180, t0 + dur);
+  const lp = c.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 900;
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.16, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(lp).connect(g).connect(c.destination);
+  o.start(t0); o.stop(t0 + dur);
+}
+
+export function playMoveSound() {
+  const c = getCtx();
+  if (!c) return;
+  try { moveTap(c); } catch { /* audio not available */ }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 export function playPieceSound(pieceType?: string | null) {
   if (!pieceType) return;

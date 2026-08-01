@@ -80,3 +80,13 @@ describe('useSquareAnnotations', () => {
     expect(result.current.squareStyles.d5?.backgroundColor).toBe('rgba(248, 113, 113, 0.55)');
   });
 });
+
+describe('clearAnnotations (madde 1)', () => {
+  it('işaretleri boşaltır', () => {
+    const { result } = renderHook(() => useSquareAnnotations('r1'));
+    act(() => result.current.onSquareRightClick({ square: 'e4' }));
+    expect(result.current.squareStyles.e4).toBeTruthy();
+    act(() => result.current.clearAnnotations());
+    expect(result.current.squareStyles.e4).toBeUndefined();
+  });
+});
