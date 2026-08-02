@@ -596,7 +596,7 @@ body {
 
 @media (orientation: landscape) {
   .match-grid {
-    grid-template-columns: minmax(6rem, 16vw) minmax(0, 1fr) minmax(7rem, 20vw);
+    grid-template-columns: minmax(5.5rem, 6.5rem) minmax(0, 1fr) minmax(7rem, 9rem);
     grid-template-rows: repeat(6, auto);
     grid-template-areas:
       "avatar-top   board moves"
