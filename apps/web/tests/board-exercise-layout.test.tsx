@@ -53,6 +53,16 @@ describe('BoardExercise — dikey/yatay yerleşim iskeleti', () => {
     expect(content?.textContent).toContain('C Şıkkı');
   });
 
+  it('görseli OLMAYAN çoktan seçmeli soruda yatay mod tek sütuna düşer (boş sütun kalmaz)', () => {
+    const { container } = renderEx(choiceEx);
+    expect(container.querySelector('.practice-grid')).toHaveClass('practice-grid-solo');
+  });
+
+  it('tahtası OLAN soruda tek sütun işareti KONMAZ', () => {
+    const { container } = renderEx(clickEx);
+    expect(container.querySelector('.practice-grid')).not.toHaveClass('practice-grid-solo');
+  });
+
   it('KOD yazısı board alanında görünür, ilerleme çubuğunun yanındaki eski rozet YOKTUR', () => {
     const { container } = renderEx(clickEx);
     const board = container.querySelector('.pg-board');

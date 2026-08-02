@@ -451,7 +451,11 @@ export function BoardExercise({
         </span>
       </div>
 
-      <div className="practice-grid">
+      {/* Görsel/tahta İÇERMEYEN sorularda (düz cümle şıklı) yatay modda sol
+          sütun bomboş kalırdı — bu durumda tek sütuna düşülür. */}
+      <div className={`practice-grid${
+        isBoardExercise(exercise) || exercise.type === 'image_question' ? '' : ' practice-grid-solo'
+      }`}>
         <div className="pg-board">
           <div className="flex items-stretch gap-1.5">
             {exercise.code && (

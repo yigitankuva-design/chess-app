@@ -642,6 +642,13 @@ body {
     grid-template-areas: "board content";
     align-items: start;
   }
+  /* Görselsiz soru: sol sütun boş kalmasın diye tek sütun. */
+  .practice-grid.practice-grid-solo {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "board"
+      "content";
+  }
 }
 
 /* Pratik sayfasının dış kapsayıcısı: dikeyde max-w-lg (32rem) ile aynı,
