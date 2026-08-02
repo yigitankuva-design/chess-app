@@ -352,7 +352,7 @@ export function BoardExercise({
   }
 
   // ── Tahta tıklama ────────────────────────────────────────────────────────
-  const onSquareClick = ({ square, piece }: { square: string; piece: { pieceType: string } | null }) => {
+  const onSquareClick = ({ square }: { square: string; piece: { pieceType: string } | null }) => {
     if (!isBoardExercise(exercise)) return;
     // Yanlis cevaptan sonra (noRetry) tahta da KILITLI kalir.
     if (status === 'success' || failLocked) return;
