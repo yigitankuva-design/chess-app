@@ -7,6 +7,7 @@ import { playPieceSound } from '@/lib/sounds/pieceSounds';
 import { ChoiceQuestionBody } from './ChoiceQuestionBody';
 import { MovePieceSolver } from './MovePieceSolver';
 import { MoveList } from '@/components/play/MoveList';
+import { evaluateClick } from '@/lib/play/multiSquareCheck';
 
 // ─── Exercise config types ────────────────────────────────────────────────────
 
@@ -22,6 +23,9 @@ export interface ClickSquareEx {
   code?: string;
   /** 1=Kolay, 3=Orta, 5=Zor — pratik havuzundan zorluk dağılımıyla seçim için. */
   difficulty?: number;
+  /** Sporcu tıklama modu (madde 2). Yoksa 'any' — doğru karelerden birine
+   *  tıklamak yeter. 'all' — TÜM doğru karelere tıklanmalı; 1 yanlış = yanlış. */
+  click_mode?: 'any' | 'all';
 }
 
 /** Eski format: "şu taşı şu karelerden birine taşı" (tek hamle). */
@@ -198,6 +202,8 @@ export function BoardExercise({
   const [selected, setSelected] = useState<string | null>(null);
   const [showNext, setShowNext] = useState(!!initialAnswer && initialIndex < exercises.length - 1);
   const [clickedSquare, setClickedSquare] = useState<string | null>(null);
+  /** all modunda (madde 2) o ana kadar doğru tıklanan kareler. */
+  const [multiClicked, setMultiClicked] = useState<string[]>([]);
   const [allAttempted, setAllAttempted] = useState(false);
   /** Madde 1: Suresiz Pratik'te yanlis cevaptan sonra tekrar deneme YOK;
    *  soru kilitlenir, sporcu "Sonraki Soruya Geç" ile ilerler. */
@@ -299,6 +305,7 @@ export function BoardExercise({
   const goNext = () => {
     setCurrentIdx((i) => Math.min(i + 1, total - 1));
     setShowNext(false);
+    setMultiClicked([]); // yeni soru: çoklu-kare sayacı sıfırlanır (madde 2)
   };
 
   // ── Tahta kareleri (sadece tahta tipleri için) ─────────────────────────────
@@ -345,6 +352,15 @@ export function BoardExercise({
     if (exercise.type === 'click_square') {
       if (piece) playPieceSound(piece.pieceType);
       setClickedSquare(square);
+      // 'all' modu (madde 2): TÜM doğru kareler tıklanmalı; 1 yanlış = yanlış.
+      if ((exercise.click_mode ?? 'any') === 'all') {
+        const r = evaluateClick(square, exercise.target_squares, multiClicked);
+        if (r === 'wrong') { failNoRetry(exercise.fail_msg ?? 'Yanlış kare!'); return; }
+        if (r === 'complete') { setMultiClicked([]); succeed(); return; }
+        setMultiClicked((p) => (p.includes(square) ? p : [...p, square])); // partial
+        return;
+      }
+      // 'any' modu (varsayılan, eski davranış): tek doğru kare yeter.
       if (isTargetSquare(square, exercise.target_squares)) {
         succeed();
       } else {

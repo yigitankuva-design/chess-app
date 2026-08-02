@@ -669,6 +669,9 @@ def _validate_board_exercises(exercises: list) -> None:
 
         if ex_type == "click_square":
             _squares("target_squares")
+            cm = ex.get("click_mode")
+            if cm is not None and cm not in ("any", "all"):
+                raise HTTPException(status_code=400, detail="click_mode 'any' veya 'all' olmalı")
 
         elif ex_type == "move_piece":
             # Yeni format: SAN hamle dizisi. Başlangıç pozisyonundan itibaren

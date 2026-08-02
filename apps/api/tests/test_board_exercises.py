@@ -571,3 +571,29 @@ async def test_image_question_legacy_prompt_image_still_accepted(client, db):
          "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0},
     ])
     assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_click_square_accepts_click_mode(client, db):
+    """click_mode 'all' kabul edilmeli (madde 2)."""
+    les = await _lesson(db, order=301)
+    tok = await _teacher_token(client, email="cm1@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "hepsi",
+         "fen": "8/8/8/8/4P3/8/8/8 w - - 0 1",
+         "target_squares": ["e4"], "click_mode": "all"},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_click_square_rejects_bad_click_mode(client, db):
+    """Geçersiz click_mode reddedilmeli."""
+    les = await _lesson(db, order=302)
+    tok = await _teacher_token(client, email="cm2@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "click_square", "instruction": "x",
+         "fen": "8/8/8/8/4P3/8/8/8 w - - 0 1",
+         "target_squares": ["e4"], "click_mode": "saçma"},
+    ])
+    assert r.status_code == 400
