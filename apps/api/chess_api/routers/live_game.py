@@ -246,17 +246,24 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
             return
         current_fen, ply = await _current_fen_and_ply(db, game_id)
 
-        # Turn check
+        # Turn check. Bot macinda white_id/black_id sporcunun GERCEK rengini
+        # yansitmaz (2. parcanin bilerek verdigi karar, rozet uyumlulugu icin,
+        # bkz. Game.student_color) — bu yuzden bot macinda student_color'a
+        # bakilir. Insan-insan macta eski mantikla MATEMATIKSEL OLARAK AYNI
+        # (tum kombinasyonlar calistirilarak dogrulandi, 0 fark).
         whites_turn = current_fen.split()[1] == "w"
-        # Reddedilen hamlede istemci kendi tahtasini GERI ALABILSIN diye
-        # otorite konum mesaja eklenir; yoksa istemci sunucudan kopar ve
-        # sporcu bir daha hamle yapamaz.
-        if whites_turn and child_id != white_id:
-            await room.send_to(child_id, {
-                "type": "error", "message": "not_your_turn", "fen": current_fen,
-            })
-            return
-        if not whites_turn and child_id != black_id:
+        if game.type == GameType.bot:
+            student_is_white = (game.student_color or "w") == "w"
+            human_may_move = whites_turn == student_is_white
+        else:
+            human_may_move = (
+                (whites_turn and child_id == white_id)
+                or (not whites_turn and child_id == black_id)
+            )
+        if not human_may_move:
+            # Reddedilen hamlede istemci kendi tahtasini GERI ALABILSIN diye
+            # otorite konum mesaja eklenir; yoksa istemci sunucudan kopar ve
+            # sporcu bir daha hamle yapamaz.
             await room.send_to(child_id, {
                 "type": "error", "message": "not_your_turn", "fen": current_fen,
             })
