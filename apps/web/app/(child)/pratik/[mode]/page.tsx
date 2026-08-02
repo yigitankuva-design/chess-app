@@ -7,6 +7,7 @@ import { BoardExercise, isBoardExercise } from '@/components/lesson-steps/BoardE
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
 import { resultHeadline } from '@/lib/practice/resultHeadline';
 import { sessionKey, loadSession, saveSession, clearSession } from '@/lib/play/practiceSession';
+import { isSessionStale } from '@/lib/play/staleSession';
 import { pickWeighted, UNTIMED_MIX, TIMED_MIX, TEST_MIX } from '@/lib/play/questionPicker';
 import type { DifficultyBucket } from '@/lib/play/questionPicker';
 import { loadPreviousCodes, saveShownCodes } from '@/lib/play/practiceHistory';
@@ -97,7 +98,9 @@ function PratikInner() {
         // (madde 4 ve 9); yeni oturumda havuzdan yeniden secilir.
         const key = sessionKey(stepId, slug);
         const saved = loadSession<BoardExerciseConfig>(key);
-        if (saved) {
+        // Madde 4: kayıt varsa ama havuzla artık UYUŞMUYORSA (Zafer Hoca
+        // sonradan soru ekledi/çıkardı) bayat sayılır — yeniden üretilir.
+        if (saved && !isSessionStale(saved.items.length, rawPool.length, mode.randomPick)) {
           setExercises(saved.items);
           setStartIndex(saved.index);
           setStartAnswer(saved.currentAnswer);

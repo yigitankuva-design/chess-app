@@ -34,3 +34,24 @@ describe('pratik/[mode]/page — madde 7 (oturum bitince temizlenir)', () => {
     await waitFor(() => expect(loadSession(sessionKey(165, 'suresiz'))).toBeNull());
   });
 });
+
+describe('pratik/[mode]/page — bayat oturum otomatik yenilenir (madde 4)', () => {
+  it('kayıtlı oturum (2 soru) havuz büyüyünce (5 soru) yok sayılır, TÜM havuz gösterilir', async () => {
+    sessionStorage.setItem('bsa:pratik:165:suresiz', JSON.stringify({
+      items: [EX, EX], index: 0, currentAnswer: null, doneCount: 0,
+    }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        steps: [{
+          id: 165, type: 'explanation',
+          content_json: { board_exercises: [EX, EX, EX, EX, EX] },
+        }],
+      }),
+    }));
+    render(<PratikPage />);
+    await screen.findByText('D');
+    // getByText sıfır eşleşmede fırlatır — queryByText null döner, .not.toBeInTheDocument() ile uyumlu.
+    expect(screen.queryByText(/5 soruluk havuzdan/)).not.toBeInTheDocument();
+  });
+});

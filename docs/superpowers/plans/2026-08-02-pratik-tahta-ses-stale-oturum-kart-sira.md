@@ -432,7 +432,8 @@ describe('pratik/[mode]/page — bayat oturum otomatik yenilenir (madde 4)', () 
     render(<PratikPage />);
     // randomPick=20 > havuz(5) => tum havuz (5 soru) gosterilir, eski 2 DEGIL.
     await screen.findByText('D');
-    expect(screen.getByText(/5 soruluk havuzdan/)).not.toBeInTheDocument(); // havuz==secim, mesaj cikmaz
+    // getByText sifir eslesmede firlatir — queryByText kullan.
+    expect(screen.queryByText(/5 soruluk havuzdan/)).not.toBeInTheDocument(); // havuz==secim, mesaj cikmaz
   });
 });
 ```
