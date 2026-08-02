@@ -7,7 +7,8 @@ import { getToken } from '@/lib/auth-storage';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
 import { formatGameResult } from '@/lib/play/resultText';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
-import { MatchHeader } from '@/components/play/MatchHeader';
+import { MatchLayout } from '@/components/play/MatchLayout';
+import type { PlayerInfo } from '@/components/play/MatchLayout';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, toUci } from '@/lib/play/promotion';
@@ -31,6 +32,8 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [myOffersUsed, setMyOffersUsed] = useState(0);
   const [whiteName, setWhiteName] = useState('Sporcu');
   const [blackName, setBlackName] = useState('Sporcu');
+  const [whiteAvatar, setWhiteAvatar] = useState('default');
+  const [blackAvatar, setBlackAvatar] = useState('default');
   const [whiteMs, setWhiteMs] = useState<number | null>(null);
   const [blackMs, setBlackMs] = useState<number | null>(null);
   const [whiteToMove, setWhiteToMove] = useState(true);
@@ -75,6 +78,8 @@ export function LiveGame({ gameId, myColor }: Props) {
       max_offers?: number;
       white_name?: string;
       black_name?: string;
+      white_avatar?: string;
+      black_avatar?: string;
       white_ms?: number;
       black_ms?: number;
       increment_ms?: number;
@@ -115,6 +120,8 @@ export function LiveGame({ gameId, myColor }: Props) {
     } else if (t === 'game_info') {
       setWhiteName(String(msg.white_name ?? 'Sporcu'));
       setBlackName(String(msg.black_name ?? 'Sporcu'));
+      setWhiteAvatar(typeof msg.white_avatar === 'string' ? msg.white_avatar : 'default');
+      setBlackAvatar(typeof msg.black_avatar === 'string' ? msg.black_avatar : 'default');
       setWhiteMs(typeof msg.white_ms === 'number' ? msg.white_ms : null);
       setBlackMs(typeof msg.black_ms === 'number' ? msg.black_ms : null);
       setWhiteToMove(msg.white_to_move !== false);
@@ -233,104 +240,97 @@ export function LiveGame({ gameId, myColor }: Props) {
   }
 
   const canOffer = canOfferDraw(myOffersUsed);
+  const iAmWhite = myColor === 'white';
+  const top: PlayerInfo = {
+    avatarId: iAmWhite ? blackAvatar : whiteAvatar,
+    name: iAmWhite ? blackName : whiteName,
+    ms: iAmWhite ? blackMs : whiteMs,
+    active: status === 'active' && (iAmWhite ? !whiteToMove : whiteToMove),
+  };
+  const bottom: PlayerInfo = {
+    avatarId: iAmWhite ? whiteAvatar : blackAvatar,
+    name: iAmWhite ? whiteName : blackName,
+    ms: iAmWhite ? whiteMs : blackMs,
+    active: status === 'active' && (iAmWhite ? whiteToMove : !whiteToMove),
+  };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 space-y-3">
-      {/* Madde 3: uc kart tahtanin USTUNDE — kare/dikdortgen/kare. */}
-      <MatchHeader
-        whiteName={whiteName}
-        blackName={blackName}
-        whiteMs={whiteMs}
-        blackMs={blackMs}
-        whiteToMove={whiteToMove}
-        running={status === 'active'}
-        me={myColor}
-      />
-
-      <ChessBoard
-        fen={nav.isLive ? fen : nav.viewFen}
-        interactive={status === 'active' && nav.isLive}
-        onPieceDrop={handleDrop}
-        boardOrientation={myColor}
-        onWheelStep={nav.step}
-        historyView={!nav.isLive}
-        onLeaveHistory={nav.goLive}
-        onPremove={choosePremove}
-        premoveColor={myColor === 'white' ? 'w' : 'b'}
-        premoveSquares={premove}
-      />
-
-      <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
-
-      {/* Madde 1: tum hamleler tahtanin ALTINDA. */}
-      <MoveList
-        san={sanList}
-        startFen={startFen}
-        onSelectPly={nav.goTo}
-        activePly={nav.isLive ? undefined : nav.viewIndex}
-      />
-
-      {pending && (
-        <PromotionPicker
-          onPick={(piece) => {
-            const p = pending;
-            setPending(null);
-            applyMyMove(p.from, p.to, piece);
-          }}
-          onCancel={() => setPending(null)}
-        />
-      )}
-
-      {drawOffered && status === 'active' && (
-        <div className="t-ok p-3 space-y-2">
-          <p className="text-sm font-semibold">Rakip beraberlik teklif etti</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => { send({ type: 'accept_draw' }); setDrawOffered(false); }}
-              className="t-btn px-4 py-2 text-sm"
-            >
-              Kabul Et
-            </button>
-            <button
-              type="button"
-              onClick={() => { send({ type: 'decline_draw' }); setDrawOffered(false); }}
-              className="t-btn-ghost px-4 py-2 text-sm"
-            >
-              Kabul Etme
-            </button>
-          </div>
-        </div>
-      )}
-
-      {status === 'over' ? (
-        <div className="t-ok p-4 text-center space-y-1">
-          {resultLine && <p className="text-lg font-bold">{resultLine}</p>}
-          {info && <p className="text-sm t-muted">{info}</p>}
-        </div>
-      ) : (
+    <MatchLayout
+      top={top}
+      bottom={bottom}
+      board={
         <>
-          <div className="flex gap-2 justify-center">
-            <button
-              type="button"
-              disabled={!canOffer}
-              onClick={() => send({ type: 'offer_draw' })}
-              className="t-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
-            >
-              Beraberlik Teklif Et ({offersLeft(myOffersUsed)})
-            </button>
-            <button
-              type="button"
-              onClick={() => { if (confirm('Maçı terk etmek istiyor musun? Maçı kaybedeceksin.')) send({ type: 'resign' }); }}
-              className="t-btn px-4 py-2 text-sm"
-              style={{ background: 'var(--t-err-bg, #ef4444)', color: '#fff' }}
-            >
-              Terk Et
-            </button>
-          </div>
+          <ChessBoard
+            fen={nav.isLive ? fen : nav.viewFen}
+            interactive={status === 'active' && nav.isLive}
+            onPieceDrop={handleDrop}
+            boardOrientation={myColor}
+            onWheelStep={nav.step}
+            historyView={!nav.isLive}
+            onLeaveHistory={nav.goLive}
+            onPremove={choosePremove}
+            premoveColor={myColor === 'white' ? 'w' : 'b'}
+            premoveSquares={premove}
+          />
+          <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
+        </>
+      }
+      moveList={
+        <MoveList
+          san={sanList}
+          startFen={startFen}
+          onSelectPly={nav.goTo}
+          activePly={nav.isLive ? undefined : nav.viewIndex}
+        />
+      }
+      extra={
+        <>
+          {pending && (
+            <PromotionPicker
+              onPick={(piece) => {
+                const p = pending;
+                setPending(null);
+                applyMyMove(p.from, p.to, piece);
+              }}
+              onCancel={() => setPending(null)}
+            />
+          )}
+
+          {drawOffered && status === 'active' && (
+            <div className="t-ok p-3 space-y-2">
+              <p className="text-sm font-semibold">Rakip beraberlik teklif etti</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { send({ type: 'accept_draw' }); setDrawOffered(false); }}
+                  className="t-btn px-4 py-2 text-sm"
+                >
+                  Kabul Et
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { send({ type: 'decline_draw' }); setDrawOffered(false); }}
+                  className="t-btn-ghost px-4 py-2 text-sm"
+                >
+                  Kabul Etme
+                </button>
+              </div>
+            </div>
+          )}
+
           {info && <p className="text-center text-sm t-muted">{info}</p>}
         </>
-      )}
-    </div>
+      }
+      over={status === 'over'}
+      resultSlot={
+        <div className="t-ok p-4 text-center space-y-1">
+          {resultLine && <p className="text-lg font-bold">{resultLine}</p>}
+        </div>
+      }
+      drawLabel={`Beraberlik Teklif Et (${offersLeft(myOffersUsed)})`}
+      drawDisabled={!canOffer}
+      onOfferDraw={() => send({ type: 'offer_draw' })}
+      onResign={() => send({ type: 'resign' })}
+    />
   );
 }
