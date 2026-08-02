@@ -28,10 +28,30 @@ alınacak (spec'te "parça parça ilerleyelim" kararı verildi).
 
 ---
 
-### Task 1: `GameRoom` çoklu bağlantı desteği
+> **PLAN GÖZDEN GEÇİRME NOTU (uygulamadan önce yapıldı, kod gerçekten çalıştırıldı):**
+> Bu planın ilk hâlinde `GameRoom` düzeltmesi (Task 1) ile `live_game.py` çağrı
+> noktası güncellemesi (Task 2) AYRI iki commit'ti. Geçici olarak yalnız Task 1
+> uygulanıp tam backend paketi çalıştırıldığında **`tests/test_live_two_moves.py::test_game_info_bitmis_maci_bildirir`
+> TypeError ile KALDI** — çünkü o test gerçek bir WebSocket bağlantısı açıyor,
+> `game_ws` kapanışta hâlâ eski `room.leave(child_id)` imzasıyla çağırıyor
+> (`leave() missing 1 required positional argument: 'conn_id'`). Yani Task 1'in
+> commit'i tek başına depoyu KIRMIZI bırakıyordu; planın "Task 1 Step 5"i yalnızca
+> el ile seçilmiş iki test dosyasını koştuğu için bunu gizliyordu (o iki dosya
+> gerçekten geçiyor — ama tam paket geçmiyor).
+> **Düzeltme:** ikisi TEK bir task ve TEK commit hâlinde birleştirildi (aşağıdaki
+> Task 1). Ayrıca kırmızı/yeşil beklentileri tahmin yerine ölçülen gerçek
+> sonuçlarla değiştirildi.
+
+### Task 1: `GameRoom` çoklu bağlantı desteği + çağrı noktası (TEK COMMIT)
+
+> İki dosya birlikte değişmek ZORUNDA: `join()` artık `conn_id` döndürüyor ve
+> `leave()` onu istiyor; `live_game.py` bu imzayı kullanan TEK çağrı noktası
+> (doğrulandı: `grep` ile `.players`/`room.join`/`room.leave` tarandı, başka
+> tüketici YOK). Ayrı commit'lenirse ara commit'te testler kırmızı olur.
 
 **Files:**
 - Modify: `apps/api/chess_api/services/game_room.py`
+- Modify: `apps/api/chess_api/routers/live_game.py:185-186, 233-238`
 - Test: `apps/api/tests/test_game_room.py` (yeni)
 
 - [ ] **Step 1: Başarısız testleri yaz**
@@ -127,10 +147,21 @@ async def test_send_to_sporcunun_tum_baglantilarina_gider():
 - [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_game_room.py -v`
-Expected: `test_ayni_sporcunun_iki_baglantisi_da_yayini_alir` FAIL — bugünkü
-`join()` ikinci bağlantıda birinciyi `self.players[child_id] = sender` ile
-ÜZERİNE YAZIYOR, `telefon.messages` boş kalıyor. Diğer testler de `conn_id`
-döndürülmediği için (`join()` `None` döner) `TypeError` ile patlar.
+
+Expected: **4 failed, 1 passed** — bu sonuç plan yazılırken GERÇEKTEN çalıştırılıp
+ölçüldü, tahmin değil. Beklenen tam dağılım:
+
+| Test | Sonuç | Gerekçe |
+|---|---|---|
+| `test_ayni_sporcunun_iki_baglantisi_da_yayini_alir` | FAIL — `AssertionError: assert [] == [{'type': 'move_made', ...}]` | Asıl kusur: ikinci `join()` birinciyi eziyor, telefon hiç mesaj almıyor |
+| `test_bir_baglanti_kopunca_digeri_yayina_devam_eder` | FAIL — `TypeError: GameRoom.leave() got an unexpected keyword argument 'conn_id'` | `leave()` henüz `conn_id` almıyor |
+| `test_son_baglanti_da_kopunca_sporcu_odadan_tamamen_cikar` | FAIL — aynı `TypeError` | aynı sebep |
+| `test_iki_farkli_sporcu_broadcast_ve_exclude_calisir` | **PASS** | Bu bir REGRESYON koruması — bugün de geçmesi DOĞRU, düzeltmeden sonra da geçmeli |
+| `test_send_to_sporcunun_tum_baglantilarina_gider` | FAIL — `AssertionError: assert [] == [{'type': 'error', ...}]` | `send_to` tek bağlantıya gidiyor |
+
+> Bir testin (dördüncü) bugün de GEÇMESİ beklenen davranıştır; kırmızı olmaması
+> testin bozuk olduğu anlamına gelmez — o testin işi düzeltmenin insan-insan
+> maçlardaki mevcut davranışı BOZMADIĞINI garanti etmektir.
 
 - [ ] **Step 3: `GameRoom`'u çoklu bağlantı destekleyecek şekilde yeniden yaz**
 
@@ -217,38 +248,19 @@ def _reset_for_tests() -> None:
     _rooms.clear()
 ```
 
-- [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
+- [ ] **Step 4: Yeni test dosyasını çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_game_room.py -v`
-Expected: PASS (5 test).
+Expected: **5 passed** (plan yazılırken bu implementasyonla gerçekten ölçüldü).
 
-- [ ] **Step 5: Regresyon — mevcut oda testleri**
+- [ ] **Step 5: `live_game.py`'deki çağrı noktasını güncelle (AYNI COMMIT'TE)**
 
-Run: `cd apps/api && python -m pytest tests/test_matchmaking.py tests/test_draw_offers_ws.py -v`
-Expected: PASS. NOT: `test_matchmaking.py`'deki `test_game_room_broadcast` vb.
-testler `room.join(10, a)`'nin dönüş değerini kullanmıyor — yeni `join()`'in
-`int` döndürmesi bu testleri BOZMAZ (dönüş değeri yok sayılıyor).
+> **Bu adım atlanamaz ve ertelenemez.** Ölçüldü: yalnız Step 3 uygulanıp tam paket
+> koşulduğunda `tests/test_live_two_moves.py::test_game_info_bitmis_maci_bildirir`
+> `TypeError: leave() missing 1 required positional argument: 'conn_id'` ile kalıyor
+> (o test gerçek WebSocket açıyor, kapanışta `game_ws` eski imzayı çağırıyor).
 
-- [ ] **Step 6: Commit**
-
-```bash
-git add apps/api/chess_api/services/game_room.py apps/api/tests/test_game_room.py
-git commit -m "fix: GameRoom ayni sporcunun coklu cihaz baglantisini destekler"
-```
-
----
-
-### Task 2: `live_game.py`'deki çağrı noktasını güncelle
-
-**Kök neden:** `game_ws` bugün `room.join(child_id, websocket)` ve `room.leave(child_id)`
-çağırıyor — Task 1'deki yeni imza (`join()` bir `conn_id` döner, `leave()` bunu
-ister) ile artık uyuşmuyor. Bu adım olmadan Task 1'in düzeltmesi gerçek WebSocket
-uç noktasına hiç ulaşmaz.
-
-**Files:**
-- Modify: `apps/api/chess_api/routers/live_game.py:168-238` (`game_ws` fonksiyonu)
-
-- [ ] **Step 1: `game_ws`'i güncelle**
+`apps/api/chess_api/routers/live_game.py` içinde `game_ws` fonksiyonunun iki yeri:
 
 `apps/api/chess_api/routers/live_game.py` içinde, `game_ws` fonksiyonunun ilgili
 kısımlarını şu şekilde değiştir (satır ~185-186 ve ~233-238):
@@ -294,32 +306,34 @@ Yeni:
 > Bu spec'in kapsamı YALNIZCA bağlantı takibini düzeltmektir (Task 1); bu mesajın
 > ne zaman/kime gönderileceğinin incelikleri (ör. yalnızca sporcunun SON bağlantısı
 > kapandığında göndermek) BİLEREK bu plana dahil EDİLMEDİ — ayrı bir iş kalemi
-> olarak not edilecek (bkz. Task 3 Step 3).
+> olarak not edilecek (bkz. Task 2 Step 3 — "Bilinerek ertelenen konuyu kaydet").
 
-- [ ] **Step 2: Regresyon — tüm mevcut canlı-maç WebSocket testleri**
+- [ ] **Step 6: Regresyon — tam backend paketi**
 
-Run: `cd apps/api && python -m pytest tests/test_live_game_ws.py tests/test_game_info_moves.py tests/test_live_two_moves.py tests/test_draw_offers_ws.py tests/test_lobby_ws.py tests/test_matchmaking.py tests/test_game_room.py -v`
-Expected: TÜMÜ PASS. Bu testler `room.join`/`room.leave`'i ya doğrudan (Task 1'in
-testleri) ya da gerçek WebSocket bağlantısı üzerinden (`test_live_game_ws.py`,
-`test_game_info_moves.py`) dolaylı olarak çağırıyor — hiçbiri bozulmamalı.
+Run: `cd apps/api && python -m pytest -q`
+Expected: **362 passed** (mevcut 357 + bu planın eklediği 5). Özellikle
+`tests/test_live_two_moves.py::test_game_info_bitmis_maci_bildirir` GEÇMELİ —
+Step 5 atlanırsa bu test `TypeError` ile kalır (ölçüldü).
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 7: Commit (tek commit — iki dosya birlikte)**
 
 ```bash
-git add apps/api/chess_api/routers/live_game.py
-git commit -m "fix: game_ws yeni GameRoom.join/leave imzasina gore guncellendi"
+git add apps/api/chess_api/services/game_room.py apps/api/chess_api/routers/live_game.py apps/api/tests/test_game_room.py
+git commit -m "fix: GameRoom ayni sporcunun coklu cihaz baglantisini destekler"
 ```
 
 ---
 
-### Task 3: Tam test kapısı ve not
+### Task 2: Tam test kapısı ve not
 
 **Files:** (yok — yalnızca doğrulama)
 
-- [ ] **Step 1: Backend tam test paketi**
+- [ ] **Step 1: Backend tam paketi zaten Task 1 Step 6'da koşuldu**
 
-Run: `cd apps/api && python -m pytest -q`
-Expected: TÜM testler PASS (mevcut ~357 test + bu planın eklediği 5 test).
+Task 1 tek commit hâline getirildiği için tam paket orada koşuluyor. Burada
+TEKRAR koşmaya gerek yok; Task 1 Step 6 yeşil bittiyse bu adım tamamdır.
+(Task 1 ile bu task arasında kod değişmediği için ikinci koşum yeni bilgi
+vermez — yalnızca ~100 saniye kaybettirir.)
 
 - [ ] **Step 2: Frontend'e dokunulmadı — web test paketi çalıştırmaya gerek yok**
 
@@ -328,7 +342,7 @@ web testlerini KOŞMAYA gerek yoktur (zaman kaybı) — yalnızca not düşülü
 
 - [ ] **Step 3: Bilinerek ertelenen konuyu kaydet**
 
-Task 2 Step 1'deki NOT'ta bahsedilen `opponent_disconnected` inceliği (bir
+Task 1 Step 5'teki NOT'ta bahsedilen `opponent_disconnected` inceliği (bir
 sporcunun ikinci cihazı kapanınca, hâlâ açık ilk cihazına yanlışlıkla "rakip
 koptu" bildirimi gitmesi) bu planın kapsamı DIŞINDA bırakıldı — insan-insan
 maçlarda bugün zaten yalnızca TEK cihaz kullanıldığı için bu senaryo şu an
