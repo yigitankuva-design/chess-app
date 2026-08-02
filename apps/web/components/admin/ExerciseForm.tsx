@@ -44,6 +44,9 @@ export interface BoardExercise {
   image_tone?: number;
   /** Sporcu ekranında boş tahta arka planı gösterilsin mi (varsayılan true). */
   image_show_board?: boolean;
+  /** Sadece image_question için — YENİ çoklu görsel formatı. Varsa
+   *  image_x/y/w/h/tone/prompt_image (eski tekil format) yok sayılır. */
+  prompt_images?: { uri: string; x: number; y: number; w: number; h: number; tone: number }[];
 }
 
 interface Props {

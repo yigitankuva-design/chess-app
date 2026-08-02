@@ -85,7 +85,8 @@ export interface ImageQuestionEx {
   type: 'image_question';
   /** İsteğe bağlı alt başlık/açıklama — '' olabilir. */
   instruction: string;
-  prompt_image: string;
+  /** Eski tekil format. Yeni sorularda bunun yerine `prompt_images` doldurulur. */
+  prompt_image?: string;
   answer_kind: 'sentence' | 'image';
   options: string[];
   correct_index: number;
@@ -99,6 +100,9 @@ export interface ImageQuestionEx {
   image_h?: number;
   image_tone?: number;
   image_show_board?: boolean;
+  /** Sadece image_question için — YENİ çoklu görsel formatı. Varsa
+   *  image_x/y/w/h/tone/prompt_image (eski tekil format) yok sayılır. */
+  prompt_images?: { uri: string; x: number; y: number; w: number; h: number; tone: number }[];
 }
 
 export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;
