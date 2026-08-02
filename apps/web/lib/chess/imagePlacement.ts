@@ -59,3 +59,17 @@ export function toneToFilter(tone: number): string {
   const clamped = Math.round(clamp(tone, 0, 10));
   return clamped === 0 ? 'none' : `grayscale(${clamped / 10})`;
 }
+
+/** Çoklu görsel eklerken her yeni görselin varsayılan konumu — üst üste
+ *  binmesinler diye indekse göre hafifçe kaydırılır (5 adımda bir tekrar eder). */
+export function defaultPlacementForIndex(index: number): ImagePlacement {
+  const step = index % 5;
+  const offset = step * 8;
+  return clampPlacement({
+    x: DEFAULT_PLACEMENT.x + offset,
+    y: DEFAULT_PLACEMENT.y + offset,
+    w: DEFAULT_PLACEMENT.w,
+    h: DEFAULT_PLACEMENT.h,
+    tone: 0,
+  });
+}

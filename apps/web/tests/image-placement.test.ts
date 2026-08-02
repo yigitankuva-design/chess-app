@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_PLACEMENT, clampPlacement, dragToPercent, resizeToPercent, toneToFilter,
+  defaultPlacementForIndex,
 } from '@/lib/chess/imagePlacement';
 
 describe('imagePlacement', () => {
@@ -65,5 +66,27 @@ describe('imagePlacement', () => {
 
   it('toneToFilter 5 için yarı gri döner', () => {
     expect(toneToFilter(5)).toBe('grayscale(0.5)');
+  });
+});
+
+describe('defaultPlacementForIndex', () => {
+  it('ilk görsel tam ortada başlar', () => {
+    expect(defaultPlacementForIndex(0)).toEqual({ x: 50, y: 50, w: 40, h: 40, tone: 0 });
+  });
+
+  it('sonraki görseller üst üste binmesin diye kaydırılır', () => {
+    const p1 = defaultPlacementForIndex(1);
+    expect(p1.x).not.toBe(50);
+    expect(p1.y).not.toBe(50);
+  });
+
+  it('kaydırma tahta sınırları içinde kalır (clamp)', () => {
+    for (let i = 0; i < 20; i++) {
+      const p = defaultPlacementForIndex(i);
+      expect(p.x).toBeGreaterThanOrEqual(0);
+      expect(p.x).toBeLessThanOrEqual(100);
+      expect(p.y).toBeGreaterThanOrEqual(0);
+      expect(p.y).toBeLessThanOrEqual(100);
+    }
   });
 });
