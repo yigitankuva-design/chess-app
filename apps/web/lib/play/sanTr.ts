@@ -56,3 +56,45 @@ export function turkishMovePairs(
   }
   return out;
 }
+
+export interface TurkishMove {
+  /** Türkçeleştirilmiş SAN. */
+  san: string;
+  /** 1 tabanlı yarı-hamle sırası. `fensFromSan(...)[ply]` bu hamleden
+   *  SONRAKİ konumu verir — notasyona tıklanınca kullanılır (madde 1). */
+  ply: number;
+}
+
+export interface TurkishMoveRow {
+  no: number;
+  white: TurkishMove | null;
+  black: TurkishMove | null;
+}
+
+/** `turkishMovePairs` ile aynı numaralandırma, ama hamleler AYRI AYRI
+ *  döner — böylece her hamle tek tek tıklanabilir. Metin birleştirme işi
+ *  görüntüleyen bileşene (MoveList) kalır. */
+export function turkishMoveRows(
+  san: string[],
+  start: { whiteStarts: boolean; firstNo: number } = { whiteStarts: true, firstNo: 1 },
+): TurkishMoveRow[] {
+  const rows: TurkishMoveRow[] = [];
+  let i = 0;
+  let no = start.firstNo;
+
+  if (!start.whiteStarts && san.length > 0) {
+    rows.push({ no, white: null, black: { san: toTurkishSan(san[0]), ply: 1 } });
+    i = 1;
+    no += 1;
+  }
+
+  for (; i < san.length; i += 2) {
+    rows.push({
+      no,
+      white: { san: toTurkishSan(san[i]), ply: i + 1 },
+      black: san[i + 1] ? { san: toTurkishSan(san[i + 1]), ply: i + 2 } : null,
+    });
+    no += 1;
+  }
+  return rows;
+}
