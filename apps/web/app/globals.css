@@ -553,3 +553,47 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bea-pop, .bea-shake, .bea-bounce, .bea-burst span { animation: none; }
 }
+
+/* Maç ekranı (bota/insana karşı) yerleşimi — bkz. components/play/MatchLayout.tsx.
+   Dikey/yatay için AYRI JSX YOK: aynı öğeler grid-template-areas ile
+   yeniden konumlanır, hiçbiri ikinci kez render edilmez. */
+.match-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "avatar-top time-top"
+    "board board"
+    "avatar-bottom time-bottom"
+    "moves moves"
+    "actions actions";
+}
+.match-grid > .ml-avatar-top    { grid-area: avatar-top; }
+.match-grid > .ml-time-top      { grid-area: time-top; }
+.match-grid > .ml-board         { grid-area: board; min-width: 0; }
+.match-grid > .ml-avatar-bottom { grid-area: avatar-bottom; }
+.match-grid > .ml-time-bottom   { grid-area: time-bottom; }
+.match-grid > .ml-moves         { grid-area: moves; min-height: 0; }
+.match-grid > .ml-actions {
+  grid-area: actions;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (orientation: landscape) {
+  .match-grid {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "time-top    board avatar-top"
+      "actions     board moves"
+      "time-bottom board avatar-bottom";
+    align-items: stretch;
+  }
+  .match-grid > .ml-board { max-width: 60vh; justify-self: center; min-width: 0; }
+  .match-grid > .ml-moves { min-height: 0; overflow: hidden; }
+  .match-grid > .ml-actions { flex-direction: column; justify-content: center; }
+}
