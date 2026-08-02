@@ -34,6 +34,11 @@ class Game(Base):
     white_child_id: Mapped[int | None] = mapped_column(ForeignKey("child_profiles.id"), nullable=True, index=True)
     black_child_id: Mapped[int | None] = mapped_column(ForeignKey("child_profiles.id"), nullable=True, index=True)
     black_bot_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Sporcunun EKRANDA gordugu renk ('w'/'b'). white_child_id/black_child_id
+    # semantigine (rozet sistemi bunlara dayanir, bkz. badge_engine.py) HIC
+    # dokunulmaz — bu SADECE goruntuleme/motor-yon bilgisidir. NULL = eski
+    # kayit, 'w' varsayilir (bugunku davranisla ayni).
+    student_color: Mapped[str | None] = mapped_column(String(1), nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pgn: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -37,6 +37,27 @@ async def test_start_fen_kaydedilebilir(db):
 
 
 @pytest.mark.asyncio
+async def test_student_color_varsayilan_none(db):
+    """student_color bossa 'beyaz' varsayilir (geriye uyumluluk) — eski
+    kayitlarda bu alan hic yok, NULL kalir."""
+    game = Game(type=GameType.bot, white_child_id=1, black_bot_level=5)
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+    assert game.student_color is None
+
+
+@pytest.mark.asyncio
+async def test_student_color_kaydedilebilir(db):
+    game = Game(type=GameType.bot, white_child_id=1, black_bot_level=5,
+                student_color="b")
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+    assert game.student_color == "b"
+
+
+@pytest.mark.asyncio
 async def test_opening_kaydedilir(db):
     op = Opening(name="İtalyan Açılışı",
                  start_fen="r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1")
