@@ -356,6 +356,8 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
         onPieceDrop={handleDrop}
         boardOrientation={studentColor === 'w' ? 'white' : 'black'}
         onWheelStep={nav.step}
+        historyView={!nav.isLive}
+        onLeaveHistory={nav.goLive}
         onPremove={choosePremove}
         premoveColor={studentColor}
         premoveSquares={premove}

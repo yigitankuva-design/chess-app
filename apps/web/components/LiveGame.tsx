@@ -253,6 +253,8 @@ export function LiveGame({ gameId, myColor }: Props) {
         onPieceDrop={handleDrop}
         boardOrientation={myColor}
         onWheelStep={nav.step}
+        historyView={!nav.isLive}
+        onLeaveHistory={nav.goLive}
         onPremove={choosePremove}
         premoveColor={myColor === 'white' ? 'w' : 'b'}
         premoveSquares={premove}

@@ -109,6 +109,8 @@ export function MovePieceSolver({ exercise, disabled, onSolved, onWrong }: Props
         onPieceDrop={handleMove}
         boardOrientation={studentSide === 'w' ? 'white' : 'black'}
         onWheelStep={nav.step}
+        historyView={!nav.isLive}
+        onLeaveHistory={nav.goLive}
       />
       <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
       {thinking && (

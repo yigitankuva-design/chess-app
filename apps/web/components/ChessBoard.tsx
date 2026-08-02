@@ -36,6 +36,12 @@ interface ChessBoardProps {
   premoveColor?: 'w' | 'b';
   /** Seçilmiş ön-hamle — iki karesi işaretlenir. */
   premoveSquares?: { from: Square; to: Square } | null;
+  /** Sporcu geçmiş bir hamleye bakıyor (salt-okunur). Bu haldeyken tahtaya
+   *  dokunmak taş oynatmaz — TEK DOKUNUŞLA canlıya döndürür (madde 1 kilit
+   *  tuzağı düzeltmesi). Yanlışlıkla tekerlek çevirince taşlar donuk kalmasın. */
+  historyView?: boolean;
+  /** Geçmiş görünümündeyken tahtaya dokununca çağrılır (canlıya dön). */
+  onLeaveHistory?: () => void;
 }
 
 export function ChessBoard({
@@ -50,6 +56,8 @@ export function ChessBoard({
   onPremove,
   premoveColor,
   premoveSquares = null,
+  historyView = false,
+  onLeaveHistory,
 }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
@@ -160,6 +168,12 @@ export function ChessBoard({
     // bu geri cagriyi HER durumda tetikler.
     clearAnnotations();
     clearArrows();
+    // GEÇMİŞ TUZAĞI: sporcu eski hamleye bakarken tahtaya dokununca taşlar
+    // donuk kalmasın — tek dokunuş canlıya döndürür (ön-hamleden ÖNCE gelir).
+    if (historyView) {
+      onLeaveHistory?.();
+      return;
+    }
     // ÖN-HAMLE: sıra rakipteyken sporcu hamlesini önceden seçebilir (madde 5).
     // Hamle OYNANMAZ; yalnız seçim yukarı bildirilir.
     if (!interactive) {
@@ -303,6 +317,11 @@ export function ChessBoard({
               allowDragging: interactive || !!onPremove,
               onPieceDrop: ({ sourceSquare, targetSquare }) => {
                 lockScroll(400);
+                // Geçmişe bakarken taş sürüklenirse hamle YAPILMAZ; canlıya döner.
+                if (historyView) {
+                  onLeaveHistory?.();
+                  return false;
+                }
                 // Sıra rakipteyse gerçek hamle YAPILMAZ; seçim ön-hamle
                 // olarak alınır ve taş yerine geri döner (false).
                 if (!interactive) {
