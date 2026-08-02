@@ -8,6 +8,11 @@ import { ChoiceQuestionBody } from './ChoiceQuestionBody';
 import { MovePieceSolver } from './MovePieceSolver';
 import { MoveList } from '@/components/play/MoveList';
 import { evaluateClick } from '@/lib/play/multiSquareCheck';
+import {
+  BOARD_CARD_BG, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
+  getBoardColors, getPieceSet,
+} from '@/lib/chess/boardSkin';
+import { useSettings } from '@/lib/settings/settings-context';
 
 // ─── Exercise config types ────────────────────────────────────────────────────
 
@@ -190,6 +195,14 @@ export function BoardExercise({
   initialIndex = 0, onIndexChange, initialAnswer = null, initialDoneCount,
   onAnswered,
 }: Props) {
+  // Madde 1: click_square/identify_piece sorularinin tahtasi ham
+  // react-chessboard cizdigi icin uygulamanin ortak temasini/notasyonunu
+  // hic uygulamiyordu — move_piece (MovePieceSolver -> ChessBoard.tsx)
+  // dogru gorunuyordu. Ayni renk/etiket kaynagi burada da kullanilir.
+  const { settings } = useSettings();
+  const boardColors = getBoardColors(settings.board);
+  const pieceSet = getPieceSet(settings.board.pieces);
+  const { ranks, files } = coordLabels('white');
   // Sinirlar icinde tutulur: kayitli sira soru sayisindan buyukse patlamaz.
   const [currentIdx, setCurrentIdx] = useState(
     initialIndex > 0 && initialIndex < exercises.length ? initialIndex : 0,
@@ -473,16 +486,42 @@ export function BoardExercise({
         </>
       ) : isBoardExercise(exercise) ? (
         <>
-          {/* Board */}
-          <div className="rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 340, margin: '0 auto' }}>
-            <Chessboard
-              options={{
-                position: exercise.fen,
-                allowDragging: false,
-                squareStyles: styles,
-                onSquareClick,
-              }}
-            />
+          {/* Board — kenar rakam/harf etiketleriyle, uygulamanın ortak
+              tahta temasıyla (madde 1: eskiden ham react-chessboard
+              kullanılıyordu, tema ve notasyon uygulanmıyordu). */}
+          <div
+            data-testid="board-exercise-coord-frame"
+            className="w-full mx-auto p-3 rounded-2xl"
+            style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG }}
+          >
+            <div className="flex">
+              <div className="grid shrink-0" style={{ gridTemplateRows: 'repeat(8, 1fr)', width: 18 }}>
+                {ranks.map((r) => (
+                  <span key={r} className="flex items-center justify-center font-semibold select-none"
+                    style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{r}</span>
+                ))}
+              </div>
+              <div className="aspect-square flex-1" style={BOARD_STYLE}>
+                <Chessboard
+                  options={{
+                    position: exercise.fen,
+                    allowDragging: false,
+                    squareStyles: styles,
+                    onSquareClick,
+                    pieces: pieceSet,
+                    lightSquareStyle: { backgroundColor: boardColors.light },
+                    darkSquareStyle: { backgroundColor: boardColors.dark },
+                    showNotation: false,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex" style={{ paddingLeft: 18 }}>
+              {files.map((f) => (
+                <span key={f} className="flex-1 text-center font-semibold select-none"
+                  style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{f}</span>
+              ))}
+            </div>
           </div>
 
           {/* Instruction — tahtanın altında kart olarak */}

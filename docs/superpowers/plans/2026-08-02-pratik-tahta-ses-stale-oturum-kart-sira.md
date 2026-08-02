@@ -73,9 +73,10 @@ describe('BoardExercise — ortak tahta teması + notasyon (madde 1)', () => {
       <BoardExercise exercises={[clickSq]} done={false} onCorrect={vi.fn()} />,
     );
     const square = container.querySelector('[data-square="a1"]') as HTMLElement;
-    const overlay = square.querySelector('div') as HTMLElement;
-    // BOARD_DARK_SQUARE = '#c3c6ee' (lib/chess/boardSkin.tsx).
-    expect(overlay.style.backgroundColor).toBe('rgb(195, 198, 238)');
+    // react-chessboard renk stilini [data-square] elemanının KENDİSİNE
+    // uygular, alt bir div'e değil. BOARD_DARK_SQUARE = '#c3c6ee' (boardSkin.tsx).
+    // happy-dom hex'i rgb'ye normalize etmez, ham değer kalır.
+    expect(square.style.backgroundColor).toBe('#c3c6ee');
   });
 });
 ```
