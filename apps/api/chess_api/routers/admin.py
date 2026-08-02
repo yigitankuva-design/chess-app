@@ -533,7 +533,7 @@ async def delete_lesson(
     return {"deleted": True}
 
 
-BOARD_EXERCISE_TYPES = ("click_square", "move_piece", "identify_piece", "place_pieces")
+BOARD_EXERCISE_TYPES = ("click_square", "move_piece", "identify_piece", "place_pieces", "click_piece")
 MAX_EXERCISE_IMAGE_BYTES = 400_000
 
 
@@ -733,6 +733,21 @@ def _validate_board_exercises(exercises: list) -> None:
                         status_code=400,
                         detail=f"{sq} karesi dolu — eksik taşın karesi boş olmalı",
                     )
+
+        elif ex_type == "click_piece":
+            # "Taşa Tıkla": cevap TAŞTIR — hedef karelerde taş bulunmak ZORUNDA.
+            squares = ex.get("piece_squares")
+            if not isinstance(squares, list) or len(squares) < 1:
+                raise HTTPException(status_code=400, detail="En az bir cevap taşı seçilmeli")
+            seen_pieces: set[str] = set()
+            for sq in squares:
+                if sq not in chess.SQUARE_NAMES:
+                    raise HTTPException(status_code=400, detail=f"Geçersiz kare: {sq}")
+                if sq in seen_pieces:
+                    raise HTTPException(status_code=400, detail=f"{sq} karesi iki kez verilmiş")
+                seen_pieces.add(sq)
+                if board.piece_at(chess.parse_square(sq)) is None:
+                    raise HTTPException(status_code=400, detail=f"{sq} karesinde taş yok")
 
 
 def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
