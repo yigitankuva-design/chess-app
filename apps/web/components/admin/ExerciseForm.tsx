@@ -9,6 +9,7 @@ import { movePieceSteps, firstIncompleteStep, allStepsDone, hasPieces } from '@/
 import { clickSquareSteps, firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import { placePiecesSteps } from '@/lib/admin/placePiecesSteps';
 import { PlacePiecesFields } from './PlacePiecesFields';
+import { SavedPositionBoard } from './SavedPositionBoard';
 import { StepList } from './StepList';
 import type { MovePieceStepState } from '@/lib/admin/movePieceSteps';
 
@@ -358,7 +359,12 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
             </button>
           </div>
           <p className="text-xs n-muted mb-1">Doğru kare(ler) — birden çok seçebilirsin</p>
-          <SquarePicker values={targets} onToggle={toggleTarget} />
+          {/* Kare listesi SOLDA, kaydedilen konum SAĞDA — Zafer Hoca konuma
+              bakarak cevabı kurabilsin. Dar ekranda alt alta iner. */}
+          <div className="flex flex-wrap items-start gap-3">
+            <SquarePicker values={targets} onToggle={toggleTarget} />
+            {savedFen && <SavedPositionBoard fen={savedFen} marked={targets} />}
+          </div>
 
           <p className="text-xs n-muted mt-3 mb-1">Sporcu Tıklama Sayısını Belirle</p>
           <div className="flex flex-wrap gap-2">

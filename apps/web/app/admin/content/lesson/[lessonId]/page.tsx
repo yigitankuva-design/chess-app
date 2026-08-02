@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
 import { ExerciseForm } from '@/components/admin/ExerciseForm';
+import { CollapsibleCard } from '@/components/admin/CollapsibleCard';
 import type { BoardExercise } from '@/components/admin/ExerciseForm';
 import { assignExerciseCodes, nextExerciseCode } from '@/lib/exerciseCodes';
 import { exerciseBadgeTitle } from '@/lib/exerciseBadge';
@@ -335,7 +336,13 @@ export default function AdminStepEditorPage() {
                             <p className="text-sm n-muted pl-2">Bu modda henüz soru yok.</p>
                           ) : (
                             <div className="pl-2">
-                              {/* Soru kodları — dairesel kartlar, satırda 10 adet. Bir koda tıklayınca o soru düzenlenir. */}
+                              <CollapsibleCard
+                                title={`${mode.label} Soru Havuzu`}
+                                badge={`${list.length} soru`}
+                                accentColor={mode.color}
+                                forceOpen={editingExercise?.stepId === s.id && editingExercise.field === mode.field}
+                              >
+                              {/* Soru kodları — dairesel kartlar. Bir koda tıklayınca o soru düzenlenir. */}
                               <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' }}>
                                 {list.map((ex, idx) => {
                                   const editingThis = editingExercise?.stepId === s.id
@@ -359,6 +366,7 @@ export default function AdminStepEditorPage() {
                                   );
                                 })}
                               </div>
+                              </CollapsibleCard>
                             </div>
                           )}
                           <div className="pl-2">
