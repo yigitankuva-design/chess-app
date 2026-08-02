@@ -10,6 +10,8 @@ export interface PlayerInfo {
   ms: number | null;
   /** Sırası bu oyuncuda mı — kutu vurgulanır. */
   active: boolean;
+  /** true ise isim kartında isim yerine "Bot Düşünüyor" gösterilir. */
+  thinking?: boolean;
 }
 
 interface Props {
@@ -33,18 +35,47 @@ interface Props {
   rematchEnabled?: boolean;
 }
 
+function cardBorder(active: boolean) {
+  return {
+    border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
+    background: active ? 'var(--t-surface-2)' : undefined,
+  };
+}
+
+/** Kare kart — Avatar. */
+function AvatarBox({ avatarId, active }: { avatarId: string; active: boolean }) {
+  return (
+    <div
+      data-active={active ? 'true' : 'false'}
+      className="mc-square t-card-i flex items-center justify-center"
+      style={cardBorder(active)}
+    >
+      <span className="text-2xl" aria-hidden="true">{avatarEmoji(avatarId)}</span>
+    </div>
+  );
+}
+
+/** Dikdörtgen kart — oyuncu ismi (veya bot düşünürken "Bot Düşünüyor"). */
+function NameBox({ name, active, thinking }: { name: string; active: boolean; thinking?: boolean }) {
+  return (
+    <div
+      data-active={active ? 'true' : 'false'}
+      className="mc-rect t-card-i flex items-center justify-center text-center px-2"
+      style={cardBorder(active)}
+    >
+      <span className="font-semibold text-sm truncate">{thinking ? 'Bot Düşünüyor' : name}</span>
+    </div>
+  );
+}
+
+/** Kare kart — kalan süre. */
 function TimeBox({ ms, active }: { ms: number | null; active: boolean }) {
   const low = ms !== null && isLowTime(ms);
   return (
     <div
       data-active={active ? 'true' : 'false'}
-      className="t-card-i flex items-center justify-center flex-shrink-0"
-      style={{
-        minWidth: 'clamp(3.2rem, 14vw, 4.5rem)',
-        minHeight: '2.5rem',
-        border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
-        background: active ? 'var(--t-surface-2)' : undefined,
-      }}
+      className="mc-square t-card-i flex items-center justify-center"
+      style={cardBorder(active)}
     >
       <span
         className="font-mono font-bold tabular-nums text-sm"
@@ -52,19 +83,6 @@ function TimeBox({ ms, active }: { ms: number | null; active: boolean }) {
       >
         {ms === null ? '—' : formatClock(ms)}
       </span>
-    </div>
-  );
-}
-
-function PlayerBadge({ avatarId, name, active }: { avatarId: string; name: string; active: boolean }) {
-  return (
-    <div
-      data-active={active ? 'true' : 'false'}
-      className="t-card-i flex items-center gap-2 px-3 py-2 min-w-0"
-      style={{ border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)' }}
-    >
-      <span className="text-2xl flex-shrink-0" aria-hidden="true">{avatarEmoji(avatarId)}</span>
-      <span className="font-semibold text-sm truncate">{name}</span>
     </div>
   );
 }
@@ -87,48 +105,58 @@ export function MatchLayout({
     <div className="max-w-2xl mx-auto px-4 space-y-2">
       <div className="match-grid">
         <div className="ml-avatar-top">
-          <PlayerBadge avatarId={top.avatarId} name={top.name} active={top.active} />
+          <AvatarBox avatarId={top.avatarId} active={top.active} />
+        </div>
+        <div className="ml-name-top">
+          <NameBox name={top.name} active={top.active} thinking={top.thinking} />
         </div>
         <div className="ml-time-top">
           <TimeBox ms={top.ms} active={top.active} />
         </div>
         <div className="ml-board">{board}</div>
         <div className="ml-avatar-bottom">
-          <PlayerBadge avatarId={bottom.avatarId} name={bottom.name} active={bottom.active} />
+          <AvatarBox avatarId={bottom.avatarId} active={bottom.active} />
+        </div>
+        <div className="ml-name-bottom">
+          <NameBox name={bottom.name} active={bottom.active} thinking={bottom.thinking} />
         </div>
         <div className="ml-time-bottom">
           <TimeBox ms={bottom.ms} active={bottom.active} />
         </div>
         <div className="ml-moves">{moveList}</div>
-        <div className="ml-actions">
+        <div className="ml-act-draw mc-rect">
           <button
             type="button"
             disabled={drawDisabled || over}
             onClick={onOfferDraw}
-            className="t-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
+            className="t-btn-ghost w-full h-full px-2 py-2 text-sm text-center disabled:opacity-40"
           >
             {drawLabel}
           </button>
+        </div>
+        <div className="ml-act-resign mc-square">
           <button
             type="button"
             disabled={over}
             onClick={() => { if (confirm('Maçı terk etmek istiyor musun? Maçı kaybedeceksin.')) onResign(); }}
-            className="t-btn px-4 py-2 text-sm disabled:opacity-40"
+            className="t-btn w-full h-full px-2 py-2 text-sm text-center disabled:opacity-40"
             style={{ background: 'var(--t-err-bg, #ef4444)', color: '#fff' }}
           >
             Terk Et
           </button>
-          {onRematch && (
+        </div>
+        {onRematch && (
+          <div className="ml-act-rematch mc-rect">
             <button
               type="button"
               disabled={!rematchEnabled}
               onClick={onRematch}
-              className="t-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
+              className="t-btn-ghost w-full h-full px-2 py-2 text-sm text-center disabled:opacity-40"
             >
               Yeniden Oyna
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
       {over && resultSlot}
       {extra}

@@ -342,6 +342,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     name: 'Bot',
     ms: tc ? botTimeSec * 1000 : null,
     active: status === 'playing' && chessRef.current.turn() === botColor,
+    thinking,
   };
   const bottom: PlayerInfo = {
     avatarId: studentAvatar,
@@ -356,13 +357,6 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
       bottom={bottom}
       board={
         <>
-          <div className="h-7 flex items-center justify-center mb-2">
-            {thinking && (
-              <p className="t-muted text-center text-sm animate-pulse">
-                🤖 Bot düşünüyor...
-              </p>
-            )}
-          </div>
           <ChessBoard
             fen={nav.viewFen}
             interactive={status === 'playing' && !thinking && nav.isLive}

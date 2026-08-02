@@ -558,42 +558,55 @@ body {
    Dikey/yatay için AYRI JSX YOK: aynı öğeler grid-template-areas ile
    yeniden konumlanır, hiçbiri ikinci kez render edilmez. */
 .match-grid {
+  --mc-h: clamp(2.75rem, 9vw, 3.75rem);
   display: grid;
   gap: 0.5rem;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-areas:
-    "avatar-top time-top"
-    "board board"
-    "avatar-bottom time-bottom"
-    "moves moves"
-    "actions actions";
+    "avatar-top    name-top    time-top"
+    "board         board       board"
+    "avatar-bottom name-bottom time-bottom"
+    "moves         moves       moves"
+    "act-draw      act-resign  act-rematch";
 }
 .match-grid > .ml-avatar-top    { grid-area: avatar-top; }
+.match-grid > .ml-name-top      { grid-area: name-top; }
 .match-grid > .ml-time-top      { grid-area: time-top; }
 .match-grid > .ml-board         { grid-area: board; min-width: 0; }
 .match-grid > .ml-avatar-bottom { grid-area: avatar-bottom; }
+.match-grid > .ml-name-bottom   { grid-area: name-bottom; }
 .match-grid > .ml-time-bottom   { grid-area: time-bottom; }
 .match-grid > .ml-moves         { grid-area: moves; min-height: 0; }
-.match-grid > .ml-actions {
-  grid-area: actions;
-  display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
+.match-grid > .ml-act-draw      { grid-area: act-draw; }
+.match-grid > .ml-act-resign    { grid-area: act-resign; }
+.match-grid > .ml-act-rematch   { grid-area: act-rematch; }
+
+/* Kare kart: eninin boyu yüksekliğine eşit, ortalanmış. */
+.mc-square {
+  width: var(--mc-h);
+  height: var(--mc-h);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+/* Dikdörtgen kart: sütunu doldurur, yüksekliği kare ile aynı. */
+.mc-rect {
+  width: 100%;
+  min-height: var(--mc-h);
 }
 
 @media (orientation: landscape) {
   .match-grid {
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr auto;
+    grid-template-columns: minmax(6rem, 16vw) minmax(0, 1fr) minmax(7rem, 20vw);
+    grid-template-rows: repeat(6, auto);
     grid-template-areas:
-      "time-top    board avatar-top"
-      "actions     board moves"
-      "time-bottom board avatar-bottom";
+      "avatar-top   board moves"
+      "name-top     board moves"
+      "time-top     board moves"
+      "act-draw     board avatar-bottom"
+      "act-resign   board name-bottom"
+      "act-rematch  board time-bottom";
     align-items: stretch;
   }
   .match-grid > .ml-board { max-width: 60vh; justify-self: center; min-width: 0; }
-  .match-grid > .ml-moves { min-height: 0; overflow: hidden; }
-  .match-grid > .ml-actions { flex-direction: column; justify-content: center; }
+  .match-grid > .ml-moves { grid-row: 1 / 4; min-height: 0; overflow: auto; }
 }

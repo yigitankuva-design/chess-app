@@ -73,3 +73,17 @@ describe('MatchLayout — avatar ve isim gösterimi', () => {
     expect(screen.getByText('Sen')).toBeInTheDocument();
   });
 });
+
+describe('MatchLayout — bot düşünürken isim kartı', () => {
+  it('top.thinking=true ise isim yerine "Bot Düşünüyor" yazar', () => {
+    renderLayout({ top: { ...top, thinking: true } });
+    expect(screen.getByText('Bot Düşünüyor')).toBeInTheDocument();
+    expect(screen.queryByText('Bot')).not.toBeInTheDocument();
+  });
+
+  it('top.thinking=false/undefined ise normal isim görünür', () => {
+    renderLayout();
+    expect(screen.queryByText('Bot Düşünüyor')).not.toBeInTheDocument();
+    expect(screen.getByText('Bot')).toBeInTheDocument();
+  });
+});
