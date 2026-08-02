@@ -54,7 +54,7 @@ alınacak (spec'te "parça parça ilerleyelim" kararı verildi).
 - Modify: `apps/api/chess_api/routers/live_game.py:185-186, 233-238`
 - Test: `apps/api/tests/test_game_room.py` (yeni)
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `apps/api/tests/test_game_room.py`:
 
@@ -144,7 +144,7 @@ async def test_send_to_sporcunun_tum_baglantilarina_gider():
     assert bilgisayar.messages == [{"type": "error", "message": "not_your_turn"}]
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_game_room.py -v`
 
@@ -163,7 +163,7 @@ Expected: **4 failed, 1 passed** — bu sonuç plan yazılırken GERÇEKTEN çal
 > testin bozuk olduğu anlamına gelmez — o testin işi düzeltmenin insan-insan
 > maçlardaki mevcut davranışı BOZMADIĞINI garanti etmektir.
 
-- [ ] **Step 3: `GameRoom`'u çoklu bağlantı destekleyecek şekilde yeniden yaz**
+- [x] **Step 3: `GameRoom`'u çoklu bağlantı destekleyecek şekilde yeniden yaz**
 
 `apps/api/chess_api/services/game_room.py` — TÜM dosyanın yeni hâli:
 
@@ -248,12 +248,12 @@ def _reset_for_tests() -> None:
     _rooms.clear()
 ```
 
-- [ ] **Step 4: Yeni test dosyasını çalıştır, yeşil olduğunu gör**
+- [x] **Step 4: Yeni test dosyasını çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_game_room.py -v`
 Expected: **5 passed** (plan yazılırken bu implementasyonla gerçekten ölçüldü).
 
-- [ ] **Step 5: `live_game.py`'deki çağrı noktasını güncelle (AYNI COMMIT'TE)**
+- [x] **Step 5: `live_game.py`'deki çağrı noktasını güncelle (AYNI COMMIT'TE)**
 
 > **Bu adım atlanamaz ve ertelenemez.** Ölçüldü: yalnız Step 3 uygulanıp tam paket
 > koşulduğunda `tests/test_live_two_moves.py::test_game_info_bitmis_maci_bildirir`
@@ -308,14 +308,14 @@ Yeni:
 > kapandığında göndermek) BİLEREK bu plana dahil EDİLMEDİ — ayrı bir iş kalemi
 > olarak not edilecek (bkz. Task 2 Step 3 — "Bilinerek ertelenen konuyu kaydet").
 
-- [ ] **Step 6: Regresyon — tam backend paketi**
+- [x] **Step 6: Regresyon — tam backend paketi**
 
 Run: `cd apps/api && python -m pytest -q`
 Expected: **362 passed** (mevcut 357 + bu planın eklediği 5). Özellikle
 `tests/test_live_two_moves.py::test_game_info_bitmis_maci_bildirir` GEÇMELİ —
 Step 5 atlanırsa bu test `TypeError` ile kalır (ölçüldü).
 
-- [ ] **Step 7: Commit (tek commit — iki dosya birlikte)**
+- [x] **Step 7: Commit (tek commit — iki dosya birlikte)**
 
 ```bash
 git add apps/api/chess_api/services/game_room.py apps/api/chess_api/routers/live_game.py apps/api/tests/test_game_room.py
@@ -328,19 +328,19 @@ git commit -m "fix: GameRoom ayni sporcunun coklu cihaz baglantisini destekler"
 
 **Files:** (yok — yalnızca doğrulama)
 
-- [ ] **Step 1: Backend tam paketi zaten Task 1 Step 6'da koşuldu**
+- [x] **Step 1: Backend tam paketi zaten Task 1 Step 6'da koşuldu**
 
 Task 1 tek commit hâline getirildiği için tam paket orada koşuluyor. Burada
 TEKRAR koşmaya gerek yok; Task 1 Step 6 yeşil bittiyse bu adım tamamdır.
 (Task 1 ile bu task arasında kod değişmediği için ikinci koşum yeni bilgi
 vermez — yalnızca ~100 saniye kaybettirir.)
 
-- [ ] **Step 2: Frontend'e dokunulmadı — web test paketi çalıştırmaya gerek yok**
+- [x] **Step 2: Frontend'e dokunulmadı — web test paketi çalıştırmaya gerek yok**
 
 Bu plan yalnızca `apps/api` içinde çalışıyor; `apps/web` hiç değişmedi. Bu adımda
 web testlerini KOŞMAYA gerek yoktur (zaman kaybı) — yalnızca not düşülür.
 
-- [ ] **Step 3: Bilinerek ertelenen konuyu kaydet**
+- [x] **Step 3: Bilinerek ertelenen konuyu kaydet**
 
 Task 1 Step 5'teki NOT'ta bahsedilen `opponent_disconnected` inceliği (bir
 sporcunun ikinci cihazı kapanınca, hâlâ açık ilk cihazına yanlışlıkla "rakip
@@ -352,7 +352,7 @@ ayrıca ele alacak (bkz. tasarım belgesi, "Riskler ve Açık Noktalar" — madd
 insan-insan maçındaki incelik o sırada ayrıca değerlendirilecek veya kullanıcıya
 sorulacak.
 
-- [ ] **Step 4: Kullanıcıya rapor + canlıya gönderme onayı**
+- [x] **Step 4: Kullanıcıya rapor + canlıya gönderme onayı**
 
 Bu adımda kod yazılmaz — sonuçlar (kaç test geçti, ne değişti) KURAL #0'a uygun
 sade Türkçe ile kullanıcıya özetlenir, `git push origin main` için açık onay
