@@ -54,3 +54,46 @@ async def test_insan_macinda_isim_hala_sporcu_varsayilanlidir(env):
 
     assert msg["white_name"] == "Sporcu"
     assert msg["black_name"] == "Sporcu"
+
+
+@pytest.mark.asyncio
+async def test_bot_macinda_bos_kalan_taraf_robot_avatari_alir(env):
+    async with env() as db:
+        game = Game(type=GameType.bot, status=GameStatus.active, white_child_id=9,
+                    black_bot_level=5, student_color="w")
+        db.add(game)
+        await db.commit()
+        await db.refresh(game)
+        gid = game.id
+
+    token = encode_token({"child_profile_id": 9, "role": "child"})
+    client = TestClient(create_app())
+    with client.websocket_connect(f"/ws/game/{gid}?token={token}") as ws:
+        msg = ws.receive_json()
+        while msg["type"] != "game_info":
+            msg = ws.receive_json()
+
+    assert msg["black_avatar"] == "robot"
+
+
+@pytest.mark.asyncio
+async def test_insan_macinda_gercek_avatar_gonderilir(env):
+    from chess_api.routers.live_game import _create_human_game
+    from chess_api.models import ChildProfile
+
+    async with env() as db:
+        db.add(ChildProfile(id=1, parent_user_id=1, display_name="Zafer", age=10,
+                             avatar="knight", pin_hash="x"))
+        await db.commit()
+    gid = await _create_human_game(1, 2)
+
+    token = encode_token({"child_profile_id": 1, "role": "child"})
+    client = TestClient(create_app())
+    with client.websocket_connect(f"/ws/game/{gid}?token={token}") as ws:
+        msg = ws.receive_json()
+        while msg["type"] != "game_info":
+            msg = ws.receive_json()
+
+    assert msg["white_avatar"] == "knight"
+    # black_child_id=2 icin ChildProfile hic olusturulmadi -> varsayilan.
+    assert msg["black_avatar"] == "default"

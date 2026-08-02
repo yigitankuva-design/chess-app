@@ -194,8 +194,12 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
         w = await db.get(ChildProfile, g.white_child_id) if g.white_child_id else None
         b = await db.get(ChildProfile, g.black_child_id) if g.black_child_id else None
         current_fen, _ = await _current_fen_and_ply(db, game_id)
-        # Bot macinda bos kalan taraf botun kendisidir — "Sporcu" degil "Bot".
-        default_name = "Bot" if g.type == GameType.bot else "Sporcu"
+        # Bot macinda bos kalan taraf botun kendisidir — "Sporcu"/"default"
+        # degil "Bot"/"robot" (bkz. lib/avatars.ts AVATARS listesindeki
+        # 'robot' -> 🤖 eslemesi).
+        is_bot_game = g.type == GameType.bot
+        default_name = "Bot" if is_bot_game else "Sporcu"
+        default_avatar = "robot" if is_bot_game else "default"
         # Yeniden baglanan sporcu notasyon listesini bastan gorur.
         past = (await db.execute(
             select(GameMove).where(GameMove.game_id == game_id)
@@ -205,6 +209,8 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             "type": "game_info",
             "white_name": w.display_name if w else default_name,
             "black_name": b.display_name if b else default_name,
+            "white_avatar": w.avatar if w else default_avatar,
+            "black_avatar": b.avatar if b else default_avatar,
             "white_ms": g.white_ms,
             "black_ms": g.black_ms,
             "increment_ms": g.increment_ms,
