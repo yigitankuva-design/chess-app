@@ -61,10 +61,38 @@ Dikey:                      Yatay:
 
 ## Kod Etiketi (KOD-004)
 
-Şu an ilerleme çubuğunun yanında küçük bir rozet olarak duruyor. Kullanıcının kararı:
-görsellerdeki gibi **tahtanın kenarında, yukarıdan aşağıya dönük yazı** olarak taşınacak
-(CSS `writing-mode` ile döndürülmüş metin — ekstra bir görsel/resim değil, düz yazı).
-İlerleme çubuğunun yanındaki eski rozet kaldırılır (tekrar olmasın diye).
+Şu an ilerleme çubuğunun yanında küçük bir rozet olarak duruyor (`BoardExercise.tsx`
+satır 448-453). Kullanıcının kararı: görsellerdeki gibi **tahtanın sol kenarında,
+yukarıdan aşağıya dönük yazı** olarak taşınacak (CSS `writing-mode` ile döndürülmüş
+metin — ekstra bir görsel/resim değil, düz yazı). İlerleme çubuğunun yanındaki eski rozet
+kaldırılır (tekrar olmasın diye).
+
+**Dikkat — çakışma riski:** Tahta kutusunun içinde SOLDA zaten 8-7-6-… rakam etiketleri
+için 18px'lik bir sütun var (satır 494). KOD etiketi bu sütunun İÇİNE değil, tahta
+kutusunun tamamen DIŞINA, solunda ayrı dar bir şerit olarak konumlandırılacak — yoksa
+rakamlarla üst üste biner.
+
+**Doğrulandı:** Mevcut testlerde kod rozetini arayan bir test YOK (`tests/` altında
+`exercise.code` / `#004` arayan iddia bulunmuyor), bu yüzden rozeti eski yerinden
+kaldırmak hiçbir testi kırmaz.
+
+## İKİ FARKLI TAHTA YOLU — Kritik Ayrıntı
+
+Bu ekranda tahta **iki ayrı yerden** çiziliyor ve genişlik sınırları FARKLI:
+
+| Soru tipi | Tahtayı çizen | Genişlik sınırı |
+|---|---|---|
+| `move_piece` (yeni format, `moves` alanı olan) | `MovePieceSolver` → `ChessBoard.tsx` | `max-w-[600px]` (satır 282) |
+| `click_square`, `identify_piece`, `move_piece` (eski format) | `BoardExercise.tsx` içi (ham `Chessboard`) | `maxWidth: 340` (satır 491) |
+
+Yatay düzende ikisi de aynı `board` alanına oturacağı için, bu iki farklı sınır yüzünden
+tahtalar farklı boyutta görünme riski taşıyor. Yerleşim, sütun genişliğini alandan
+(grid) verecek; iç sınırlar bu alanı aşmayacak şekilde uyumlanacak — böylece hangi soru
+tipi olursa olsun tahta aynı boyutta durur.
+
+`MovePieceSolver` ayrıca kendi içinde geçmiş şeridi (`HistoryBanner`) ve "Rakip
+düşünüyor…" mesajını taşıyor; bunlar tahtaya ait olduğu için `board` alanında kalır,
+`content` alanına taşınmaz.
 
 ## Genişlik Riski — Maç Ekranındaki Dersten Öğrenilen
 
