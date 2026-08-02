@@ -6,6 +6,7 @@ import { Chess } from 'chess.js';
 import { ChoiceQuestionVisual } from './ChoiceQuestionVisual';
 import { ChoiceQuestionAnswers } from './ChoiceQuestionAnswers';
 import { MovePieceSolver } from './MovePieceSolver';
+import { PlacePiecesSolver } from './PlacePiecesSolver';
 import { MoveList } from '@/components/play/MoveList';
 import { evaluateClick } from '@/lib/play/multiSquareCheck';
 import {
@@ -78,6 +79,20 @@ export interface IdentifyPieceEx {
   difficulty?: number;
 }
 
+/** "Taş Nerde?" — eksik taşlar tahtanın dışında, sporcu doğru karelere yerleştirir. */
+export interface PlacePiecesEx {
+  type: 'place_pieces';
+  instruction: string;
+  /** Eksik taşların OLMADIĞI konum. */
+  fen: string;
+  /** En az bir eleman; `piece` FEN harfidir (bkz. lib/chess/pieceCodes.ts). */
+  pieces: { piece: string; square: string }[];
+  success_msg?: string;
+  fail_msg?: string;
+  code?: string;
+  difficulty?: number;
+}
+
 export interface SentenceQuestionEx {
   type: 'sentence_question';
   instruction: string;
@@ -114,13 +129,14 @@ export interface ImageQuestionEx {
   prompt_images?: { uri: string; x: number; y: number; w: number; h: number; tone: number }[];
 }
 
-export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx;
+export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx | PlacePiecesEx;
 export type ChoiceTypeConfig = SentenceQuestionEx | ImageQuestionEx;
 export type BoardExerciseConfig = BoardTypeConfig | ChoiceTypeConfig;
 
-/** Tahta tabanlı bir soru mu (click_square/move_piece/identify_piece)? */
+/** Tahta tabanlı bir soru mu (click_square/move_piece/identify_piece/place_pieces)? */
 export function isBoardExercise(ex: BoardExerciseConfig): ex is BoardTypeConfig {
-  return ex.type === 'click_square' || ex.type === 'move_piece' || ex.type === 'identify_piece';
+  return ex.type === 'click_square' || ex.type === 'move_piece'
+    || ex.type === 'identify_piece' || ex.type === 'place_pieces';
 }
 
 interface Props {
@@ -324,8 +340,10 @@ export function BoardExercise({
   const styles: Record<string, CSSProperties> = {};
   if (isBoardExercise(exercise)) {
     if (status !== 'success' || showNext) {
-      // Yeni format (moves) sorularda ipucu karesi yok — tahtayı MovePieceSolver çiziyor.
-      if (exercise.type !== 'identify_piece' && !('moves' in exercise)) {
+      // Yeni format (moves) ve place_pieces sorularında ipucu karesi yok —
+      // tahtayı MovePieceSolver / PlacePiecesSolver kendisi çiziyor.
+      if (exercise.type !== 'identify_piece' && exercise.type !== 'place_pieces'
+        && !('moves' in exercise)) {
         (exercise.hint_squares ?? []).forEach((sq) => {
           styles[sq] = { backgroundColor: 'rgba(255,200,0,0.50)' };
         });
@@ -475,6 +493,17 @@ export function BoardExercise({
                   (canlı doğrulamada bu hata gerçekten yaşandı).
                 */
                 <MovePieceSolver
+                  key={currentIdx}
+                  exercise={exercise}
+                  disabled={status !== 'idle'}
+                  onSolved={() => succeed()}
+                  onWrong={(msg) => failNoRetry(msg)}
+                />
+              ) : exercise.type === 'place_pieces' ? (
+                /* key ZORUNLU: PlacePiecesSolver yerleştirilen taşları kendi
+                   state'inde tutuyor — key olmadan sonraki soruya önceki
+                   sorunun taşları taşınır (MovePieceSolver'daki aynı tuzak). */
+                <PlacePiecesSolver
                   key={currentIdx}
                   exercise={exercise}
                   disabled={status !== 'idle'}
