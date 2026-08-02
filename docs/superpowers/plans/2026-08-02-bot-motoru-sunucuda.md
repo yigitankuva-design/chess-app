@@ -379,10 +379,15 @@ async def test_insan_mat_ederse_bot_hamle_denemez(env, monkeypatch):
 - [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_move_server.py -v -k "otomatik or veritabanina or mat_ederse"`
-Expected: İlk iki test FAIL (`AttributeError: module 'chess_api.routers.live_game'
-has no attribute 'get_bot_move'` — `monkeypatch.setattr` hedefi henüz yok).
-Üçüncü test PASS eder (bugün zaten hiçbir bot hamlesi tetiklenmiyor) — bu
-NORMAL.
+
+Expected: **ÜÇ testin ÜÇÜ de FAIL** — hepsi aynı sebeple:
+`AttributeError: module 'chess_api.routers.live_game' has no attribute 'get_bot_move'`.
+
+> Bu, `monkeypatch.setattr`'ın davranışıdır: var OLMAYAN bir isim üzerine yazmayı
+> reddeder (çalıştırılarak doğrulandı). Üçüncü test (`mat_ederse`) mantıken
+> bugünkü kodla da geçebilirdi, ama `monkeypatch.setattr` satırına daha assertion'a
+> varmadan takılır. Yani burada "1 tanesi zaten geçiyor" BEKLENMEZ — üçü de
+> kırmızıdır ve Step 3'ten sonra üçü birden yeşile döner.
 
 - [ ] **Step 3: `_play_bot_move`'u ekle ve `_handle_move`'a bağla**
 
@@ -420,7 +425,14 @@ Dosyanın sonuna (`_handle_flag`'den ÖNCE veya SONRA, herhangi bir yere — bur
 async def _play_bot_move(game_id: int, room) -> None:
     """Sirasi bota gelen bir bot macinda, sunucu motoruyla hamleyi kendisi
     oynar. Insan hamlesiyle AYNI adimlar (dogrulama, kayit, saat, mat/pat,
-    yayin) — by_child_id=None 'bot' anlamina gelir."""
+    yayin) — by_child_id=None 'bot' anlamina gelir.
+
+    BILINEN SINIR: _handle_move'daki gibi bir "bayrak dustu mu" on kontrolu
+    YOKTUR. Bot saniyenin altinda hamle uretttigi icin botun kendi suresini
+    tuketip bayrak dusurmesi pratikte olmaz; dayaniklilik senaryolari tasarim
+    belgesinde ACIKCA kapsam disi birakildi. Sporcunun bayragi zaten kendi
+    hamlesinde (_handle_move) kontrol ediliyor.
+    """
     async with get_session_factory()() as db:
         game = await db.get(Game, game_id)
         if not game or game.status != GameStatus.active:
