@@ -25,7 +25,7 @@ describe('BoardExercise — noRetry (madde 1: Süresiz Pratik)', () => {
   it('yanlış cevaptan sonra "Sonraki Soruya Geç" çıkar', () => {
     render(<BoardExercise exercises={IKI_SORU} done={false} onCorrect={vi.fn()} noRetry />);
     fireEvent.click(screen.getByText('İki'));          // yanlis
-    expect(screen.getByText('Yanlış!')).toBeInTheDocument();
+    expect(screen.getByLabelText('Yanlış')).toBeInTheDocument();
     expect(screen.getByText(/Sonraki Soruya Geç/)).toBeInTheDocument();
   });
 
@@ -34,7 +34,7 @@ describe('BoardExercise — noRetry (madde 1: Süresiz Pratik)', () => {
     fireEvent.click(screen.getByText('İki'));          // yanlis
     fireEvent.click(screen.getByText('Bir'));          // dogruyu denemek
     // Hala yanlis geri bildirimi duruyor, "dogru" ekranina GECMEDI.
-    expect(screen.getByText('Yanlış!')).toBeInTheDocument();
+    expect(screen.getByLabelText('Yanlış')).toBeInTheDocument();
     expect(screen.getByText(/Sonraki Soruya Geç/)).toBeInTheDocument();
   });
 

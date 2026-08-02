@@ -9,6 +9,7 @@ import { MovePieceSolver } from './MovePieceSolver';
 import { PlacePiecesSolver } from './PlacePiecesSolver';
 import { MoveList } from '@/components/play/MoveList';
 import { evaluateClick } from '@/lib/play/multiSquareCheck';
+import { ringStyle, RING_BLUE, RING_GREEN, RING_RED } from '@/lib/chess/squareMarker';
 import {
   BOARD_CARD_BG, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
   getBoardColors, getPieceSet,
@@ -352,20 +353,28 @@ export function BoardExercise({
         styles[exercise.highlight_square] = { backgroundColor: 'rgba(255,200,0,0.65)' };
       }
       if (selected) {
-        styles[selected] = { backgroundColor: 'rgba(80,160,255,0.65)', cursor: 'pointer' };
+        styles[selected] = { ...ringStyle(RING_BLUE), cursor: 'pointer' };
       }
     }
     // 'moves' alanı varsa bu YENİ format (P4) bir soru — target_squares yok, okunursa çöker.
     if (status === 'success' && exercise.type === 'move_piece' && !('moves' in exercise)) {
       exercise.target_squares.forEach((sq) => {
-        styles[sq] = { backgroundColor: 'rgba(100,220,100,0.45)' };
+        styles[sq] = ringStyle(RING_GREEN);
       });
     }
+    // "Tüm kareleri tıkla" modunda sporcunun ŞU ANA KADAR tıkladığı doğru
+    // kareler mavi halkayla gösterilir — eskiden hiç gösterilmiyordu, sporcu
+    // nerede kaldığını göremiyordu.
+    if (exercise.type === 'click_square' && (exercise.click_mode ?? 'any') === 'all') {
+      multiClicked.forEach((sq) => { styles[sq] = ringStyle(RING_BLUE); });
+    }
+    // SIRA ÖNEMLİ: sonuç halkası multiClicked'ten SONRA yazılır — son tıklanan
+    // kare yeşil/kırmızı olur, öncekiler mavi kalır.
     if (exercise.type === 'click_square' && clickedSquare) {
       if (status === 'success') {
-        styles[clickedSquare] = { backgroundColor: 'rgba(100,220,100,0.45)' };
+        styles[clickedSquare] = ringStyle(RING_GREEN);
       } else if (status === 'fail') {
-        styles[clickedSquare] = { backgroundColor: 'rgba(239,68,68,0.45)' };
+        styles[clickedSquare] = ringStyle(RING_RED);
       }
     }
   }
@@ -631,14 +640,15 @@ export function BoardExercise({
                   : 'color-mix(in srgb, #dc2626 12%, transparent)',
               }}
             >
+              {/* Kullanıcı kararı: kartta YAZI yok, sadece işaret. aria-label
+                  ŞART — işaret görsel; etiketsiz kalırsa ekran okuyucu ve
+                  testler sonucu hiç göremez. */}
               <span
-                aria-hidden="true"
-                style={{ fontSize: '1.75rem', lineHeight: 1, color: status === 'success' ? '#16a34a' : '#dc2626' }}
+                role="img"
+                aria-label={status === 'success' ? 'Doğru' : 'Yanlış'}
+                style={{ fontSize: '2.75rem', lineHeight: 1, color: status === 'success' ? '#16a34a' : '#dc2626' }}
               >
                 {status === 'success' ? '✓' : '✕'}
-              </span>
-              <span className="text-xs font-semibold" style={{ color: status === 'success' ? '#16a34a' : '#dc2626' }}>
-                {status === 'success' ? (exercise.success_msg ?? 'Aferin! Doğru yaptın! 👏') : (feedback || 'Yanlış!')}
               </span>
             </div>
             {showNext && doneCount < total && (

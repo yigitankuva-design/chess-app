@@ -24,7 +24,7 @@ describe('BoardExercise — yanlış cevap kalıcılığı (madde 6)', () => {
     render(<BoardExercise exercises={[EX, EX]} done={false} onCorrect={vi.fn()} noRetry
       initialIndex={0} initialAnswer="wrong" onAnswered={onAnswered} />);
     expect(screen.getByText('Sonraki Soruya Geç')).toBeInTheDocument();
-    expect(screen.getByText('Yanlış!')).toBeInTheDocument();
+    expect(screen.getByLabelText('Yanlış')).toBeInTheDocument();
     // Kilitliyken şıklara tıklamak hiçbir şey değiştirmemeli (tekrar çözülemez).
     fireEvent.click(screen.getByText('Doğru'));
     expect(onAnswered).not.toHaveBeenCalled();

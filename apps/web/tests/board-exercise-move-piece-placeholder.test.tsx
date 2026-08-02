@@ -57,6 +57,6 @@ describe('BoardExercise — yeni format move_piece gerçek çözücüyle render 
     );
     fireEvent.click(container.querySelector('[data-square="e2"]')!); // taşı seç
     fireEvent.click(container.querySelector('[data-square="e4"]')!); // hedefe taşı
-    expect(container.textContent).toMatch(/Aferin/);
+    expect(screen.getByLabelText('Doğru')).toBeInTheDocument();
   });
 });

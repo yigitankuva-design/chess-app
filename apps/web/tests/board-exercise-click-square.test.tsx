@@ -18,7 +18,7 @@ describe('BoardExercise — P3 öncesi taban çizgisi (regresyon güvenlik ağı
     // Fail penceresi (1.8sn) DOLMADAN tekrar dene — taşı yeniden seçip doğru kareye taşıyabilmeli
     fireEvent.click(container.querySelector('[data-square="e2"]')!);
     fireEvent.click(container.querySelector('[data-square="e4"]')!);
-    expect(container.textContent).toMatch(/Aferin/);
+    expect(screen.getByLabelText('Doğru')).toBeInTheDocument();
   });
 
   it('identify_piece: yanlış şıktan sonra tekrar denenebilir', () => {
@@ -33,7 +33,7 @@ describe('BoardExercise — P3 öncesi taban çizgisi (regresyon güvenlik ağı
     fireEvent.click(screen.getByText('Piyon')); // yanlış
     expect(screen.getByText(/Yanlış/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('At')); // tekrar dene, doğru
-    expect(screen.getByText(/Aferin/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Doğru')).toBeInTheDocument();
   });
 
   it('sentence_question: yanlış cevaptan sonra tekrar denenebilir', () => {
@@ -46,7 +46,7 @@ describe('BoardExercise — P3 öncesi taban çizgisi (regresyon güvenlik ağı
     render(<BoardExercise exercises={exercises} done={false} onCorrect={vi.fn()} />);
     fireEvent.click(screen.getByText('Düz')); // yanlış
     fireEvent.click(screen.getByText('L şeklinde')); // tekrar dene, doğru
-    expect(screen.getByText(/Aferin/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Doğru')).toBeInTheDocument();
   });
 
   it('click_square: 3 sorunun TÜMÜ doğru cevaplanınca onCorrect tam bir kez çağrılır', () => {
@@ -67,7 +67,7 @@ describe('BoardExercise — P3 öncesi taban çizgisi (regresyon güvenlik ağı
 });
 
 describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar deneme yok', () => {
-  it('doğru kareye tıklayınca kare açık yeşille renklenir', () => {
+  it('doğru kareye tıklayınca kare YEŞİL HALKA alır, boyanmaz', () => {
     // react-chessboard, squareStyles[square]'i [data-square]'in KENDİSİNE değil,
     // onun doğrudan çocuğu olan içerik sarmalayıcı div'ine uyguluyor (kaynak
     // kodda doğrulandı: <div style={{width:'100%',height:'100%',...squareStyles[id]}}>).
@@ -78,10 +78,13 @@ describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar 
     fireEvent.click(container.querySelector('[data-square="e4"]')!);
     const sq = container.querySelector('[data-square="e4"]') as HTMLElement;
     const overlay = sq.querySelector('div') as HTMLElement;
-    expect(overlay.style.backgroundColor).toBe('rgba(100, 220, 100, 0.45)');
+    // Kare BOYANMAZ; ortasına halka çizilir (kullanıcı kararı).
+    expect(overlay.style.borderRadius).toBe('50%');
+    expect(overlay.style.borderColor).toContain('22, 163, 74');
+    expect(overlay.style.backgroundColor).toBe('');
   });
 
-  it('yanlış kareye tıklayınca o kare açık kırmızıyla renklenir', () => {
+  it('yanlış kareye tıklayınca o kare KIRMIZI HALKA alır, boyanmaz', () => {
     // 2 soruluk dizi kullanılıyor — tek soruda yanlış cevap "son soru" sayılıp
     // allAttempted terminal ekranına geçer, tahta DOM'dan tamamen kalkar.
     const exercises: BoardExerciseConfig[] = [
@@ -92,7 +95,9 @@ describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar 
     fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
     const sq = container.querySelector('[data-square="a1"]') as HTMLElement;
     const overlay = sq.querySelector('div') as HTMLElement;
-    expect(overlay.style.backgroundColor).toBe('rgba(239, 68, 68, 0.45)');
+    expect(overlay.style.borderRadius).toBe('50%');
+    expect(overlay.style.borderColor).toContain('220, 38, 38');
+    expect(overlay.style.backgroundColor).toBe('');
   });
 
   it('yanlış cevaptan 2 saniye sonra bile durum sıfırlanmaz (tekrar deneme yok)', async () => {
@@ -174,7 +179,7 @@ describe('BoardExercise — click_square yeni davranış: renklendirme + tekrar 
     fireEvent.click(container.querySelector('[data-square="a1"]')!); // yanlış
     fireEvent.click(container.querySelector('[data-square="e2"]')!); // hemen tekrar dene
     fireEvent.click(container.querySelector('[data-square="e4"]')!);
-    expect(container.textContent).toMatch(/Aferin/);
+    expect(screen.getByLabelText('Doğru')).toBeInTheDocument();
   });
 });
 
