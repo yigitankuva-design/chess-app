@@ -13,6 +13,9 @@ import type { PromotionPiece } from '@/lib/play/promotion';
 import { ChessBoard } from './ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
+import {
+  botGameKey, loadBotGame, saveBotGame, clearBotGame,
+} from '@/lib/play/botGameSession';
 
 export interface TimeControl {
   base: number;       // seconds on the clock at start
@@ -34,7 +37,32 @@ interface Props {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd }: Props) {
-  const chessRef = useRef(new Chess(startFen));
+  // Oturum anahtarı render'lar arasında sabittir; prop'lardan türetilir.
+  const sessionKeyStr = botGameKey(skillLevel, studentColor, startFen);
+  /** Kayıttan okunan hamleler — ilk render'da tahtayı kurmak için kullanılır.
+   *  useRef DEĞİL useState DEĞİL: yalnız ilk kurulumda okunur, sonra
+   *  chessRef gerçeğin kaynağıdır. */
+  const restoredRef = useRef(loadBotGame(sessionKeyStr));
+
+  const chessRef = useRef((() => {
+    // Kayıtlı hamleler tekrar oynatılır: hem pozisyon hem chess.js geçmişi
+    // (notasyon kartı için gerekli) geri gelir.
+    const board = new Chess(startFen);
+    for (const uci of restoredRef.current?.moves ?? []) {
+      try {
+        board.move({
+          from: uci.slice(0, 2) as Square,
+          to: uci.slice(2, 4) as Square,
+          promotion: promotionFromUci(uci) ?? 'q',
+        });
+      } catch {
+        break; // bozuk kayıt — oynatılabildiği yere kadar
+      }
+    }
+    return board;
+  })());
+  /** Backend'e yazılmış UCI hamleleri — sessionStorage kaydının içeriği. */
+  const movesRef = useRef<string[]>([...(restoredRef.current?.moves ?? [])]);
   const botColor = studentColor === 'w' ? 'b' : 'w';
   const engineRef = useRef<StockfishEngine | null>(null);
   const gameIdRef = useRef<number | null>(null);
@@ -42,7 +70,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
   /** Madde 6: bota karsi da terk ve beraberlik hakki. Hak sayisi insan
    *  maclariyla AYNI kuraldan gelir (drawOffers.ts) — iki yerde iki sayi olmaz. */
-  const [drawOffersUsed, setDrawOffersUsed] = useState(0);
+  const [drawOffersUsed, setDrawOffersUsed] = useState(restoredRef.current?.drawOffersUsed ?? 0);
   const [drawNote, setDrawNote] = useState('');
   // Sporcunun adi girişte saklaniyor; yoksa nötr bir etiket kullanilir.
   const [studentName] = useState(() => getAthleteName() || 'Sen');
@@ -51,8 +79,8 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const [resultText, setResultText] = useState<string>('');
 
   const tc = timeControl ?? null;
-  const [whiteTime, setWhiteTime] = useState(tc ? tc.base : 0);
-  const [blackTime, setBlackTime] = useState(tc ? tc.base : 0);
+  const [whiteTime, setWhiteTime] = useState(restoredRef.current?.whiteTime ?? (tc ? tc.base : 0));
+  const [blackTime, setBlackTime] = useState(restoredRef.current?.blackTime ?? (tc ? tc.base : 0));
 
   // ── Engine + backend game setup ──────────────────────────────────────────
   useEffect(() => {
@@ -63,23 +91,29 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
       eng.setSkill(skillLevel);
       engineRef.current = eng;
 
-      try {
-        const token = getToken();
-        const res = await fetch(`${API_BASE}/games/bot/start`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ skill_level: skillLevel }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          gameIdRef.current = data.game_id;
-        }
-      } catch { /* offline OK */ }
+      // Kayıtlı oyun varsa YENİ OYUN AÇILMAZ — sayfa yenilemesi maçı
+      // sıfırlıyordu (madde 3).
+      if (restoredRef.current?.gameId != null) {
+        gameIdRef.current = restoredRef.current.gameId;
+      } else {
+        try {
+          const token = getToken();
+          const res = await fetch(`${API_BASE}/games/bot/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ skill_level: skillLevel }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            gameIdRef.current = data.game_id;
+          }
+        } catch { /* offline OK */ }
+      }
 
       if (!cancelled) setStatus('playing');
 
-      // Sporcu siyahsa beyaz (bot) baslar — ilk hamleyi otomatik oynat.
-      if (!cancelled && chessRef.current.turn() === botColor) {
+      // Kayıttan devam ediliyorsa açılış hamlesi zaten oynanmıştır.
+      if (!cancelled && movesRef.current.length === 0 && chessRef.current.turn() === botColor) {
         setThinking(true);
         try {
           const uci = await eng.bestMove(chessRef.current.fen(), depth);
@@ -120,16 +154,31 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     const botTime = studentColor === 'w' ? blackTime : whiteTime;
     if (studentTime <= 0) {
       setStatus('over');
+      clearBotGame(sessionKeyStr);
       setResultText('⏰ Süren bitti — Bot kazandı.');
       onGameEnd('loss');
     } else if (botTime <= 0) {
       setStatus('over');
+      clearBotGame(sessionKeyStr);
       setResultText('⏰ Botun süresi bitti — Kazandın! 🎉');
       onGameEnd('win');
     }
   }, [whiteTime, blackTime, status, tc, onGameEnd, studentColor]);
 
+  /** Oyunun o anki durumunu sekmeye yazar. Her hamleden sonra çağrılır. */
+  function saveSession() {
+    saveBotGame(sessionKeyStr, {
+      gameId: gameIdRef.current,
+      moves: movesRef.current,
+      whiteTime,
+      blackTime,
+      drawOffersUsed,
+    });
+  }
+
   async function persistMove(uci: string) {
+    movesRef.current = [...movesRef.current, uci];
+    saveSession();
     const gid = gameIdRef.current;
     if (!gid) return;
     try {
@@ -145,6 +194,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   function finish() {
     const chess = chessRef.current;
     setStatus('over');
+    clearBotGame(sessionKeyStr);
     if (chess.isCheckmate()) {
       // Mat olan taraf SIRASI GELEN taraftir; sporcu mat edildiyse kaybetti.
       const studentWon = chess.turn() === botColor;
@@ -158,6 +208,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
 
   function resignToBot() {
     setStatus('over');
+    clearBotGame(sessionKeyStr);
     setResultText('🏳️ Maçı terk ettin — Bot kazandı.');
     onGameEnd('loss');
   }
@@ -167,6 +218,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     setDrawOffersUsed((n) => n + 1);
     if (botAcceptsDraw(chessRef.current.fen(), botColor)) {
       setStatus('over');
+      clearBotGame(sessionKeyStr);
       setResultText('🤝 Bot beraberliği kabul etti.');
       onGameEnd('draw');
     } else {
