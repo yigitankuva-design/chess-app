@@ -45,24 +45,24 @@ describe('ChoiceExerciseFields — soru görseli için iki kaynak', () => {
     expect(container.querySelector('input[type="file"]')).toBeTruthy();
   });
 
-  it('Havuzdan Seç panel açar, seçim soru görselini doldurur', async () => {
+  it('Havuzdan Seç panel açar, çoklu seçim soru görselini tahtaya ekler', async () => {
     render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Havuzdan Seç' }));
     fireEvent.click(screen.getByRole('button', { name: 'Hayvanlar' }));
-    await waitFor(() => expect(screen.getAllByRole('img').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getAllByRole('img')[0]);
+    fireEvent.click(await screen.findByLabelText('Hayvanlar havuz görseli'));
+    fireEvent.click(screen.getByText('Seçilenleri Ekle (1)'));
     await waitFor(() => {
-      const preview = screen.getByAltText('Soru görseli önizleme') as HTMLImageElement;
-      expect(preview.src).toBe(POOL_IMG);
+      const placed = screen.getByAltText('Görsel 1') as HTMLImageElement;
+      expect(placed.src).toBe(POOL_IMG);
     });
   });
 
-  it('seçim sonrası panel kapanır', async () => {
+  it('"Seçilenleri Ekle" sonrası panel kapanır', async () => {
     render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Havuzdan Seç' }));
     fireEvent.click(screen.getByRole('button', { name: 'Hayvanlar' }));
-    await waitFor(() => expect(screen.getAllByRole('img').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getAllByRole('img')[0]);
+    fireEvent.click(await screen.findByLabelText('Hayvanlar havuz görseli'));
+    fireEvent.click(screen.getByText('Seçilenleri Ekle (1)'));
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Kapat' })).not.toBeInTheDocument(),
     );
@@ -105,15 +105,18 @@ describe('ChoiceExerciseFields — havuza da ekle satırı', () => {
    * çalışmıyor; bunun yerine havuzdan seçim yapılır — her iki yol da aynı
    * `promptImage` state'ini doldurur, satırın görünme koşulu odur.
    */
+  /**
+   * Dosya yükleme akışı canvas/Image gerektirdiği için happy-dom'da gerçekten
+   * çalışmıyor; bunun yerine havuzdan seçim yapılır. Soru görseli akışı artık
+   * ÇOKLU seçim: görsele tıkla (sepete ekler), sonra "Seçilenleri Ekle".
+   */
   async function pickFromPool() {
     render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Havuzdan Seç' }));
     fireEvent.click(screen.getByRole('button', { name: 'Hayvanlar' }));
-    await waitFor(() => expect(screen.getAllByRole('img').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getAllByRole('img')[0]);
-    await waitFor(() =>
-      expect(screen.getByAltText('Soru görseli önizleme')).toBeInTheDocument(),
-    );
+    fireEvent.click(await screen.findByLabelText('Hayvanlar havuz görseli'));
+    fireEvent.click(screen.getByText('Seçilenleri Ekle (1)'));
+    await waitFor(() => expect(screen.getByAltText('Görsel 1')).toBeInTheDocument());
   }
 
   it('görsel yokken satır görünmez', () => {

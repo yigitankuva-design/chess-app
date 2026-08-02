@@ -7,15 +7,16 @@ import { PoolPicker } from './PoolPicker';
 import { choiceSteps, firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import { StepList } from './StepList';
 import { POOL_CATEGORIES, addPoolImage } from '@/lib/admin/poolApi';
-import { ImagePlacer } from './ImagePlacer';
-import { type ImagePlacement, DEFAULT_PLACEMENT, clampPlacement } from '@/lib/chess/imagePlacement';
+import { MultiImagePlacer } from './MultiImagePlacer';
+import type { PlacedImage } from './MultiImagePlacer';
+import { defaultPlacementForIndex } from '@/lib/chess/imagePlacement';
 
 /** Bolum taslagi: Zafer hoca baska bolume gecip dondugunde yazdiklarini
  *  kaybetmesin diye ExerciseForm'da saklanan alanlar. YALNIZCA yeni soru
  *  eklerken kullanilir; duzenleme modunda devre disi. */
 export interface ChoiceDraft {
   instruction: string;
-  promptImage: string;
+  images: PlacedImage[];
   optionCount: 2 | 3 | 4;
   answerKind: 'sentence' | 'image';
   options: string[];
@@ -26,7 +27,6 @@ export interface ChoiceDraft {
   optionCountChosen: boolean;
   answerKindChosen: boolean;
   difficultyChosen: boolean;
-  imagePlacement: ImagePlacement;
   imageShowBoard: boolean;
 }
 
@@ -43,7 +43,22 @@ interface Props {
 
 export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft, onDraftChange }: Props) {
   const [instruction, setInstruction] = useState(draft?.instruction ?? initial?.instruction ?? '');
-  const [promptImage, setPromptImage] = useState(draft?.promptImage ?? initial?.prompt_image ?? '');
+  const [images, setImages] = useState<PlacedImage[]>(() => {
+    if (draft?.images) return draft.images;
+    if (initial?.prompt_images) return initial.prompt_images;
+    if (initial?.prompt_image) {
+      return [{
+        uri: initial.prompt_image,
+        x: initial.image_x ?? 50, y: initial.image_y ?? 50,
+        w: initial.image_w ?? 40, h: initial.image_h ?? 40,
+        tone: initial.image_tone ?? 0,
+      }];
+    }
+    return [];
+  });
+  const [showBoard, setShowBoard] = useState(
+    draft?.imageShowBoard ?? initial?.image_show_board ?? true,
+  );
   const [optionCount, setOptionCount] = useState<2 | 3 | 4>(
     draft?.optionCount ?? ((initial?.options?.length ?? 2) as 2 | 3 | 4),
   );
@@ -57,15 +72,6 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   const [successMsg, setSuccessMsg] = useState(draft?.successMsg ?? initial?.success_msg ?? '');
   const [failMsg, setFailMsg] = useState(draft?.failMsg ?? initial?.fail_msg ?? '');
   const [difficulty, setDifficulty] = useState(draft?.difficulty ?? initial?.difficulty ?? 1);
-  const [placement, setPlacement] = useState<ImagePlacement>(
-    draft?.imagePlacement ?? clampPlacement({
-      x: initial?.image_x, y: initial?.image_y, w: initial?.image_w,
-      h: initial?.image_h, tone: initial?.image_tone,
-    }),
-  );
-  const [showBoard, setShowBoard] = useState(
-    draft?.imageShowBoard ?? initial?.image_show_board ?? true,
-  );
   /** "Belirle" adimlari BILFIIL tiklama ister; duzenlemede tamam sayilir (KURAL #3). */
   const [optionCountChosen, setOptionCountChosen] = useState(draft?.optionCountChosen ?? !!initial);
   const [answerKindChosen, setAnswerKindChosen] = useState(draft?.answerKindChosen ?? !!initial);
@@ -84,7 +90,9 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   const [poolAddMsg, setPoolAddMsg] = useState<string | null>(null);
   const editing = !!initial;
   const steps = choiceSteps(
-    { instruction, promptImage, optionCountChosen, answerKindChosen,
+    // questionSteps.ts "en az bir görsel var mı"ya bakıyor; çoklu görselde
+    // ilk elemanın uri'si bu soruya aynı cevabı verir (arayüz değişmiyor).
+    { instruction, promptImage: images[0]?.uri ?? '', optionCountChosen, answerKindChosen,
       options, answerKind, difficultyChosen },
     kind,
   );
@@ -95,16 +103,15 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   // kurulsa da (key), yazilanlar ExerciseForm'da yasamaya devam eder.
   useEffect(() => {
     onDraftChange?.({
-      instruction, promptImage, optionCount, answerKind,
+      instruction, images, optionCount, answerKind,
       options, correctIndex, successMsg, failMsg, difficulty,
       optionCountChosen, answerKindChosen, difficultyChosen,
-      imagePlacement: placement, imageShowBoard: showBoard,
+      imageShowBoard: showBoard,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instruction, promptImage, optionCount, answerKind, options,
+  }, [instruction, images, optionCount, answerKind, options,
       correctIndex, successMsg, failMsg, difficulty,
-      optionCountChosen, answerKindChosen, difficultyChosen,
-      placement, showBoard]);
+      optionCountChosen, answerKindChosen, difficultyChosen, showBoard]);
 
   function setCount(n: 2 | 3 | 4) {
     setOptionCount(n);
@@ -116,20 +123,24 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
     setCorrectIndex((prev) => (prev >= n ? 0 : prev));
   }
 
-  async function onPromptImageFile(file: File | undefined) {
-    if (!file) return;
+  async function onPromptImagesFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
     setImgErr(null);
     try {
-      setPromptImage(await compressImageToDataUri(file));
-      setPoolAddMsg(null);
+      const compressed = await Promise.all(Array.from(files).map((f) => compressImageToDataUri(f)));
+      setImages((prev) => [
+        ...prev,
+        ...compressed.map((uri, i) => ({ uri, ...defaultPlacementForIndex(prev.length + i) })),
+      ]);
     } catch {
       setImgErr('Görsel çok büyük, daha küçük bir görsel seçin');
     }
   }
 
   async function saveToPool() {
+    if (images.length === 0) return;
     setPoolAddMsg(null);
-    const ok = await addPoolImage(poolAddCategory, promptImage);
+    const ok = await addPoolImage(poolAddCategory, images[images.length - 1].uri);
     setPoolAddMsg(ok ? 'Havuza eklendi ✓' : 'Havuza eklenemedi');
   }
 
@@ -138,7 +149,9 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
     if (!item) return;
     const file = item.getAsFile();
     if (!file) return;
-    await onPromptImageFile(file);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    await onPromptImagesFiles(dt.files);
   }
 
   async function onOptionImageFile(i: number, file: File | undefined) {
@@ -154,7 +167,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
 
   function validate(): string | null {
     if (kind === 'sentence_question' && !instruction.trim()) return 'Soru metni gerekli';
-    if (kind === 'image_question' && !promptImage) return 'Soru görseli gerekli';
+    if (kind === 'image_question' && images.length === 0) return 'En az bir soru görseli gerekli';
     if (kind === 'image_question' && !instruction.trim()) return 'Talimat gerekli';
     if (answerKind === 'sentence') {
       if (options.some((o) => !o.trim())) return 'Tüm cevap seçenekleri doldurulmalı';
@@ -178,12 +191,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
       difficulty,
     };
     if (kind === 'image_question') {
-      base.prompt_image = promptImage;
-      base.image_x = placement.x;
-      base.image_y = placement.y;
-      base.image_w = placement.w;
-      base.image_h = placement.h;
-      base.image_tone = placement.tone;
+      base.prompt_images = images;
       base.image_show_board = showBoard;
     }
     if (initial?.code) base.code = initial.code;
@@ -192,10 +200,10 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
     try {
       await onSubmit(base);
       if (!editing) {
-        setInstruction(''); setPromptImage(''); setOptionCount(2); setAnswerKind('sentence');
+        setInstruction(''); setImages([]); setOptionCount(2); setAnswerKind('sentence');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
         setOptionCountChosen(false); setAnswerKindChosen(false); setDifficultyChosen(false);
-        setPlacement(DEFAULT_PLACEMENT); setShowBoard(true);
+        setShowBoard(true);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -215,9 +223,9 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
           placeholder="Soru cümlesi (örn. Atın hareket şekli nasıldır?)" className="neon-input" />
       ) : (
         <div className="space-y-2">
-          <span className="text-xs n-muted block">Soru görseli</span>
-          <input type="file" accept="image/*" className="hidden" id="prompt-image-input"
-            onChange={(e) => onPromptImageFile(e.target.files?.[0])} />
+          <span className="text-xs n-muted block">Soru görselleri</span>
+          <input type="file" accept="image/*" multiple className="hidden" id="prompt-image-input"
+            onChange={(e) => onPromptImagesFiles(e.target.files)} />
           <label htmlFor="prompt-image-input"
             className="inline-block px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
             Bilgisayardan Seç
@@ -239,24 +247,19 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
           </div>
           {openPoolFor === 'prompt' && (
             <PoolPicker
-              onSelect={(uri) => { setPromptImage(uri); setPoolAddMsg(null); }}
+              onSelectMultiple={(uris) => {
+                setImages((prev) => [
+                  ...prev,
+                  ...uris.map((uri, i) => ({ uri, ...defaultPlacementForIndex(prev.length + i) })),
+                ]);
+                setPoolAddMsg(null);
+              }}
               onClose={() => setOpenPoolFor(null)}
             />
           )}
-          {promptImage && (
-            <div className="flex items-start gap-2">
-              <img src={promptImage} alt="Soru görseli önizleme" style={{ maxWidth: 200, maxHeight: 150, objectFit: 'contain' }} />
-              {/* Madde 1: görsel eklendikten sonra tek başına SİLİNEBİLSİN —
-                  "Değiştir" zaten dosya seçtirir, bu sadece kaldırır. */}
-              <button type="button" onClick={() => setPromptImage('')}
-                className="px-2 py-1 rounded-lg text-xs bg-rose-400/10 text-rose-300 border border-rose-400/40 hover:bg-rose-400/20">
-                Görseli Sil
-              </button>
-            </div>
-          )}
-          {promptImage && (
+          {images.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap text-xs">
-              <span className="n-muted">Havuza da eklensin mi?</span>
+              <span className="n-muted">Havuza da eklensin mi? (son eklenen görsel)</span>
               <select
                 aria-label="Havuz kategorisi"
                 value={poolAddCategory}
@@ -273,9 +276,9 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
               {poolAddMsg && <span className="n-muted">{poolAddMsg}</span>}
             </div>
           )}
-          {promptImage && (
+          {images.length > 0 && (
             <div className="space-y-2">
-              <ImagePlacer uri={promptImage} placement={placement} onChange={setPlacement} />
+              <MultiImagePlacer images={images} onChange={setImages} />
               <label className="flex items-center gap-2 text-xs n-muted">
                 <input type="checkbox" checked={showBoard}
                   onChange={(e) => setShowBoard(e.target.checked)}

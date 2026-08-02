@@ -4,7 +4,7 @@ import { ChoiceExerciseFields } from '@/components/admin/ChoiceExerciseFields';
 import { vi } from 'vitest';
 
 describe('ChoiceExerciseFields — görsel silme (madde 1)', () => {
-  it('soru görseli önceden yüklüyse "Görseli Sil" düğmesi görünür ve tıklanınca kaybolur', () => {
+  it('soru görseli önceden yüklüyse, seçilip "Sil" düğmesine basılınca kaybolur (madde 3 — çoklu görsel)', () => {
     render(
       <ChoiceExerciseFields
         kind="image_question"
@@ -16,17 +16,16 @@ describe('ChoiceExerciseFields — görsel silme (madde 1)', () => {
       />,
     );
 
-    expect(screen.getByAltText('Soru görseli önizleme')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Görseli Sil'));
+    expect(screen.getByAltText('Görsel 1')).toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByAltText('Görsel 1'), { clientX: 0, clientY: 0 });
+    fireEvent.click(screen.getByText('Sil'));
 
-    expect(screen.queryByAltText('Soru görseli önizleme')).not.toBeInTheDocument();
-    // Sil sonrasi tekrar "Bilgisayardan Seç" yazmalı (Değiştir değil).
-    expect(screen.getByText('Bilgisayardan Seç')).toBeInTheDocument();
+    expect(screen.queryByAltText('Görsel 1')).not.toBeInTheDocument();
   });
 
   it('görsel yokken Sil düğmesi hiç görünmez', () => {
     render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
-    expect(screen.queryByText('Görseli Sil')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sil')).not.toBeInTheDocument();
   });
 
   it('şık görseli için Sil düğmesi çalışır', () => {

@@ -29,7 +29,7 @@ describe('ChoiceExerciseFields — Ctrl+V ile görsel yapıştırma', () => {
       expect(vi.mocked(compressImageToDataUri)).toHaveBeenCalledWith(file);
     });
     await waitFor(() => {
-      const img = screen.getByAltText('Soru görseli önizleme') as HTMLImageElement;
+      const img = screen.getByAltText('Görsel 1') as HTMLImageElement;
       expect(img.src).toBe('data:image/jpeg;base64,FAKE');
     });
   });
@@ -41,6 +41,6 @@ describe('ChoiceExerciseFields — Ctrl+V ile görsel yapıştırma', () => {
       clipboardData: { items: [{ type: 'text/plain', getAsFile: () => null }] },
     });
     expect(vi.mocked(compressImageToDataUri)).not.toHaveBeenCalled();
-    expect(screen.queryByAltText('Soru görseli önizleme')).not.toBeInTheDocument();
+    expect(screen.queryByAltText('Görsel 1')).not.toBeInTheDocument();
   });
 });
