@@ -5,6 +5,8 @@ import { sessionKey, loadSession } from '@/lib/play/practiceSession';
 vi.mock('next/navigation', () => ({
   useParams: () => ({ mode: 'suresiz' }),
   useSearchParams: () => new URLSearchParams('konu=Test&step=165&ders=42'),
+  // "Pratiği Bırak" düğmesi /home'a yönlendiriyor — sayfa artık useRouter kullanıyor.
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 vi.mock('@/lib/practice/practiceApi', () => ({
   fetchLessonScores: vi.fn().mockResolvedValue(null),

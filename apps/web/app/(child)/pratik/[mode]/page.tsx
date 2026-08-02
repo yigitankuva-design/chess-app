@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { ComingSoon } from '@/components/ComingSoon';
 import { BoardExercise, isBoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercise';
@@ -27,10 +27,12 @@ const MODES: Record<string, {
   randomPick: number;
   /** Zorluk dağılımı (madde 4/5/6) — randomPick 0 ise kullanılmaz. */
   mix: DifficultyBucket;
+  /** "Bırak" düğmesinin yazısı — başlıktan türetilmez, açıkça yazılır. */
+  quitLabel: string;
 }> = {
-  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, randomPick: 20, mix: UNTIMED_MIX },
-  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, randomPick: 20, mix: TIMED_MIX },
-  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  randomPick: 20, mix: TEST_MIX },
+  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, randomPick: 20, mix: UNTIMED_MIX, quitLabel: 'Süresiz Pratik Yapmayı Bırak' },
+  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, randomPick: 20, mix: TIMED_MIX,   quitLabel: 'Süreli Pratik Yapmayı Bırak' },
+  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  randomPick: 20, mix: TEST_MIX,    quitLabel: 'Testi Bırak' },
 };
 
 const TIMED_SECONDS = 300; // Süreli mod: 5 dakika
@@ -48,6 +50,7 @@ export default function PratikPage() {
 function PratikInner() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const slug = String(params.mode ?? '');
   const mode = MODES[slug];
 
@@ -183,6 +186,14 @@ function PratikInner() {
     // hazırlanır (aksi halde bitmiş setin SON sorusuyla karşılaşılıyordu).
     clearSession(sessionKey(stepId, slug));
     setFinished({ correct: r.correct, total: r.total, score });
+  }
+
+  /** Pratiği YARIDA bırak: hiçbir şey kaydedilmez, sunucuya yazılmaz.
+   *  handleFinish'ten AYRI tutulur — o puan yazar, kilit açar, sonuç gösterir. */
+  function handleQuit() {
+    if (!confirm('Bırakmak istediğine emin misin? Bu pratik kaydedilmeyecek.')) return;
+    clearSession(sessionKey(stepId, slug));
+    router.push('/home');
   }
 
   function handleRetry() {
@@ -327,6 +338,15 @@ function PratikInner() {
                 items: exercises, index, currentAnswer: answer, doneCount,
               });
             }}
+            quitSlot={(
+              <button
+                type="button"
+                onClick={handleQuit}
+                className="t-card-i w-full py-3 px-4 text-center text-sm font-semibold"
+              >
+                {mode.quitLabel}
+              </button>
+            )}
           />
         </>
       )}

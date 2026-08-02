@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import { ChoiceQuestionVisual } from './ChoiceQuestionVisual';
@@ -161,6 +161,10 @@ interface Props {
   initialDoneCount?: number;
   /** Her cevaplamada (doğru/yanlış) çağrılır — üst sayfa kalıcı hale getirsin. */
   onAnswered?: (index: number, doneCount: number, answer: 'correct' | 'wrong') => void;
+  /** İçerik alanının sonuna konan çıkış düğmesi. Pratik sayfası geçirir; ders
+   *  anlatımı içindeki alıştırmalarda verilmez, düğme hiç render edilmez.
+   *  Bileşen hangi pratik modunda olduğunu BİLMEZ — yazıyı sayfa belirler. */
+  quitSlot?: ReactNode;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,7 +214,7 @@ function ProgressDots({ total, current, doneCount }: { total: number; current: n
 export function BoardExercise({
   exercises, done, onCorrect, onFinish, noRetry = false,
   initialIndex = 0, onIndexChange, initialAnswer = null, initialDoneCount,
-  onAnswered,
+  onAnswered, quitSlot,
 }: Props) {
   // Madde 1: click_square/identify_piece sorularinin tahtasi ham
   // react-chessboard cizdigi icin uygulamanin ortak temasini/notasyonunu
@@ -604,6 +608,10 @@ export function BoardExercise({
           ) : (
             <ChoiceQuestionAnswers exercise={exercise} disabled={status === 'success'} onAnswer={onChoiceAnswer} />
           )}
+          {/* Çıkış düğmesi içeriğin SONUNDA: en yaygın tip olan click_square'de
+              talimat tek öğedir, yani "talimatın hemen altı" ile aynı yer. Şıklı
+              tiplerde şıkların ARASINA girseydi sporcu yanlışlıkla basardı. */}
+          {quitSlot}
         </div>
       </div>
 
