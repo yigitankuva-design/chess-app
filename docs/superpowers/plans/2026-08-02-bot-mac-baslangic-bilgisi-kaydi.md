@@ -31,7 +31,7 @@ istenirse bu planın sonuna eklenebilir, aşağıda not var).
 - Create: `apps/api/alembic/versions/20260802_BotGameColor_add.py`
 - Test: `apps/api/tests/test_play_models.py` (genişletilecek)
 
-- [ ] **Step 1: Başarısız test yaz**
+- [x] **Step 1: Başarısız test yaz**
 
 `apps/api/tests/test_play_models.py` dosyasının SONUNA ekle:
 
@@ -57,13 +57,13 @@ async def test_student_color_kaydedilebilir(db):
     assert game.student_color == "b"
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_play_models.py -v`
 Expected: FAIL — `TypeError: 'student_color' is an invalid keyword argument for Game`
 (sütun henüz modelde yok).
 
-- [ ] **Step 3: Modele sütunu ekle**
+- [x] **Step 3: Modele sütunu ekle**
 
 `apps/api/chess_api/models/game.py` — `black_bot_level` satırının hemen
 ALTINA (satır 36'dan sonra) ekle:
@@ -77,7 +77,7 @@ ALTINA (satır 36'dan sonra) ekle:
     student_color: Mapped[str | None] = mapped_column(String(1), nullable=True)
 ```
 
-- [ ] **Step 4: Migration dosyasını oluştur**
+- [x] **Step 4: Migration dosyasını oluştur**
 
 `apps/api/alembic/versions/20260802_BotGameColor_add.py`:
 
@@ -107,7 +107,7 @@ def downgrade() -> None:
     op.drop_column("games", "student_color")
 ```
 
-- [ ] **Step 5: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 5: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_play_models.py -v`
 Expected: PASS (6 test — 4 eski + 2 yeni).
@@ -116,7 +116,7 @@ Expected: PASS (6 test — 4 eski + 2 yeni).
 > değişikliği tek başına testleri geçirir. Migration dosyası GERÇEK (Railway)
 > veritabanı için gerekli, testler onu kullanmaz.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api/chess_api/models/game.py apps/api/alembic/versions/20260802_BotGameColor_add.py apps/api/tests/test_play_models.py
@@ -132,7 +132,7 @@ git commit -m "feat: Game.student_color sutunu (bot maci renk bilgisi)"
 - Modify: `apps/api/chess_api/routers/games.py:1-38`
 - Test: `apps/api/tests/test_games.py` (genişletilecek)
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `apps/api/tests/test_games.py` dosyasının SONUNA ekle:
 
@@ -194,7 +194,7 @@ async def test_start_bot_game_eski_istemci_hicbir_yeni_alan_gondermez(client, ch
     assert game.base_ms is None
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_games.py -v -k "renk_start_fen_tempo or eski_istemci"`
 Expected: FAIL — `student_color`/`start_fen`/`tc_base_seconds`/`tc_increment_seconds`
@@ -205,7 +205,7 @@ vermesi, çünkü Task 1 uygulanmadıysa sütun yok. Task 1 UYGULANDIYSA sütun 
 ama `start_bot_game` onu hiç yazmadığı için `game.student_color is None`
 olur, `assert game.student_color == "b"` FAIL eder).
 
-- [ ] **Step 3: `StartBotGameRequest`/`StartBotGameResponse`'u genişlet**
+- [x] **Step 3: `StartBotGameRequest`/`StartBotGameResponse`'u genişlet**
 
 `apps/api/chess_api/schemas/game.py` — TÜM dosyanın yeni hâli:
 
@@ -246,7 +246,7 @@ class MoveResponse(BaseModel):
     result: GameResult | None = None
 ```
 
-- [ ] **Step 4: `start_bot_game`'i güncelle**
+- [x] **Step 4: `start_bot_game`'i güncelle**
 
 `apps/api/chess_api/routers/games.py` — dosyanın en üstündeki import'lara
 `datetime` ekle (satır 1'in üzerine):
@@ -301,7 +301,7 @@ async def start_bot_game(
     )
 ```
 
-- [ ] **Step 5: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 5: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_games.py -v`
 Expected: PASS (mevcut testler + 2 yeni = 9 test). `test_start_bot_game`
@@ -309,7 +309,7 @@ Expected: PASS (mevcut testler + 2 yeni = 9 test). `test_start_bot_game`
 `fen == INITIAL_FEN` beklentisi, `student_color` varsayılanı `'w'` ve
 `start_fen` varsayılanı `None` olduğu için bozulmaz.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api/chess_api/schemas/game.py apps/api/chess_api/routers/games.py apps/api/tests/test_games.py
@@ -329,7 +329,7 @@ bakmıyor. Açılış pratiğinden başlayan bir bot maçında (Task 2 sayesinde
 - Modify: `apps/api/chess_api/routers/games.py:41-46`
 - Test: `apps/api/tests/test_games.py` (genişletilecek)
 
-- [ ] **Step 1: Başarısız test yaz**
+- [x] **Step 1: Başarısız test yaz**
 
 `apps/api/tests/test_games.py` dosyasının SONUNA ekle:
 
@@ -357,14 +357,14 @@ async def test_acilis_pratiginden_baslayan_bot_macinda_ilk_hamle_dogru_degerlend
     assert response.json()["accepted"] is True
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_games.py -v -k acilis_pratiginden`
 Expected: FAIL — `assert False is True` (`accepted` `False` döner, çünkü
 sunucu standart başlangıca göre "beyazın sırası" sanıp `e7e5`'i siyah taşı
 olarak reddeder).
 
-- [ ] **Step 3: `_current_fen`'i düzelt**
+- [x] **Step 3: `_current_fen`'i düzelt**
 
 `apps/api/chess_api/routers/games.py` — `_current_fen` fonksiyonunun (satır
 ~41-46) TAMAMINI değiştir:
@@ -383,12 +383,12 @@ async def _current_fen(db: AsyncSession, game_id: int) -> str:
     return game.start_fen if game and game.start_fen else INITIAL_FEN
 ```
 
-- [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 4: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_games.py -v`
 Expected: PASS (mevcut + 2 (Task 2) + 1 (bu adım) = 10 test).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api/chess_api/routers/games.py apps/api/tests/test_games.py
@@ -401,12 +401,12 @@ git commit -m "fix: bot maci _current_fen artik acilis pozisyonunu dikkate aliyo
 
 **Files:** (yok — yalnızca doğrulama)
 
-- [ ] **Step 1: Backend tam paketi**
+- [x] **Step 1: Backend tam paketi**
 
 Run: `cd apps/api && python -m pytest -q`
 Expected: TÜM testler PASS (mevcut 362 test + bu planın eklediği 6 test = 368).
 
-- [ ] **Step 2: Rozet testleri özellikle kontrol edilir**
+- [x] **Step 2: Rozet testleri özellikle kontrol edilir**
 
 `badge_engine.py`'ye hiç dokunulmadı; ama emin olmak için ilgili testler
 (varsa `bot_wins`/`black_bot_level` geçen dosyalar) ayrıca aranır:
@@ -415,12 +415,12 @@ Run: `cd apps/api && grep -rl "bot_wins\|black_bot_level" tests/*.py`
 Bulunan dosyalar tam paket içinde zaten PASS etti (Step 1) — burada ekstra
 işlem gerekmez, yalnızca hangi dosyaların etkilendiği görünür kılınır.
 
-- [ ] **Step 3: Frontend'e dokunulmadı**
+- [x] **Step 3: Frontend'e dokunulmadı**
 
 Bu plan yalnızca `apps/api` içinde çalışıyor; `apps/web` hiç değişmedi. Web
 test paketini koşmaya gerek yok.
 
-- [ ] **Step 4: Ertelenen görevi kaydet**
+- [x] **Step 4: Ertelenen görevi kaydet**
 
 `BotGame.tsx`'in bu yeni alanları (`student_color`, `start_fen`,
 `tc_base_seconds`, `tc_increment_seconds`) `/games/bot/start` çağrısına
@@ -429,7 +429,7 @@ bilgileri henüz kullanmıyor — motor entegrasyonu ayrı bir sonraki parça)
 BİLEREK bu plana DAHİL EDİLMEDİ. Motor entegrasyonu parçası başladığında,
 sunucunun bu bilgilere ihtiyacı olacağı an bu bağlantı da kurulacak.
 
-- [ ] **Step 5: Kullanıcıya rapor + canlıya gönderme onayı**
+- [x] **Step 5: Kullanıcıya rapor + canlıya gönderme onayı**
 
 Bu adımda kod yazılmaz — sonuçlar KURAL #0'a uygun sade Türkçe ile özetlenir,
 `git push origin main` için açık onay istenir.
