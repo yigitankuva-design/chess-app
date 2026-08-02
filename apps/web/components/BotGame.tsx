@@ -190,7 +190,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
       setResultText('⏰ Botun süresi bitti — Kazandın! 🎉');
       onGameEnd('win');
     }
-  }, [whiteTime, blackTime, status, tc, onGameEnd, studentColor]);
+  }, [whiteTime, blackTime, status, tc, onGameEnd, studentColor, sessionKeyStr]);
 
   /** Oyunun o anki durumunu sekmeye yazar. Her hamleden sonra çağrılır. */
   function saveSession() {

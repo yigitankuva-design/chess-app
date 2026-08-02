@@ -46,7 +46,7 @@ describe('BotGame — sayfa yenilemesi (madde 3)', () => {
     saveBotGame(botGameKey(0, 'w'), {
       gameId: 7, moves: ['e2e4', 'e7e5'], whiteTime: 0, blackTime: 0, drawOffersUsed: 0,
     });
-    const fetchMock = vi.fn(async () => ({ ok: false, json: async () => ({}) }));
+    const fetchMock = vi.fn(async (..._args: Parameters<typeof fetch>) => ({ ok: false, json: async () => ({}) }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(<BotGame skillLevel={0} depth={1} studentColor="w" onGameEnd={vi.fn()} />);
@@ -58,7 +58,7 @@ describe('BotGame — sayfa yenilemesi (madde 3)', () => {
   });
 
   it('kayıt yoksa bugünkü davranış korunur: yeni oyun açılır', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: false, json: async () => ({}) }));
+    const fetchMock = vi.fn(async (..._args: Parameters<typeof fetch>) => ({ ok: false, json: async () => ({}) }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(<BotGame skillLevel={0} depth={1} studentColor="w" onGameEnd={vi.fn()} />);
