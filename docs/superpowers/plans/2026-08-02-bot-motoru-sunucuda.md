@@ -35,7 +35,7 @@ adım — bkz. Task 5).
 - Create: `apps/api/chess_api/services/bot_engine.py`
 - Test: `apps/api/tests/test_bot_engine.py`
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `apps/api/tests/test_bot_engine.py`:
 
@@ -68,12 +68,12 @@ def test_uc_degerler():
     assert depth_for_skill(20) == 12
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_engine.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'chess_api.services.bot_engine'`.
 
-- [ ] **Step 3: Modülü yaz**
+- [x] **Step 3: Modülü yaz**
 
 `apps/api/chess_api/services/bot_engine.py`:
 
@@ -127,13 +127,13 @@ async def get_bot_move(fen: str, skill_level: int) -> str | None:
         await engine.quit()
 ```
 
-- [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 4: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_engine.py -v`
 Expected: PASS (3 test — `get_bot_move` bu testlerde HİÇ çağrılmıyor, yalnızca
 `depth_for_skill` sınanıyor; gerçek Stockfish binary'sine ihtiyaç YOK).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api/chess_api/services/bot_engine.py apps/api/tests/test_bot_engine.py
@@ -154,7 +154,7 @@ her zaman `NULL`, 2. parçanın bilerek verdiği karar — rozet uyumluluğu). S
 - Modify: `apps/api/chess_api/routers/live_game.py:249-263`
 - Test: `apps/api/tests/test_bot_move_server.py` (yeni)
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `apps/api/tests/test_bot_move_server.py`:
 
@@ -237,7 +237,7 @@ async def test_bot_sirasinda_sporcu_hamle_yapamaz(env):
     assert room.direct[0][1]["message"] == "not_your_turn"
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_move_server.py -v`
 Expected: `test_siyah_oynayan_sporcu_hamle_yapabilir` FAIL — `room.direct` boş
@@ -246,7 +246,7 @@ kontrolüyle reddediyor, `black_id=None`). İkinci test zaten PASS eder (mevcut
 davranışla tesadüfen aynı sonucu verir) — bu NORMAL, tek testin kırmızı olması
 yeterli.
 
-- [ ] **Step 3: `_handle_move`'un sıra kontrolünü düzelt**
+- [x] **Step 3: `_handle_move`'un sıra kontrolünü düzelt**
 
 `apps/api/chess_api/routers/live_game.py` içinde, `_handle_move`'un turn-check
 bloğunu (satır ~249-263) TAMAMEN şununla değiştir:
@@ -276,18 +276,18 @@ bloğunu (satır ~249-263) TAMAMEN şununla değiştir:
             return
 ```
 
-- [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 4: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_move_server.py -v`
 Expected: PASS (2 test).
 
-- [ ] **Step 5: Regresyon — mevcut tüm canlı-maç testleri**
+- [x] **Step 5: Regresyon — mevcut tüm canlı-maç testleri**
 
 Run: `cd apps/api && python -m pytest tests/test_live_two_moves.py tests/test_draw_offers_ws.py tests/test_game_info_moves.py tests/test_live_game_ws.py -v`
 Expected: TÜMÜ PASS — insan-insan maçlarında davranış DEĞİŞMEMELİ (Step 3'teki
 yorumda belirtilen "0 fark" iddiası burada gerçek testlerle doğrulanır).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api/chess_api/routers/live_game.py apps/api/tests/test_bot_move_server.py
@@ -302,7 +302,7 @@ git commit -m "fix: bot macinda sira kontrolu student_color'a gore calisir"
 - Modify: `apps/api/chess_api/routers/live_game.py` (import + `_handle_move` sonu + yeni `_play_bot_move`)
 - Test: `apps/api/tests/test_bot_move_server.py` (genişletilecek)
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `apps/api/tests/test_bot_move_server.py` dosyasının SONUNA ekle:
 
@@ -376,7 +376,7 @@ async def test_insan_mat_ederse_bot_hamle_denemez(env, monkeypatch):
     assert called["n"] == 0, "insan mat ederse bot hamle DENEMEMELI"
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_move_server.py -v -k "otomatik or veritabanina or mat_ederse"`
 
@@ -389,7 +389,7 @@ Expected: **ÜÇ testin ÜÇÜ de FAIL** — hepsi aynı sebeple:
 > varmadan takılır. Yani burada "1 tanesi zaten geçiyor" BEKLENMEZ — üçü de
 > kırmızıdır ve Step 3'ten sonra üçü birden yeşile döner.
 
-- [ ] **Step 3: `_play_bot_move`'u ekle ve `_handle_move`'a bağla**
+- [x] **Step 3: `_play_bot_move`'u ekle ve `_handle_move`'a bağla**
 
 `apps/api/chess_api/routers/live_game.py` — import bloğuna ekle (satır ~9'un
 altına):
@@ -490,17 +490,17 @@ async def _play_bot_move(game_id: int, room) -> None:
             await room.broadcast({"type": "game_over", "result": final, "by_resign": False})
 ```
 
-- [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 4: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_move_server.py -v`
 Expected: PASS (5 test — Task 2'nin 2'si + bu adımın 3'ü).
 
-- [ ] **Step 5: Regresyon**
+- [x] **Step 5: Regresyon**
 
 Run: `cd apps/api && python -m pytest tests/test_live_two_moves.py tests/test_draw_offers_ws.py tests/test_game_info_moves.py tests/test_live_game_ws.py -v`
 Expected: TÜMÜ PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api/chess_api/routers/live_game.py apps/api/tests/test_bot_move_server.py
@@ -517,7 +517,7 @@ git commit -m "feat: bot hamlesi insan hamlesinden sonra sunucuda otomatik oynan
 - Modify: `apps/api/chess_api/routers/live_game.py:390-412` (`_handle_offer_draw`)
 - Test: `apps/api/tests/test_bot_draw_ws.py` (yeni, WS entegrasyonu)
 
-- [ ] **Step 1: Saf mantık için başarısız testler yaz**
+- [x] **Step 1: Saf mantık için başarısız testler yaz**
 
 `apps/api/tests/test_bot_draw.py`:
 
@@ -568,12 +568,12 @@ def test_bir_piyonluk_ustunluk_reddetmeye_yetmez():
     assert bot_accepts_draw(bir_piyon_fazla, "w") is True
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_draw.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'chess_api.services.bot_draw'`.
 
-- [ ] **Step 3: `bot_draw.py`'yi yaz**
+- [x] **Step 3: `bot_draw.py`'yi yaz**
 
 `apps/api/chess_api/services/bot_draw.py`:
 
@@ -606,12 +606,12 @@ def bot_accepts_draw(fen: str, bot_color: str) -> bool:
     return bot_lead <= 1
 ```
 
-- [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 4: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_draw.py -v`
 Expected: PASS (8 test).
 
-- [ ] **Step 5: WS entegrasyonu için başarısız testler yaz**
+- [x] **Step 5: WS entegrasyonu için başarısız testler yaz**
 
 `apps/api/tests/test_bot_draw_ws.py`:
 
@@ -692,14 +692,14 @@ async def test_bot_acik_ara_ondeyse_reddeder_ve_sporcuya_ULASIR(env):
     assert declined[0]["by_child_id"] is None
 ```
 
-- [ ] **Step 6: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 6: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_draw_ws.py -v`
 Expected: FAIL — her iki test de, bugünkü `_handle_offer_draw`'ın bot maçında
 hiçbir bot cevabı tetiklememesi yüzünden `room.broadcasts` boş kalır
 (`game_over`/`draw_declined` hiç yayınlanmaz).
 
-- [ ] **Step 7: `_handle_offer_draw`'ı güncelle**
+- [x] **Step 7: `_handle_offer_draw`'ı güncelle**
 
 Önce `apps/api/chess_api/routers/live_game.py`'nin import bloğuna, Task 3'te
 eklenen `bot_engine` satırının hemen ALTINA ekle:
@@ -753,19 +753,19 @@ async def _resolve_bot_draw_response(game_id: int, room) -> None:
         await room.broadcast({"type": "draw_declined", "by_child_id": None})
 ```
 
-- [ ] **Step 8: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 8: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_draw_ws.py -v`
 Expected: PASS (2 test).
 
-- [ ] **Step 9: Regresyon**
+- [x] **Step 9: Regresyon**
 
 Run: `cd apps/api && python -m pytest tests/test_live_two_moves.py tests/test_draw_offers_ws.py tests/test_game_info_moves.py tests/test_live_game_ws.py tests/test_bot_move_server.py -v`
 Expected: TÜMÜ PASS — insan-insan maçındaki beraberlik akışı DEĞİŞMEMELİ
 (`_handle_offer_draw`'a yalnızca bot dalı EKLENDİ, insan-insan `else` dalı
 bugünküyle BİREBİR AYNI).
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add apps/api/chess_api/services/bot_draw.py apps/api/tests/test_bot_draw.py apps/api/chess_api/routers/live_game.py apps/api/tests/test_bot_draw_ws.py
@@ -778,18 +778,18 @@ git commit -m "feat: bota beraberlik teklifine sunucu tarafi cevap"
 
 **Files:** (yok — yalnızca doğrulama)
 
-- [ ] **Step 1: Backend tam paketi**
+- [x] **Step 1: Backend tam paketi**
 
 Run: `cd apps/api && python -m pytest -q`
 Expected: TÜM testler PASS (mevcut 367 test + bu planın eklediği testler:
 3 + 2 + 3 + 8 + 2 = 18 → toplam 385).
 
-- [ ] **Step 2: Frontend'e dokunulmadı**
+- [x] **Step 2: Frontend'e dokunulmadı**
 
 Bu plan yalnızca `apps/api` içinde çalışıyor; `apps/web` hiç değişmedi. Web
 test paketini koşmaya gerek yok.
 
-- [ ] **Step 3: Nixpacks/Stockfish kurulumu — BU PLANIN KAPSAMINDA DEĞİL**
+- [x] **Step 3: Nixpacks/Stockfish kurulumu — BU PLANIN KAPSAMINDA DEĞİL**
 
 Bu adımda `apps/api/nixpacks.toml` OLUŞTURULMAZ, `apps/api/railway.json`
 DEĞİŞTİRİLMEZ. Sebep: bu, canlı Railway servisinin BUILD sürecini etkileyen bir
@@ -799,7 +799,7 @@ yapılandırılacağı) hazır ve TEST EDİLMİŞ durumda; gerçek binary kurulu
 denemesi, kullanıcıyla birlikte AYRI bir karar/adım olarak ele alınacak — bu
 plan bu noktada bilerek durur.
 
-- [ ] **Step 4: Kullanıcıya rapor + canlıya gönderme kararı**
+- [x] **Step 4: Kullanıcıya rapor + canlıya gönderme kararı**
 
 Bu adımda kod yazılmaz. KURAL #0'a uygun sade Türkçe ile şunlar özetlenir:
 - Bot hamlesi artık sunucuda hesaplanıyor (kod hazır, testlerle doğrulandı).
