@@ -66,7 +66,12 @@ async def _current_fen(db: AsyncSession, game_id: int) -> str:
         select(GameMove).where(GameMove.game_id == game_id)
         .order_by(GameMove.ply.desc()).limit(1)
     )).scalar_one_or_none()
-    return last.fen_after if last else INITIAL_FEN
+    if last:
+        return last.fen_after
+    # Hamle yoksa macin KENDI baslangic konumu (acilis pratigi); yoksa
+    # standart. AYNI mantik live_game.py::_current_fen_and_ply'de kullanilir.
+    game = await db.get(Game, game_id)
+    return game.start_fen if game and game.start_fen else INITIAL_FEN
 
 
 async def _next_ply(db: AsyncSession, game_id: int) -> int:

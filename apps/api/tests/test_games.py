@@ -159,3 +159,26 @@ async def test_start_bot_game_eski_istemci_hicbir_yeni_alan_gondermez(client, ch
     assert game.student_color == "w"
     assert game.start_fen is None
     assert game.base_ms is None
+
+
+async def test_acilis_pratiginden_baslayan_bot_macinda_ilk_hamle_dogru_degerlendirilir(client, child_auth):
+    """Standart baslangicta yasak ama bu acilis pozisyonunda GECERLI bir
+    hamle: 1.e4'ten sonra siyahin e7e5 oynamasi. games.py::_current_fen
+    start_fen'i yok sayarsa bu hamle standart baslangica gore (beyazin
+    sirasi) degerlendirilir ve YANLISLIKLA reddedilir."""
+    token, child_id = child_auth
+    acilis_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    start = await client.post(
+        "/games/bot/start",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"skill_level": 5, "start_fen": acilis_fen},
+    )
+    gid = start.json()["game_id"]
+
+    response = await client.post(
+        f"/games/{gid}/move",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"move_uci": "e7e5"},
+    )
+    assert response.status_code == 200
+    assert response.json()["accepted"] is True
