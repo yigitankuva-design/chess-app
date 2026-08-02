@@ -69,6 +69,10 @@ function PratikInner() {
   const [runId, setRunId] = useState(0);
   /** Yenilemeden sonra kalinan soru sirasi (madde 4/9). */
   const [startIndex, setStartIndex] = useState(0);
+  /** Yenilemeden sonra kalinan sorunun cevap durumu (madde 6). */
+  const [startAnswer, setStartAnswer] = useState<'correct' | 'wrong' | null>(null);
+  /** Yenilemeden sonra restore edilecek doğru-sayısı (madde 6). */
+  const [startDoneCount, setStartDoneCount] = useState(0);
 
   // Admin'de bu alt konu + mod için yazılan soruları çek
   useEffect(() => {
@@ -96,6 +100,9 @@ function PratikInner() {
         if (saved) {
           setExercises(saved.items);
           setStartIndex(saved.index);
+          setStartAnswer(saved.currentAnswer);
+          setStartDoneCount(saved.doneCount);
+          setSolved(saved.doneCount);
           setLoading(false);
           return;
         }
@@ -112,7 +119,9 @@ function PratikInner() {
           : pool;
         setExercises(picked);
         setStartIndex(0);
-        saveSession(key, { items: picked, index: 0 });
+        setStartAnswer(null);
+        setStartDoneCount(0);
+        saveSession(key, { items: picked, index: 0, currentAnswer: null, doneCount: 0 });
         if (mode.randomPick > 0) {
           saveShownCodes(stepId, slug, picked.map((ex) => ex.code ?? '').filter(Boolean));
         }
@@ -167,6 +176,9 @@ function PratikInner() {
         [stepId]: { ...(prev?.[stepId] ?? {}), [modeKey]: saved.best_score },
       }));
     }
+    // Madde 7: oturum bitti — kayıt silinir, bir dahaki girişte taze bir set
+    // hazırlanır (aksi halde bitmiş setin SON sorusuyla karşılaşılıyordu).
+    clearSession(sessionKey(stepId, slug));
     setFinished({ correct: r.correct, total: r.total, score });
   }
 
@@ -180,6 +192,8 @@ function PratikInner() {
     // Yeni tur: saklanan oturum silinir, sporcu 1. sorudan baslar.
     clearSession(sessionKey(stepId, slug));
     setStartIndex(0);
+    setStartAnswer(null);
+    setStartDoneCount(0);
   }
 
   /** Kilit yalnızca skor haritası GERÇEKTEN alındıysa uygulanır. */
@@ -294,12 +308,21 @@ function PratikInner() {
             done={false}
             onCorrect={() => setSolved((s) => Math.min(s + 1, exercises.length))}
             onFinish={handleFinish}
-            /* Madde 1: Suresiz Pratik'te bir soru yanlis yapilirsa tekrar
-               cozulemez; sporcu "Sonraki Soruya Gec" ile ilerler. */
-            noRetry={modeKey === 'suresiz'}
+            /* Madde 6: üç modda da (Süresiz/Süreli/Test) yanlış cevaptan
+               sonra tekrar deneme YOK; sporcu "Sonraki Soruya Geç" ile ilerler. */
+            noRetry
             initialIndex={startIndex}
+            initialAnswer={startAnswer}
+            initialDoneCount={startDoneCount}
             onIndexChange={(i) => {
-              if (exercises) saveSession(sessionKey(stepId, slug), { items: exercises, index: i });
+              if (exercises) saveSession(sessionKey(stepId, slug), {
+                items: exercises, index: i, currentAnswer: null, doneCount: solved,
+              });
+            }}
+            onAnswered={(index, doneCount, answer) => {
+              if (exercises) saveSession(sessionKey(stepId, slug), {
+                items: exercises, index, currentAnswer: answer, doneCount,
+              });
             }}
           />
         </>
