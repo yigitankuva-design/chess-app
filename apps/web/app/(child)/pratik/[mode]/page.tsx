@@ -239,7 +239,7 @@ function PratikInner() {
   }
 
   return (
-    <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto">
+    <main id="main-content" className="px-4 pt-5 pb-12 practice-shell mx-auto">
       {header}
 
       {loading && <p className="text-sm t-muted">Sorular yükleniyor...</p>}
