@@ -20,6 +20,8 @@ export interface ClickSquareStepState {
   /** "Konumu Kaydet" sonrasi kilitlenen konum; null = henuz kaydedilmedi. */
   savedFen: string | null;
   targets: string[];
+  /** Sporcu tıklama modu (any/all) bilfiil seçildi mi (madde 2). */
+  clickModeChosen: boolean;
   difficultyChosen: boolean;
 }
 
@@ -57,6 +59,7 @@ export function clickSquareSteps(s: ClickSquareStepState): StepInfo[] {
     ['Hamle Sırasını Belirle', s.turnChosen],
     ['Konumu Kaydet', s.savedFen !== null],
     ['Doğru Kare(leri) Seç', s.targets.length > 0],
+    ['Sporcu Tıklama Sayısını Belirle', s.clickModeChosen],
     ['Zorluk Düzeyini Belirle', s.difficultyChosen],
   ];
   return withFinal(base.map(([l]) => l), base.map(([, d]) => d));

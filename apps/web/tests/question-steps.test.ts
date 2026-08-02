@@ -53,14 +53,20 @@ describe('choiceSteps — Görüntü', () => {
 describe('clickSquareSteps', () => {
   const K: ClickSquareStepState = {
     instruction: '', setupFen: '8/8/8/8/8/8/8/8 w - - 0 1', turnChosen: false,
-    savedFen: null, targets: [], difficultyChosen: false,
+    savedFen: null, targets: [], clickModeChosen: false, difficultyChosen: false,
   };
 
-  it('7 adım, kullanıcının sırasıyla', () => {
+  it('8 adım, kullanıcının sırasıyla (madde 2)', () => {
     expect(clickSquareSteps(K).map((s) => s.label)).toEqual([
       'Talimatı Gir', 'Konum Diz', 'Hamle Sırasını Belirle', 'Konumu Kaydet',
-      'Doğru Kare(leri) Seç', 'Zorluk Düzeyini Belirle', 'Soruyu Ekle',
+      'Doğru Kare(leri) Seç', 'Sporcu Tıklama Sayısını Belirle',
+      'Zorluk Düzeyini Belirle', 'Soruyu Ekle',
     ]);
+  });
+
+  it('6. adım tıklama modu seçilince tamamlanır', () => {
+    expect(clickSquareSteps(K)[5].done).toBe(false);
+    expect(clickSquareSteps({ ...K, clickModeChosen: true })[5].done).toBe(true);
   });
 
   it('Konum Diz: tahtada taş olunca tamamlanır', () => {
