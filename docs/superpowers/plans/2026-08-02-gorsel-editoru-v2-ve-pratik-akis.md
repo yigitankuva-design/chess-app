@@ -898,6 +898,33 @@ Replace the `promptImage` state and the `placement`/`showBoard` states
   );
 ```
 
+**ÖNEMLİ — adım kilidi kablolaması:** `lib/admin/questionSteps.ts`'teki
+`ChoiceStepState.promptImage: string` alanı ve onun testleri
+(`tests/question-steps.test.ts`, 3 yerde kullanıyor) **DEĞİŞMEZ**. Bunun yerine
+`choiceSteps` çağrısına dizinin ilk elemanının uri'si verilir — "en az bir
+görsel var mı?" sorusuna aynı cevabı üretir, dalga etkisi yaratmaz (YAGNI).
+Mevcut çağrıyı (satır ~86-90):
+
+```ts
+  const steps = choiceSteps(
+    { instruction, promptImage, optionCountChosen, answerKindChosen,
+      options, answerKind, difficultyChosen },
+    kind,
+  );
+```
+
+şununla değiştir:
+
+```ts
+  const steps = choiceSteps(
+    // questionSteps.ts "en az bir görsel var mı"ya bakıyor; çoklu görselde
+    // ilk elemanın uri'si bu soruya aynı cevabı verir (arayüz değişmiyor).
+    { instruction, promptImage: images[0]?.uri ?? '', optionCountChosen, answerKindChosen,
+      options, answerKind, difficultyChosen },
+    kind,
+  );
+```
+
 Remove the now-unused `promptImage` references everywhere else in the file and
 replace them as described below. Update the `useEffect` that writes the draft:
 
@@ -1066,26 +1093,96 @@ block — with:
 Run: `npx vitest run tests/choice-exercise-multi-image.test.tsx`
 Expected: PASS (4 tests)
 
-- [ ] **Step 5: Run regression checks**
+- [ ] **Step 5: Delete the superseded single-image integration test**
 
-Run: `npx vitest run tests/choice-exercise-paste-image.test.tsx tests/choice-exercise-image-delete.test.tsx tests/exercise-form-family.test.tsx tests/choice-exercise-image-placement.test.tsx`
-Expected: `choice-exercise-image-placement.test.tsx` will FAIL — it tests the
-OLD single-image API (`ImagePlacer`, `image_x` output) which this task
-intentionally replaces. Delete that test file (its coverage is now provided
-by `choice-exercise-multi-image.test.tsx` + `multi-image-placer.test.tsx`):
+`tests/choice-exercise-image-placement.test.tsx` tamamen ESKİ tek-görsel
+API'sini (tekil `ImagePlacer`, `image_x` çıktısı) doğruluyor; bu görev onu
+bilerek değiştiriyor. Kapsamı artık `choice-exercise-multi-image.test.tsx` +
+`multi-image-placer.test.tsx` sağlıyor:
 
 ```bash
 git rm tests/choice-exercise-image-placement.test.tsx
 ```
 
-Re-run: `npx vitest run tests/choice-exercise-paste-image.test.tsx tests/choice-exercise-image-delete.test.tsx tests/exercise-form-family.test.tsx`
-Expected: PASS — these exercise the option-image (single-select `PoolPicker`)
-path, unaffected by this task.
+- [ ] **Step 6: Update `tests/choice-exercise-pool.test.tsx` for the new flow**
 
-- [ ] **Step 6: Commit**
+Bu dosyadaki 15 testin ~10'u SORU GÖRSELİ havuz akışını eski davranışa göre
+doğruluyor ve bu görevle bilerek değişiyor:
+(a) çoklu-seçim panelinde görseller artık `<button>` içinde `alt=""` ile
+render ediliyor — `getAllByRole('img')` onları BULAMAZ (rolleri `presentation`);
+(b) tıklama paneli artık KAPATMIYOR ("Seçilenleri Ekle" gerekiyor);
+(c) tekil `<img alt="Soru görseli önizleme">` önizlemesi kaldırıldı, yerine
+`MultiImagePlacer` içindeki `alt="Görsel 1"` geldi.
+
+ŞIK görselleri akışı (tek seçim) DEĞİŞMEDİ — o testler olduğu gibi kalır
+(gerçek regresyon koruması).
+
+Replace the `pickFromPool` helper and the two prompt-image tests in the first
+describe block. Yeni yardımcı:
+
+```tsx
+  /**
+   * Dosya yükleme akışı canvas/Image gerektirdiği için happy-dom'da gerçekten
+   * çalışmıyor; bunun yerine havuzdan seçim yapılır. Soru görseli akışı artık
+   * ÇOKLU seçim: görsele tıkla (sepete ekler), sonra "Seçilenleri Ekle".
+   */
+  async function pickFromPool() {
+    render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Havuzdan Seç' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hayvanlar' }));
+    fireEvent.click(await screen.findByLabelText('Hayvanlar havuz görseli'));
+    fireEvent.click(screen.getByText('Seçilenleri Ekle (1)'));
+    await waitFor(() => expect(screen.getByAltText('Görsel 1')).toBeInTheDocument());
+  }
+```
+
+`describe('ChoiceExerciseFields — soru görseli için iki kaynak')` içindeki
+`'Havuzdan Seç panel açar, seçim soru görselini doldurur'` ve
+`'seçim sonrası panel kapanır'` testlerini bunlarla değiştir:
+
+```tsx
+  it('Havuzdan Seç panel açar, çoklu seçim soru görselini tahtaya ekler', async () => {
+    render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Havuzdan Seç' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hayvanlar' }));
+    fireEvent.click(await screen.findByLabelText('Hayvanlar havuz görseli'));
+    fireEvent.click(screen.getByText('Seçilenleri Ekle (1)'));
+    await waitFor(() => {
+      const placed = screen.getByAltText('Görsel 1') as HTMLImageElement;
+      expect(placed.src).toBe(POOL_IMG);
+    });
+  });
+
+  it('"Seçilenleri Ekle" sonrası panel kapanır', async () => {
+    render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Havuzdan Seç' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hayvanlar' }));
+    fireEvent.click(await screen.findByLabelText('Hayvanlar havuz görseli'));
+    fireEvent.click(screen.getByText('Seçilenleri Ekle (1)'));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Kapat' })).not.toBeInTheDocument(),
+    );
+  });
+```
+
+`'AYNI ANDA TEK PANEL: ikinci Havuzdan Seç ilkini kapatır'` testi ŞIK
+panellerini kullanıyor (tek seçim) — DEĞİŞMEZ.
+
+`describe('ChoiceExerciseFields — havuza da ekle satırı')` bloğundaki
+`'Havuza Ekle doğru kategori ve görselle addPoolImage çağırır'` testi
+`addPoolImage`'ın son eklenen görselle çağrıldığını doğrular; tek görsel
+eklendiği için beklenti (`POOL_IMG`) AYNI kalır — değişiklik gerekmez.
+
+- [ ] **Step 7: Run regression checks**
+
+Run: `npx vitest run tests/choice-exercise-pool.test.tsx tests/choice-exercise-paste-image.test.tsx tests/choice-exercise-image-delete.test.tsx tests/exercise-form-family.test.tsx`
+Expected: PASS — şık-görseli (tek seçim `PoolPicker`) yolu bu görevden
+etkilenmedi; soru-görseli testleri yeni akışa göre güncellendi.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add components/admin/ChoiceExerciseFields.tsx tests/choice-exercise-multi-image.test.tsx
+git add components/admin/ChoiceExerciseFields.tsx tests/choice-exercise-multi-image.test.tsx tests/choice-exercise-pool.test.tsx
 git commit -m "feat(admin): ChoiceExerciseFields coklu gorsel entegrasyonu (madde 3)"
 ```
 
@@ -1738,8 +1835,15 @@ Expected: FAIL — buton 1.8sn sonra kayboluyor; `initialAnswer`/`onAnswered`/
 
 - [ ] **Step 3: Write the implementation**
 
-In `apps/web/components/lesson-steps/BoardExercise.tsx`, extend `Props`
-(currently ends with `onIndexChange?: (index: number) => void;`):
+In `apps/web/components/lesson-steps/BoardExercise.tsx`, first add `useRef` to
+the React import (dosya şu an sadece `useState, useEffect` alıyor; `skipFirstReset`
+için gerekli). Satır 2'yi değiştir:
+
+```ts
+import { useState, useEffect, useRef } from 'react';
+```
+
+Then extend `Props` (currently ends with `onIndexChange?: (index: number) => void;`):
 
 ```ts
   /** Sayfa yenilemesinde currentIdx'teki sorunun ÖNCEKİ sonucu. 'wrong' ise
@@ -1910,49 +2014,65 @@ git commit -m "fix: yanlis cevap sonrasi Sonraki Soruya Gec butonu kaybolmasin +
 - Modify: `apps/web/lib/play/practiceSession.ts`
 - Test: `apps/web/tests/practice-session.test.ts` (varsa genişlet, yoksa oluştur)
 
-- [ ] **Step 1: Check for an existing test file**
+**MEVCUT DOSYA UYARISI:** `apps/web/tests/practice-session.test.ts` ZATEN VAR
+(8 test). Dört testi `saveSession(key, { items, index })` şeklinde çağırıyor
+(yeni alanlar olmadan) ve biri `loadSession` sonucunu `toEqual({items, index})`
+ile karşılaştırıyor. Bu yüzden yeni alanlar **kaydetme tarafında OPSİYONEL**
+tutulur (eski çağrılar derlenmeye devam eder); yalnızca `toEqual` kullanan tek
+test güncellenir.
 
-Run: `ls apps/web/tests/practice-session*.test.ts 2>/dev/null || echo "yok"` (proje kökünden)
+- [ ] **Step 1: Update the ONE existing test that will break**
 
-Eğer dosya varsa mevcut testleri KORUYARAK aşağıdaki yeni testleri EKLE; yoksa
-sıfırdan oluştur (aşağıdaki tam içerikle).
-
-- [ ] **Step 2: Write the failing test**
-
-Create/extend `apps/web/tests/practice-session.test.ts`:
+`apps/web/tests/practice-session.test.ts` içindeki
+`'kaydedilen set ve sıra geri okunur'` testi, `loadSession`'ın artık normalize
+edilmiş iki alan daha döndürmesi yüzünden kırılır. Şu satırı:
 
 ```ts
-import { describe, it, expect, beforeEach } from 'vitest';
-import { sessionKey, loadSession, saveSession, clearSession } from '@/lib/play/practiceSession';
+    expect(loadSession<Soru>(key)).toEqual({ items: [{ id: 1 }, { id: 2 }, { id: 3 }], index: 2 });
+```
 
-describe('practiceSession', () => {
-  beforeEach(() => sessionStorage.clear());
+şununla değiştir:
 
-  it('sessionKey stepId ve moda göre benzersiz anahtar üretir', () => {
-    expect(sessionKey(42, 'suresiz')).toBe('bsa:pratik:42:suresiz');
+```ts
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }, { id: 2 }, { id: 3 }], index: 2, currentAnswer: null, doneCount: 0,
+    });
+```
+
+Diğer 7 test DEĞİŞMEZ.
+
+- [ ] **Step 2: Write the failing tests**
+
+Append to `apps/web/tests/practice-session.test.ts`:
+
+```ts
+describe('practiceSession — cevap durumu kalıcılığı (madde 6)', () => {
+  it('currentAnswer ve doneCount kaydedilip geri okunur', () => {
+    const key = sessionKey(9, 'suresiz');
+    saveSession<Soru>(key, {
+      items: [{ id: 1 }, { id: 2 }], index: 1, currentAnswer: 'wrong', doneCount: 1,
+    });
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }, { id: 2 }], index: 1, currentAnswer: 'wrong', doneCount: 1,
+    });
   });
 
-  it('kayıt yoksa null döner', () => {
-    expect(loadSession(sessionKey(1, 'suresiz'))).toBeNull();
+  it('yeni alanlar verilmezse güvenli varsayılana düşer (eski kayıtlar bozulmaz)', () => {
+    const key = sessionKey(9, 'sureli');
+    sessionStorage.setItem(key, JSON.stringify({ items: [{ id: 1 }, { id: 2 }], index: 1 }));
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }, { id: 2 }], index: 1, currentAnswer: null, doneCount: 0,
+    });
   });
 
-  it('kaydedilen oturum currentAnswer ve doneCount ile birlikte geri yüklenir', () => {
-    const key = sessionKey(1, 'suresiz');
-    saveSession(key, { items: ['a', 'b', 'c'], index: 1, currentAnswer: 'wrong', doneCount: 1 });
-    expect(loadSession(key)).toEqual({ items: ['a', 'b', 'c'], index: 1, currentAnswer: 'wrong', doneCount: 1 });
-  });
-
-  it('eski (currentAnswer/doneCount alanı olmayan) kayıtlar bozulmadan okunur — geriye uyumluluk', () => {
-    const key = sessionKey(1, 'suresiz');
-    sessionStorage.setItem(key, JSON.stringify({ items: ['a', 'b'], index: 1 }));
-    expect(loadSession(key)).toEqual({ items: ['a', 'b'], index: 1, currentAnswer: null, doneCount: 0 });
-  });
-
-  it('clearSession kaydı siler', () => {
-    const key = sessionKey(1, 'suresiz');
-    saveSession(key, { items: ['a'], index: 0, currentAnswer: null, doneCount: 0 });
-    clearSession(key);
-    expect(loadSession(key)).toBeNull();
+  it('geçersiz currentAnswer değeri null sayılır', () => {
+    const key = sessionKey(9, 'test');
+    sessionStorage.setItem(key, JSON.stringify({
+      items: [{ id: 1 }], index: 0, currentAnswer: 'saçma', doneCount: 'x',
+    }));
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }], index: 0, currentAnswer: null, doneCount: 0,
+    });
   });
 });
 ```
@@ -1993,6 +2113,13 @@ export interface StoredSession<T> {
   doneCount: number;
 }
 
+/** saveSession girdisi: yeni iki alan OPSİYONEL — mevcut çağrı noktaları ve
+ *  testler `{ items, index }` ile derlenmeye devam eder (KURAL #3).
+ *  loadSession ise HER ZAMAN normalize edilmiş tam nesneyi döndürür. */
+export type SessionInput<T> =
+  Pick<StoredSession<T>, 'items' | 'index'>
+  & Partial<Pick<StoredSession<T>, 'currentAnswer' | 'doneCount'>>;
+
 export function sessionKey(stepId: number | string, mode: string): string {
   return `bsa:pratik:${stepId}:${mode}`;
 }
@@ -2016,7 +2143,7 @@ export function loadSession<T>(key: string): StoredSession<T> | null {
   }
 }
 
-export function saveSession<T>(key: string, data: StoredSession<T>): void {
+export function saveSession<T>(key: string, data: SessionInput<T>): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.setItem(key, JSON.stringify(data));
@@ -2034,7 +2161,9 @@ export function clearSession(key: string): void {
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/practice-session.test.ts`
-Expected: PASS (5 tests)
+Expected: PASS (11 tests — 8 mevcut + 3 yeni). Mevcut 8 testin 7'si hiç
+değişmeden geçmeli; `saveSession(key, { items, index })` çağrıları yeni
+`SessionInput` tipi sayesinde derlenmeye devam eder.
 
 - [ ] **Step 6: Commit**
 
