@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { playPieceSound } from '@/lib/sounds/pieceSounds';
 import { ChoiceQuestionBody } from './ChoiceQuestionBody';
 import { MovePieceSolver } from './MovePieceSolver';
 import { MoveList } from '@/components/play/MoveList';
@@ -253,8 +252,7 @@ export function BoardExercise({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIdx, done]);
 
-  const succeed = (piece?: string | null) => {
-    if (piece) playPieceSound(piece);
+  const succeed = () => {
     setStatus('success');
     setSelected(null);
     const next = doneCount + 1;
@@ -363,7 +361,6 @@ export function BoardExercise({
     if (exercise.type === 'click_square' && status === 'fail') return;
 
     if (exercise.type === 'click_square') {
-      if (piece) playPieceSound(piece.pieceType);
       setClickedSquare(square);
       // 'all' modu (madde 2): TÜM doğru kareler tıklanmalı; 1 yanlış = yanlış.
       if ((exercise.click_mode ?? 'any') === 'all') {
@@ -388,7 +385,6 @@ export function BoardExercise({
       if (!selected) {
         if (square === exercise.piece_square) {
           setSelected(square);
-          if (piece) playPieceSound(piece.pieceType);
         }
         return;
       }
@@ -398,7 +394,7 @@ export function BoardExercise({
       }
       if (exercise.target_squares.includes(square)) {
         setPlayedMove({ from: exercise.piece_square, to: square });
-        succeed(piece?.pieceType);
+        succeed();
       } else {
         fail(exercise.fail_msg ?? 'Yanlış kare! Altın renkli kareye taşı.');
       }
