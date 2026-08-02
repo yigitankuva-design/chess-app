@@ -9,6 +9,7 @@ import { MovePieceSolver } from './MovePieceSolver';
 import { PlacePiecesSolver } from './PlacePiecesSolver';
 import { MoveList } from '@/components/play/MoveList';
 import { evaluateClick } from '@/lib/play/multiSquareCheck';
+import { fenToMap } from '@/components/BoardEditor';
 import { ringStyle, RING_BLUE, RING_GREEN, RING_RED } from '@/lib/chess/squareMarker';
 import {
   BOARD_CARD_BG, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
@@ -94,6 +95,19 @@ export interface PlacePiecesEx {
   difficulty?: number;
 }
 
+/** "Taşa Tıkla" — sporcu konumdaki belirli taşlara tıklar. */
+export interface ClickPieceEx {
+  type: 'click_piece';
+  instruction: string;
+  fen: string;
+  /** Cevap taşlarının bulunduğu kareler; TÜMÜNE tıklanmalı. En az 1 eleman. */
+  piece_squares: string[];
+  success_msg?: string;
+  fail_msg?: string;
+  code?: string;
+  difficulty?: number;
+}
+
 export interface SentenceQuestionEx {
   type: 'sentence_question';
   instruction: string;
@@ -130,14 +144,15 @@ export interface ImageQuestionEx {
   prompt_images?: { uri: string; x: number; y: number; w: number; h: number; tone: number }[];
 }
 
-export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx | PlacePiecesEx;
+export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx | PlacePiecesEx | ClickPieceEx;
 export type ChoiceTypeConfig = SentenceQuestionEx | ImageQuestionEx;
 export type BoardExerciseConfig = BoardTypeConfig | ChoiceTypeConfig;
 
 /** Tahta tabanlı bir soru mu (click_square/move_piece/identify_piece/place_pieces)? */
 export function isBoardExercise(ex: BoardExerciseConfig): ex is BoardTypeConfig {
   return ex.type === 'click_square' || ex.type === 'move_piece'
-    || ex.type === 'identify_piece' || ex.type === 'place_pieces';
+    || ex.type === 'identify_piece' || ex.type === 'place_pieces'
+    || ex.type === 'click_piece';
 }
 
 interface Props {
@@ -348,7 +363,7 @@ export function BoardExercise({
       // Yeni format (moves) ve place_pieces sorularında ipucu karesi yok —
       // tahtayı MovePieceSolver / PlacePiecesSolver kendisi çiziyor.
       if (exercise.type !== 'identify_piece' && exercise.type !== 'place_pieces'
-        && !('moves' in exercise)) {
+        && exercise.type !== 'click_piece' && !('moves' in exercise)) {
         (exercise.hint_squares ?? []).forEach((sq) => {
           styles[sq] = { backgroundColor: 'rgba(255,200,0,0.50)' };
         });
@@ -372,6 +387,10 @@ export function BoardExercise({
     if (exercise.type === 'click_square' && (exercise.click_mode ?? 'any') === 'all') {
       multiClicked.forEach((sq) => { styles[sq] = ringStyle(RING_BLUE); });
     }
+    // "Taşa Tıkla": tıklanan doğru taşlar mavi halka alır (aynı görünüm).
+    if (exercise.type === 'click_piece') {
+      multiClicked.forEach((sq) => { styles[sq] = ringStyle(RING_BLUE); });
+    }
     // SIRA ÖNEMLİ: sonuç halkası multiClicked'ten SONRA yazılır — son tıklanan
     // kare yeşil/kırmızı olur, öncekiler mavi kalır.
     if (exercise.type === 'click_square' && clickedSquare) {
@@ -391,6 +410,18 @@ export function BoardExercise({
     // Kareye Tıkla'da yanlış cevaptan sonra soru kilitlenir (tekrar deneme yok).
     // Diğer tipler (ör. Taşı Oynat) fail penceresinde hemen tekrar denenebilmeye devam eder.
     if (exercise.type === 'click_square' && status === 'fail') return;
+
+    if (exercise.type === 'click_piece') {
+      // Yanlış cevaptan sonra tahta kilitli (tek hak).
+      if (status === 'fail') return;
+      // Cevap TAŞTIR: boş kareye tıklamak hiçbir şey yapmaz.
+      if (!fenToMap(exercise.fen)[square]) return;
+      const r = evaluateClick(square, exercise.piece_squares, multiClicked);
+      if (r === 'wrong') { failNoRetry(exercise.fail_msg ?? 'Yanlış taş!'); return; }
+      if (r === 'complete') { setMultiClicked([]); succeed(); return; }
+      setMultiClicked((p) => (p.includes(square) ? p : [...p, square]));
+      return;
+    }
 
     if (exercise.type === 'click_square') {
       setClickedSquare(square);

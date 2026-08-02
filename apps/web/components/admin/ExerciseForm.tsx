@@ -8,12 +8,13 @@ import { DIFFICULTY_LABELS, nearestDifficultyValue } from '@/lib/difficultyLabel
 import { movePieceSteps, firstIncompleteStep, allStepsDone, hasPieces } from '@/lib/admin/movePieceSteps';
 import { clickSquareSteps, firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import { placePiecesSteps } from '@/lib/admin/placePiecesSteps';
+import { clickPieceSteps } from '@/lib/admin/clickPieceSteps';
 import { PlacePiecesFields } from './PlacePiecesFields';
 import { SavedPositionBoard } from './SavedPositionBoard';
 import { StepList } from './StepList';
 import type { MovePieceStepState } from '@/lib/admin/movePieceSteps';
 
-export type ExerciseType = 'click_square' | 'move_piece' | 'identify_piece' | 'place_pieces';
+export type ExerciseType = 'click_square' | 'move_piece' | 'identify_piece' | 'place_pieces' | 'click_piece';
 export type QuestionFamily = 'sentence_question' | 'image_question' | 'konum';
 
 export interface BoardExercise {
@@ -54,6 +55,8 @@ export interface BoardExercise {
   click_mode?: 'any' | 'all';
   /** Sadece place_pieces için — eksik taşlar ve doğru kareleri. */
   pieces?: { piece: string; square: string }[];
+  /** Sadece click_piece için — cevap taşlarının bulunduğu kareler. */
+  piece_squares?: string[];
 }
 
 interface Props {
@@ -147,8 +150,12 @@ export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
 }
 
 function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
+  // Kayıtlı soru düzenlenirken tipi KORUNMALI. Liste eksik kalırsa tip
+  // sessizce 'click_square'e düşer ve hocanın sorusu bozulur (ölçüldü).
   const [type, setType] = useState<ExerciseType>(
-    initial && (initial.type === 'click_square' || initial.type === 'move_piece' || initial.type === 'identify_piece')
+    initial && (initial.type === 'click_square' || initial.type === 'move_piece'
+      || initial.type === 'identify_piece' || initial.type === 'place_pieces'
+      || initial.type === 'click_piece')
       ? initial.type
       : 'click_square',
   );
@@ -176,9 +183,16 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     initial?.pieces ?? [],
   );
   const [answerSaved, setAnswerSaved] = useState(!!initial);
+  // "Taşa Tıkla" — cevap taşlarının kareleri; konum savedFen ile paylaşılır.
+  const [pieceSquares, setPieceSquares] = useState<string[]>(initial?.piece_squares ?? []);
+  const [pieceAnswerSaved, setPieceAnswerSaved] = useState(!!initial);
   // Kareye Tıkla: null = konum henüz kaydedilmedi (diz fazı). Düzenlemede kayıtlı.
+  // Konumu "kaydedilmiş" sayan tipler — düzenlemede konum korunur.
   const [savedFen, setSavedFen] = useState<string | null>(
-    initial?.type === 'click_square' ? (initial.fen ?? null) : null,
+    initial && (initial.type === 'click_square' || initial.type === 'place_pieces'
+      || initial.type === 'click_piece')
+      ? (initial.fen ?? null)
+      : null,
   );
   /** Hamle sırasına BİLFİİL tıklandı mı? Varsayılan Beyaz — tıklama şart (tuzak). */
   const [turnChosen, setTurnChosen] = useState(!!initial);
@@ -230,6 +244,14 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       const dolu = placePairs.find((p) => savedMap[p.square]);
       if (dolu) return `${dolu.square} karesi dolu — eksik taşın karesi boş olmalı`;
     }
+    if (type === 'click_piece') {
+      if (!savedFen) return 'Önce taşları yerleştirip "Konumu Kaydet"e bas';
+      if (pieceSquares.length === 0) return 'En az bir cevap taşı seç';
+      if (!pieceAnswerSaved) return '"Taş Seçimini Kaydet"e bas';
+      const map = fenToMap(savedFen);
+      const bos = pieceSquares.find((sq) => !map[sq]);
+      if (bos) return `${bos} karesinde taş yok`;
+    }
     return null;
   }
 
@@ -250,6 +272,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       base.correct_index = correctIndex;
     }
     if (type === 'place_pieces') { base.fen = savedFen!; base.pieces = placePairs; }
+    if (type === 'click_piece') { base.fen = savedFen!; base.piece_squares = pieceSquares; }
     try {
       await onSubmit(base);
       if (!editing) {
@@ -258,6 +281,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
         setMoveFen(null); setMoves([]); setNotationSaved(false); setDifficultyChosen(false);
         setSavedFen(null); setTurnChosen(false); setClickMode('any'); setClickModeChosen(false);
         setSelectedPiece(null); setPlacePairs([]); setAnswerSaved(false);
+        setPieceSquares([]); setPieceAnswerSaved(false);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -278,11 +302,17 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     instruction, setupFen: fen, savedFen, selectedPiece,
     pieces: placePairs, answerSaved, turnChosen, difficultyChosen,
   });
+  const clickPieceStepList = clickPieceSteps({
+    instruction, setupFen: fen, savedFen, pieceSquares,
+    answerSaved: pieceAnswerSaved, turnChosen, difficultyChosen,
+  });
   const missing = type === 'click_square'
     ? firstIncomplete(clickSteps)
     : type === 'place_pieces'
       ? firstIncomplete(placeSteps)
-      : firstIncompleteStep(stepState);
+      : type === 'click_piece'
+        ? firstIncomplete(clickPieceStepList)
+        : firstIncompleteStep(stepState);
   /** Kilit ÜÇ Konum tipine de uygulanır (kullanıcının 3e maddesi). */
   const gateOpen = type === 'move_piece'
     ? allStepsDone(stepState)
@@ -290,13 +320,16 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       ? allDone(clickSteps)
       : type === 'place_pieces'
         ? allDone(placeSteps)
-        : true;
+        : type === 'click_piece'
+          ? allDone(clickPieceStepList)
+          : true;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         {([
           ['click_square', 'Kareye tıkla'],
+          ['click_piece', 'Taşa tıkla'],
           ['move_piece', 'Taşı oynat'],
           ['place_pieces', 'Taş nerde?'],
         ] as [ExerciseType, string][]).map(([t, label]) => (
@@ -324,6 +357,9 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       {type === 'place_pieces' && (
         <StepList steps={placeSteps} missingNo={missing?.no ?? null} ariaLabel="Taş Nerde? adımları" />
       )}
+      {type === 'click_piece' && (
+        <StepList steps={clickPieceStepList} missingNo={missing?.no ?? null} ariaLabel="Taşa Tıkla adımları" />
+      )}
 
       <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
         placeholder="Talimat (örn. Piyonu e4'e taşı)" className="neon-input" />
@@ -333,7 +369,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
       {/* move_piece ve place_pieces KENDİ tahtalarını çiziyor — koşullanmazsa
           ekranda İKİ tahta olur. */}
       {type !== 'move_piece' && type !== 'place_pieces'
-        && (type !== 'click_square' || savedFen === null) && (
+        && ((type !== 'click_square' && type !== 'click_piece') || savedFen === null) && (
         <BoardEditor fen={fen} turn={turn} onChange={setFen}
           onTurnChange={(t) => { setTurn(t); setTurnChosen(true); }} />
       )}
@@ -424,6 +460,45 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm transition-colors">
           Cevabı Kaydet
         </button>
+      )}
+
+      {type === 'click_piece' && savedFen === null && (
+        <button type="button" onClick={() => setSavedFen(fen)}
+          className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-sm transition-colors">
+          Konumu Kaydet
+        </button>
+      )}
+
+      {type === 'click_piece' && savedFen !== null && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <span className="text-xs" style={{ color: '#34d399' }}>Konum kaydedildi ✓</span>
+            {/* Konum değişirse seçilen taşlar geçersiz olur — BİLİNÇLİ sıfırlanır. */}
+            <button type="button"
+              onClick={() => { setSavedFen(null); setPieceSquares([]); setPieceAnswerSaved(false); }}
+              className="px-3 py-1 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+              Konumu Değiştir
+            </button>
+          </div>
+          <p className="text-xs n-muted">Cevap taşlarına tıkla — tekrar tıklamak seçimi kaldırır</p>
+          <SavedPositionBoard
+            fen={savedFen}
+            marked={pieceSquares}
+            onSquareClick={(sq) => {
+              // Cevap TAŞTIR: boş kareye tıklamak seçim yapmaz.
+              if (!fenToMap(savedFen)[sq]) return;
+              setPieceSquares((prev) => (prev.includes(sq) ? prev.filter((x) => x !== sq) : [...prev, sq]));
+              setPieceAnswerSaved(false);
+            }}
+          />
+          <p className="text-xs n-muted">Seçili: {pieceSquares.length ? pieceSquares.join(', ') : '—'}</p>
+          {pieceSquares.length > 0 && !pieceAnswerSaved && (
+            <button type="button" onClick={() => setPieceAnswerSaved(true)}
+              className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm transition-colors">
+              Taş Seçimini Kaydet
+            </button>
+          )}
+        </div>
       )}
 
       {type === 'identify_piece' && (

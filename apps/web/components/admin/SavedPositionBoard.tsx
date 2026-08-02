@@ -11,15 +11,24 @@ interface Props {
   fen: string;
   /** Seçili cevap kareleri — halka ile işaretlenir. */
   marked: string[];
+  /**
+   * Verilirse tahta TIKLANABİLİR olur ve tıklanan karenin adı bildirilir.
+   * Verilmezse tahta salt-okunur kalır (B grubundaki kullanım böyle).
+   */
+  onSquareClick?: (square: string) => void;
 }
 
 /**
- * Cevap kurulurken kaydedilmiş konumu gösteren SALT-OKUNUR tahta.
+ * Cevap kurulurken kaydedilmiş konumu gösteren tahta.
  *
- * Tıklanabilir DEĞİL: kare seçimi soldaki kare listesinden yapılır. İki ayrı
- * tıklama yolu olsaydı hangi tıklamanın ne yaptığı belirsizleşirdi.
+ * VARSAYILAN salt-okunurdur — "Kareye Tıkla" adımında yanında bir kare listesi
+ * var ve seçim oradan yapılır; tahta da tıklanabilir olsaydı hangi tıklamanın ne
+ * yaptığı belirsizleşirdi.
+ *
+ * `onSquareClick` verilirse tıklanabilir olur — "Taşa Tıkla" tipinde cevap
+ * doğrudan tahtadan (taşa tıklayarak) seçilir, ayrı bir liste yoktur.
  */
-export function SavedPositionBoard({ fen, marked }: Props) {
+export function SavedPositionBoard({ fen, marked, onSquareClick }: Props) {
   const { settings } = useSettings();
   const boardColors = getBoardColors(settings.board);
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
@@ -43,6 +52,9 @@ export function SavedPositionBoard({ fen, marked }: Props) {
             darkSquareStyle: { backgroundColor: boardColors.dark },
             showNotation: false,
             squareStyles,
+            onSquareClick: onSquareClick
+              ? ({ square }: { square: string }) => onSquareClick(square)
+              : undefined,
           }}
         />
       </div>
