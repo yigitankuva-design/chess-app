@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
@@ -127,6 +127,14 @@ interface Props {
   initialIndex?: number;
   /** Soru değişince çağrılır — üst sayfa sırayı saklayabilsin. */
   onIndexChange?: (index: number) => void;
+  /** Sayfa yenilemesinde currentIdx'teki sorunun ÖNCEKİ sonucu. 'wrong' ise
+   *  soru kilitli ve geribildirimli başlar — TEKRAR ÇÖZÜLEMEZ (madde 6). */
+  initialAnswer?: 'correct' | 'wrong' | null;
+  /** Sayfa yenilemesinde restore edilecek doğru-sayısı — succeed() tekrar
+   *  +1 yapıp ilerlemeyi ikinci kez saymasın diye. */
+  initialDoneCount?: number;
+  /** Her cevaplamada (doğru/yanlış) çağrılır — üst sayfa kalıcı hale getirsin. */
+  onAnswered?: (index: number, doneCount: number, answer: 'correct' | 'wrong') => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -175,22 +183,28 @@ function ProgressDots({ total, current, doneCount }: { total: number; current: n
 
 export function BoardExercise({
   exercises, done, onCorrect, onFinish, noRetry = false,
-  initialIndex = 0, onIndexChange,
+  initialIndex = 0, onIndexChange, initialAnswer = null, initialDoneCount,
+  onAnswered,
 }: Props) {
   // Sinirlar icinde tutulur: kayitli sira soru sayisindan buyukse patlamaz.
   const [currentIdx, setCurrentIdx] = useState(
     initialIndex > 0 && initialIndex < exercises.length ? initialIndex : 0,
   );
-  const [doneCount, setDoneCount] = useState(done ? exercises.length : 0);
-  const [status, setStatus] = useState<'idle' | 'success' | 'fail'>(done ? 'success' : 'idle');
+  const [doneCount, setDoneCount] = useState(done ? exercises.length : (initialDoneCount ?? 0));
+  const [status, setStatus] = useState<'idle' | 'success' | 'fail'>(
+    done ? 'success' : initialAnswer === 'correct' ? 'success' : initialAnswer === 'wrong' ? 'fail' : 'idle',
+  );
   const [feedback, setFeedback] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
-  const [showNext, setShowNext] = useState(false);
+  const [showNext, setShowNext] = useState(!!initialAnswer && initialIndex < exercises.length - 1);
   const [clickedSquare, setClickedSquare] = useState<string | null>(null);
   const [allAttempted, setAllAttempted] = useState(false);
   /** Madde 1: Suresiz Pratik'te yanlis cevaptan sonra tekrar deneme YOK;
    *  soru kilitlenir, sporcu "Sonraki Soruya Geç" ile ilerler. */
-  const [failLocked, setFailLocked] = useState(false);
+  const [failLocked, setFailLocked] = useState(initialAnswer === 'wrong');
+  /** İlk render'da initialAnswer'dan gelen durumu KORUR — aşağıdaki
+   *  index-değişince-sıfırla efekti bu durumu hemen ezmesin diye (madde 6). */
+  const skipFirstReset = useRef(!!initialAnswer);
   /** Madde 6: dogru cevaplanan Tasi Oynat (eski format) sorusunun oynanan
    *  hamlesi — geribildirim karti altindaki notasyon karti icin. */
   const [playedMove, setPlayedMove] = useState<{ from: string; to: string } | null>(null);
@@ -202,6 +216,11 @@ export function BoardExercise({
   // Reset per-exercise state when index changes
   useEffect(() => {
     if (done) return;
+    if (skipFirstReset.current) {
+      // İlk mount'ta initialAnswer'dan gelen durumu koru — sıfırlama.
+      skipFirstReset.current = false;
+      return;
+    }
     setStatus('idle');
     setFeedback('');
     setSelected(null);
@@ -221,6 +240,7 @@ export function BoardExercise({
     setSelected(null);
     const next = doneCount + 1;
     setDoneCount(next);
+    onAnswered?.(currentIdx, next, 'correct');
     // Bitiş tespiti currentIdx tabanlı (doneCount tabanlı DEĞİL) — çünkü yanlış
     // cevapta da ilerleme olan click_square'de doneCount artık currentIdx'ten
     // geride kalabilir. Mevcut tipler için (her soru doğru cevaplanmak
@@ -244,6 +264,7 @@ export function BoardExercise({
     setSelected(null);
     if (noRetry) {
       setFailLocked(true);
+      onAnswered?.(currentIdx, doneCount, 'wrong');
       if (!isLastQuestion) {
         setShowNext(true);
       } else {
@@ -251,8 +272,11 @@ export function BoardExercise({
         onFinish?.({ correct: doneCount, total });
         setAllAttempted(true);
       }
+    } else {
+      // Retry İZİN VERİLEN modlarda (noRetry=false) geçici uyarı — 1.8sn
+      // sonra kendiliğinden kapanır, sporcu aynı soruyu tekrar dener.
+      setTimeout(() => setStatus('idle'), 1800);
     }
-    setTimeout(() => setStatus('idle'), 1800);
   };
 
   // Kareye Tıkla'da yanlış cevapta tekrar deneme yok: geri bildirim gösterilir,
@@ -262,6 +286,7 @@ export function BoardExercise({
     setStatus('fail');
     setFeedback(msg);
     setSelected(null);
+    onAnswered?.(currentIdx, doneCount, 'wrong');
     if (!isLastQuestion) {
       setShowNext(true);
     } else {
