@@ -52,3 +52,32 @@ describe('MultiImagePlacer', () => {
     expect(next[1].tone).toBe(6);
   });
 });
+
+vi.mock('@/lib/imageTransparency', () => ({
+  makeBackgroundTransparent: vi.fn().mockResolvedValue('data:image/png;base64,TRANSPARENT'),
+}));
+vi.mock('@/lib/imageVectorize', () => ({
+  vectorizeImage: vi.fn().mockResolvedValue('data:image/svg+xml;base64,VECTOR'),
+}));
+
+describe('MultiImagePlacer — şeffaflık ve vektörleştirme (madde 4/5)', () => {
+  it('"Şeffaf Yap" seçili görselin uri\'sini şeffaflaştırılmış haliyle değiştirir', async () => {
+    const onChange = vi.fn();
+    render(<MultiImagePlacer images={[IMG1]} onChange={onChange} />);
+    fireEvent.pointerDown(screen.getByAltText('Görsel 1'), { clientX: 0, clientY: 0 });
+    fireEvent.click(screen.getByText('Şeffaf Yap'));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([
+      { ...IMG1, uri: 'data:image/png;base64,TRANSPARENT' },
+    ]));
+  });
+
+  it('"Vektöre Çevir" seçili görselin uri\'sini SVG haliyle değiştirir', async () => {
+    const onChange = vi.fn();
+    render(<MultiImagePlacer images={[IMG1]} onChange={onChange} />);
+    fireEvent.pointerDown(screen.getByAltText('Görsel 1'), { clientX: 0, clientY: 0 });
+    fireEvent.click(screen.getByText('Vektöre Çevir'));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([
+      { ...IMG1, uri: 'data:image/svg+xml;base64,VECTOR' },
+    ]));
+  });
+});

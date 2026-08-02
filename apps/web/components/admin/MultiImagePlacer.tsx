@@ -5,6 +5,8 @@ import { EmptyBoardGrid } from '@/components/chess/EmptyBoardGrid';
 import {
   type ImagePlacement, clampPlacement, dragToPercent, resizeToPercent, toneToFilter,
 } from '@/lib/chess/imagePlacement';
+import { makeBackgroundTransparent } from '@/lib/imageTransparency';
+import { vectorizeImage } from '@/lib/imageVectorize';
 
 export interface PlacedImage extends ImagePlacement {
   uri: string;
@@ -61,6 +63,30 @@ export function MultiImagePlacer({ images, onChange }: Props) {
     if (selected === null) return;
     const clamped = clampPlacement({ ...images[selected], tone });
     onChange(images.map((img, i) => (i === selected ? { ...img, ...clamped } : img)));
+  }
+
+  const [transforming, setTransforming] = useState(false);
+
+  async function applyTransparency() {
+    if (selected === null) return;
+    setTransforming(true);
+    try {
+      const uri = await makeBackgroundTransparent(images[selected].uri);
+      onChange(images.map((img, i) => (i === selected ? { ...img, uri } : img)));
+    } finally {
+      setTransforming(false);
+    }
+  }
+
+  async function applyVectorize() {
+    if (selected === null) return;
+    setTransforming(true);
+    try {
+      const uri = await vectorizeImage(images[selected].uri);
+      onChange(images.map((img, i) => (i === selected ? { ...img, uri } : img)));
+    } finally {
+      setTransforming(false);
+    }
   }
 
   const sel = selected !== null ? images[selected] : null;
@@ -135,6 +161,14 @@ export function MultiImagePlacer({ images, onChange }: Props) {
             className="flex-1"
           />
           <span className="text-xs n-muted w-6 text-right">{sel.tone}</span>
+          <button type="button" onClick={applyTransparency} disabled={transforming}
+            className="px-2 py-1 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 disabled:opacity-40">
+            {transforming ? '...' : 'Şeffaf Yap'}
+          </button>
+          <button type="button" onClick={applyVectorize} disabled={transforming}
+            className="px-2 py-1 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 disabled:opacity-40">
+            {transforming ? '...' : 'Vektöre Çevir'}
+          </button>
           <button type="button" onClick={removeSelected}
             className="px-2 py-1 rounded-lg text-xs bg-rose-400/10 text-rose-300 border border-rose-400/40 hover:bg-rose-400/20">
             Sil
