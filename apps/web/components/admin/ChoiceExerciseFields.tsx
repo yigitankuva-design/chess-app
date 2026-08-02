@@ -276,17 +276,19 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
               {poolAddMsg && <span className="n-muted">{poolAddMsg}</span>}
             </div>
           )}
-          {images.length > 0 && (
-            <div className="space-y-2">
-              <MultiImagePlacer images={images} onChange={setImages} />
+          {/* Madde 1: tahta zemini görsel SEÇMEDEN ÖNCE de görünür — hoca önce
+              tahtayı görür, sonra görselleri üstüne ekler. */}
+          <div className="space-y-2">
+            <MultiImagePlacer images={images} onChange={setImages} />
+            {images.length > 0 && (
               <label className="flex items-center gap-2 text-xs n-muted">
                 <input type="checkbox" checked={showBoard}
                   onChange={(e) => setShowBoard(e.target.checked)}
                   className="h-4 w-4 accent-cyan-400" />
                 Sporcu tahtayı da görsün
               </label>
-            </div>
-          )}
+            )}
+          </div>
           <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
             placeholder="Talimat" className="neon-input" />
         </div>
