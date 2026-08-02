@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { MatchHeader } from '@/components/play/MatchHeader';
@@ -16,6 +16,9 @@ import { getToken, getAthleteName } from '@/lib/auth-storage';
 import {
   botGameKey, loadBotGame, saveBotGame, clearBotGame,
 } from '@/lib/play/botGameSession';
+import { fensFromSan } from '@/lib/play/moveNavigation';
+import { useMoveHistoryNav } from '@/lib/chess/useMoveHistoryNav';
+import { HistoryBanner } from '@/components/play/HistoryBanner';
 
 export interface TimeControl {
   base: number;       // seconds on the clock at start
@@ -77,6 +80,13 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const [thinking, setThinking] = useState(false);
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
   const [resultText, setResultText] = useState<string>('');
+
+  // Notasyon ve gezinme AYNI kaynaktan beslenir: chess.js geçmişi.
+  // `fen` state'i her hamlede değiştiği için bağımlılık olarak yeterlidir.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sanHistory = useMemo(() => chessRef.current.history(), [fen]);
+  const fens = useMemo(() => fensFromSan(startFen, sanHistory), [startFen, sanHistory]);
+  const nav = useMoveHistoryNav(fens);
 
   const tc = timeControl ?? null;
   const [whiteTime, setWhiteTime] = useState(restoredRef.current?.whiteTime ?? (tc ? tc.base : 0));
@@ -317,15 +327,23 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
       </div>
 
       <ChessBoard
-        fen={fen}
-        interactive={status === 'playing' && !thinking}
+        fen={nav.viewFen}
+        interactive={status === 'playing' && !thinking && nav.isLive}
         onPieceDrop={handleDrop}
         boardOrientation={studentColor === 'w' ? 'white' : 'black'}
+        onWheelStep={nav.step}
       />
+
+      <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
 
       {/* Madde 1: tum hamleler tahtanin ALTINDA. Bu bilesende chess.load()
           cagrilmadigi icin chess.js gecmisi bozulmaz, dogrudan okunur. */}
-      <MoveList san={chessRef.current.history()} startFen={startFen} />
+      <MoveList
+        san={sanHistory}
+        startFen={startFen}
+        onSelectPly={nav.goTo}
+        activePly={nav.isLive ? undefined : nav.viewIndex}
+      />
 
       {pending && (
         <PromotionPicker
