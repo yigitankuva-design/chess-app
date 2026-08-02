@@ -8,6 +8,7 @@ from chess_api.services.jwt import decode_token, TokenInvalid
 from chess_api.services.matchmaking import find_match, leave_queue
 from chess_api.services.game_room import get_room, remove_room
 from chess_api.services.bot_engine import get_bot_move
+from chess_api.services.bot_draw import bot_accepts_draw
 from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
@@ -493,7 +494,31 @@ async def _handle_offer_draw(game_id, child_id, white_id, room):
         await db.commit()
 
     await room.send_to(child_id, {"type": "draw_offer_sent", "offers_used": offers_used})
-    await room.broadcast({"type": "draw_offered", "by_child_id": child_id}, exclude=child_id)
+    if game.type == GameType.bot:
+        await _resolve_bot_draw_response(game_id, room)
+    else:
+        await room.broadcast({"type": "draw_offered", "by_child_id": child_id}, exclude=child_id)
+
+
+async def _resolve_bot_draw_response(game_id: int, room) -> None:
+    """Bot maci: teklife botun kendi karari sunucu tarafinda verilir — insan-
+    insan macta bunu yapan ikinci oyuncu yokken, burada 'ikinci oyuncu'
+    sunucunun kendisidir."""
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game or game.status != GameStatus.active:
+            return
+        current_fen, _ = await _current_fen_and_ply(db, game_id)
+        student_is_white = (game.student_color or "w") == "w"
+        bot_color = "b" if student_is_white else "w"
+
+    if bot_accepts_draw(current_fen, bot_color):
+        await _handle_draw(game_id, room)
+    else:
+        # _handle_decline_draw KULLANILMAZ: exclude=child_id ile yayinlar,
+        # bot macinda odadaki TEK katilimci sporcunun kendisi oldugu icin
+        # mesaj HIC KIMSEYE gitmez (olculdu, bkz. tasarim belgesi sorun A).
+        await room.broadcast({"type": "draw_declined", "by_child_id": None})
 
 
 async def _handle_decline_draw(game_id, child_id, room):
