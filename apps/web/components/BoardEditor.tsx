@@ -1,9 +1,10 @@
 'use client';
 import { Chessboard, ChessboardProvider, SparePiece } from 'react-chessboard';
 import {
-  CHESS_PIECE_SET, BOARD_CARD_BG,
+  BOARD_CARD_BG,
   BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels, getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
+import { PIECE_PALETTE, pieceKey, pieceTypeToFen } from '@/lib/chess/pieceCodes';
 import { useSettings } from '@/lib/settings/settings-context';
 import { useMemo, useState } from 'react';
 import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
@@ -14,24 +15,6 @@ const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-const PALETTE: { code: string; label: string }[] = [
-  { code: 'K', label: 'Beyaz Şah' }, { code: 'Q', label: 'Beyaz Vezir' }, { code: 'R', label: 'Beyaz Kale' },
-  { code: 'B', label: 'Beyaz Fil' }, { code: 'N', label: 'Beyaz At' }, { code: 'P', label: 'Beyaz Piyon' },
-  { code: 'k', label: 'Siyah Şah' }, { code: 'q', label: 'Siyah Vezir' }, { code: 'r', label: 'Siyah Kale' },
-  { code: 'b', label: 'Siyah Fil' }, { code: 'n', label: 'Siyah At' }, { code: 'p', label: 'Siyah Piyon' },
-];
-
-/** Palet kodunu (K, p, ...) taş seti anahtarına (wK, bP, ...) çevirir. */
-function pieceKey(code: string): keyof typeof CHESS_PIECE_SET {
-  return `${code === code.toUpperCase() ? 'w' : 'b'}${code.toUpperCase()}` as keyof typeof CHESS_PIECE_SET;
-}
-
-/** Taş seti anahtarını (wP, bN, ...) FEN karakterine (P, n, ...) çevirir. */
-function pieceTypeToFen(pieceType: string): string {
-  const color = pieceType[0];
-  const type = pieceType[1];
-  return color === 'w' ? type.toUpperCase() : type.toLowerCase();
-}
 
 /** FEN'in taş yerleşimi kısmını kare→taş haritasına çevirir. */
 export function fenToMap(fen: string): Record<string, string> {
@@ -168,7 +151,7 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange }: Props) {
             style={{ gridTemplateRows: 'repeat(6, 1fr)', gridAutoFlow: 'column' }}
             aria-label="Taş paleti"
           >
-            {PALETTE.map((p) => {
+            {PIECE_PALETTE.map((p) => {
               const selected = selectedPaletteKey === p.code;
               return (
                 <div
