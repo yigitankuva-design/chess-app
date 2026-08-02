@@ -13,7 +13,9 @@ describe('practiceSession — yenilemede aynı soruda kalma (madde 4/9)', () => 
   it('kaydedilen set ve sıra geri okunur', () => {
     const key = sessionKey(7, 'suresiz');
     saveSession<Soru>(key, { items: [{ id: 1 }, { id: 2 }, { id: 3 }], index: 2 });
-    expect(loadSession<Soru>(key)).toEqual({ items: [{ id: 1 }, { id: 2 }, { id: 3 }], index: 2 });
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }, { id: 2 }, { id: 3 }], index: 2, currentAnswer: null, doneCount: 0,
+    });
   });
 
   it('farklı adım/mod için kayıtlar karışmaz', () => {
@@ -51,5 +53,35 @@ describe('practiceSession — yenilemede aynı soruda kalma (madde 4/9)', () => 
     saveSession<Soru>(key, { items: [{ id: 1 }], index: 0 });
     clearSession(key);
     expect(loadSession(key)).toBeNull();
+  });
+});
+
+describe('practiceSession — cevap durumu kalıcılığı (madde 6)', () => {
+  it('currentAnswer ve doneCount kaydedilip geri okunur', () => {
+    const key = sessionKey(9, 'suresiz');
+    saveSession<Soru>(key, {
+      items: [{ id: 1 }, { id: 2 }], index: 1, currentAnswer: 'wrong', doneCount: 1,
+    });
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }, { id: 2 }], index: 1, currentAnswer: 'wrong', doneCount: 1,
+    });
+  });
+
+  it('yeni alanlar verilmezse güvenli varsayılana düşer (eski kayıtlar bozulmaz)', () => {
+    const key = sessionKey(9, 'sureli');
+    sessionStorage.setItem(key, JSON.stringify({ items: [{ id: 1 }, { id: 2 }], index: 1 }));
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }, { id: 2 }], index: 1, currentAnswer: null, doneCount: 0,
+    });
+  });
+
+  it('geçersiz currentAnswer değeri null sayılır', () => {
+    const key = sessionKey(9, 'test');
+    sessionStorage.setItem(key, JSON.stringify({
+      items: [{ id: 1 }], index: 0, currentAnswer: 'saçma', doneCount: 'x',
+    }));
+    expect(loadSession<Soru>(key)).toEqual({
+      items: [{ id: 1 }], index: 0, currentAnswer: null, doneCount: 0,
+    });
   });
 });

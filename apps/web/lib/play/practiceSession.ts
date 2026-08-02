@@ -1,11 +1,12 @@
-/** Pratik oturumunu sayfa yenilemesine dayanıklı saklama (madde 4 ve 9).
+/** Pratik oturumunu sayfa yenilemesine dayanıklı saklama (madde 4, 6, 7, 9).
  *
  *  Neden sessionStorage: oturum bilgisi KALICI olmamalı — sporcu sekmeyi
- *  kapatınca yeni bir set çekilsin. Yenilemede (F5) ise aynı sorularda,
- *  aynı sırada kalınır.
+ *  kapatınca (veya yeniden giriş yapınca) yeni bir set çekilsin. Yenilemede
+ *  (F5) ise aynı sorularda, aynı sırada, aynı cevap durumunda kalınır.
  *
- *  Saklanan veri KULLANICI CEVABI DEĞİL, yalnızca hangi soruların hangi
- *  sırayla gösterildiğidir; puanlama sunucuda kalır.
+ *  Saklanan veri KULLANICI CEVABININ DOĞRU/YANLIŞ OLDUĞU bilgisidir (madde 6
+ *  — sayfa yenilemesiyle aynı soru tekrar çözülemesin diye), asıl PUANLAMA
+ *  yine sunucuda kalır.
  */
 
 export interface StoredSession<T> {
@@ -13,7 +14,20 @@ export interface StoredSession<T> {
   items: T[];
   /** Kalınan sorunun sırası. */
   index: number;
+  /** index'teki sorunun cevap durumu — 'wrong' ise soru KİLİTLİ ve
+   *  geribildirimli kalır, sayfa yenilense bile tekrar çözülemez (madde 6). */
+  currentAnswer: 'correct' | 'wrong' | null;
+  /** O ana kadar doğru sayılan soru sayısı — sayfa yenilenince ilerlemenin
+   *  ikinci kez sayılmaması için. */
+  doneCount: number;
 }
+
+/** saveSession girdisi: yeni iki alan OPSİYONEL — mevcut çağrı noktaları ve
+ *  testler `{ items, index }` ile derlenmeye devam eder (KURAL #3).
+ *  loadSession ise HER ZAMAN normalize edilmiş tam nesneyi döndürür. */
+export type SessionInput<T> =
+  Pick<StoredSession<T>, 'items' | 'index'>
+  & Partial<Pick<StoredSession<T>, 'currentAnswer' | 'doneCount'>>;
 
 export function sessionKey(stepId: number | string, mode: string): string {
   return `bsa:pratik:${stepId}:${mode}`;
@@ -24,17 +38,21 @@ export function loadSession<T>(key: string): StoredSession<T> | null {
   try {
     const raw = sessionStorage.getItem(key);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredSession<T>;
+    const parsed = JSON.parse(raw) as Partial<StoredSession<T>>;
     if (!Array.isArray(parsed.items) || parsed.items.length === 0) return null;
-    const index = Number.isInteger(parsed.index) ? parsed.index : 0;
+    const index = Number.isInteger(parsed.index) ? (parsed.index as number) : 0;
     // Bozuk/eski kayit ekrani kilitlemesin: sira daima sinir icinde.
-    return { items: parsed.items, index: Math.min(Math.max(index, 0), parsed.items.length - 1) };
+    const clampedIndex = Math.min(Math.max(index, 0), parsed.items.length - 1);
+    const currentAnswer = parsed.currentAnswer === 'correct' || parsed.currentAnswer === 'wrong'
+      ? parsed.currentAnswer : null;
+    const doneCount = Number.isInteger(parsed.doneCount) ? (parsed.doneCount as number) : 0;
+    return { items: parsed.items, index: clampedIndex, currentAnswer, doneCount };
   } catch {
     return null;
   }
 }
 
-export function saveSession<T>(key: string, data: StoredSession<T>): void {
+export function saveSession<T>(key: string, data: SessionInput<T>): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.setItem(key, JSON.stringify(data));
