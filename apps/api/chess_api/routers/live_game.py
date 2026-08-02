@@ -183,7 +183,7 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
         black_id = game.black_child_id
 
     room = get_room(game_id)
-    room.join(child_id, websocket)
+    conn_id = room.join(child_id, websocket)
     await room.broadcast({"type": "player_joined", "child_id": child_id})
 
     # Katilana macin kimlik ve saat bilgisi — isimler burada gider.
@@ -231,11 +231,11 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             elif mtype == "flag":
                 await _handle_flag(game_id, room)
     except WebSocketDisconnect:
-        room.leave(child_id)
+        room.leave(child_id, conn_id)
         await room.broadcast({"type": "opponent_disconnected", "child_id": child_id})
     except Exception:
         logger.exception("game_ws error")
-        room.leave(child_id)
+        room.leave(child_id, conn_id)
 
 
 async def _handle_move(game_id, child_id, white_id, black_id, msg, room):

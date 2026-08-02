@@ -1,8 +1,16 @@
 """In-memory game rooms: track connected players per game for broadcast.
 
 Players are objects exposing `async send_json(dict)` (e.g., a Starlette WebSocket).
+
+Bir sporcu AYNI maca birden fazla cihazdan (baglantidan) baglanabilir — ornegin
+telefon ve bilgisayar ayni anda acik. Bu yuzden child_id -> TEK baglanti degil,
+child_id -> {baglanti_id: baglanti} tutulur. join() cagirana bir baglanti kimligi
+(conn_id) doner; leave() bu kimlikle CAGRILMALIDIR, aksi halde sunucu HANGI
+cihazin koptugunu bilemez ve digerini de yanlislikla silebilir (bkz.
+docs/superpowers/specs/2026-08-02-bot-maci-cihazlar-arasi-canli-senkron-design.md,
+"Gozden gecirmede bulunan engeller - madde 1").
 """
-from typing import Any, Protocol
+from typing import Protocol
 
 
 class Sender(Protocol):
@@ -12,26 +20,41 @@ class Sender(Protocol):
 class GameRoom:
     def __init__(self, game_id: int):
         self.game_id = game_id
-        self.players: dict[int, Sender] = {}  # child_id -> sender
+        self.players: dict[int, dict[int, Sender]] = {}  # child_id -> {conn_id: sender}
+        self._next_conn_id = 0
 
-    def join(self, child_id: int, sender: Sender) -> None:
-        self.players[child_id] = sender
+    def join(self, child_id: int, sender: Sender) -> int:
+        """Baglantiyi odaya ekler. Donen conn_id, leave() icin SAKLANMALIDIR."""
+        conn_id = self._next_conn_id
+        self._next_conn_id += 1
+        self.players.setdefault(child_id, {})[conn_id] = sender
+        return conn_id
 
-    def leave(self, child_id: int) -> None:
-        self.players.pop(child_id, None)
+    def leave(self, child_id: int, conn_id: int) -> None:
+        """Yalnizca BELIRTILEN baglantiyi cikarir; ayni sporcunun BASKA acik
+        baglantisi varsa (or. diger cihazi) etkilenmez."""
+        conns = self.players.get(child_id)
+        if conns is None:
+            return
+        conns.pop(conn_id, None)
+        if not conns:
+            self.players.pop(child_id, None)
 
     async def broadcast(self, message: dict, exclude: int | None = None) -> None:
-        for cid, sender in list(self.players.items()):
+        """Odadaki HERKESE (exclude edilen sporcu haric) — bir sporcunun
+        birden fazla acik baglantisi varsa HEPSINE gonderilir."""
+        for cid, conns in list(self.players.items()):
             if cid == exclude:
                 continue
-            try:
-                await sender.send_json(message)
-            except Exception:
-                pass
+            for sender in list(conns.values()):
+                try:
+                    await sender.send_json(message)
+                except Exception:
+                    pass
 
     async def send_to(self, child_id: int, message: dict) -> None:
-        sender = self.players.get(child_id)
-        if sender:
+        """Belirli bir sporcunun TUM acik baglantilarina gonderir."""
+        for sender in list(self.players.get(child_id, {}).values()):
             try:
                 await sender.send_json(message)
             except Exception:
