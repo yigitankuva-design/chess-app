@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -31,11 +32,33 @@ async def start_bot_game(
     if not status["allowed"]:
         raise HTTPException(status_code=429, detail=f"Günlük süre doldu ({status['used_minutes']}/{status['limit_minutes']} dk)")
 
-    game = Game(type=GameType.bot, white_child_id=child.id, black_bot_level=payload.skill_level)
+    # base_ms>0 varsa saatli mac; yoksa suresiz (mevcut insan-insan akisiyla
+    # AYNI donusum deseni, bkz. live_game.py::_handle_challenge_accept).
+    base_ms = (payload.tc_base_seconds * 1000
+               if payload.tc_base_seconds and payload.tc_base_seconds > 0 else None)
+
+    # white_child_id/black_bot_level BILEREK degismiyor (rozet uyumlulugu,
+    # bkz. docs/superpowers/specs/2026-08-02-bot-mac-baslangic-bilgisi-kaydi-design.md).
+    game = Game(
+        type=GameType.bot,
+        white_child_id=child.id,
+        black_bot_level=payload.skill_level,
+        student_color=payload.student_color,
+        start_fen=payload.start_fen,
+        base_ms=base_ms,
+        increment_ms=payload.tc_increment_seconds * 1000 if base_ms is not None else 0,
+        white_ms=base_ms,
+        black_ms=base_ms,
+        last_clock_at=datetime.utcnow() if base_ms is not None else None,
+    )
     db.add(game)
     await db.commit()
     await db.refresh(game)
-    return StartBotGameResponse(game_id=game.id, fen=INITIAL_FEN, your_color="white")
+    return StartBotGameResponse(
+        game_id=game.id,
+        fen=payload.start_fen or INITIAL_FEN,
+        your_color="white" if payload.student_color == "w" else "black",
+    )
 
 
 async def _current_fen(db: AsyncSession, game_id: int) -> str:

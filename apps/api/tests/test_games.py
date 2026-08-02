@@ -102,3 +102,60 @@ async def test_make_illegal_move_rejected(client, child_auth):
     )
     assert response.status_code == 200
     assert response.json()["accepted"] is False
+
+
+async def test_start_bot_game_renk_start_fen_tempo_kaydedilir(client, child_auth, db):
+    from sqlalchemy import select
+    from chess_api.models import Game
+
+    token, child_id = child_auth
+    acilis_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    response = await client.post(
+        "/games/bot/start",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "skill_level": 5,
+            "student_color": "b",
+            "start_fen": acilis_fen,
+            "tc_base_seconds": 300,
+            "tc_increment_seconds": 2,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["your_color"] == "black"
+    assert data["fen"] == acilis_fen
+
+    gid = data["game_id"]
+    game = (await db.execute(select(Game).where(Game.id == gid))).scalar_one()
+    assert game.student_color == "b"
+    assert game.start_fen == acilis_fen
+    assert game.base_ms == 300_000
+    assert game.increment_ms == 2_000
+    assert game.white_ms == 300_000
+    assert game.black_ms == 300_000
+    # Rozet uyumlulugu: white_child_id/black_bot_level DEGISMEMELI.
+    assert game.white_child_id == child_id
+    assert game.black_bot_level == 5
+
+
+async def test_start_bot_game_eski_istemci_hicbir_yeni_alan_gondermez(client, child_auth, db):
+    """Geriye uyumluluk: eski istemci yalnizca skill_level gonderir."""
+    from sqlalchemy import select
+    from chess_api.models import Game
+
+    token, child_id = child_auth
+    response = await client.post(
+        "/games/bot/start",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"skill_level": 5},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["your_color"] == "white"
+
+    gid = data["game_id"]
+    game = (await db.execute(select(Game).where(Game.id == gid))).scalar_one()
+    assert game.student_color == "w"
+    assert game.start_fen is None
+    assert game.base_ms is None
