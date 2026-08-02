@@ -19,6 +19,8 @@ import {
 import { fensFromSan } from '@/lib/play/moveNavigation';
 import { useMoveHistoryNav } from '@/lib/chess/useMoveHistoryNav';
 import { HistoryBanner } from '@/components/play/HistoryBanner';
+import { resolvePremove } from '@/lib/play/premove';
+import type { Premove } from '@/lib/play/premove';
 
 export interface TimeControl {
   base: number;       // seconds on the clock at start
@@ -71,6 +73,21 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const gameIdRef = useRef<number | null>(null);
   const [fen, setFen] = useState(chessRef.current.fen());
   const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
+  const [premove, setPremove] = useState<Premove | null>(null);
+  /** Bot cevabı async akışta okunur; state closure'ı eski kalabildiği için
+   *  ref ile ikizlenir. */
+  const premoveRef = useRef<Premove | null>(null);
+
+  function choosePremove(from: Square, to: Square) {
+    const pm = { from, to };
+    premoveRef.current = pm;
+    setPremove(pm);
+  }
+
+  function clearPremove() {
+    premoveRef.current = null;
+    setPremove(null);
+  }
   /** Madde 6: bota karsi da terk ve beraberlik hakki. Hak sayisi insan
    *  maclariyla AYNI kuraldan gelir (drawOffers.ts) — iki yerde iki sayi olmaz. */
   const [drawOffersUsed, setDrawOffersUsed] = useState(restoredRef.current?.drawOffersUsed ?? 0);
@@ -248,6 +265,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     }
     if (!move) return false;
     setFen(chess.fen());
+    clearPremove(); // yeni hamle yapıldı, eski ön-hamle geçersiz.
     playMoveSound(); // madde 2: sporcunun hamlesinde nötr tık sesi.
     if (tc) {
       // Hamleyi yapan SPORCU — kendi rengine gore artis eklenir.
@@ -280,7 +298,13 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
         } catch { /* ignore */ }
       }
       setThinking(false);
-      if (chess.isGameOver()) finish();
+      if (chess.isGameOver()) { finish(); return; }
+
+      // Madde 5: sıra sporcuya geldi — ön-hamle varsa şimdi oynanır.
+      // Geçersizse SESSİZCE iptal edilir (uyarı yok, sıra sporcuda kalır).
+      const pm = resolvePremove(chess.fen(), premoveRef.current);
+      clearPremove();
+      if (pm) applyStudentMove(pm.from, pm.to);
     })();
 
     return true;
@@ -332,6 +356,9 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
         onPieceDrop={handleDrop}
         boardOrientation={studentColor === 'w' ? 'white' : 'black'}
         onWheelStep={nav.step}
+        onPremove={choosePremove}
+        premoveColor={studentColor}
+        premoveSquares={premove}
       />
 
       <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />

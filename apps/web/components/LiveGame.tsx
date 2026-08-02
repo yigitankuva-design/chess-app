@@ -16,6 +16,8 @@ import type { PromotionPiece } from '@/lib/play/promotion';
 import { fensFromSan } from '@/lib/play/moveNavigation';
 import { useMoveHistoryNav } from '@/lib/chess/useMoveHistoryNav';
 import { HistoryBanner } from '@/components/play/HistoryBanner';
+import { resolvePremove } from '@/lib/play/premove';
+import type { Premove } from '@/lib/play/premove';
 
 interface Props { gameId: number; myColor: 'white' | 'black'; }
 
@@ -35,6 +37,21 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [sanList, setSanList] = useState<string[]>([]);
   const [startFen, setStartFen] = useState<string | null>(null);
   const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
+  const [premove, setPremove] = useState<Premove | null>(null);
+  /** WebSocket geri çağrısı eski closure'ı görebilir; ref ile ikizlenir. */
+  const premoveRef = useRef<Premove | null>(null);
+
+  function choosePremove(from: Square, to: Square) {
+    const pm = { from, to };
+    premoveRef.current = pm;
+    setPremove(pm);
+  }
+
+  function clearPremove() {
+    premoveRef.current = null;
+    setPremove(null);
+  }
+
   /** Bayrak bir kez gonderilir; her tikta tekrar gonderilmez. */
   const flagSentRef = useRef(false);
 
@@ -82,6 +99,14 @@ export function LiveGame({ gameId, myColor }: Props) {
           // asagida applyMyMove zaten calar, burda tekrar etmez cunku
           // chess.fen() bu noktada zaten esitlenmis olur.
           playMoveSound();
+          // Madde 5: rakip oynadı, sıra bana geldi — ön-hamle varsa oynanır.
+          const myTurnNow = (chess.turn() === 'w' && myColor === 'white')
+            || (chess.turn() === 'b' && myColor === 'black');
+          if (myTurnNow) {
+            const pm = resolvePremove(chess.fen(), premoveRef.current);
+            clearPremove();
+            if (pm) applyMyMove(pm.from, pm.to);
+          }
         } catch { /* ignore */ }
       }
       // Mat/pat'ta sonuc satiri game_over mesajiyla gelir; burada sadece bilgi.
@@ -185,6 +210,7 @@ export function LiveGame({ gameId, myColor }: Props) {
     try { move = chess.move({ from, to, promotion: promo }); } catch { return false; }
     if (!move) return false;
     setFen(chess.fen());
+    clearPremove(); // yeni hamle yapıldı, eski ön-hamle geçersiz.
     playMoveSound(); // madde 2: kendi hamlemde aninda ses.
     // Notasyona BURADA eklenmez: room.broadcast exclude kullanmiyor, kendi
     // hamlem de move_made ile geri geliyor — eklersem liste ikiye katlanir.
@@ -227,6 +253,9 @@ export function LiveGame({ gameId, myColor }: Props) {
         onPieceDrop={handleDrop}
         boardOrientation={myColor}
         onWheelStep={nav.step}
+        onPremove={choosePremove}
+        premoveColor={myColor === 'white' ? 'w' : 'b'}
+        premoveSquares={premove}
       />
 
       <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
