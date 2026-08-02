@@ -581,16 +581,6 @@ export function BoardExercise({
       {(status === 'success' || status === 'fail') && (status === 'success' || showNext) && (
         <>
           <div className={showNext && doneCount < total ? 'grid grid-cols-2 gap-2' : ''}>
-            {showNext && doneCount < total && (
-              <button
-                onClick={goNext}
-                className="t-card-i flex flex-col items-center justify-center gap-1.5 py-4 px-2 text-center transition-all"
-                style={{ background: 'var(--t-accent)', color: '#fff', border: 'none' }}
-              >
-                <span className="text-xl leading-none" aria-hidden="true">➡️</span>
-                <span className="text-sm font-bold">Sonraki Soruya Geç</span>
-              </button>
-            )}
             <div
               className="t-card-i flex flex-col items-center justify-center gap-1.5 py-4 px-2 text-center"
               style={{
@@ -610,6 +600,16 @@ export function BoardExercise({
                 {status === 'success' ? (exercise.success_msg ?? 'Aferin! Doğru yaptın! 👏') : (feedback || 'Yanlış!')}
               </span>
             </div>
+            {showNext && doneCount < total && (
+              <button
+                onClick={goNext}
+                className="t-card-i flex flex-col items-center justify-center gap-1.5 py-4 px-2 text-center transition-all"
+                style={{ background: 'var(--t-accent)', color: '#fff', border: 'none' }}
+              >
+                <span className="text-xl leading-none" aria-hidden="true">➡️</span>
+                <span className="text-sm font-bold">Sonraki Soruya Geç</span>
+              </button>
+            )}
           </div>
 
           {/* Madde 6: satranç taşı hareketiyle ilgili sorularda, doğru
