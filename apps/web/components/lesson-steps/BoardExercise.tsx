@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { ChoiceQuestionBody } from './ChoiceQuestionBody';
+import { ChoiceQuestionVisual } from './ChoiceQuestionVisual';
+import { ChoiceQuestionAnswers } from './ChoiceQuestionAnswers';
 import { MovePieceSolver } from './MovePieceSolver';
 import { MoveList } from '@/components/play/MoveList';
 import { evaluateClick } from '@/lib/play/multiSquareCheck';
@@ -444,118 +445,125 @@ export function BoardExercise({
       {/* Progress */}
       <div className="flex items-center justify-between">
         <ProgressDots total={total} current={currentIdx} doneCount={doneCount} />
-        <span className="flex items-center gap-1.5">
-          {exercise.code && (
-            <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
-              #{exercise.code}
-            </span>
-          )}
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
-            Soru {currentIdx + 1}/{total}
-          </span>
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
+          Soru {currentIdx + 1}/{total}
         </span>
       </div>
 
-      {exercise.type === 'move_piece' && 'moves' in exercise ? (
-        <>
-          {/*
-            key ZORUNLU: MovePieceSolver oynanan hamleleri kendi state'inde tutuyor.
-            key olmadan React soru değişince aynı örneği yeniden kullanır ve önceki
-            sorunun hamleleri taşınır — sonraki sorunun DOĞRU hamlesi "yanlış" sayılır
-            (canlı doğrulamada bu hata gerçekten yaşandı).
-          */}
-          <MovePieceSolver
-            key={currentIdx}
-            exercise={exercise}
-            disabled={status !== 'idle'}
-            onSolved={() => succeed()}
-            onWrong={(msg) => failNoRetry(msg)}
-          />
-          {/* Talimat — tahtanın altında kart olarak (diğer tiplerle aynı stil) */}
-          <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
-            style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-            <span className="text-xl leading-none flex-shrink-0">🎯</span>
-            <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
-          </div>
-        </>
-      ) : isBoardExercise(exercise) ? (
-        <>
-          {/* Board — kenar rakam/harf etiketleriyle, uygulamanın ortak
-              tahta temasıyla (madde 1: eskiden ham react-chessboard
-              kullanılıyordu, tema ve notasyon uygulanmıyordu). */}
-          <div
-            data-testid="board-exercise-coord-frame"
-            className="w-full mx-auto p-3 rounded-2xl"
-            style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG }}
-          >
-            <div className="flex">
-              <div className="grid shrink-0" style={{ gridTemplateRows: 'repeat(8, 1fr)', width: 18 }}>
-                {ranks.map((r) => (
-                  <span key={r} className="flex items-center justify-center font-semibold select-none"
-                    style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{r}</span>
-                ))}
-              </div>
-              <div className="aspect-square flex-1" style={BOARD_STYLE}>
-                <Chessboard
-                  options={{
-                    position: exercise.fen,
-                    allowDragging: false,
-                    squareStyles: styles,
-                    onSquareClick,
-                    pieces: pieceSet,
-                    lightSquareStyle: { backgroundColor: boardColors.light },
-                    darkSquareStyle: { backgroundColor: boardColors.dark },
-                    showNotation: false,
-                  }}
+      <div className="practice-grid">
+        <div className="pg-board">
+          <div className="flex items-stretch gap-1.5">
+            {exercise.code && (
+              <span
+                className="pg-code flex-shrink-0 flex items-center justify-center text-[10px] font-mono font-bold select-none"
+                style={{ color: 'var(--t-muted)' }}
+              >
+                KOD - {exercise.code}
+              </span>
+            )}
+            <div className="flex-1 min-w-0">
+              {exercise.type === 'move_piece' && 'moves' in exercise ? (
+                /*
+                  key ZORUNLU: MovePieceSolver oynanan hamleleri kendi state'inde tutuyor.
+                  key olmadan React soru değişince aynı örneği yeniden kullanır ve önceki
+                  sorunun hamleleri taşınır — sonraki sorunun DOĞRU hamlesi "yanlış" sayılır
+                  (canlı doğrulamada bu hata gerçekten yaşandı).
+                */
+                <MovePieceSolver
+                  key={currentIdx}
+                  exercise={exercise}
+                  disabled={status !== 'idle'}
+                  onSolved={() => succeed()}
+                  onWrong={(msg) => failNoRetry(msg)}
                 />
-              </div>
-            </div>
-            <div className="flex" style={{ paddingLeft: 18 }}>
-              {files.map((f) => (
-                <span key={f} className="flex-1 text-center font-semibold select-none"
-                  style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{f}</span>
-              ))}
-            </div>
-          </div>
-
-          {/* Instruction — tahtanın altında kart olarak */}
-          <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
-            style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-            <span className="text-xl leading-none flex-shrink-0">🎯</span>
-            <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
-          </div>
-
-          {/* Multiple-choice for identify_piece */}
-          {exercise.type === 'identify_piece' && status !== 'success' && (
-            <div className="grid grid-cols-2 gap-2">
-              {exercise.options.map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    if (i === exercise.correct_index) succeed();
-                    else fail('Yanlış! Tekrar bak ve dene.');
-                  }}
-                  className="py-2.5 px-3 rounded-lg text-sm font-medium transition-all"
-                  style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
+              ) : isBoardExercise(exercise) ? (
+                /* Board — kenar rakam/harf etiketleriyle, uygulamanın ortak
+                   tahta temasıyla (madde 1: eskiden ham react-chessboard
+                   kullanılıyordu, tema ve notasyon uygulanmıyordu). */
+                <div
+                  data-testid="board-exercise-coord-frame"
+                  className="w-full mx-auto p-3 rounded-2xl"
+                  style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG }}
                 >
-                  {opt}
-                </button>
-              ))}
+                  <div className="flex">
+                    <div className="grid shrink-0" style={{ gridTemplateRows: 'repeat(8, 1fr)', width: 18 }}>
+                      {ranks.map((r) => (
+                        <span key={r} className="flex items-center justify-center font-semibold select-none"
+                          style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{r}</span>
+                      ))}
+                    </div>
+                    <div className="aspect-square flex-1" style={BOARD_STYLE}>
+                      <Chessboard
+                        options={{
+                          position: exercise.fen,
+                          allowDragging: false,
+                          squareStyles: styles,
+                          onSquareClick,
+                          pieces: pieceSet,
+                          lightSquareStyle: { backgroundColor: boardColors.light },
+                          darkSquareStyle: { backgroundColor: boardColors.dark },
+                          showNotation: false,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex" style={{ paddingLeft: 18 }}>
+                    {files.map((f) => (
+                      <span key={f} className="flex-1 text-center font-semibold select-none"
+                        style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{f}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <ChoiceQuestionVisual exercise={exercise} />
+              )}
             </div>
-          )}
+          </div>
+        </div>
 
-          {/* Helper hint for move_piece */}
-          {exercise.type === 'move_piece' && status === 'idle' && (
-            <p className="text-xs" style={{ color: 'var(--t-muted)' }}>
-              {selected ? '✔ Taş seçildi — şimdi hedef kareye tıkla!' : 'Önce taşa tıkla, sonra gideceği kareye tıkla.'}
-            </p>
+        <div className="pg-content space-y-3">
+          {isBoardExercise(exercise) ? (
+            <>
+              {/* Talimat — tahtanın yanında (yatay) / altında (dikey) kart olarak */}
+              <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
+                style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
+                <span className="text-xl leading-none flex-shrink-0">🎯</span>
+                <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
+              </div>
+
+              {/* Multiple-choice for identify_piece */}
+              {exercise.type === 'identify_piece' && status !== 'success' && (
+                <div className="grid grid-cols-2 gap-2">
+                  {exercise.options.map((opt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        if (i === exercise.correct_index) succeed();
+                        else fail('Yanlış! Tekrar bak ve dene.');
+                      }}
+                      className="py-2.5 px-3 rounded-lg text-sm font-medium transition-all"
+                      style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Helper hint for move_piece (eski format — yeni format kendi
+                  tahtasını MovePieceSolver ile çizer, ipucu metni kullanmaz) */}
+              {exercise.type === 'move_piece' && !('moves' in exercise) && status === 'idle' && (
+                <p className="text-xs" style={{ color: 'var(--t-muted)' }}>
+                  {selected ? '✔ Taş seçildi — şimdi hedef kareye tıkla!' : 'Önce taşa tıkla, sonra gideceği kareye tıkla.'}
+                </p>
+              )}
+            </>
+          ) : (
+            <ChoiceQuestionAnswers exercise={exercise} disabled={status === 'success'} onAnswer={onChoiceAnswer} />
           )}
-        </>
-      ) : (
-        <ChoiceQuestionBody exercise={exercise} disabled={status === 'success'} onAnswer={onChoiceAnswer} />
-      )}
+        </div>
+      </div>
 
       {/* Yeniden denemenin HALA mumkun oldugu yanlis cevap (showNext=false):
           eski gecici uyari — 1.8sn sonra kendiliginden kapanir, sporcu ayni

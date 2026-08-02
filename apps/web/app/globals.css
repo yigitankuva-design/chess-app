@@ -610,3 +610,43 @@ body {
   .match-grid > .ml-board { max-width: 60vh; justify-self: center; min-width: 0; }
   .match-grid > .ml-moves { grid-row: 1 / 4; min-height: 0; overflow: auto; }
 }
+
+/* Pratik ekranı (Süresiz/Süreli Pratik Yap, Kendini Test Et) yerleşimi —
+   bkz. components/lesson-steps/BoardExercise.tsx.
+   Maç ekranıyla (.match-grid) aynı yöntem: dikey/yatay için AYRI JSX YOK,
+   aynı öğeler grid-template-areas ile yeniden konumlanır. */
+.practice-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-areas:
+    "board"
+    "content";
+}
+.practice-grid > .pg-board   { grid-area: board; min-width: 0; }
+.practice-grid > .pg-content { grid-area: content; min-width: 0; }
+
+/* Tahtanın solundaki dikey KOD yazısı — tahta kutusunun DIŞINDA durur,
+   kutunun içindeki 8-7-6 rakam sütunuyla çakışmaz. */
+.pg-code {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+@media (orientation: landscape) {
+  .practice-grid {
+    /* Sabit rem — vw KULLANILMAZ: maç ekranında vw yüzünden geniş
+       masaüstü ekranda tahta ezilmişti, o hata tekrarlanmıyor. */
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    grid-template-areas: "board content";
+    align-items: start;
+  }
+}
+
+/* Pratik sayfasının dış kapsayıcısı: dikeyde max-w-lg (32rem) ile aynı,
+   yatayda tahta + içerik yan yana sığsın diye genişler. */
+.practice-shell { max-width: 32rem; }
+@media (orientation: landscape) {
+  .practice-shell { max-width: 60rem; }
+}
