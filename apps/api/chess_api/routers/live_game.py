@@ -7,6 +7,7 @@ from chess_api.database import get_session_factory
 from chess_api.services.jwt import decode_token, TokenInvalid
 from chess_api.services.matchmaking import find_match, leave_queue
 from chess_api.services.game_room import get_room, remove_room
+from chess_api.services.bot_engine import get_bot_move
 from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
@@ -340,6 +341,82 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
     if result["is_checkmate"] or result["is_stalemate"]:
         async with get_session_factory()() as db:
             finished = await db.get(Game, game_id)
+            final = finished.result.value if finished and finished.result else None
+        if final:
+            await room.broadcast({"type": "game_over", "result": final, "by_resign": False})
+
+    # Bot maci: sira artik botta VE mac hala aktifse, sunucu botun hamlesini
+    # kendisi oynar (madde: motor sunucuda).
+    if game.type == GameType.bot and not (result["is_checkmate"] or result["is_stalemate"]):
+        student_is_white = (game.student_color or "w") == "w"
+        now_whites_turn = result["fen_after"].split()[1] == "w"
+        if now_whites_turn != student_is_white:
+            await _play_bot_move(game_id, room)
+
+
+async def _play_bot_move(game_id: int, room) -> None:
+    """Sirasi bota gelen bir bot macinda, sunucu motoruyla hamleyi kendisi
+    oynar. Insan hamlesiyle AYNI adimlar (dogrulama, kayit, saat, mat/pat,
+    yayin) — by_child_id=None 'bot' anlamina gelir.
+
+    BILINEN SINIR: _handle_move'daki gibi bir "bayrak dustu mu" on kontrolu
+    YOKTUR. Bot saniyenin altinda hamle uretttigi icin botun kendi suresini
+    tuketip bayrak dusurmesi pratikte olmaz; dayaniklilik senaryolari tasarim
+    belgesinde ACIKCA kapsam disi birakildi. Sporcunun bayragi zaten kendi
+    hamlesinde (_handle_move) kontrol ediliyor.
+    """
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game or game.status != GameStatus.active:
+            return
+        current_fen, ply = await _current_fen_and_ply(db, game_id)
+        whites_turn = current_fen.split()[1] == "w"
+
+        uci = await get_bot_move(current_fen, game.black_bot_level or 0)
+        if not uci:
+            return  # motor hamle uretemedi — mac kilitlenmez, ilerlemez
+
+        result = validate_move(current_fen, uci)
+        if not result:
+            logger.error("bot motoru gecersiz hamle uretti: %s @ %s", uci, current_fen)
+            return
+
+        await _apply_clock_on_move(db, game, whites_turn)
+
+        db.add(GameMove(
+            game_id=game_id, ply=ply, san=result["san"],
+            fen_after=result["fen_after"], by_child_id=None,
+        ))
+
+        if result["is_checkmate"]:
+            game.status = GameStatus.finished
+            game.result = GameResult.white_wins if whites_turn else GameResult.black_wins
+        elif result["is_stalemate"]:
+            game.status = GameStatus.finished
+            game.result = GameResult.draw
+
+        await db.commit()
+
+    await room.broadcast({
+        "type": "move_made",
+        "uci": uci,
+        "san": result["san"],
+        "fen_after": result["fen_after"],
+        "is_checkmate": result["is_checkmate"],
+        "is_stalemate": result["is_stalemate"],
+        "by_child_id": None,
+    })
+
+    async with get_session_factory()() as db2:
+        fresh = await db2.get(Game, game_id)
+        if fresh and fresh.base_ms is not None:
+            await room.broadcast(
+                _clock_payload(fresh, result["fen_after"].split()[1] == "w")
+            )
+
+    if result["is_checkmate"] or result["is_stalemate"]:
+        async with get_session_factory()() as db3:
+            finished = await db3.get(Game, game_id)
             final = finished.result.value if finished and finished.result else None
         if final:
             await room.broadcast({"type": "game_over", "result": final, "by_resign": False})
