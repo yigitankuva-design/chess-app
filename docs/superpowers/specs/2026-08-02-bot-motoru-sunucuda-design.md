@@ -20,6 +20,57 @@ yayınlar — insan-insan maçında zaten çalışan `/ws/game/{game_id}` +
 akışına bağlı DEĞİL, hâlâ eski REST + tarayıcı-motoru yolunu kullanıyor olacak.
 Ön yüzün bağlanması ayrı, sonraki (son) parça.
 
+## Gözden geçirmede bulunan iki ek sorun (kod çalıştırılarak doğrulandı)
+
+Bu belgenin ilk hâli yazıldıktan sonra iddialar tek tek sınandı. İkisi doğrulandı
+(aşağıdaki sıra-kontrolü hatası ve `popen_uci`'nin gerçekten async olduğu —
+`python-chess 1.2.0` ile çalıştırılarak teyit edildi), ama İKİ YENİ sorun çıktı:
+
+### A. Beraberliği REDDEDEN bot, sporcuya hiçbir şey söylemez
+
+İlk tasarım "bot reddederse mevcut `_handle_decline_draw` çağrılır" diyordu.
+Bu YANLIŞ:
+
+```python
+async def _handle_decline_draw(game_id, child_id, room):
+    ...
+    await room.broadcast({"type": "draw_declined", "by_child_id": child_id}, exclude=child_id)
+```
+
+Bu fonksiyon mesajı **teklif edeni HARİÇ TUTARAK** yayınlar (insan-insan maçında
+doğru: red haberi rakibe gider). Bot maçında ise odadaki TEK katılımcı sporcunun
+kendisidir — `exclude=child_id` onu da eleyince mesaj **hiç kimseye** gitmez.
+Gerçek `GameRoom` ile çalıştırılarak doğrulandı: **sporcuya ulaşan mesaj sayısı 0**.
+Sporcu beraberlik teklif eder, bot reddeder, sporcu bunu ASLA öğrenmez ve ekranda
+bekler.
+
+**Düzeltme:** bot maçında red, mevcut fonksiyon yeniden kullanılmadan, `exclude`
+OLMADAN ve `by_child_id: None` (yani "bot") ile yayınlanır. Kabul yolunda
+(`_handle_draw`) böyle bir sorun YOK — o zaten `exclude` kullanmadan `game_over`
+yayınlıyor, sporcuya ulaşır.
+
+### B. Botun gücü yalnızca `skill_level` değil — `depth` de var, ve sunucuda YOK
+
+İlk tasarım "istemcideki AYNI ayarlar (`Skill Level`, `depth=8`)" diyordu; `depth=8`
+sanki sabitmiş gibi. Değil. `apps/web/lib/play/levels.ts`'te 8 zorluk düzeyi var ve
+her düzeyin AYRI bir derinliği:
+
+| Düzey | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| skill | 0 | 3 | 6 | 9 | 12 | 15 | 18 | 20 |
+| depth | 1 | 3 | 5 | 7 | 8 | 9 | 11 | 12 |
+
+Sunucu bugün YALNIZCA `skill_level`'ı saklıyor (`Game.black_bot_level`); `depth`
+hiç gönderilmiyor. Sunucu motoru `depth` olmadan çağırırsa bot, sporcunun seçtiği
+düzeyden FARKLI (muhtemelen çok daha güçlü) oynar — özellikle 1. düzeyde
+(depth=1 beklenirken varsayılan derinlik) yeni başlayan çocuğu ezer.
+
+**Düzeltme:** yukarıdaki tablo `chess_api/services/bot_engine.py` içine Python
+sabiti olarak taşınır ve `skill_level` → `depth` eşlemesi oradan yapılır. Tabloda
+olmayan bir `skill_level` gelirse (uç nokta 0-20 arasını kabul ediyor, ör. 7),
+**en yakın alt basamağın** derinliği kullanılır — bu, sessizce çok güçlü bir bot
+üretmekten güvenlidir. Bu eşleme saf bir fonksiyon olarak ayrı test edilir.
+
 ## Kod okunarak bulunan bir hata: `student_color` sıra kontrolünde kullanılmıyor
 
 `live_game.py::_handle_move`, "sıra kimde" kararını `Game.white_child_id`/
@@ -45,23 +96,30 @@ else:
     human_may_move = (whites_turn and child_id == white_id) or (not whites_turn and child_id == black_id)
 ```
 
-İnsan-insan maçı için bu, MANTIKEN bugünküyle BİREBİR AYNI (De Morgan eşdeğeri) —
-davranış değişmez, yalnızca tek bir `if`'e toparlanır.
+İnsan-insan maçı için bu, MANTIKEN bugünküyle BİREBİR AYNI — bu bir varsayım
+değil, **tüm girdi kombinasyonları (sıra × sporcu × beyaz × siyah, `None` değerler
+dahil) çalıştırılarak sınandı: 0 fark**. Davranış değişmez, yalnızca tek bir
+`if`'e toparlanır.
 
 ## Mimari Karar
 
-1. **Motor soyutlaması** — `chess_api/services/bot_engine.py` (yeni): tek bir
-   fonksiyon, `async def get_bot_move(fen: str, skill_level: int) -> str | None`.
-   Production'da `python-chess`'in `chess.engine.popen_uci` ile Stockfish
-   binary'sini (Nixpacks: `nixPkgs = ["stockfish"]`) çağırır — bugün istemcide
-   kullanılan AYNI ayarlarla (`Skill Level` UCI seçeneği, `depth=8` arama
-   limiti; bkz. `apps/web/lib/chess/stockfish.ts`). Bu fonksiyon `live_game.py`
-   içinde `chess_api.routers.live_game.get_bot_move` olarak import edilir —
-   testler mevcut `get_session_factory` deseniyle AYNI şekilde
-   `monkeypatch.setattr(...)` ile SAHTE bir motorla değiştirebilir. **Bilgisayarımda
-   gerçek Stockfish binary'si kurulu değil (doğrulandı) — bu yüzden testler HİÇBİR
-   ZAMAN gerçek motoru çağırmaz, yalnızca "motor çağrıldığında ne olur" akışını
-   sınar.**
+1. **Motor soyutlaması** — `chess_api/services/bot_engine.py` (yeni). İki parça:
+   - `depth_for_skill(skill_level: int) -> int` — saf fonksiyon, yukarıdaki
+     (sorun B'deki) tabloyu uygular, tabloda olmayan değerde en yakın alt
+     basamağa yuvarlar. Ayrı ve kolayca test edilir.
+   - `async def get_bot_move(fen: str, skill_level: int) -> str | None` —
+     production'da `python-chess`'in `chess.engine.popen_uci` (çalıştırılarak
+     doğrulandı: bu gerçekten bir `async` fonksiyon, yani FastAPI'nin olay
+     döngüsünü bloklamaz) ile Stockfish binary'sini (Nixpacks:
+     `nixPkgs = ["stockfish"]`) çağırır; `Skill Level` UCI seçeneğini ve
+     `depth_for_skill(...)` derinliğini uygular — böylece bot, sporcunun seçtiği
+     düzeyde oynar.
+
+   `get_bot_move` `live_game.py` içine import edilir; testler mevcut
+   `get_session_factory` deseniyle AYNI şekilde `monkeypatch.setattr(...)` ile
+   SAHTE bir motorla değiştirir. **Bu bilgisayarda gerçek Stockfish binary'si
+   kurulu değil (doğrulandı) — testler HİÇBİR ZAMAN gerçek motoru çağırmaz,
+   yalnızca "motor çağrıldığında akış doğru mu" sorusunu sınar.**
 
 2. **`_handle_move` sonuna bot-hamlesi tetikleyicisi** — insan hamlesi işlenip
    yayınlandıktan SONRA, maç hâlâ aktifse VE `game.type == bot` VE artık sıra
@@ -75,10 +133,15 @@ davranış değişmez, yalnızca tek bir `if`'e toparlanır.
 3. **Beraberlik teklifine bot cevabı** — `apps/web/lib/play/botDraw.ts`'teki
    `materialDiff`/`botAcceptsDraw` saf fonksiyonları `chess_api/services/
    bot_draw.py`'ye BİREBİR aynı mantıkla taşınır (Python'a çevrilir).
-   `_handle_offer_draw`, bir bot maçında teklif işlendikten HEMEN SONRA botun
-   kararını sorar ve `_handle_draw` (kabul) veya `_handle_decline_draw` (red)
-   çağrısını KENDİSİ tetikler — insan-insan maçında bunu yapan ikinci bir
-   oyuncu yokken, bot maçında "ikinci oyuncu" sunucunun kendisidir.
+   `_handle_offer_draw`, bir bot maçında teklif işlendikten HEMEN SONRA güncel
+   FEN'i (`_current_fen_and_ply`) ve botun rengini (`student_color`'ın tersi)
+   kullanarak botun kararını sorar:
+   - **Kabul** → mevcut `_handle_draw(game_id, room)` çağrılır. Bu güvenli:
+     `game_over`'ı `exclude` KULLANMADAN yayınlar, sporcuya ulaşır.
+   - **Red** → mevcut `_handle_decline_draw` **KULLANILMAZ** (sorun A: sporcuyu
+     hariç tutup mesajı hiç kimseye göndermiyor, ölçüldü). Bunun yerine doğrudan
+     `await room.broadcast({"type": "draw_declined", "by_child_id": None})` —
+     `exclude` yok, `by_child_id: None` "reddeden bot" anlamına gelir.
 
 ## Kapsam Dışı
 
@@ -108,6 +171,14 @@ davranış değişmez, yalnızca tek bir `if`'e toparlanır.
 - Beraberlik: bot geride/eşit durumdaysa teklifi kabul ettiğini, bot bir
   piyondan fazla öndeyse reddettiğini doğrulayan testler — `bot-draw.test.ts`
   (mevcut frontend testi) ile AYNI senaryolar Python tarafında.
+- **Beraberlik reddi sporcuya ULAŞMALI** (sorun A): bot reddettiğinde sporcunun
+  bağlantısının `draw_declined` mesajını GERÇEKTEN aldığını doğrulayan test.
+  Mevcut `_handle_decline_draw` yeniden kullanılsaydı bu test 0 mesajla KALIRDI
+  (ölçüldü) — bu yüzden bu test, doğru yaklaşımı zorunlu kılan koruma testidir.
+- **`depth_for_skill` eşlemesi** (sorun B): tablodaki 8 düzeyin her birinin doğru
+  derinliği verdiğini; tabloda olmayan bir değerin (ör. `skill=7`) en yakın ALT
+  basamağa (skill 6 → depth 5) yuvarlandığını; uç değerlerin (0 ve 20) doğru
+  çalıştığını doğrulayan testler.
 - İnsan-insan maçı regresyonu: sıra-kontrolü refactoru sonrası MEVCUT tüm
   `live_game` testleri (`test_live_two_moves.py`, `test_draw_offers_ws.py`,
   `test_game_info_moves.py`, vb.) değişmeden PASS etmeli.
