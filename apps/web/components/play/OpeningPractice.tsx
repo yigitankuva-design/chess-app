@@ -25,6 +25,7 @@ export function OpeningPractice() {
   const [chosen, setChosen] = useState<Opening | null>(null);
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
   const [color, setColor] = useState<PieceColor>('w');
+  const [matchKey, setMatchKey] = useState(0);
 
   const loadOpenings = useCallback(async () => {
     try {
@@ -63,12 +64,14 @@ export function OpeningPractice() {
   if (criteria && chosen) {
     return (
       <BotGame
+        key={matchKey}
         skillLevel={criteria.level.skill}
         depth={criteria.level.depth}
         timeControl={criteria.timeControl}
         studentColor={color}
         startFen={chosen.start_fen}
         onGameEnd={() => {}}
+        onRematch={() => setMatchKey((k) => k + 1)}
       />
     );
   }

@@ -207,14 +207,8 @@ function PlayInner() {
         timeControl={botCriteria.timeControl}
         studentColor={botColor}
         onGameEnd={() => {}}
+        onRematch={() => { setBotColor(resolveColor(botCriteria.colorChoice)); setGameKey((k) => k + 1); }}
       />
-
-      <div className="text-center mt-4">
-        <button onClick={() => { setBotColor(resolveColor(botCriteria.colorChoice)); setGameKey((k) => k + 1); }}
-          className="t-btn-ghost px-5 py-2">
-          Yeni Oyun
-        </button>
-      </div>
     </main>
   );
 }

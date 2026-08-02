@@ -691,7 +691,7 @@ git commit -m "feat: LiveGame MatchLayout kullaniyor, avatar gosteriliyor"
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-vi.mock('./ChessBoard', () => ({
+vi.mock('@/components/ChessBoard', () => ({
   ChessBoard: ({ fen }: { fen: string }) => <div data-testid="board" data-fen={fen} />,
 }));
 vi.mock('@/lib/chess/stockfish', () => ({

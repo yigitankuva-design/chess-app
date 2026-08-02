@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
-import { MatchHeader } from '@/components/play/MatchHeader';
+import { MatchLayout } from '@/components/play/MatchLayout';
+import type { PlayerInfo } from '@/components/play/MatchLayout';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
@@ -13,6 +14,7 @@ import type { PromotionPiece } from '@/lib/play/promotion';
 import { ChessBoard } from './ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
+import { getSavedAvatar } from '@/lib/avatars';
 import {
   botGameKey, loadBotGame, saveBotGame, clearBotGame,
 } from '@/lib/play/botGameSession';
@@ -37,11 +39,13 @@ interface Props {
   /** Acilis pratigi icin baslangic pozisyonu. Verilmezse standart baslangic. */
   startFen?: string;
   onGameEnd: (result: 'win' | 'loss' | 'draw') => void;
+  /** Verilirse maç bitince "Yeniden Oyna" butonu görünür ve aktif olur. */
+  onRematch?: () => void;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd }: Props) {
+export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd, onRematch }: Props) {
   // Oturum anahtarı render'lar arasında sabittir; prop'lardan türetilir.
   const sessionKeyStr = botGameKey(skillLevel, studentColor, startFen);
   /** Kayıttan okunan hamleler — ilk render'da tahtayı kurmak için kullanılır.
@@ -94,6 +98,7 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
   const [drawNote, setDrawNote] = useState('');
   // Sporcunun adi girişte saklaniyor; yoksa nötr bir etiket kullanilir.
   const [studentName] = useState(() => getAthleteName() || 'Sen');
+  const [studentAvatar] = useState(() => getSavedAvatar());
   const [thinking, setThinking] = useState(false);
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
   const [resultText, setResultText] = useState<string>('');
@@ -330,89 +335,84 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
     );
   }
 
+  const studentTimeSec = studentColor === 'w' ? whiteTime : blackTime;
+  const botTimeSec = botColor === 'w' ? whiteTime : blackTime;
+  const top: PlayerInfo = {
+    avatarId: 'robot',
+    name: 'Bot',
+    ms: tc ? botTimeSec * 1000 : null,
+    active: status === 'playing' && chessRef.current.turn() === botColor,
+  };
+  const bottom: PlayerInfo = {
+    avatarId: studentAvatar,
+    name: studentName,
+    ms: tc ? studentTimeSec * 1000 : null,
+    active: status === 'playing' && chessRef.current.turn() === studentColor,
+  };
+
   return (
-    <div className="max-w-2xl mx-auto px-4">
-      {/* Madde 3: uc kart tahtanin USTUNDE — kare/dikdortgen/kare. */}
-      <MatchHeader
-        whiteName={studentColor === 'w' ? studentName : 'Bot'}
-        blackName={studentColor === 'w' ? 'Bot' : studentName}
-        whiteMs={tc ? whiteTime * 1000 : null}
-        blackMs={tc ? blackTime * 1000 : null}
-        whiteToMove={chessRef.current.turn() === 'w'}
-        running={status === 'playing'}
-      />
-
-      <div className="h-7 flex items-center justify-center mb-2">
-        {thinking && (
-          <p className="t-muted text-center text-sm animate-pulse">
-            🤖 Bot düşünüyor...
-          </p>
-        )}
-      </div>
-
-      <ChessBoard
-        fen={nav.viewFen}
-        interactive={status === 'playing' && !thinking && nav.isLive}
-        onPieceDrop={handleDrop}
-        boardOrientation={studentColor === 'w' ? 'white' : 'black'}
-        onWheelStep={nav.step}
-        historyView={!nav.isLive}
-        onLeaveHistory={nav.goLive}
-        onPremove={choosePremove}
-        premoveColor={studentColor}
-        premoveSquares={premove}
-      />
-
-      <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
-
-      {/* Madde 1: tum hamleler tahtanin ALTINDA. Bu bilesende chess.load()
-          cagrilmadigi icin chess.js gecmisi bozulmaz, dogrudan okunur. */}
-      <MoveList
-        san={sanHistory}
-        startFen={startFen}
-        onSelectPly={nav.goTo}
-        activePly={nav.isLive ? undefined : nav.viewIndex}
-      />
-
-      {pending && (
-        <PromotionPicker
-          onPick={(piece) => {
-            const p = pending;
-            setPending(null);
-            applyStudentMove(p.from, p.to, piece);
-          }}
-          onCancel={() => setPending(null)}
+    <MatchLayout
+      top={top}
+      bottom={bottom}
+      board={
+        <>
+          <div className="h-7 flex items-center justify-center mb-2">
+            {thinking && (
+              <p className="t-muted text-center text-sm animate-pulse">
+                🤖 Bot düşünüyor...
+              </p>
+            )}
+          </div>
+          <ChessBoard
+            fen={nav.viewFen}
+            interactive={status === 'playing' && !thinking && nav.isLive}
+            onPieceDrop={handleDrop}
+            boardOrientation={studentColor === 'w' ? 'white' : 'black'}
+            onWheelStep={nav.step}
+            historyView={!nav.isLive}
+            onLeaveHistory={nav.goLive}
+            onPremove={choosePremove}
+            premoveColor={studentColor}
+            premoveSquares={premove}
+          />
+          <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
+        </>
+      }
+      moveList={
+        <MoveList
+          san={sanHistory}
+          startFen={startFen}
+          onSelectPly={nav.goTo}
+          activePly={nav.isLive ? undefined : nav.viewIndex}
         />
-      )}
-
-
-      {status === 'over' ? (
-        <div className="mt-4 t-ok p-4 text-center text-lg font-bold">
+      }
+      extra={
+        <>
+          {pending && (
+            <PromotionPicker
+              onPick={(piece) => {
+                const p = pending;
+                setPending(null);
+                applyStudentMove(p.from, p.to, piece);
+              }}
+              onCancel={() => setPending(null)}
+            />
+          )}
+          {drawNote && status !== 'over' && <p className="text-center text-sm t-muted">{drawNote}</p>}
+        </>
+      }
+      over={status === 'over'}
+      resultSlot={
+        <div className="t-ok p-4 text-center text-lg font-bold">
           {resultText}
         </div>
-      ) : (
-        <div className="mt-3 space-y-2">
-          <div className="flex gap-2 justify-center">
-            <button
-              type="button"
-              disabled={!canOfferDraw(drawOffersUsed)}
-              onClick={offerDrawToBot}
-              className="t-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
-            >
-              Beraberlik Teklif Et ({offersLeft(drawOffersUsed)})
-            </button>
-            <button
-              type="button"
-              onClick={() => { if (confirm('Maçı terk etmek istiyor musun? Maçı kaybedeceksin.')) resignToBot(); }}
-              className="t-btn px-4 py-2 text-sm"
-              style={{ background: 'var(--t-err-bg, #ef4444)', color: '#fff' }}
-            >
-              Terk Et
-            </button>
-          </div>
-          {drawNote && <p className="text-center text-sm t-muted">{drawNote}</p>}
-        </div>
-      )}
-    </div>
+      }
+      drawLabel={`Beraberlik Teklif Et (${offersLeft(drawOffersUsed)})`}
+      drawDisabled={!canOfferDraw(drawOffersUsed)}
+      onOfferDraw={offerDrawToBot}
+      onResign={resignToBot}
+      onRematch={onRematch}
+      rematchEnabled={status === 'over'}
+    />
   );
 }
