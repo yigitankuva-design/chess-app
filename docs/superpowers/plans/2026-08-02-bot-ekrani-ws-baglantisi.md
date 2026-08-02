@@ -33,7 +33,7 @@ dokunmak (silinmez, değiştirilmez).
 - Create: `apps/web/components/BotGameLive.tsx`
 - Test: `apps/web/tests/bot-game-live.test.tsx`
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `apps/web/tests/bot-game-live.test.tsx`:
 
@@ -103,13 +103,13 @@ describe('BotGameLive — /games/bot/start doğru gövdeyle çağrılır', () =>
 });
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/web && npx vitest run tests/bot-game-live.test.tsx`
 Expected: FAIL — `Failed to resolve import "@/components/BotGameLive"` (dosya
 henüz yok).
 
-- [ ] **Step 3: `botGameLiveSession.ts`'i yaz**
+- [x] **Step 3: `botGameLiveSession.ts`'i yaz**
 
 `apps/web/lib/play/botGameLiveSession.ts`:
 
@@ -145,7 +145,7 @@ export function saveBotGameLiveId(key: string, gameId: number): void {
 }
 ```
 
-- [ ] **Step 4: `BotGameLive.tsx`'i yaz**
+- [x] **Step 4: `BotGameLive.tsx`'i yaz**
 
 `apps/web/components/BotGameLive.tsx`:
 
@@ -214,18 +214,18 @@ export function BotGameLive({ skillLevel, timeControl, studentColor = 'w', start
 }
 ```
 
-- [ ] **Step 5: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 5: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/web && npx vitest run tests/bot-game-live.test.tsx`
 Expected: PASS (3 test).
 
-- [ ] **Step 6: Regresyon — `BotGame.tsx`'e ve `LiveGame.tsx`'e dokunulmadı**
+- [x] **Step 6: Regresyon — `BotGame.tsx`'e ve `LiveGame.tsx`'e dokunulmadı**
 
 Run: `cd apps/web && npx vitest run tests/bot-game-persistence.test.tsx tests/bot-game-premove.test.tsx tests/bot-game-history.test.tsx tests/bot-game-color.test.tsx tests/live-game-controls.test.tsx`
 Expected: TÜMÜ PASS — bu dosya hiçbirine dokunmadığı için değişiklik
 BEKLENMEZ, yalnızca doğrulama amaçlı çalıştırılır.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/lib/play/botGameLiveSession.ts apps/web/components/BotGameLive.tsx apps/web/tests/bot-game-live.test.tsx
@@ -244,7 +244,7 @@ maçlarında bu, botun ekranda "Sporcu" görünmesine yol açar.
 - Modify: `apps/api/chess_api/routers/live_game.py:190-215` (`game_ws` içindeki `game_info` bloğu)
 - Test: `apps/api/tests/test_bot_game_info_name.py` (yeni)
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `apps/api/tests/test_bot_game_info_name.py`:
 
@@ -307,14 +307,14 @@ async def test_insan_macinda_isim_hala_sporcu_varsayilanlidir(env):
     assert msg["black_name"] == "Sporcu"
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Testi çalıştır, kırmızı olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_game_info_name.py -v`
 Expected: `test_bot_macinda_bos_kalan_taraf_bot_yazar` FAIL — `black_name` şu an
 `"Sporcu"` döner. İkinci test zaten PASS eder (bugünkü davranışla aynı) — bu
 NORMAL, regresyon koruması.
 
-- [ ] **Step 3: `game_info` bloğunu düzelt**
+- [x] **Step 3: `game_info` bloğunu düzelt**
 
 `apps/api/chess_api/routers/live_game.py` içinde `game_ws`'in `game_info`
 gönderen bölümünü (satır ~190-215) şu şekilde değiştir:
@@ -357,17 +357,17 @@ Yeni:
             "black_name": b.display_name if b else default_name,
 ```
 
-- [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
+- [x] **Step 4: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `cd apps/api && python -m pytest tests/test_bot_game_info_name.py -v`
 Expected: PASS (2 test).
 
-- [ ] **Step 5: Regresyon**
+- [x] **Step 5: Regresyon**
 
 Run: `cd apps/api && python -m pytest tests/test_live_game_ws.py tests/test_game_info_moves.py tests/test_live_two_moves.py tests/test_draw_offers_ws.py tests/test_bot_move_server.py tests/test_bot_draw_ws.py -v`
 Expected: TÜMÜ PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api/chess_api/routers/live_game.py apps/api/tests/test_bot_game_info_name.py
@@ -380,17 +380,17 @@ git commit -m "fix: bot macinda game_info bos kalan taraf icin 'Bot' yazar"
 
 **Files:** (yok — yalnızca doğrulama)
 
-- [ ] **Step 1: Backend tam paketi**
+- [x] **Step 1: Backend tam paketi**
 
 Run: `cd apps/api && python -m pytest -q`
 Expected: TÜM testler PASS (mevcut 385 test + bu planın eklediği 2 = 387).
 
-- [ ] **Step 2: Frontend tam paketi**
+- [x] **Step 2: Frontend tam paketi**
 
 Run: `cd apps/web && npx tsc --noEmit && npx next lint && npx vitest run`
 Expected: `tsc`/`lint` hatasız; `vitest` mevcut testler + 3 yeni = TÜMÜ PASS.
 
-- [ ] **Step 3: Canlı doğrulama — KISMEN mümkün (KURAL #6, dürüstçe)**
+- [x] **Step 3: Canlı doğrulama — KISMEN mümkün (KURAL #6, dürüstçe)**
 
 `BotGameLive` hiçbir sayfaya bağlı olmadığı için tarayıcıda "bota karşı oyna"
 akışından erişilemez — bu GERÇEK bir sınırlama, gizlenmez. Bunun yerine:
@@ -401,7 +401,7 @@ akışından erişilemez — bu GERÇEK bir sınırlama, gizlenmez. Bunun yerine
   gerçek uçtan uca deneme, motorla birlikte yapılacak "devreye alma"
   görevinde gerçekleşecektir.
 
-- [ ] **Step 4: Kullanıcıya rapor + canlıya gönderme kararı**
+- [x] **Step 4: Kullanıcıya rapor + canlıya gönderme kararı**
 
 Bu adımda kod yazılmaz. KURAL #0'a uygun sade Türkçe ile şunlar özetlenir:
 - Yeni ekran parçası hazır ve test edildi ama HİÇBİR gerçek sayfaya bağlı
