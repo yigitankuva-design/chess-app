@@ -42,11 +42,30 @@ const clickSq: BoardExerciseConfig = {
 };
 
 describe('BoardExercise — ortak tahta teması + notasyon (madde 1)', () => {
-  it('click_square sorusunda kenar rakam/harf etiketleri görünür', () => {
+  it('click_square sorusunda KENDİ (dış) rakam/harf çerçevesi görünür', () => {
+    // NOT: react-chessboard'un KENDİ varsayılan notasyonu (showNotation=true)
+    // zaten kare içinde küçük "8"/"a" metinleri çizer — bu yüzden düz
+    // getByText('8') testi YANLIŞ POZİTİF verir (fix olmadan bile geçer).
+    // Bunun yerine ChessBoard.tsx ile AYNI dış çerçeve yapısını (data-testid)
+    // arıyoruz — bu yalnız BİZİM eklediğimiz markup'ta bulunur.
     render(<BoardExercise exercises={[clickSq]} done={false} onCorrect={vi.fn()} />);
-    // coordLabels('white') -> ranks 8..1, files a..h. "8" rakamı ve "a" harfi görünmeli.
-    expect(screen.getByText('8')).toBeInTheDocument();
-    expect(screen.getByText('a')).toBeInTheDocument();
+    const frame = screen.getByTestId('board-exercise-coord-frame');
+    expect(frame).toBeInTheDocument();
+    expect(frame.textContent).toContain('8');
+    expect(frame.textContent).toContain('a');
+  });
+
+  it("react-chessboard'un KENDİ iç notasyonu kapatılır (showNotation:false)", () => {
+    // Kendi dış çerçevemiz varken kütüphanenin kendi notasyonu da açık
+    // kalırsa çift görünür (madde 1'in istediği "tek tip" görünümü bozar).
+    const { container } = render(
+      <BoardExercise exercises={[clickSq]} done={false} onCorrect={vi.fn()} />,
+    );
+    // react-chessboard notasyonu kare içinde <span> olarak, data-square
+    // öğesinin İÇİNDE render eder — showNotation:false verilince o span'lar
+    // hiç oluşmaz.
+    const a1 = container.querySelector('[data-square="a1"]') as HTMLElement;
+    expect(a1.querySelector('span')).toBeNull();
   });
 
   it('kareler uygulamanın ortak açık/koyu renklerini kullanır (varsayılan tema)', () => {
@@ -54,9 +73,9 @@ describe('BoardExercise — ortak tahta teması + notasyon (madde 1)', () => {
       <BoardExercise exercises={[clickSq]} done={false} onCorrect={vi.fn()} />,
     );
     const square = container.querySelector('[data-square="a1"]') as HTMLElement;
-    // BOARD_DARK_SQUARE = '#c3c6ee' (lib/chess/boardSkin.tsx) — react-chessboard'un
-    // KENDİ varsayılan renginden (farklı bir gri/kahve tonu) AYRIŞIR.
-    expect(square.style.backgroundColor).not.toBe('');
+    const overlay = square.querySelector('div') as HTMLElement;
+    // BOARD_DARK_SQUARE = '#c3c6ee' (lib/chess/boardSkin.tsx).
+    expect(overlay.style.backgroundColor).toBe('rgb(195, 198, 238)');
   });
 });
 ```
@@ -95,6 +114,7 @@ Tahta render bloğunu (satır ~476-486, `<div className="rounded-xl overflow-hid
               tahta temasıyla (madde 1: eskiden ham react-chessboard
               kullanılıyordu, tema ve notasyon uygulanmıyordu). */}
           <div
+            data-testid="board-exercise-coord-frame"
             className="w-full mx-auto p-3 rounded-2xl"
             style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG }}
           >
@@ -138,7 +158,7 @@ Tahta render bloğunu (satır ~476-486, `<div className="rounded-xl overflow-hid
 - [ ] **Step 4: Testi çalıştır, yeşil olduğunu gör**
 
 Run: `npx vitest run tests/board-exercise-board-theme.test.tsx`
-Expected: PASS (2 test).
+Expected: PASS (3 test).
 
 - [ ] **Step 5: Regresyon**
 
@@ -466,7 +486,11 @@ describe('BoardExercise — kart sırası: geribildirim solda, sonraki soru sağ
       <BoardExercise exercises={two} done={false} onCorrect={vi.fn()} />,
     );
     fireEvent.click(container.querySelector('[data-square="e4"]')!);
-    const grid = screen.getByText('Sonraki Soruya Geç').closest('div')!.parentElement!;
+    // DİKKAT: '.closest("div")' burada YANLIŞ olurdu — buton bir <button>,
+    // "div" DEĞİL; closest('div') butonu atlayıp GRID'in kendisini bulur,
+    // sonra .parentElement grid'in ÜSTÜNE çıkardı (yanlış eleman). Grid'i
+    // doğrudan class seçiciyle buluyoruz.
+    const grid = screen.getByText('Sonraki Soruya Geç').closest('.grid')!;
     const children = Array.from(grid.children);
     const feedbackIdx = children.findIndex((c) => c.textContent?.includes('✓'));
     const nextIdx = children.findIndex((c) => c.textContent?.includes('Sonraki Soruya Geç'));
