@@ -517,3 +517,57 @@ async def test_image_question_rejects_non_bool_show_board(client, db):
          "image_show_board": "yes"},
     ])
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_image_question_accepts_prompt_images_array(client, db):
+    les = await _lesson(db, order=210)
+    tok = await _teacher_token(client, email="multi1@t.com")
+    img_a = "data:image/png;base64," + "A" * 100
+    img_b = "data:image/png;base64," + "B" * 100
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "İki görsele bak",
+         "prompt_images": [
+             {"uri": img_a, "x": 30, "y": 30, "w": 20, "h": 20, "tone": 0},
+             {"uri": img_b, "x": 70, "y": 70, "w": 20, "h": 20, "tone": 5},
+         ],
+         "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0},
+    ])
+    assert r.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_image_question_rejects_empty_prompt_images(client, db):
+    les = await _lesson(db, order=211)
+    tok = await _teacher_token(client, email="multi2@t.com")
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "Soru", "prompt_images": [],
+         "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_image_question_rejects_out_of_range_element_in_prompt_images(client, db):
+    les = await _lesson(db, order=212)
+    tok = await _teacher_token(client, email="multi3@t.com")
+    img_a = "data:image/png;base64," + "A" * 100
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "Soru",
+         "prompt_images": [{"uri": img_a, "x": 150, "y": 30, "w": 20, "h": 20, "tone": 0}],
+         "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0},
+    ])
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_image_question_legacy_prompt_image_still_accepted(client, db):
+    """Eski tekil format hâlâ çalışmalı — geriye uyumluluk (KURAL #3)."""
+    les = await _lesson(db, order=213)
+    tok = await _teacher_token(client, email="multi4@t.com")
+    small_img = "data:image/png;base64," + "A" * 100
+    r = await _post_step(client, tok, les.id, [
+        {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
+         "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0},
+    ])
+    assert r.status_code == 201

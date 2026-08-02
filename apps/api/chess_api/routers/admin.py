@@ -563,14 +563,39 @@ def _validate_image_placement(ex: dict) -> None:
             raise HTTPException(status_code=400, detail="image_show_board doğru/yanlış olmalı")
 
 
+def _validate_prompt_images(images: object) -> None:
+    """Yeni çoklu-görsel formatı: her biri kendi konum/boyut/ton bilgisiyle
+    bir liste. Boş liste veya liste-olmayan reddedilir."""
+    if not isinstance(images, list) or len(images) == 0:
+        raise HTTPException(status_code=400, detail="En az bir soru görseli gerekli")
+    if len(images) > 20:
+        raise HTTPException(status_code=400, detail="En fazla 20 görsel eklenebilir")
+    ranges = (("x", 0, 100), ("y", 0, 100), ("w", 5, 90), ("h", 5, 90), ("tone", 0, 10))
+    for idx, img in enumerate(images):
+        if not isinstance(img, dict):
+            raise HTTPException(status_code=400, detail=f"{idx + 1}. görsel geçersiz")
+        _check_data_uri_size(img.get("uri"), f"{idx + 1}. görsel")
+        for field, lo, hi in ranges:
+            val = img.get(field)
+            if not isinstance(val, (int, float)) or isinstance(val, bool) or val < lo or val > hi:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{idx + 1}. görsel {field} {lo}-{hi} arasında olmalı",
+                )
+
+
 def _validate_choice_exercise(ex: dict, ex_type: str) -> None:
     """sentence_question / image_question doğrulaması — tahtaya bağımlı değil."""
     if ex_type == "image_question":
-        img = ex.get("prompt_image")
-        if not img:
+        images = ex.get("prompt_images")
+        legacy_img = ex.get("prompt_image")
+        if images is not None:
+            _validate_prompt_images(images)
+        elif legacy_img:
+            _check_data_uri_size(legacy_img, "Soru görseli")
+            _validate_image_placement(ex)
+        else:
             raise HTTPException(status_code=400, detail="Görsel soru için görsel gerekli")
-        _check_data_uri_size(img, "Soru görseli")
-        _validate_image_placement(ex)
     else:  # sentence_question
         if not (ex.get("instruction") or "").strip():
             raise HTTPException(status_code=400, detail="Cümle sorusu için soru metni gerekli")
