@@ -47,6 +47,8 @@ export interface BoardExercise {
   /** Sadece image_question için — YENİ çoklu görsel formatı. Varsa
    *  image_x/y/w/h/tone/prompt_image (eski tekil format) yok sayılır. */
   prompt_images?: { uri: string; x: number; y: number; w: number; h: number; tone: number }[];
+  /** Sadece click_square için — sporcu tıklama modu (madde 2). Yoksa 'any'. */
+  click_mode?: 'any' | 'all';
 }
 
 interface Props {
@@ -159,6 +161,10 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   const [successMsg, setSuccessMsg] = useState(initial?.success_msg ?? '');
   const [failMsg, setFailMsg] = useState(initial?.fail_msg ?? '');
   const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 1);
+  const [clickMode, setClickMode] = useState<'any' | 'all'>(
+    (initial?.type === 'click_square' && initial.click_mode) || 'any',
+  );
+  const [clickModeChosen, setClickModeChosen] = useState(!!initial);
   // Kareye Tıkla: null = konum henüz kaydedilmedi (diz fazı). Düzenlemede kayıtlı.
   const [savedFen, setSavedFen] = useState<string | null>(
     initial?.type === 'click_square' ? (initial.fen ?? null) : null,
@@ -216,7 +222,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     if (initial?.code) base.code = initial.code;
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
-    if (type === 'click_square') { base.fen = savedFen!; base.target_squares = targets; }
+    if (type === 'click_square') { base.fen = savedFen!; base.target_squares = targets; base.click_mode = clickMode; }
     if (type === 'move_piece') { base.fen = moveFen!; base.moves = moves; }
     if (type === 'identify_piece') {
       base.highlight_square = highlight;
@@ -229,7 +235,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
         setInstruction(''); setTargets([]); setHighlight('');
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
         setMoveFen(null); setMoves([]); setNotationSaved(false); setDifficultyChosen(false);
-        setSavedFen(null); setTurnChosen(false);
+        setSavedFen(null); setTurnChosen(false); setClickMode('any'); setClickModeChosen(false);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -244,7 +250,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   };
   const steps = movePieceSteps(stepState);
   const clickSteps = clickSquareSteps({
-    instruction, setupFen: fen, turnChosen, savedFen, targets, difficultyChosen,
+    instruction, setupFen: fen, turnChosen, savedFen, targets, clickModeChosen, difficultyChosen,
   });
   const missing = type === 'click_square'
     ? firstIncomplete(clickSteps)
@@ -317,6 +323,17 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           </div>
           <p className="text-xs n-muted mb-1">Doğru kare(ler) — birden çok seçebilirsin</p>
           <SquarePicker values={targets} onToggle={toggleTarget} />
+
+          <p className="text-xs n-muted mt-3 mb-1">Sporcu Tıklama Sayısını Belirle</p>
+          <div className="flex flex-wrap gap-2">
+            {([['any', 'Tek Kareye Tıklaması Yeterli'], ['all', 'Tüm Cevap Karelerine Tıklasın']] as const).map(([m, label]) => (
+              <button key={m} type="button"
+                onClick={() => { setClickMode(m); setClickModeChosen(true); }}
+                className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                  clickMode === m && clickModeChosen ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+                }`}>{label}</button>
+            ))}
+          </div>
         </div>
       )}
 
