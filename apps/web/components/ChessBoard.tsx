@@ -29,6 +29,13 @@ interface ChessBoardProps {
    *  (madde 1). +1 ileri, -1 geri. Verilmezse tekerlek ENGELLENMEZ —
    *  sayfa kaydırma davranışı aynen korunur. */
   onWheelStep?: (delta: 1 | -1) => void;
+  /** Sıra rakipteyken (interactive=false) sporcunun ÖN-HAMLE seçmesine izin
+   *  verir (madde 5). Hamle OYNANMAZ — yalnız seçim bildirilir. */
+  onPremove?: (from: Square, to: Square) => void;
+  /** Ön-hamle verebilecek tarafın rengi. Yalnız bu renkteki taşlar seçilir. */
+  premoveColor?: 'w' | 'b';
+  /** Seçilmiş ön-hamle — iki karesi işaretlenir. */
+  premoveSquares?: { from: Square; to: Square } | null;
 }
 
 export function ChessBoard({
@@ -40,6 +47,9 @@ export function ChessBoard({
   boardOrientation = 'white',
   lastMove = null,
   onWheelStep,
+  onPremove,
+  premoveColor,
+  premoveSquares = null,
 }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
@@ -150,7 +160,24 @@ export function ChessBoard({
     // bu geri cagriyi HER durumda tetikler.
     clearAnnotations();
     clearArrows();
-    if (!interactive) return;
+    // ÖN-HAMLE: sıra rakipteyken sporcu hamlesini önceden seçebilir (madde 5).
+    // Hamle OYNANMAZ; yalnız seçim yukarı bildirilir.
+    if (!interactive) {
+      if (!onPremove || !premoveColor) return;
+      if (selectedSquare) {
+        // Ikinci tik: hedef kare. Kendi tasina tekrar tiklarsa secim degisir.
+        if (getPieceColor(square, fen) === premoveColor) {
+          setSelectedSquare(square);
+          return;
+        }
+        onPremove(selectedSquare, square);
+        setSelectedSquare(null);
+        return;
+      }
+      // Ilk tik: yalnizca KENDI tasi secilebilir.
+      if (getPieceColor(square, fen) === premoveColor) setSelectedSquare(square);
+      return;
+    }
     lockScroll();
 
     const turn = getTurnColor(fen);
@@ -196,6 +223,16 @@ export function ChessBoard({
       overrides[sq] = {
         ...overrides[sq],
         backgroundColor: theme.lastMoveColor,
+      };
+    });
+  }
+
+  // Ön-hamle kareleri belirgin turuncuyla işaretlenir (madde 5).
+  if (premoveSquares) {
+    [premoveSquares.from, premoveSquares.to].forEach((sq) => {
+      overrides[sq] = {
+        ...overrides[sq],
+        backgroundColor: 'rgba(255, 170, 0, 0.55)',
       };
     });
   }
@@ -263,13 +300,22 @@ export function ChessBoard({
             options={{
               position: fen,
               boardOrientation,
-              allowDragging: interactive,
-                  onPieceDrop: onPieceDrop
-                ? ({ sourceSquare, targetSquare }) => {
-                    lockScroll(400);
-                    return onPieceDrop(sourceSquare as Square, targetSquare as Square);
+              allowDragging: interactive || !!onPremove,
+              onPieceDrop: ({ sourceSquare, targetSquare }) => {
+                lockScroll(400);
+                // Sıra rakipteyse gerçek hamle YAPILMAZ; seçim ön-hamle
+                // olarak alınır ve taş yerine geri döner (false).
+                if (!interactive) {
+                  if (onPremove && premoveColor
+                      && getPieceColor(sourceSquare as Square, fen) === premoveColor) {
+                    onPremove(sourceSquare as Square, targetSquare as Square);
                   }
-                : undefined,
+                  return false;
+                }
+                return onPieceDrop
+                  ? onPieceDrop(sourceSquare as Square, targetSquare as Square)
+                  : false;
+              },
               onSquareClick: ({ square }) => {
                 handleSquareClick(square as Square);
               },
