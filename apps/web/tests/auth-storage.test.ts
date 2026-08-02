@@ -7,6 +7,13 @@ import {
 describe('auth-storage', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it('token sessionStorage\'da saklanır — sekmeler arası çakışmaz (rol karışma hatası)', () => {
+    saveToken('jwt-token-abc');
+    expect(sessionStorage.getItem('chess_app_token')).toBe('jwt-token-abc');
+    expect(localStorage.getItem('chess_app_token')).toBeNull();
   });
 
   it('saves and reads token', () => {

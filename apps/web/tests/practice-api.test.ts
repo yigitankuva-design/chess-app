@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fetchLessonScores, submitPracticeResult } from '@/lib/practice/practiceApi';
 
 beforeEach(() => {
-  localStorage.clear();
+  sessionStorage.clear();
   vi.stubGlobal('fetch', vi.fn());
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -14,7 +14,7 @@ describe('fetchLessonScores', () => {
   });
 
   it('token varsa skorları ScoreMap e çevirir', async () => {
-    localStorage.setItem('chess_app_token', 'tk');
+    sessionStorage.setItem('chess_app_token', 'tk');
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({ scores: [
@@ -30,13 +30,13 @@ describe('fetchLessonScores', () => {
   });
 
   it('sunucu hata verirse null döner (kilit uygulanmaz)', async () => {
-    localStorage.setItem('chess_app_token', 'tk');
+    sessionStorage.setItem('chess_app_token', 'tk');
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, json: async () => ({}) });
     expect(await fetchLessonScores(1)).toBeNull();
   });
 
   it('ağ patlarsa null döner, hata fırlatmaz', async () => {
-    localStorage.setItem('chess_app_token', 'tk');
+    sessionStorage.setItem('chess_app_token', 'tk');
     (fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('offline'));
     expect(await fetchLessonScores(1)).toBeNull();
   });
@@ -49,7 +49,7 @@ describe('submitPracticeResult', () => {
   });
 
   it('token varsa sunucu yanıtını döner', async () => {
-    localStorage.setItem('chess_app_token', 'tk');
+    sessionStorage.setItem('chess_app_token', 'tk');
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({ score: 85, best_score: 85, improved: true }),
@@ -59,7 +59,7 @@ describe('submitPracticeResult', () => {
   });
 
   it('ağ patlarsa null döner (oturum sonucu yine gösterilebilsin)', async () => {
-    localStorage.setItem('chess_app_token', 'tk');
+    sessionStorage.setItem('chess_app_token', 'tk');
     (fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('offline'));
     expect(await submitPracticeResult(5, 'suresiz', 17, 20)).toBeNull();
   });
