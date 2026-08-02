@@ -2,6 +2,12 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
 
+/** Çember stili: kare sınırına oturan iç gölge. Renk karşılaştırması bu
+ *  yardımcı üzerinden yapılır ki beklenen değer tek yerde dursun. */
+function ring(color: string): string {
+  return `inset 0 0 0 3px ${color}`;
+}
+
 /** Ctrl/Alt tuşlarını BASILI TUTAR (sağ tık ayrı çağrılır). Hook bu durumu
  *  window keydown/keyup ile takip ediyor. */
 function holdModifiers(mods: { ctrlKey?: boolean; altKey?: boolean } = {}) {
@@ -20,28 +26,28 @@ describe('useSquareAnnotations', () => {
   it('sade sağ-tık kareyi yeşil yapar', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
-    expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(74, 222, 128, 0.55)');
+    expect(result.current.squareStyles.e4?.boxShadow).toBe(ring('rgb(34, 197, 94)'));
   });
 
   it('Ctrl+sağ-tık kareyi kırmızı yapar', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
     holdModifiers({ ctrlKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
-    expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(248, 113, 113, 0.55)');
+    expect(result.current.squareStyles.e4?.boxShadow).toBe(ring('rgb(220, 38, 38)'));
   });
 
   it('Alt+sağ-tık kareyi mavi yapar', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
     holdModifiers({ altKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
-    expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(96, 165, 250, 0.55)');
+    expect(result.current.squareStyles.e4?.boxShadow).toBe(ring('rgb(37, 99, 235)'));
   });
 
   it('Ctrl+Alt+sağ-tık kareyi sarı yapar', () => {
     const { result } = renderHook(() => useSquareAnnotations('r1'));
     holdModifiers({ ctrlKey: true, altKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
-    expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(250, 204, 21, 0.55)');
+    expect(result.current.squareStyles.e4?.boxShadow).toBe(ring('rgb(234, 179, 8)'));
   });
 
   it('aynı kareye aynı renkle tekrar sağ-tık işareti temizler (toggle)', () => {
@@ -57,7 +63,7 @@ describe('useSquareAnnotations', () => {
     act(() => result.current.onSquareRightClick({ square: 'e4' })); // yeşil
     holdModifiers({ ctrlKey: true });
     act(() => result.current.onSquareRightClick({ square: 'e4' })); // kırmızı
-    expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(248, 113, 113, 0.55)');
+    expect(result.current.squareStyles.e4?.boxShadow).toBe(ring('rgb(220, 38, 38)'));
   });
 
   it('resetKey değişince tüm işaretler temizlenir', () => {
@@ -76,8 +82,21 @@ describe('useSquareAnnotations', () => {
     act(() => result.current.onSquareRightClick({ square: 'e4' }));
     holdModifiers({ ctrlKey: true });
     act(() => result.current.onSquareRightClick({ square: 'd5' }));
-    expect(result.current.squareStyles.e4?.backgroundColor).toBe('rgba(74, 222, 128, 0.55)');
-    expect(result.current.squareStyles.d5?.backgroundColor).toBe('rgba(248, 113, 113, 0.55)');
+    expect(result.current.squareStyles.e4?.boxShadow).toBe(ring('rgb(34, 197, 94)'));
+    expect(result.current.squareStyles.d5?.boxShadow).toBe(ring('rgb(220, 38, 38)'));
+  });
+});
+
+describe('çember biçimi (madde 2)', () => {
+  it('işaret kareyi DOLDURMAZ, kare sınırına oturan çember çizer', () => {
+    const { result } = renderHook(() => useSquareAnnotations('r1'));
+    act(() => result.current.onSquareRightClick({ square: 'e4' }));
+    const style = result.current.squareStyles.e4!;
+    // Dolgu YOK: kare kendi zemin rengini korur.
+    expect(style.backgroundColor).toBeUndefined();
+    // Gölge ICERI dogru: kare disina tasmaz.
+    expect(String(style.boxShadow)).toContain('inset');
+    expect(style.borderRadius).toBe('50%');
   });
 });
 

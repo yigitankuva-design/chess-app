@@ -4,12 +4,18 @@ import type { CSSProperties } from 'react';
 
 export type AnnotationColor = 'green' | 'red' | 'blue' | 'yellow';
 
+/** Çember TAM OPAK: ince bir çizgi yarı saydam olduğunda tahtada zor
+ *  seçiliyor (dolgu döneminde 0.55 uygundu, çemberde değil). */
 const COLORS: Record<AnnotationColor, string> = {
-  green: 'rgba(74, 222, 128, 0.55)',
-  red: 'rgba(248, 113, 113, 0.55)',
-  blue: 'rgba(96, 165, 250, 0.55)',
-  yellow: 'rgba(250, 204, 21, 0.55)',
+  green: 'rgb(34, 197, 94)',
+  red: 'rgb(220, 38, 38)',
+  blue: 'rgb(37, 99, 235)',
+  yellow: 'rgb(234, 179, 8)',
 };
+
+/** Kare sınırına oturan çember. `inset` gölge kutunun İÇİNE çizilir —
+ *  kare dışına ASLA taşmaz (madde 2). */
+const RING_WIDTH_PX = 3;
 
 function colorForModifiers(ctrl: boolean, alt: boolean): AnnotationColor {
   if (ctrl && alt) return 'yellow';
@@ -72,7 +78,12 @@ export function useSquareAnnotations(resetKey: unknown): {
 
   const squareStyles: Record<string, CSSProperties> = {};
   for (const [sq, color] of Object.entries(marks)) {
-    squareStyles[sq] = { backgroundColor: COLORS[color] };
+    // backgroundColor VERILMEZ: karenin kendi zemin rengi korunur, üstüne
+    // yalnızca çember biner.
+    squareStyles[sq] = {
+      boxShadow: `inset 0 0 0 ${RING_WIDTH_PX}px ${COLORS[color]}`,
+      borderRadius: '50%',
+    };
   }
 
   const clearAnnotations = useCallback(() => setMarks({}), []);
