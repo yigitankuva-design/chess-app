@@ -1,11 +1,14 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 import { ChessBoard } from '@/components/ChessBoard';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import {
   playerState, tryStudentMove, opponentKeyMove, isSequenceComplete, appendUciMove,
 } from '@/lib/chess/movePlayer';
+import { fensFromSan } from '@/lib/play/moveNavigation';
+import { useMoveHistoryNav } from '@/lib/chess/useMoveHistoryNav';
+import { HistoryBanner } from '@/components/play/HistoryBanner';
 import type { MovePieceSequenceEx } from './BoardExercise';
 
 /** Rakibin cevabı gözle takip edilebilsin diye kısa gecikme (PuzzleSolver ile aynı). */
@@ -34,6 +37,13 @@ export function MovePieceSolver({ exercise, disabled, onSolved, onWrong }: Props
 
   const state = playerState(exercise.fen, playedMoves);
   const studentSide = playerState(exercise.fen, []).turn;
+
+  // playedMoves SAN tutar (bkz. lib/chess/movePlayer.ts) — dogrudan beslenir.
+  const fens = useMemo(
+    () => fensFromSan(exercise.fen, playedMoves),
+    [exercise.fen, playedMoves],
+  );
+  const nav = useMoveHistoryNav(fens);
 
   /** Rakibin cevabı: önce cevap anahtarı, yoksa motor. */
   async function playOpponentReply(afterStudent: string[]) {
@@ -94,11 +104,13 @@ export function MovePieceSolver({ exercise, disabled, onSolved, onWrong }: Props
   return (
     <div className="space-y-2">
       <ChessBoard
-        fen={state.fen}
-        interactive={!disabled && !thinking}
+        fen={nav.isLive ? state.fen : nav.viewFen}
+        interactive={!disabled && !thinking && nav.isLive}
         onPieceDrop={handleMove}
         boardOrientation={studentSide === 'w' ? 'white' : 'black'}
+        onWheelStep={nav.step}
       />
+      <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
       {thinking && (
         <p className="text-xs" style={{ color: 'var(--t-muted)' }}>Rakip düşünüyor…</p>
       )}

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { ChessBoard } from './ChessBoard';
@@ -13,6 +13,9 @@ import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, toUci } from '@/lib/play/promotion';
 import { playMoveSound } from '@/lib/sounds/pieceSounds';
 import type { PromotionPiece } from '@/lib/play/promotion';
+import { fensFromSan } from '@/lib/play/moveNavigation';
+import { useMoveHistoryNav } from '@/lib/chess/useMoveHistoryNav';
+import { HistoryBanner } from '@/components/play/HistoryBanner';
 
 interface Props { gameId: number; myColor: 'white' | 'black'; }
 
@@ -34,6 +37,11 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
   /** Bayrak bir kez gonderilir; her tikta tekrar gonderilmez. */
   const flagSentRef = useRef(false);
+
+  // LiveGame'de chess.load() gecmisi siler; bu yuzden gezinme SUNUCUDAN
+  // gelen sanList uzerinden yeniden kurulur (chessRef.history() KULLANILMAZ).
+  const fens = useMemo(() => fensFromSan(startFen, sanList), [startFen, sanList]);
+  const nav = useMoveHistoryNav(fens);
 
   const token = typeof window !== 'undefined' ? getToken() : null;
   const url = token ? `${wsBase()}/ws/game/${gameId}?token=${encodeURIComponent(token)}` : null;
@@ -213,10 +221,23 @@ export function LiveGame({ gameId, myColor }: Props) {
         me={myColor}
       />
 
-      <ChessBoard fen={fen} interactive={status === 'active'} onPieceDrop={handleDrop} boardOrientation={myColor} />
+      <ChessBoard
+        fen={nav.isLive ? fen : nav.viewFen}
+        interactive={status === 'active' && nav.isLive}
+        onPieceDrop={handleDrop}
+        boardOrientation={myColor}
+        onWheelStep={nav.step}
+      />
+
+      <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
 
       {/* Madde 1: tum hamleler tahtanin ALTINDA. */}
-      <MoveList san={sanList} startFen={startFen} />
+      <MoveList
+        san={sanList}
+        startFen={startFen}
+        onSelectPly={nav.goTo}
+        activePly={nav.isLive ? undefined : nav.viewIndex}
+      />
 
       {pending && (
         <PromotionPicker
