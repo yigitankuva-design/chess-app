@@ -533,7 +533,7 @@ async def delete_lesson(
     return {"deleted": True}
 
 
-BOARD_EXERCISE_TYPES = ("click_square", "move_piece", "identify_piece")
+BOARD_EXERCISE_TYPES = ("click_square", "move_piece", "identify_piece", "place_pieces")
 MAX_EXERCISE_IMAGE_BYTES = 400_000
 
 
@@ -707,6 +707,32 @@ def _validate_board_exercises(exercises: list) -> None:
             ci = ex.get("correct_index")
             if not isinstance(ci, int) or ci < 0 or ci >= len(options):
                 raise HTTPException(status_code=400, detail="Doğru şık geçersiz")
+
+        elif ex_type == "place_pieces":
+            # "Taş Nerde?": hoca konumu dizer, bir/birkaç taşı KASTEN koymaz.
+            # Sporcu o taşları doğru karelere yerleştirir.
+            pieces = ex.get("pieces")
+            if not isinstance(pieces, list) or len(pieces) < 1:
+                raise HTTPException(status_code=400, detail="En az bir taş belirlenmeli")
+            seen: set[str] = set()
+            for i, p in enumerate(pieces):
+                if not isinstance(p, dict):
+                    raise HTTPException(status_code=400, detail=f"{i + 1}. taş geçersiz")
+                pc = p.get("piece")
+                # SIRA ÖNEMLİ: uzunluk kontrolü ÖNCE — "" in "KQRBNP..." True döner.
+                if not isinstance(pc, str) or len(pc) != 1 or pc not in "KQRBNPkqrbnp":
+                    raise HTTPException(status_code=400, detail=f"Geçersiz taş: {pc}")
+                sq = p.get("square")
+                if sq not in chess.SQUARE_NAMES:
+                    raise HTTPException(status_code=400, detail=f"Geçersiz kare: {sq}")
+                if sq in seen:
+                    raise HTTPException(status_code=400, detail=f"{sq} karesi iki kez verilmiş")
+                seen.add(sq)
+                if board.piece_at(chess.parse_square(sq)) is not None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{sq} karesi dolu — eksik taşın karesi boş olmalı",
+                    )
 
 
 def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
