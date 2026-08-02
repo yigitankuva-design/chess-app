@@ -3,8 +3,8 @@ import { render, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import { BoardEditor } from '@/components/BoardEditor';
 
-describe('BoardEditor — sağ-tık renklendirme', () => {
-  it('bir kareye sağ tıklamak o kareyi yeşil boyar', () => {
+describe('BoardEditor — sağ-tık işaretleme (madde 2: çember)', () => {
+  it('bir kareye sağ tıklamak o kareye yeşil çember çizer', () => {
     const { container } = render(
       <BoardEditor fen="8/8/8/8/8/8/8/8 w - - 0 1" turn="w" onChange={vi.fn()} onTurnChange={vi.fn()} />,
     );
@@ -12,7 +12,8 @@ describe('BoardEditor — sağ-tık renklendirme', () => {
     fireEvent.contextMenu(square);
     // squareStyles inner overlay div'e uygulanıyor (ölçülmüş react-chessboard davranışı)
     const overlay = square.querySelector('div');
-    expect(overlay?.style.backgroundColor).toBe('rgba(74, 222, 128, 0.55)');
+    expect(overlay?.style.boxShadow).toContain('inset');
+    expect(overlay?.style.boxShadow).toContain('rgb(34, 197, 94)');
   });
 });
 

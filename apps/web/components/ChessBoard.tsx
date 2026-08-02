@@ -25,6 +25,10 @@ interface ChessBoardProps {
   boardOrientation?: 'white' | 'black';
   lastMove?: { from: Square; to: Square } | null;
   inCheck?: boolean;
+  /** Verilirse tahta üzerindeki fare tekerleği hamle geçmişinde adım atar
+   *  (madde 1). +1 ileri, -1 geri. Verilmezse tekerlek ENGELLENMEZ —
+   *  sayfa kaydırma davranışı aynen korunur. */
+  onWheelStep?: (delta: 1 | -1) => void;
 }
 
 export function ChessBoard({
@@ -35,6 +39,7 @@ export function ChessBoard({
   onPieceDrop,
   boardOrientation = 'white',
   lastMove = null,
+  onWheelStep,
 }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
@@ -44,6 +49,7 @@ export function ChessBoard({
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
   const scrollRef = useRef(0);
   const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const boardBoxRef = useRef<HTMLDivElement>(null);
   const { squareStyles: annotationStyles, onSquareRightClick, clearAnnotations } = useSquareAnnotations(fen);
   // Madde 7: oklar kendimiz ciziyoruz — kutuphane At hamlesini "L" cizer.
   const { arrows, onPointerDown, onPointerUp, guardSquarePaint, clearArrows } = useBoardArrows(fen);
@@ -77,6 +83,22 @@ export function ChessBoard({
     window.addEventListener('touchmove', release, { passive: true });
     scrollLockRef.current = setTimeout(release, ms);
   }, []);
+
+  // Tekerlek dinleyicisi YALNIZCA tahta kutusuna baglanir ve
+  // { passive: false } ile eklenir — React'in onWheel'i preventDefault
+  // garantisi vermiyor. Sayfa govdesindeki kaydirma ve lockScroll'un
+  // wheel'de serbest birakma mantigi DEGISMEZ (regresyon riski).
+  useEffect(() => {
+    const el = boardBoxRef.current;
+    if (!el || !onWheelStep) return;
+    const handler = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      onWheelStep(e.deltaY > 0 ? 1 : -1);
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [onWheelStep]);
 
   const saveScroll = useCallback(() => {
     scrollRef.current = window.scrollY;
@@ -226,6 +248,8 @@ export function ChessBoard({
         </div>
 
         <div
+          ref={boardBoxRef}
+          data-bsa-board=""
           className="aspect-square flex-1 relative"
           /* Madde 11: 'none' dokunmatikte sayfa kaydirmayi TAMAMEN engelliyordu.
              'pan-y' ile parmakla yukari-asagi kaydirma calisir; tasi tiklayarak
