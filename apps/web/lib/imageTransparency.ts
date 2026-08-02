@@ -46,9 +46,63 @@ export function floodFillTransparent(imageData: RawImageData, threshold: number)
   }
 }
 
+/** İki rengin kanal-bazlı en büyük farkı (0-255). Basit ve hızlı. */
+function colorDistance(
+  r: number, g: number, b: number,
+  br: number, bg: number, bb: number,
+): number {
+  return Math.max(Math.abs(r - br), Math.abs(g - bg), Math.abs(b - bb));
+}
+
+/**
+ * KÖŞE RENGİNİ örnekleyip ona `tolerance` mesafesindeki bitişik pikselleri
+ * kenardan başlayarak şeffaf yapar. Eski `floodFillTransparent` yalnız SAF
+ * beyazı (>=245) siliyordu; açık gri / hafif renkli zeminlerde HİÇBİR ŞEY
+ * silmiyordu (kullanıcı şikayeti). Bu sürüm zemin rengini görselden okur.
+ * `imageData` YERİNDE değiştirilir.
+ */
+export function removeBackground(imageData: RawImageData, tolerance = 40): void {
+  const { width, height, data } = imageData;
+  // Dört köşenin ortalaması = zemin rengi.
+  const corners = [
+    0,
+    (width - 1) * 4,
+    (height - 1) * width * 4,
+    ((height - 1) * width + (width - 1)) * 4,
+  ];
+  let br = 0, bg = 0, bb = 0;
+  for (const c of corners) { br += data[c]; bg += data[c + 1]; bb += data[c + 2]; }
+  br = Math.round(br / 4); bg = Math.round(bg / 4); bb = Math.round(bb / 4);
+
+  const visited = new Uint8Array(width * height);
+  const queue: number[] = [];
+
+  function enqueue(x: number, y: number) {
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+    const idx = y * width + x;
+    if (visited[idx]) return;
+    visited[idx] = 1;
+    const p = idx * 4;
+    if (colorDistance(data[p], data[p + 1], data[p + 2], br, bg, bb) <= tolerance) {
+      queue.push(idx);
+    }
+  }
+
+  for (let x = 0; x < width; x++) { enqueue(x, 0); enqueue(x, height - 1); }
+  for (let y = 0; y < height; y++) { enqueue(0, y); enqueue(width - 1, y); }
+
+  while (queue.length > 0) {
+    const idx = queue.pop()!;
+    data[idx * 4 + 3] = 0;
+    const x = idx % width;
+    const y = Math.floor(idx / width);
+    enqueue(x + 1, y); enqueue(x - 1, y); enqueue(x, y + 1); enqueue(x, y - 1);
+  }
+}
+
 /** Bir data-URI görselini canvas'a çizip şeffaflaştırıp yeni bir PNG
  *  data-URI olarak döner. Tarayıcı-taraflı — sunucu gerekmez. */
-export async function makeBackgroundTransparent(dataUri: string, threshold = 245): Promise<string> {
+export async function makeBackgroundTransparent(dataUri: string, tolerance = 40): Promise<string> {
   const img = await loadImage(dataUri);
   const canvas = document.createElement('canvas');
   canvas.width = img.width;
@@ -57,7 +111,7 @@ export async function makeBackgroundTransparent(dataUri: string, threshold = 245
   if (!ctx) throw new Error('Canvas desteklenmiyor');
   ctx.drawImage(img, 0, 0);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  floodFillTransparent(imageData, threshold);
+  removeBackground(imageData, tolerance);
   ctx.putImageData(imageData, 0, 0);
   return canvas.toDataURL('image/png');
 }

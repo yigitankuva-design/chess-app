@@ -49,3 +49,45 @@ describe('floodFillTransparent', () => {
     expect(img.data[3]).toBe(0);
   });
 });
+
+import { removeBackground } from '@/lib/imageTransparency';
+
+/** 3x3 görsel üret: köşeler zemin rengi, orta piksel ikon. RGBA düz dizi. */
+function makeImg(bg: [number, number, number], center: [number, number, number]) {
+  const w = 3, h = 3;
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w * h; i++) {
+    const isCenter = i === 4;
+    const [r, g, b] = isCenter ? center : bg;
+    data[i * 4] = r; data[i * 4 + 1] = g; data[i * 4 + 2] = b; data[i * 4 + 3] = 255;
+  }
+  return { width: w, height: h, data };
+}
+
+describe('removeBackground — köşe rengini örnekleyip siler (madde 4)', () => {
+  it('DÜZ BEYAZ zemin şeffaflaşır, ikon kalır', () => {
+    const img = makeImg([255, 255, 255], [10, 20, 30]);
+    removeBackground(img, 40);
+    expect(img.data[0 * 4 + 3]).toBe(0);      // köşe şeffaf
+    expect(img.data[4 * 4 + 3]).toBe(255);    // orta (ikon) opak
+  });
+
+  it('AÇIK GRI zemin de şeffaflaşır (eski eşik bunu kaçırıyordu)', () => {
+    const img = makeImg([238, 240, 236], [10, 20, 30]);
+    removeBackground(img, 40);
+    expect(img.data[0 * 4 + 3]).toBe(0);      // açık gri köşe şeffaf
+    expect(img.data[4 * 4 + 3]).toBe(255);    // ikon opak
+  });
+
+  it('zemin rengindeki orta piksel de (kenara bitişikse) silinir', () => {
+    const img = makeImg([255, 255, 255], [255, 255, 255]);
+    removeBackground(img, 40);
+    expect(img.data[4 * 4 + 3]).toBe(0);
+  });
+
+  it('tolerans DIŞINDA kalan renk silinmez', () => {
+    const img = makeImg([255, 255, 255], [10, 20, 30]);
+    removeBackground(img, 5); // çok dar tolerans
+    expect(img.data[4 * 4 + 3]).toBe(255);    // ikon kesin kalır
+  });
+});
