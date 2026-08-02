@@ -65,6 +65,11 @@ async def make_move(
     if not game or game.status != GameStatus.active:
         raise HTTPException(status_code=400, detail="Game not active")
 
+    # YETKI: yalnizca oyunun katilimcisi hamle yazabilir. Yoksa herhangi bir
+    # cocuk game_id tahmin ederek baskasinin oyununa hamle ekleyebilir (IDOR).
+    if child.id not in (game.white_child_id, game.black_child_id):
+        raise HTTPException(status_code=403, detail="Not your game")
+
     current_fen = await _current_fen(db, game_id)
     result = validate_move(current_fen, payload.move_uci)
     if not result:
@@ -108,10 +113,18 @@ async def make_move(
 
 
 @router.get("/{game_id}")
-async def game_detail(game_id: int, db: AsyncSession = Depends(get_db)):
+async def game_detail(
+    game_id: int,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
     game = await db.get(Game, game_id)
     if not game:
         raise HTTPException(status_code=404)
+    # YETKI: yalnizca oyunun katilimcisi detayini gorebilir. Auth'suz erisim
+    # cocuk ID'lerini sirayla sizdiriyordu.
+    if child.id not in (game.white_child_id, game.black_child_id):
+        raise HTTPException(status_code=403, detail="Not your game")
     return {
         "id": game.id, "type": game.type.value, "status": game.status.value,
         "white_child_id": game.white_child_id, "black_child_id": game.black_child_id,
