@@ -823,6 +823,24 @@ def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
         for key in ("board_exercises", "board_exercises_timed", "board_exercises_test"):
             if key in content:
                 _validate_board_exercises(content[key])
+        # Alt konu bazlı soru sayısı (madde 3) — havuzdan fazla sayı reddedilir;
+        # havuz SONRADAN küçülürse burada bir şey kırılmaz (admin panelinde uyarı gösterilir).
+        counts = content.get("question_counts")
+        if counts is not None:
+            if not isinstance(counts, dict):
+                raise HTTPException(status_code=400, detail="question_counts bir nesne olmalı")
+            for key, value in counts.items():
+                if key not in ("board_exercises", "board_exercises_timed", "board_exercises_test"):
+                    raise HTTPException(status_code=400, detail=f"Geçersiz soru sayısı alanı: {key}")
+                if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+                    raise HTTPException(status_code=400, detail="Soru sayısı 1 veya daha büyük bir tam sayı olmalı")
+                pool = content.get(key)
+                pool_len = len(pool) if isinstance(pool, list) else 0
+                if value > pool_len:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Soru sayısı havuzdaki soru sayısından fazla olamaz",
+                    )
 
 
 def _step_out(s: LessonStep) -> dict:
