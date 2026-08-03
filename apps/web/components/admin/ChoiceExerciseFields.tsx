@@ -11,6 +11,9 @@ import { MultiImagePlacer } from './MultiImagePlacer';
 import type { PlacedImage } from './MultiImagePlacer';
 import { defaultPlacementForIndex } from '@/lib/chess/imagePlacement';
 import { BoardEditor } from '@/components/BoardEditor';
+import { SavedPositionBoard } from './SavedPositionBoard';
+import { PaintEditor } from './PaintEditor';
+import type { PaintItem } from '@/lib/chess/paintItems';
 
 const EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
@@ -33,6 +36,7 @@ export interface ChoiceDraft {
   imageShowBoard: boolean;
   sentenceFen: string;
   sentenceShowBoard: boolean;
+  annotations: PaintItem[];
 }
 
 interface Props {
@@ -86,6 +90,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   const [optionCountChosen, setOptionCountChosen] = useState(draft?.optionCountChosen ?? !!initial);
   const [answerKindChosen, setAnswerKindChosen] = useState(draft?.answerKindChosen ?? !!initial);
   const [difficultyChosen, setDifficultyChosen] = useState(draft?.difficultyChosen ?? !!initial);
+  const [annotations, setAnnotations] = useState<PaintItem[]>(draft?.annotations ?? initial?.annotations ?? []);
   const [err, setErr] = useState<string | null>(null);
   const [imgErr, setImgErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -118,12 +123,13 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
       optionCountChosen, answerKindChosen, difficultyChosen,
       imageShowBoard: showBoard,
       sentenceFen, sentenceShowBoard,
+      annotations,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instruction, images, optionCount, answerKind, options,
       correctIndex, successMsg, failMsg, difficulty,
       optionCountChosen, answerKindChosen, difficultyChosen, showBoard,
-      sentenceFen, sentenceShowBoard]);
+      sentenceFen, sentenceShowBoard, annotations]);
 
   function setCount(n: 2 | 3 | 4) {
     setOptionCount(n);
@@ -213,6 +219,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
     if (initial?.code) base.code = initial.code;
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
+    if (annotations.length > 0) base.annotations = annotations;
     try {
       await onSubmit(base);
       if (!editing) {
@@ -221,6 +228,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
         setOptionCountChosen(false); setAnswerKindChosen(false); setDifficultyChosen(false);
         setShowBoard(true);
         setSentenceFen(EMPTY_FEN); setSentenceTurn('w'); setSentenceShowBoard(true);
+        setAnnotations([]);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -252,6 +260,11 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
                 className="h-4 w-4 accent-cyan-400" />
               Sporcu tahtayı da görsün
             </label>
+            {sentenceFen !== EMPTY_FEN && (
+              <PaintEditor items={annotations} onChange={setAnnotations}>
+                <SavedPositionBoard fen={sentenceFen} marked={[]} />
+              </PaintEditor>
+            )}
           </div>
         </div>
       ) : (
@@ -321,6 +334,11 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
                   className="h-4 w-4 accent-cyan-400" />
                 Sporcu tahtayı da görsün
               </label>
+            )}
+            {images.length > 0 && (
+              <PaintEditor items={annotations} onChange={setAnnotations}>
+                <SavedPositionBoard fen={EMPTY_FEN} marked={[]} />
+              </PaintEditor>
             )}
           </div>
         </div>

@@ -3,6 +3,33 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChoiceExerciseFields } from '@/components/admin/ChoiceExerciseFields';
 
 describe('ChoiceExerciseFields', () => {
+  it('sentence_question: tahta kurulunca çizim paneli görünür ve submit\'te annotations gider', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<ChoiceExerciseFields kind="sentence_question" onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Soru cümlesi/), { target: { value: 'Hangi kare?' } });
+    fireEvent.click(screen.getByLabelText('Beyaz Vezir'));
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
+
+    expect(screen.getByText('Yazı-Şekil-Renk Ekle (opsiyonel)')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Yıldız'));
+    fireEvent.pointerDown(screen.getByTestId('paint-board-box'), { clientX: 40, clientY: 40 });
+
+    const optionInputs = screen.getAllByPlaceholderText(/\d\. şık/);
+    fireEvent.change(optionInputs[0], { target: { value: 'A' } });
+    fireEvent.change(optionInputs[1], { target: { value: 'B' } });
+    fireEvent.click(screen.getByText('2 seçenek'));
+    fireEvent.click(screen.getByText('Cümle'));
+    fireEvent.click(screen.getByText('Kolay'));
+    fireEvent.click(screen.getByText('Soruyu ekle'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const sent = onSubmit.mock.calls[0][0];
+    expect(sent.annotations).toHaveLength(1);
+    expect(sent.annotations[0].shape).toBe('star');
+  });
+
+
   it('sentence_question: 2 boş seçenekle başlar, doldurup gönderince doğru şekli üretir', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<ChoiceExerciseFields kind="sentence_question" onSubmit={onSubmit} />);
