@@ -63,4 +63,13 @@ describe('ChoiceExerciseFields', () => {
     expect(screen.getByText('Soruyu ekle')).toBeDisabled();
     expect(screen.getByText(/Eksik: 1\. Soru Görseli Seç/)).toBeInTheDocument();
   });
+
+  it('image_question: Talimat girişi tahta (Bilgisayardan Seç) alanından ÖNCE görünür (madde 5)', () => {
+    render(<ChoiceExerciseFields kind="image_question" onSubmit={vi.fn()} />);
+    const instructionInput = screen.getByPlaceholderText('Talimat');
+    const uploadLabel = screen.getByText('Bilgisayardan Seç');
+    // Node.DOCUMENT_POSITION_FOLLOWING = 4 → uploadLabel, instruction'dan SONRA gelmeli
+    const position = instructionInput.compareDocumentPosition(uploadLabel);
+    expect(position & 4).toBeTruthy();
+  });
 });

@@ -223,6 +223,9 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
           placeholder="Soru cümlesi (örn. Atın hareket şekli nasıldır?)" className="neon-input" />
       ) : (
         <div className="space-y-2">
+          {/* Madde 5: Talimat, tahtadan (Bilgisayardan Seç bloğu) ÖNCE gelir. */}
+          <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
+            placeholder="Talimat" className="neon-input" />
           <span className="text-xs n-muted block">Soru görselleri</span>
           <input type="file" accept="image/*" multiple className="hidden" id="prompt-image-input"
             onChange={(e) => onPromptImagesFiles(e.target.files)} />
@@ -276,8 +279,6 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
               {poolAddMsg && <span className="n-muted">{poolAddMsg}</span>}
             </div>
           )}
-          {/* Madde 1: tahta zemini görsel SEÇMEDEN ÖNCE de görünür — hoca önce
-              tahtayı görür, sonra görselleri üstüne ekler. */}
           <div className="space-y-2">
             <MultiImagePlacer images={images} onChange={setImages} />
             {images.length > 0 && (
@@ -289,8 +290,6 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
               </label>
             )}
           </div>
-          <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-            placeholder="Talimat" className="neon-input" />
         </div>
       )}
 
