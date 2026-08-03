@@ -11,6 +11,7 @@ import { fenToMap, mapToFen } from '@/components/BoardEditor';
 import { evaluatePlacement, allPlaced } from '@/lib/play/placePieces';
 import type { PiecePlacement } from '@/lib/play/placePieces';
 import type { PlacePiecesEx } from './BoardExercise';
+import { PaintItemView } from '@/components/PaintItemView';
 
 const { ranks: RANKS, files: FILE_LABELS } = coordLabels('white');
 
@@ -116,7 +117,7 @@ export function PlacePiecesSolver({ exercise, disabled, onSolved, onWrong }: Pro
         </div>
 
         {/* Tahta — kenar etiketleriyle (diğer soru tipleriyle aynı görünüm) */}
-        <div className="w-full mx-auto p-3 rounded-2xl" style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG }}>
+        <div className="w-full mx-auto p-3 rounded-2xl" style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG, position: 'relative' }}>
           <div className="flex">
             <div className="grid shrink-0" style={{ gridTemplateRows: 'repeat(8, 1fr)', width: 18 }}>
               {RANKS.map((r) => (
@@ -134,6 +135,9 @@ export function PlacePiecesSolver({ exercise, disabled, onSolved, onWrong }: Pro
                 style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{f}</span>
             ))}
           </div>
+          {(exercise.annotations ?? []).map((item) => (
+            <PaintItemView key={item.id} item={item} />
+          ))}
         </div>
       </div>
     </ChessboardProvider>

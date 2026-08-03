@@ -16,6 +16,8 @@ import {
   getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
+import { PaintItemView } from '@/components/PaintItemView';
+import type { PaintItem } from '@/lib/chess/paintItems';
 
 // ─── Exercise config types ────────────────────────────────────────────────────
 
@@ -34,6 +36,8 @@ export interface ClickSquareEx {
   /** Sporcu tıklama modu (madde 2). Yoksa 'any' — doğru karelerden birine
    *  tıklamak yeter. 'all' — TÜM doğru karelere tıklanmalı; 1 yanlış = yanlış. */
   click_mode?: 'any' | 'all';
+  /** Tahtaya eklenen serbest yazı/şekil/renk öğeleri (C grubu, opsiyonel). */
+  annotations?: PaintItem[];
 }
 
 /** Eski format: "şu taşı şu karelerden birine taşı" (tek hamle). */
@@ -48,6 +52,7 @@ export interface MovePieceLegacyEx {
   fail_msg?: string;
   code?: string;
   difficulty?: number;
+  annotations?: PaintItem[];
 }
 
 /** Yeni format (P4): SAN hamle dizisi — sporcu çizgiyi oynar. */
@@ -60,6 +65,7 @@ export interface MovePieceSequenceEx {
   fail_msg?: string;
   code?: string;
   difficulty?: number;
+  annotations?: PaintItem[];
 }
 
 /**
@@ -79,6 +85,7 @@ export interface IdentifyPieceEx {
   success_msg?: string;
   code?: string;
   difficulty?: number;
+  annotations?: PaintItem[];
 }
 
 /** "Taş Nerde?" — eksik taşlar tahtanın dışında, sporcu doğru karelere yerleştirir. */
@@ -93,6 +100,7 @@ export interface PlacePiecesEx {
   fail_msg?: string;
   code?: string;
   difficulty?: number;
+  annotations?: PaintItem[];
 }
 
 /** "Taşa Tıkla" — sporcu konumdaki belirli taşlara tıklar. */
@@ -106,6 +114,7 @@ export interface ClickPieceEx {
   fail_msg?: string;
   code?: string;
   difficulty?: number;
+  annotations?: PaintItem[];
 }
 
 export interface SentenceQuestionEx {
@@ -122,6 +131,7 @@ export interface SentenceQuestionEx {
   fen?: string;
   /** Sporcu tahtayı görsün mü — varsayılan true (fen doluysa). */
   sentence_show_board?: boolean;
+  annotations?: PaintItem[];
 }
 
 export interface ImageQuestionEx {
@@ -146,6 +156,7 @@ export interface ImageQuestionEx {
   /** Sadece image_question için — YENİ çoklu görsel formatı. Varsa
    *  image_x/y/w/h/tone/prompt_image (eski tekil format) yok sayılır. */
   prompt_images?: { uri: string; x: number; y: number; w: number; h: number; tone: number }[];
+  annotations?: PaintItem[];
 }
 
 export type BoardTypeConfig = ClickSquareEx | MovePieceEx | IdentifyPieceEx | PlacePiecesEx | ClickPieceEx;
@@ -565,7 +576,7 @@ export function BoardExercise({
                 <div
                   data-testid="board-exercise-coord-frame"
                   className="w-full mx-auto p-3 rounded-2xl"
-                  style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG }}
+                  style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG, position: 'relative' }}
                 >
                   <div className="flex">
                     <div className="grid shrink-0" style={{ gridTemplateRows: 'repeat(8, 1fr)', width: 18 }}>
@@ -595,6 +606,9 @@ export function BoardExercise({
                         style={{ fontSize: 12, color: BOARD_LABEL_COLOR }}>{f}</span>
                     ))}
                   </div>
+                  {(exercise.annotations ?? []).map((item) => (
+                    <PaintItemView key={item.id} item={item} />
+                  ))}
                 </div>
               ) : (
                 <ChoiceQuestionVisual exercise={exercise} />
