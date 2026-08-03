@@ -1,7 +1,7 @@
 from datetime import datetime
 import chess
 from fastapi import APIRouter, Depends, HTTPException, Body, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
@@ -26,6 +26,7 @@ from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult
 from chess_api.models.opening import Opening
 from chess_api.models.pool_image import PoolImage
+from chess_api.models.custom_tab import CustomTab, CustomTabSection
 from chess_api.pool_categories import POOL_CATEGORIES
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -1162,3 +1163,112 @@ async def delete_pool_image(
     await db.delete(row)
     await db.commit()
     return {"deleted": True}
+
+
+CUSTOM_TAB_EMOJIS = ["📌", "⭐", "🎯", "📢", "🗂️", "🧭", "💡", "🔔"]
+
+
+class CustomTabCreateRequest(BaseModel):
+    label: str = Field(min_length=1, max_length=60)
+
+    @field_validator("label")
+    @classmethod
+    def _label_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Sekme adı boş olamaz")
+        return v
+
+
+class CustomTabSectionCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    body: str = ""
+    images: list[str] = []
+
+
+class CustomTabSectionUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    body: str | None = None
+    images: list[str] | None = None
+
+
+@router.post("/custom-tabs", status_code=201)
+async def create_custom_tab(
+    payload: CustomTabCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    count = (await db.execute(select(func.count(CustomTab.id)))).scalar_one()
+    max_order = (await db.execute(select(func.max(CustomTab.order_index)))).scalar_one_or_none() or 0
+    tab = CustomTab(
+        order_index=max_order + 1, label=payload.label,
+        emoji=CUSTOM_TAB_EMOJIS[count % len(CUSTOM_TAB_EMOJIS)],
+    )
+    db.add(tab)
+    await db.commit()
+    await db.refresh(tab)
+    return {"id": tab.id, "order_index": tab.order_index, "label": tab.label, "emoji": tab.emoji}
+
+
+@router.delete("/custom-tabs/{tab_id}")
+async def delete_custom_tab(
+    tab_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sekmeyi ve tüm bölümlerini siler. Sporcu ilerlemesi bu tabloya bağlı
+    olmadığı için (yalnızca içerik metni), engelsiz cascade güvenlidir."""
+    _ensure_admin(current)
+    tab = await db.get(CustomTab, tab_id)
+    if not tab:
+        raise HTTPException(status_code=404, detail="Custom tab not found")
+    await db.execute(delete(CustomTabSection).where(CustomTabSection.custom_tab_id == tab_id))
+    await db.delete(tab)
+    await db.commit()
+    return {"deleted": True}
+
+
+@router.post("/custom-tabs/reorder")
+async def reorder_custom_tabs(
+    payload: ReorderRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    tabs = (await db.execute(
+        select(CustomTab).where(CustomTab.id.in_(payload.ordered_ids))
+    )).scalars().all()
+    by_id = {t.id: t for t in tabs}
+    if len(by_id) != len(payload.ordered_ids):
+        raise HTTPException(status_code=400, detail="Unknown custom tab id")
+    for i, tid in enumerate(payload.ordered_ids):
+        by_id[tid].order_index = i + 1
+    await db.commit()
+    return {"reordered": len(payload.ordered_ids)}
+
+
+@router.post("/custom-tabs/{tab_id}/sections", status_code=201)
+async def create_custom_tab_section(
+    tab_id: int,
+    payload: CustomTabSectionCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    tab = await db.get(CustomTab, tab_id)
+    if not tab:
+        raise HTTPException(status_code=404, detail="Custom tab not found")
+    for i, img in enumerate(payload.images):
+        _check_data_uri_size(img, f"{i + 1}. görsel")
+    max_order = (await db.execute(
+        select(func.max(CustomTabSection.order_index)).where(CustomTabSection.custom_tab_id == tab_id)
+    )).scalar_one_or_none() or 0
+    section = CustomTabSection(
+        custom_tab_id=tab_id, order_index=max_order + 1,
+        title=payload.title, body=payload.body, images=payload.images,
+    )
+    db.add(section)
+    await db.commit()
+    await db.refresh(section)
+    return {"id": section.id, "order_index": section.order_index, "title": section.title,
+            "body": section.body, "images": section.images}
