@@ -72,10 +72,10 @@ describe('ExerciseForm — Taşı oynat 6 adımlı akış', () => {
     return Array.from(list.querySelectorAll('li')).map((li) => li.textContent ?? '');
   }
 
-  it('sekiz adım da sırayla ve doğru etiketlerle listelenir', () => {
+  it('dokuz adım da sırayla ve doğru etiketlerle listelenir', () => {
     openMovePiece();
     const texts = stepTexts();
-    expect(texts).toHaveLength(8);
+    expect(texts).toHaveLength(9);
     expect(texts[0]).toContain('1. Talimatı Gir');
     expect(texts[1]).toContain('2. Konum Diz');
     expect(texts[2]).toContain('3. Hamle Sırasını Belirle');
@@ -83,7 +83,8 @@ describe('ExerciseForm — Taşı oynat 6 adımlı akış', () => {
     expect(texts[4]).toContain('5. Cevap Hamlelerini Yap ve Notasyon Oluştur');
     expect(texts[5]).toContain('6. Notasyonu Kaydet');
     expect(texts[6]).toContain('7. Zorluk Düzeyini Belirle');
-    expect(texts[7]).toContain('8. Soruyu Ekle');
+    expect(texts[7]).toContain('8. Yazı-Şekil-Renk Ekle');
+    expect(texts[8]).toContain('9. Soruyu Ekle');
   });
 
   it('REGRESYON: Kareye tıkla seçiliyken adım listesi GÖSTERİLMEZ', () => {

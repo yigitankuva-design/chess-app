@@ -7,17 +7,18 @@ function openClickSquare() {
   fireEvent.click(screen.getByText('Konum ekle'));   // varsayilan tip click_square
 }
 
-describe('ExerciseForm — Kareye Tıkla 8 adım (madde 2)', () => {
-  it('sekiz adım sırayla listelenir', () => {
+describe('ExerciseForm — Kareye Tıkla 9 adım (madde 2 + C grubu)', () => {
+  it('dokuz adım sırayla listelenir', () => {
     openClickSquare();
     const list = screen.getByLabelText('Kareye Tıkla adımları');
     const texts = Array.from(list.querySelectorAll('li')).map((li) => li.textContent ?? '');
-    expect(texts).toHaveLength(8);
+    expect(texts).toHaveLength(9);
     expect(texts[0]).toContain('1. Talimatı Gir');
     expect(texts[2]).toContain('3. Hamle Sırasını Belirle');
     expect(texts[3]).toContain('4. Konumu Kaydet');
     expect(texts[5]).toContain('6. Sporcu Tıklama Sayısını Belirle');
-    expect(texts[7]).toContain('8. Soruyu Ekle');
+    expect(texts[7]).toContain('8. Yazı-Şekil-Renk Ekle');
+    expect(texts[8]).toContain('9. Soruyu Ekle');
   });
 
   it('konum kaydedilmeden Doğru Kare seçici GÖRÜNMEZ', () => {
