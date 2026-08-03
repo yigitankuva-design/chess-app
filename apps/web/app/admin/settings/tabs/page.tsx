@@ -258,7 +258,7 @@ export default function AdminTabsPage() {
         <h2 className="font-bold mb-1 n-text">+ Yeni Sekme Ekle</h2>
         <p className="text-xs n-muted mb-4">
           Sekmeye bir ad ver. Kendi sayfası oluşur, içeriğini (başlık/yazı/görsel
-          bölümleri) "İçeriği düzenle" linkinden doldurabilirsin.
+          bölümleri) &quot;İçeriği düzenle&quot; linkinden doldurabilirsin.
         </p>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
