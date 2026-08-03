@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Chessboard, ChessboardProvider, SparePiece } from 'react-chessboard';
 import {
   BOARD_CARD_BG, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
@@ -12,6 +13,10 @@ import { evaluatePlacement, allPlaced } from '@/lib/play/placePieces';
 import type { PiecePlacement } from '@/lib/play/placePieces';
 import type { PlacePiecesEx } from './BoardExercise';
 import { PaintItemView } from '@/components/PaintItemView';
+import { ringStyle, RING_GREEN, RING_RED } from '@/lib/chess/squareMarker';
+
+/** Yanlış denemede kırmızı çemberin ekranda kalma süresi (ms). */
+const WRONG_RING_MS = 1500;
 
 const { ranks: RANKS, files: FILE_LABELS } = coordLabels('white');
 
@@ -42,11 +47,23 @@ export function PlacePiecesSolver({ exercise, disabled, onSolved, onWrong }: Pro
   /** Tahtaya konmuş taşlarla güncellenen görüntü FEN'i. */
   const [fen, setFen] = useState(exercise.fen);
   const turn = exercise.fen.split(' ')[1] === 'b' ? 'b' : 'w';
+  /** Doğru konan taşların kareleri — soru bitene kadar kalıcı yeşil çember alır. */
+  const [placedSquares, setPlacedSquares] = useState<string[]>([]);
+  /** Yanlış denenen kare — kısa süreli kırmızı çember, sonra kendiliğinden kaybolur. */
+  const [wrongSquare, setWrongSquare] = useState<string | null>(null);
+  const wrongTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (wrongTimer.current) clearTimeout(wrongTimer.current);
+  }, []);
 
   function place(piece: string, square: string) {
     if (disabled) return;
     const r = evaluatePlacement(pending, piece, square);
     if (!r.ok) {
+      setWrongSquare(square);
+      if (wrongTimer.current) clearTimeout(wrongTimer.current);
+      wrongTimer.current = setTimeout(() => setWrongSquare(null), WRONG_RING_MS);
       onWrong(exercise.fail_msg ?? 'Bu taşın yeri burası değil.');
       return;
     }
@@ -55,8 +72,13 @@ export function PlacePiecesSolver({ exercise, disabled, onSolved, onWrong }: Pro
     setFen(mapToFen(map, turn));
     setPending(r.remaining);
     setSelected(null);
+    setPlacedSquares((prev) => [...prev, square]);
     if (allPlaced(r.remaining)) onSolved();
   }
+
+  const squareStyles: Record<string, CSSProperties> = {};
+  placedSquares.forEach((sq) => { squareStyles[sq] = ringStyle(RING_GREEN); });
+  if (wrongSquare) squareStyles[wrongSquare] = ringStyle(RING_RED);
 
   function handleDrop({ piece, targetSquare }: {
     piece: { isSparePiece: boolean; pieceType: string };
@@ -81,6 +103,7 @@ export function PlacePiecesSolver({ exercise, disabled, onSolved, onWrong }: Pro
         darkSquareStyle: { backgroundColor: boardColors.dark },
         boardStyle: BOARD_STYLE,
         showNotation: false,
+        squareStyles,
         onPieceDrop: handleDrop,
         onSquareClick: ({ square }: { square: string }) => {
           if (selected) place(selected, square);
