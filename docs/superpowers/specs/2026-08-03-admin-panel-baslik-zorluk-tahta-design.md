@@ -58,16 +58,17 @@ her sorunun verisinde var (`BoardExercise.difficulty`, 1-8 arası, bkz.
 
 **Değişiklik:** `EX_MODES` sabitinde süresiz pratik modu `field:
 'board_exercises'` ile ayırt ediliyor. Sadece bu mod açıkken, daire rengi
-`mode.color` yerine zorluğa göre hesaplanan renk kullanılacak:
+`mode.color` yerine zorluğa göre hesaplanan renk kullanılacak. Zorluk verisi
+1-5 arası bir sayı (`apps/web/lib/difficultyLabels.ts`, `nearestDifficultyValue`
+ile aynı eşik kullanılır — Kolay/Orta/Zor 3 etikete indirgeniyor):
 
-- `difficulty` 1-3 arası → yeşil (Kolay)
-- `difficulty` 4-6 arası → mavi (Orta)
-- `difficulty` 7-8 arası → kırmızı (Zor)
+- `difficulty` ≤ 2 → yeşil (Kolay)
+- `difficulty` === 3 → mavi (Orta)
+- `difficulty` ≥ 4 → kırmızı (Zor)
 
-Bu eşik, mevcut `DIFFICULTY_LABELS` (Kolay/Orta/Zor 3 grup) ile birebir
-örtüşüyor — yeni bir dosya yerine `apps/web/lib/difficultyLabels.ts`'e küçük
-bir `difficultyColor(value: number): string` yardımcı fonksiyonu eklenecek ve
-hem burada hem gerekirse ileride başka bir yerde kullanılabilecek.
+`apps/web/lib/difficultyLabels.ts`'e `nearestDifficultyValue` ile aynı eşiği
+kullanan bir `difficultyColor(value: number): string` yardımcı fonksiyonu
+eklenecek.
 
 Süreli ve Test modlarında (`board_exercises_timed`, `board_exercises_test`)
 mevcut `mode.color` davranışı **aynen korunur** — koşul sadece `openMode.field
