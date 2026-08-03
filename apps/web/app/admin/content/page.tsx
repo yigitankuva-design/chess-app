@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
+import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -40,6 +41,22 @@ export default function AdminContentPage() {
       setMsg('Düzey eklenemedi');
     }
     setAdding(false);
+  }
+
+  async function renameModule(id: number, name: string): Promise<boolean> {
+    try {
+      const token = getToken();
+      const r = await fetch(`${API_BASE}/admin/modules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name }),
+      });
+      if (!r.ok) return false;
+      await refresh();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async function deleteModule(id: number, name: string) {
@@ -178,7 +195,12 @@ export default function AdminContentPage() {
                   <span className={`neon-avatar ${accent} w-[5.5rem] h-[5.5rem] text-4xl font-bold shrink-0`}>
                     {m.order_index}
                   </span>
-                  <p className="font-bold n-text text-3xl">{m.name}</p>
+                  <InlineTitleEdit
+                    value={m.name}
+                    onSave={(next) => renameModule(m.id, next)}
+                    ariaLabel={`${m.name} düzey adını düzenle`}
+                    textClassName="font-bold n-text text-3xl"
+                  />
                   <div className="flex-1" />
                   <span className={`neon-pill ${accent}`} style={{ fontSize: '1.1rem', padding: '0.35rem 0.9rem' }}>
                     {m.lesson_count} adet ders →
