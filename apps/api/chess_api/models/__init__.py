@@ -18,12 +18,14 @@ from chess_api.models.app_settings import AppSettings
 from chess_api.models.practice import ChildPracticeResult
 from chess_api.models.opening import Opening
 from chess_api.models.pool_image import PoolImage
+from chess_api.models.custom_tab import CustomTab, CustomTabSection
 
 __all__ = [
     "AppSettings",
     "ChildPracticeResult",
     "Opening",
     "PoolImage",
+    "CustomTab", "CustomTabSection",
     "User", "UserRole", "ChildProfile", "Device",
     "Module", "Lesson", "LessonStep", "LessonStepType",
     "ChildLessonProgress", "ChildLessonStepResult", "LessonStatus",
