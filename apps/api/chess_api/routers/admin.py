@@ -548,6 +548,48 @@ def _check_data_uri_size(value: object, field_label: str) -> None:
 
 CHOICE_EXERCISE_TYPES = ("sentence_question", "image_question")
 
+PAINT_COLORS = {
+    "#000000", "#ffffff", "#ef4444", "#3b82f6", "#22c55e", "#a855f7",
+    "#f97316", "#14b8a6", "#92400e", "#eab308",
+}
+PAINT_SHAPES = {"circle", "square", "rectangle", "star", "arrow", "question"}
+
+
+def _validate_annotations(items: object) -> None:
+    """Tahtaya eklenen serbest yazı/şekil/renk öğelerini doğrular (C grubu).
+
+    Öğe SAYISINDA sınır yok (kullanıcı onayı) — her öğenin kendi alanları
+    mantıklı aralıkta mı bakılır, bozuk/aşırı büyük veri reddedilir.
+    """
+    if not isinstance(items, list):
+        raise HTTPException(status_code=400, detail="annotations bir liste olmalı")
+    for idx, item in enumerate(items):
+        label = f"{idx + 1}. çizim öğesi"
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail=f"{label} nesne olmalı")
+        if item.get("kind") not in ("text", "shape"):
+            raise HTTPException(status_code=400, detail=f"{label} için geçersiz tür")
+        if item.get("color") not in PAINT_COLORS:
+            raise HTTPException(status_code=400, detail=f"{label} için geçersiz renk")
+        x, y, rotation = item.get("x"), item.get("y"), item.get("rotation")
+        for field_name, val, lo, hi in [("x", x, 0, 100), ("y", y, 0, 100), ("rotation", rotation, 0, 359)]:
+            if not isinstance(val, (int, float)) or isinstance(val, bool) or val < lo or val > hi:
+                raise HTTPException(status_code=400, detail=f"{label} için geçersiz {field_name}")
+        if item["kind"] == "text":
+            text = item.get("text")
+            if not isinstance(text, str) or len(text) == 0 or len(text) > 200:
+                raise HTTPException(status_code=400, detail=f"{label} için geçersiz yazı")
+            font_size = item.get("fontSize")
+            if not isinstance(font_size, (int, float)) or isinstance(font_size, bool) or font_size < 12 or font_size > 72:
+                raise HTTPException(status_code=400, detail=f"{label} için geçersiz punto")
+        else:
+            if item.get("shape") not in PAINT_SHAPES:
+                raise HTTPException(status_code=400, detail=f"{label} için geçersiz şekil")
+            w, h = item.get("w"), item.get("h")
+            for field_name, val in [("w", w), ("h", h)]:
+                if not isinstance(val, (int, float)) or isinstance(val, bool) or val < 2 or val > 90:
+                    raise HTTPException(status_code=400, detail=f"{label} için geçersiz {field_name}")
+
 
 def _validate_image_placement(ex: dict) -> None:
     """image_x/y/w/h/tone/show_board hepsi OPSİYONEL — verilmişse aralık kontrolü.
@@ -622,6 +664,9 @@ def _validate_choice_exercise(ex: dict, ex_type: str) -> None:
     ci = ex.get("correct_index")
     if not isinstance(ci, int) or ci < 0 or ci >= len(options):
         raise HTTPException(status_code=400, detail="Doğru cevap seçimi geçersiz")
+
+    if "annotations" in ex and ex["annotations"] is not None:
+        _validate_annotations(ex["annotations"])
 
 
 def _validate_board_exercises(exercises: list) -> None:
@@ -752,6 +797,9 @@ def _validate_board_exercises(exercises: list) -> None:
                 seen_pieces.add(sq)
                 if board.piece_at(chess.parse_square(sq)) is None:
                     raise HTTPException(status_code=400, detail=f"{sq} karesinde taş yok")
+
+        if "annotations" in ex and ex["annotations"] is not None:
+            _validate_annotations(ex["annotations"])
 
 
 def _validate_step_content(step_type: LessonStepType, content: dict) -> None:
