@@ -5,6 +5,7 @@ import { toneToFilter } from '@/lib/chess/imagePlacement';
 import { Chessboard } from 'react-chessboard';
 import { BOARD_CARD_BG, BOARD_STYLE, getBoardColors, getPieceSet } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
+import { PaintItemView } from '@/components/PaintItemView';
 
 interface Props {
   exercise: ChoiceTypeConfig;
@@ -25,7 +26,7 @@ export function ChoiceQuestionVisual({ exercise }: Props) {
   return (
     <>
       {exercise.type === 'sentence_question' && exercise.fen && exercise.sentence_show_board !== false && (
-        <div data-testid="sentence-board" className="rounded-xl p-2" style={{ backgroundColor: BOARD_CARD_BG, maxWidth: 240, margin: '0 auto' }}>
+        <div data-testid="sentence-board" className="rounded-xl p-2" style={{ backgroundColor: BOARD_CARD_BG, maxWidth: 240, margin: '0 auto', position: 'relative' }}>
           <div className="aspect-square" style={BOARD_STYLE}>
             <Chessboard options={{
               position: exercise.fen,
@@ -36,18 +37,24 @@ export function ChoiceQuestionVisual({ exercise }: Props) {
               showNotation: false,
             }} />
           </div>
+          {(exercise.annotations ?? []).map((item) => (
+            <PaintItemView key={item.id} item={item} />
+          ))}
         </div>
       )}
 
       {exercise.type === 'image_question' && !hasMulti && !hasLegacyPlacement && (
-        <div className="rounded-xl overflow-hidden" style={{ maxWidth: 340, margin: '0 auto' }}>
+        <div className="rounded-xl overflow-hidden" style={{ maxWidth: 340, margin: '0 auto', position: 'relative' }}>
           <img src={exercise.prompt_image} alt="Soru görseli"
             style={{ width: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }} />
+          {(exercise.annotations ?? []).map((item) => (
+            <PaintItemView key={item.id} item={item} />
+          ))}
         </div>
       )}
 
       {exercise.type === 'image_question' && hasLegacyPlacement && (
-        <div style={{ maxWidth: 340, margin: '0 auto' }}>
+        <div style={{ maxWidth: 340, margin: '0 auto', position: 'relative' }}>
           {exercise.image_show_board !== false ? (
             <EmptyBoardGrid>
               <img src={exercise.prompt_image} alt="Soru görseli" draggable={false}
@@ -73,11 +80,14 @@ export function ChoiceQuestionVisual({ exercise }: Props) {
                 }} />
             </div>
           )}
+          {(exercise.annotations ?? []).map((item) => (
+            <PaintItemView key={item.id} item={item} />
+          ))}
         </div>
       )}
 
       {exercise.type === 'image_question' && hasMulti && (
-        <div style={{ maxWidth: 340, margin: '0 auto' }}>
+        <div style={{ maxWidth: 340, margin: '0 auto', position: 'relative' }}>
           {exercise.image_show_board !== false ? (
             <EmptyBoardGrid>
               {exercise.prompt_images!.map((img, i) => (
@@ -107,6 +117,9 @@ export function ChoiceQuestionVisual({ exercise }: Props) {
               ))}
             </div>
           )}
+          {(exercise.annotations ?? []).map((item) => (
+            <PaintItemView key={item.id} item={item} />
+          ))}
         </div>
       )}
     </>
