@@ -73,6 +73,9 @@ export default function AdminStepEditorPage() {
   const [openExercises, setOpenExercises] = useState<number | null>(initialUi.openExercises);
   const [openMode, setOpenMode] = useState<{ stepId: number; field: string } | null>(initialUi.openMode);
   const [editingExercise, setEditingExercise] = useState<{ stepId: number; field: string; idx: number } | null>(initialUi.editingExercise);
+  /** "Soru Sayısını Belirle" kutusu — o an açık moda ait taslak değer/hata. */
+  const [countDraft, setCountDraft] = useState('');
+  const [countMsg, setCountMsg] = useState<string | null>(null);
 
   // TEK bir yerden, DEGISIM SONRASI (commit edilmis state ile) yazilir.
   // Onceki surum her setter'in KENDI ICINDE ayrica sessionStorage'a yaziyordu;
@@ -174,6 +177,51 @@ export default function AdminStepEditorPage() {
 
   function totalExercises(s: StepRow): number {
     return EX_MODES.reduce((n, m) => n + exercisesOf(s, m.field).length, 0);
+  }
+
+  function questionCountOf(s: StepRow, field: string): number | undefined {
+    const counts = s.content_json.question_counts as Record<string, number> | undefined;
+    return counts?.[field];
+  }
+
+  async function saveQuestionCount(s: StepRow, field: string, raw: string) {
+    setCountMsg(null);
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      // Boş bırakmak "eskisi gibi 20 soru" demektir — alan tamamen kaldırılır.
+      const counts = { ...(s.content_json.question_counts as Record<string, number> | undefined) };
+      delete counts[field];
+      await saveQuestionCountsPatch(s, counts);
+      return;
+    }
+    const value = Number(trimmed);
+    if (!Number.isInteger(value) || value < 1) {
+      setCountMsg('Soru sayısı 1 veya daha büyük bir tam sayı olmalı');
+      return;
+    }
+    const poolSize = exercisesOf(s, field).length;
+    if (value > poolSize) {
+      setCountMsg(`Soru sayısı havuzdaki soru sayısından (${poolSize}) fazla olamaz`);
+      return;
+    }
+    const counts = { ...(s.content_json.question_counts as Record<string, number> | undefined), [field]: value };
+    await saveQuestionCountsPatch(s, counts);
+  }
+
+  async function saveQuestionCountsPatch(s: StepRow, counts: Record<string, number>) {
+    const token = getToken();
+    const r = await fetch(`${API_BASE}/admin/steps/${s.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ content_json: { ...s.content_json, question_counts: counts } }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setCountMsg(typeof d.detail === 'string' ? d.detail : 'Kaydedilemedi');
+      return;
+    }
+    await refresh();
+    setMsg('Kaydedildi ✓');
   }
 
   async function saveExercises(s: StepRow, field: string, list: BoardExercise[]) {
@@ -335,7 +383,12 @@ export default function AdminStepEditorPage() {
                         return (
                           <button
                             key={m.field}
-                            onClick={() => { setOpenMode(active ? null : { stepId: s.id, field: m.field }); setEditingExercise(null); }}
+                            onClick={() => {
+                              setOpenMode(active ? null : { stepId: s.id, field: m.field });
+                              setEditingExercise(null);
+                              setCountMsg(null);
+                              setCountDraft(active ? '' : String(questionCountOf(s, m.field) ?? ''));
+                            }}
                             className="rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-1 border transition-all"
                             style={{
                               borderColor: m.color,
@@ -359,6 +412,38 @@ export default function AdminStepEditorPage() {
                       return (
                         <div className="space-y-3 pl-2 border-l-2 border-cyan-400/30">
                           <p className="text-sm font-bold n-text pl-2">{mode.emoji} {mode.label}</p>
+
+                          <div className="pl-2 flex items-center gap-2 flex-wrap">
+                            <label className="text-xs n-muted" htmlFor={`count-${s.id}-${mode.field}`}>
+                              Soru Sayısını Belirle
+                            </label>
+                            <input
+                              id={`count-${s.id}-${mode.field}`}
+                              type="number"
+                              min={1}
+                              value={countDraft}
+                              onChange={(e) => setCountDraft(e.target.value)}
+                              placeholder="20 (varsayılan)"
+                              className="neon-input text-sm"
+                              style={{ width: 140 }}
+                            />
+                            <button type="button" onClick={() => saveQuestionCount(s, mode.field, countDraft)}
+                              className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
+                              Kaydet
+                            </button>
+                          </div>
+                          {countMsg && <p className="text-xs text-rose-400 pl-2">{countMsg}</p>}
+                          {(() => {
+                            const savedCount = questionCountOf(s, mode.field);
+                            const poolSize = list.length;
+                            return savedCount !== undefined && savedCount > poolSize ? (
+                              <p className="text-xs pl-2" style={{ color: '#facc15' }}>
+                                Belirlediğin sayı ({savedCount}) havuzdaki soru sayısından ({poolSize}) fazla —
+                                sporcuya {poolSize} soru sorulacak.
+                              </p>
+                            ) : null;
+                          })()}
+
                           {list.length === 0 ? (
                             <p className="text-sm n-muted pl-2">Bu modda henüz soru yok.</p>
                           ) : (
