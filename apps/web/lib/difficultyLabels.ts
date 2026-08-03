@@ -11,3 +11,11 @@ export function nearestDifficultyValue(d: number): number {
   if (d === 3) return 3;
   return 5;
 }
+
+/** Zorluğu üç renge indirger — soru havuzu dairelerinde kullanılır (Kolay/Orta/Zor). */
+export function difficultyColor(d: number): string {
+  const v = nearestDifficultyValue(d);
+  if (v === 1) return '#4ade80'; // Kolay — yeşil
+  if (v === 3) return '#60a5fa'; // Orta — mavi
+  return '#f87171'; // Zor — kırmızı
+}
