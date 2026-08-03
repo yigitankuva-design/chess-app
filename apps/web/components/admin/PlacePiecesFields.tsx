@@ -2,12 +2,15 @@
 import { useMemo } from 'react';
 import { Chessboard, ChessboardProvider, SparePiece } from 'react-chessboard';
 import { BoardEditor } from '@/components/BoardEditor';
+import { SavedPositionBoard } from './SavedPositionBoard';
+import { PaintEditor } from './PaintEditor';
 import {
   BOARD_CARD_BG, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
   getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
 import { PIECE_PALETTE, pieceKey, pieceLabel } from '@/lib/chess/pieceCodes';
+import type { PaintItem } from '@/lib/chess/paintItems';
 
 const { ranks: RANKS, files: FILE_LABELS } = coordLabels('white');
 
@@ -20,6 +23,9 @@ interface Props {
   /** Palette seçili, karesi henüz belirlenmemiş taş. */
   selectedPiece: string | null;
   pieces: { piece: string; square: string }[];
+  /** C grubu — tahtaya eklenen serbest yazı/şekil/renk öğeleri (opsiyonel). */
+  annotations: PaintItem[];
+  onAnnotationsChange: (items: PaintItem[]) => void;
   onFenChange: (fen: string) => void;
   onTurnChange: (t: 'w' | 'b') => void;
   onSavePosition: () => void;
@@ -35,7 +41,7 @@ interface Props {
  * (2) eksik taşları belirle — paletten taş seç, tahtada karesine tıkla.
  */
 export function PlacePiecesFields({
-  fen, turn, savedFen, selectedPiece, pieces,
+  fen, turn, savedFen, selectedPiece, pieces, annotations, onAnnotationsChange,
   onFenChange, onTurnChange, onSavePosition, onSelectPiece, onAddPair, onRemovePair,
 }: Props) {
   const { settings } = useSettings();
@@ -143,6 +149,10 @@ export function PlacePiecesFields({
           ))}
         </ul>
       )}
+
+      <PaintEditor items={annotations} onChange={onAnnotationsChange}>
+        <SavedPositionBoard fen={savedFen} marked={pieces.map((p) => p.square)} />
+      </PaintEditor>
     </div>
     </ChessboardProvider>
   );

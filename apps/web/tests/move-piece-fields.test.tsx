@@ -17,6 +17,8 @@ function setup(over: Partial<React.ComponentProps<typeof MovePieceFields>> = {})
     onChange: vi.fn(),
     notationSaved: false,
     onNotationSavedChange: vi.fn(),
+    annotations: [] as import('@/lib/chess/paintItems').PaintItem[],
+    onAnnotationsChange: vi.fn(),
     ...over,
   };
   render(<MovePieceFields {...props} />);

@@ -1,7 +1,10 @@
 'use client';
 import { BoardEditor } from '@/components/BoardEditor';
 import { MoveRecorderBoard } from './MoveRecorderBoard';
+import { SavedPositionBoard } from './SavedPositionBoard';
+import { PaintEditor } from './PaintEditor';
 import { formatNotation } from '@/lib/admin/movePieceSteps';
+import type { PaintItem } from '@/lib/chess/paintItems';
 
 interface Props {
   /** Adım 2 — dizme tahtası. Durum ÜST BİLEŞENDE tutulur (tek doğruluk kaynağı). */
@@ -16,6 +19,9 @@ interface Props {
   /** Adım 5 — notasyon cevap olarak kilitlendi mi? */
   notationSaved: boolean;
   onNotationSavedChange: (v: boolean) => void;
+  /** C grubu — tahtaya eklenen serbest yazı/şekil/renk öğeleri (opsiyonel). */
+  annotations: PaintItem[];
+  onAnnotationsChange: (items: PaintItem[]) => void;
 }
 
 /**
@@ -32,6 +38,7 @@ interface Props {
 export function MovePieceFields({
   setupFen, onSetupFenChange, setupTurn, onSetupTurnChange,
   fen, moves, onChange, notationSaved, onNotationSavedChange,
+  annotations, onAnnotationsChange,
 }: Props) {
   if (fen === null) {
     return (
@@ -63,6 +70,9 @@ export function MovePieceFields({
           className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
           Notasyonu Düzenle
         </button>
+        <PaintEditor items={annotations} onChange={onAnnotationsChange}>
+          <SavedPositionBoard fen={setupFen} marked={[]} />
+        </PaintEditor>
       </div>
     );
   }

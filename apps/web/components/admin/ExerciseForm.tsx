@@ -12,7 +12,9 @@ import { clickPieceSteps } from '@/lib/admin/clickPieceSteps';
 import { PlacePiecesFields } from './PlacePiecesFields';
 import { SavedPositionBoard } from './SavedPositionBoard';
 import { StepList } from './StepList';
+import { PaintEditor } from './PaintEditor';
 import type { MovePieceStepState } from '@/lib/admin/movePieceSteps';
+import type { PaintItem } from '@/lib/chess/paintItems';
 
 export type ExerciseType = 'click_square' | 'move_piece' | 'identify_piece' | 'place_pieces' | 'click_piece';
 export type QuestionFamily = 'sentence_question' | 'image_question' | 'konum';
@@ -59,6 +61,8 @@ export interface BoardExercise {
   piece_squares?: string[];
   /** Sadece sentence_question için — sporcu tahtayı görsün mü (madde 5, varsayılan true). */
   sentence_show_board?: boolean;
+  /** Tahtaya eklenen serbest yazı/şekil/renk öğeleri (C grubu, opsiyonel). */
+  annotations?: PaintItem[];
 }
 
 interface Props {
@@ -211,6 +215,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
    * hocayı tekrar tıklamaya zorlamak regresyon olur (KURAL #3) — bu yüzden true başlar.
    */
   const [difficultyChosen, setDifficultyChosen] = useState(!!initial);
+  const [annotations, setAnnotations] = useState<PaintItem[]>(initial?.annotations ?? []);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const editing = !!initial;
@@ -264,6 +269,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
     setSaving(true);
     const base: BoardExercise = { type, instruction: instruction.trim(), fen, difficulty };
     if (initial?.code) base.code = initial.code;
+    if (annotations.length > 0) base.annotations = annotations;
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
     if (type === 'click_square') { base.fen = savedFen!; base.target_squares = targets; base.click_mode = clickMode; }
@@ -284,6 +290,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
         setSavedFen(null); setTurnChosen(false); setClickMode('any'); setClickModeChosen(false);
         setSelectedPiece(null); setPlacePairs([]); setAnswerSaved(false);
         setPieceSquares([]); setPieceAnswerSaved(false);
+        setAnnotations([]);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -401,7 +408,11 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
               bakarak cevabı kurabilsin. Dar ekranda alt alta iner. */}
           <div className="flex flex-wrap items-start gap-3">
             <SquarePicker values={targets} onToggle={toggleTarget} />
-            {savedFen && <SavedPositionBoard fen={savedFen} marked={targets} />}
+            {savedFen && (
+              <PaintEditor items={annotations} onChange={setAnnotations}>
+                <SavedPositionBoard fen={savedFen} marked={targets} />
+              </PaintEditor>
+            )}
           </div>
 
           <p className="text-xs n-muted mt-3 mb-1">Sporcu Tıklama Sayısını Belirle</p>
@@ -428,6 +439,8 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           onChange={(f, m) => { setMoveFen(f); setMoves(m); }}
           notationSaved={notationSaved}
           onNotationSavedChange={setNotationSaved}
+          annotations={annotations}
+          onAnnotationsChange={setAnnotations}
         />
       )}
 
@@ -438,6 +451,8 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
           savedFen={savedFen}
           selectedPiece={selectedPiece}
           pieces={placePairs}
+          annotations={annotations}
+          onAnnotationsChange={setAnnotations}
           onFenChange={setFen}
           onTurnChange={(t) => { setTurn(t); setTurnChosen(true); }}
           onSavePosition={() => setSavedFen(fen)}
@@ -483,16 +498,18 @@ function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
             </button>
           </div>
           <p className="text-xs n-muted">Cevap taşlarına tıkla — tekrar tıklamak seçimi kaldırır</p>
-          <SavedPositionBoard
-            fen={savedFen}
-            marked={pieceSquares}
-            onSquareClick={(sq) => {
-              // Cevap TAŞTIR: boş kareye tıklamak seçim yapmaz.
-              if (!fenToMap(savedFen)[sq]) return;
-              setPieceSquares((prev) => (prev.includes(sq) ? prev.filter((x) => x !== sq) : [...prev, sq]));
-              setPieceAnswerSaved(false);
-            }}
-          />
+          <PaintEditor items={annotations} onChange={setAnnotations}>
+            <SavedPositionBoard
+              fen={savedFen}
+              marked={pieceSquares}
+              onSquareClick={(sq) => {
+                // Cevap TAŞTIR: boş kareye tıklamak seçim yapmaz.
+                if (!fenToMap(savedFen)[sq]) return;
+                setPieceSquares((prev) => (prev.includes(sq) ? prev.filter((x) => x !== sq) : [...prev, sq]));
+                setPieceAnswerSaved(false);
+              }}
+            />
+          </PaintEditor>
           <p className="text-xs n-muted">Seçili: {pieceSquares.length ? pieceSquares.join(', ') : '—'}</p>
           {pieceSquares.length > 0 && !pieceAnswerSaved && (
             <button type="button" onClick={() => setPieceAnswerSaved(true)}

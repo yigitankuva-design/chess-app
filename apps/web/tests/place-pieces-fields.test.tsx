@@ -9,6 +9,8 @@ function setup(over: Partial<Parameters<typeof PlacePiecesFields>[0]> = {}) {
     savedFen: null as string | null,
     selectedPiece: null as string | null,
     pieces: [] as { piece: string; square: string }[],
+    annotations: [] as import('@/lib/chess/paintItems').PaintItem[],
+    onAnnotationsChange: vi.fn(),
     onFenChange: vi.fn(),
     onTurnChange: vi.fn(),
     onSavePosition: vi.fn(),
