@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
+import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -92,6 +93,22 @@ export default function AdminModuleLessonsPage() {
     setMsg('Ders taşındı');
   }
 
+  async function renameLesson(les: LessonRow, title: string): Promise<boolean> {
+    const token = getToken();
+    try {
+      const r = await fetch(`${API_BASE}/admin/lessons/${les.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title }),
+      });
+      if (!r.ok) return false;
+      await refresh();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function deleteLesson(les: LessonRow) {
     if (!confirm(`"${les.title}" dersini silmek istiyor musun?`)) return;
     setMsg(null);
@@ -143,7 +160,12 @@ export default function AdminModuleLessonsPage() {
               <div key={les.id} className={`neon-card ${accent} flex flex-wrap items-center gap-3 p-4`}>
                 <span className={`neon-avatar ${accent} w-11 h-11 text-sm shrink-0`}>{les.order_index}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold n-text truncate">{les.title}</p>
+                  <InlineTitleEdit
+                    value={les.title}
+                    onSave={(next) => renameLesson(les, next)}
+                    ariaLabel={`${les.title} ders başlığını düzenle`}
+                    textClassName="font-semibold n-text truncate"
+                  />
                   <p className="text-xs n-muted">{les.estimated_minutes} dk · {les.step_count} adım</p>
                 </div>
                 <span className={les.published ? 'neon-pill neon-green' : 'neon-pill neon-amber'}>
