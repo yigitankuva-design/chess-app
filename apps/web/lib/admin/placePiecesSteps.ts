@@ -39,6 +39,7 @@ export const PLACE_PIECES_STEP_LABELS = [
   'Cevabı Kaydet',
   'Hamle Sırasını Belirle',
   'Zorluk Düzeyini Belirle',
+  'Yazı-Şekil-Renk Ekle',
 ] as const;
 
 export function placePiecesSteps(s: PlacePiecesStepState): StepInfo[] {
@@ -53,6 +54,7 @@ export function placePiecesSteps(s: PlacePiecesStepState): StepInfo[] {
     s.answerSaved,
     s.turnChosen,
     s.difficultyChosen,
+    true, // Yazı-Şekil-Renk Ekle
   ];
   // "Soruyu Ekle" son satırdır: öncekilerin HEPSİ bitince ✓.
   const all = [...done, done.every(Boolean)];

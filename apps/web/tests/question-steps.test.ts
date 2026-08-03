@@ -9,10 +9,10 @@ const C: ChoiceStepState = {
 };
 
 describe('choiceSteps — Cümle', () => {
-  it('6 adım, kullanıcının sırasıyla', () => {
+  it('7 adım, kullanıcının sırasıyla', () => {
     expect(choiceSteps(C, 'sentence_question').map((s) => s.label)).toEqual([
       'Talimatı Gir', 'Seçenek Sayısını Belirle', 'Cevap Tipini Belirle',
-      'Cevapları Gir', 'Zorluk Düzeyini Belirle', 'Soruyu Ekle',
+      'Cevapları Gir', 'Zorluk Düzeyini Belirle', 'Yazı-Şekil-Renk Ekle', 'Soruyu Ekle',
     ]);
   });
 
@@ -21,6 +21,11 @@ describe('choiceSteps — Cümle', () => {
     expect(steps[1].done).toBe(false);
     expect(steps[2].done).toBe(false);
     expect(steps[4].done).toBe(false);
+  });
+
+  it('Yazı-Şekil-Renk Ekle her zaman opsiyonel/tamam sayılır', () => {
+    expect(choiceSteps(C, 'sentence_question')[5].label).toBe('Yazı-Şekil-Renk Ekle');
+    expect(choiceSteps(C, 'sentence_question')[5].done).toBe(true);
   });
 
   it('Cevapları Gir: tüm şıklar doluysa tamamlanır', () => {
@@ -40,9 +45,9 @@ describe('choiceSteps — Cümle', () => {
 });
 
 describe('choiceSteps — Görüntü', () => {
-  it('7 adım; 1.si Soru Görseli Seç', () => {
+  it('8 adım; 1.si Soru Görseli Seç', () => {
     const steps = choiceSteps(C, 'image_question');
-    expect(steps).toHaveLength(7);
+    expect(steps).toHaveLength(8);
     expect(steps[0].label).toBe('Soru Görseli Seç');
     expect(steps[0].done).toBe(false);
     expect(choiceSteps({ ...C, promptImage: 'data:image/png;base64,x' },
@@ -56,11 +61,11 @@ describe('clickSquareSteps', () => {
     savedFen: null, targets: [], clickModeChosen: false, difficultyChosen: false,
   };
 
-  it('8 adım, kullanıcının sırasıyla (madde 2)', () => {
+  it('9 adım, kullanıcının sırasıyla (madde 2)', () => {
     expect(clickSquareSteps(K).map((s) => s.label)).toEqual([
       'Talimatı Gir', 'Konum Diz', 'Hamle Sırasını Belirle', 'Konumu Kaydet',
       'Doğru Kare(leri) Seç', 'Sporcu Tıklama Sayısını Belirle',
-      'Zorluk Düzeyini Belirle', 'Soruyu Ekle',
+      'Zorluk Düzeyini Belirle', 'Yazı-Şekil-Renk Ekle', 'Soruyu Ekle',
     ]);
   });
 
@@ -75,7 +80,6 @@ describe('clickSquareSteps', () => {
   });
 
   it('BOŞ TAHTA MEŞRU: konum kaydedilince Konum Diz de tamam sayılır', () => {
-    // Kare isimleri ogretilen sorular bos tahtada olur ("e4'e tikla").
     expect(clickSquareSteps({ ...K, savedFen: K.setupFen })[1].done).toBe(true);
   });
 

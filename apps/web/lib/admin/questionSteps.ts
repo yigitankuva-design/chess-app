@@ -42,6 +42,7 @@ export function choiceSteps(
     ['Cevap Tipini Belirle', s.answerKindChosen],
     ['Cevapları Gir', answersDone],
     ['Zorluk Düzeyini Belirle', s.difficultyChosen],
+    ['Yazı-Şekil-Renk Ekle', true],
   ];
   if (kind === 'image_question') {
     base.unshift(['Soru Görseli Seç', s.promptImage.length > 0]);
@@ -61,6 +62,7 @@ export function clickSquareSteps(s: ClickSquareStepState): StepInfo[] {
     ['Doğru Kare(leri) Seç', s.targets.length > 0],
     ['Sporcu Tıklama Sayısını Belirle', s.clickModeChosen],
     ['Zorluk Düzeyini Belirle', s.difficultyChosen],
+    ['Yazı-Şekil-Renk Ekle', true],
   ];
   return withFinal(base.map(([l]) => l), base.map(([, d]) => d));
 }

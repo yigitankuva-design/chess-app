@@ -23,11 +23,11 @@ const full: ClickPieceStepState = {
 };
 
 describe('clickPieceSteps', () => {
-  it('8 adım vardır ve sonuncusu Soruyu Ekle', () => {
-    expect(CLICK_PIECE_STEP_LABELS).toHaveLength(7);
+  it('9 adım vardır ve sonuncusu Soruyu Ekle', () => {
+    expect(CLICK_PIECE_STEP_LABELS).toHaveLength(8);
     const steps = clickPieceSteps(empty);
-    expect(steps).toHaveLength(8);
-    expect(steps[7].label).toBe('Soruyu Ekle');
+    expect(steps).toHaveLength(9);
+    expect(steps[8].label).toBe('Soruyu Ekle');
   });
 
   it('adım sırası kullanıcının verdiği sıradır', () => {
@@ -39,12 +39,16 @@ describe('clickPieceSteps', () => {
       'Taş Seçimini Kaydet',
       'Hamle Sırasını Belirle',
       'Zorluk Düzeyini Belirle',
+      'Yazı-Şekil-Renk Ekle',
       'Soruyu Ekle',
     ]);
   });
 
-  it('boş durumda hiçbir adım tamam değildir', () => {
-    expect(clickPieceSteps(empty).every((s) => !s.done)).toBe(true);
+  it('boş durumda "Yazı-Şekil-Renk Ekle" hariç hiçbir adım tamam değildir (o adım opsiyonel)', () => {
+    const steps = clickPieceSteps(empty);
+    const others = steps.filter((s) => s.label !== 'Yazı-Şekil-Renk Ekle' && s.label !== 'Soruyu Ekle');
+    expect(others.every((s) => !s.done)).toBe(true);
+    expect(steps.find((s) => s.label === 'Yazı-Şekil-Renk Ekle')?.done).toBe(true);
   });
 
   it('tam durumda tüm adımlar tamamdır', () => {
@@ -57,10 +61,10 @@ describe('clickPieceSteps', () => {
     expect(s[4].done).toBe(false); // henüz kaydedilmedi
   });
 
-  it('son adım ancak diğer 7 adım bitince tamam olur', () => {
+  it('son adım ancak diğer 8 adım bitince tamam olur', () => {
     const s = clickPieceSteps({ ...full, difficultyChosen: false });
     expect(s[6].done).toBe(false);
-    expect(s[7].done).toBe(false);
+    expect(s[8].done).toBe(false);
   });
 
   it('konum kaydedilmişse Konumu Diz de tamam sayılır', () => {

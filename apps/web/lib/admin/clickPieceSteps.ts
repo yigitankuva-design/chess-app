@@ -28,6 +28,7 @@ export const CLICK_PIECE_STEP_LABELS = [
   'Taş Seçimini Kaydet',
   'Hamle Sırasını Belirle',
   'Zorluk Düzeyini Belirle',
+  'Yazı-Şekil-Renk Ekle',
 ] as const;
 
 export function clickPieceSteps(s: ClickPieceStepState): StepInfo[] {
@@ -40,6 +41,7 @@ export function clickPieceSteps(s: ClickPieceStepState): StepInfo[] {
     s.answerSaved,
     s.turnChosen,
     s.difficultyChosen,
+    true, // Yazı-Şekil-Renk Ekle
   ];
   const all = [...done, done.every(Boolean)];
   return [...CLICK_PIECE_STEP_LABELS, 'Soruyu Ekle'].map((label, i) => ({

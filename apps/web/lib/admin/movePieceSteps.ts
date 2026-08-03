@@ -42,6 +42,7 @@ export const MOVE_PIECE_STEP_LABELS = [
   'Cevap Hamlelerini Yap ve Notasyon Oluştur',
   'Notasyonu Kaydet',
   'Zorluk Düzeyini Belirle',
+  'Yazı-Şekil-Renk Ekle',
   'Soruyu Ekle',
 ] as const;
 
@@ -65,6 +66,7 @@ export function movePieceSteps(s: MovePieceStepState): StepInfo[] {
     s.moves.length > 0,
     s.notationSaved,
     s.difficultyChosen,
+    true, // Yazı-Şekil-Renk Ekle — opsiyonel, hiçbir zaman kilitlemez
   ];
   // "Soruyu Ekle" son satirdir: oncekilerin HEPSI bitince ✓.
   const all = [...done, done.every(Boolean)];

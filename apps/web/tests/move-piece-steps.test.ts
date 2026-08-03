@@ -44,10 +44,10 @@ describe('hasPieces', () => {
 });
 
 describe('movePieceSteps', () => {
-  it('sekiz adım döner ve sıra numaraları 1-8 olur', () => {
+  it('dokuz adım döner ve sıra numaraları 1-9 olur', () => {
     const steps = movePieceSteps(BLANK);
-    expect(steps).toHaveLength(8);
-    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(steps).toHaveLength(9);
+    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it('adım etiketleri kullanıcının istediği metinlerdir', () => {
@@ -59,15 +59,19 @@ describe('movePieceSteps', () => {
       'Cevap Hamlelerini Yap ve Notasyon Oluştur',
       'Notasyonu Kaydet',
       'Zorluk Düzeyini Belirle',
+      'Yazı-Şekil-Renk Ekle',
       'Soruyu Ekle',
     ]);
   });
 
-  it('boş durumda hiçbir adım tamamlanmamıştır', () => {
-    expect(movePieceSteps(BLANK).every((s) => !s.done)).toBe(true);
+  it('boş durumda "Yazı-Şekil-Renk Ekle" hariç hiçbir adım tamamlanmamıştır (o adım opsiyonel)', () => {
+    const steps = movePieceSteps(BLANK);
+    const others = steps.filter((s) => s.label !== 'Yazı-Şekil-Renk Ekle' && s.label !== 'Soruyu Ekle');
+    expect(others.every((s) => !s.done)).toBe(true);
+    expect(steps.find((s) => s.label === 'Yazı-Şekil-Renk Ekle')?.done).toBe(true);
   });
 
-  it('tam durumda sekiz adım da tamamlanmıştır (Soruyu Ekle dahil)', () => {
+  it('tam durumda dokuz adım da tamamlanmıştır (Soruyu Ekle dahil)', () => {
     expect(movePieceSteps(FULL).every((s) => s.done)).toBe(true);
   });
 
@@ -106,9 +110,9 @@ describe('movePieceSteps', () => {
     expect(movePieceSteps({ ...BLANK, difficultyChosen: true })[6].done).toBe(true);
   });
 
-  it('Soruyu Ekle (8) yalnızca diğer yedisi bitince tamamlanır', () => {
-    expect(movePieceSteps(FULL)[7].done).toBe(true);
-    expect(movePieceSteps({ ...FULL, notationSaved: false })[7].done).toBe(false);
+  it('Soruyu Ekle (9) yalnızca diğer yedisi bitince tamamlanır', () => {
+    expect(movePieceSteps(FULL)[8].done).toBe(true);
+    expect(movePieceSteps({ ...FULL, notationSaved: false })[8].done).toBe(false);
   });
 });
 
