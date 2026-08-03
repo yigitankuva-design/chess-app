@@ -17,6 +17,10 @@ const TAB_META: Record<TabKey, { emoji: string; label: string; desc: string; col
   eglence: { emoji: '🎉', label: 'Eğlence',   color: '#f472b6', desc: 'Bulmaca ve mini oyunlar' },
 };
 
+/** Zafer hocanın eklediği sekmelerin kart rengi — sporcu ana sayfasındaki
+ *  CUSTOM_TAB_COLORS ile aynı sırada (app/(child)/home/page.tsx). */
+const CUSTOM_TAB_COLORS = ['#fbbf24', '#2dd4bf', '#fb7185', '#60a5fa', '#c084fc'];
+
 /**
  * Sekme açıldığında görünecek yönetim ekranı. null = henüz yönetim ekranı yok.
  * Yeni bir ekran hazır olduğunda buraya bir satır eklemek yeterlidir.
@@ -137,10 +141,10 @@ export default function AdminTabsPage() {
 
       {/* ── Ekranda görünen sekmeler ── */}
       <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
-        Sporcuda görünen sekmeler ({shown.length})
+        Sporcuda görünen sekmeler ({shown.length + customTabs.length})
       </p>
       <div className="grid gap-3 mb-8">
-        {shown.length === 0 && (
+        {shown.length === 0 && customTabs.length === 0 && (
           <p className="text-sm n-muted">Hiç sekme yok. Aşağıdan ekleyebilirsin.</p>
         )}
         {shown.map((key, idx) => {
@@ -251,6 +255,31 @@ export default function AdminTabsPage() {
             </div>
           );
         })}
+
+        {/* Zafer hocanın eklediği sekmeler — diğerleriyle AYNI listede,
+            "+ Yeni Sekme Ekle" kartının DIŞINDA gösterilir (kullanıcı kararı). */}
+        {customTabs.map((c, i) => (
+          <div key={c.id} className="neon-card p-4"
+            style={{ borderColor: CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length] }}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl leading-none">{c.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold n-text" style={{ color: CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length] }}>
+                  {c.label}
+                </p>
+                <p className="text-xs n-muted">Zafer hocanın eklediği sekme</p>
+              </div>
+              <Link href={`/admin/custom-tabs/${c.id}`}
+                className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
+                İçeriği düzenle
+              </Link>
+              <button onClick={() => removeCustomTab(c.id)}
+                className="px-2.5 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
+                Kaldır
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ── Yeni sekme ekleme ── */}
@@ -271,27 +300,6 @@ export default function AdminTabsPage() {
             Ekle
           </button>
         </div>
-
-        {customTabs.length > 0 && (
-          <div className="grid gap-2 mt-4">
-            {customTabs.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/10">
-                <span className="text-xl leading-none">{c.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold n-text">{c.label}</p>
-                </div>
-                <Link href={`/admin/custom-tabs/${c.id}`}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
-                  İçeriği düzenle
-                </Link>
-                <button onClick={() => removeCustomTab(c.id)}
-                  className="px-2.5 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
-                  Kaldır
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── Kaldırılan sekmeler ── */}
