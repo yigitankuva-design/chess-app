@@ -599,6 +599,9 @@ def _validate_choice_exercise(ex: dict, ex_type: str) -> None:
     else:  # sentence_question
         if not (ex.get("instruction") or "").strip():
             raise HTTPException(status_code=400, detail="Cümle sorusu için soru metni gerekli")
+        fen = ex.get("fen")
+        if fen is not None:
+            _validate_fen(fen)
 
     options = ex.get("options")
     if not isinstance(options, list) or not (2 <= len(options) <= 4):
