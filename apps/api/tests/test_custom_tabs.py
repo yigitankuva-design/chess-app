@@ -102,3 +102,62 @@ async def test_sekme_siralamasi_degistirilebilir(client):
 
     listing = (await client.get("/custom-tabs")).json()
     assert [t["id"] for t in listing] == [b["id"], a["id"]]
+
+
+@pytest.mark.asyncio
+async def test_bolum_guncellenir(client):
+    tok = await _teacher_token(client, "cts1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Eski", "body": "eski metin", "images": []})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"title": "Yeni", "body": "yeni metin"})
+    assert r.status_code == 200
+    assert r.json()["title"] == "Yeni"
+    assert r.json()["body"] == "yeni metin"
+
+
+@pytest.mark.asyncio
+async def test_bolum_silinir(client):
+    tok = await _teacher_token(client, "cts2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Bölüm", "body": "x", "images": []})).json()
+
+    r = await client.delete(f"/admin/custom-tab-sections/{section['id']}", headers=h)
+    assert r.status_code == 200
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    assert detail["sections"] == []
+
+
+@pytest.mark.asyncio
+async def test_bolum_siralamasi_degistirilebilir(client):
+    tok = await _teacher_token(client, "cts3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
+    s1 = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                            json={"title": "S1", "body": "", "images": []})).json()
+    s2 = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                            json={"title": "S2", "body": "", "images": []})).json()
+
+    r = await client.post(f"/admin/custom-tabs/{tab['id']}/sections/reorder", headers=h,
+                          json={"ordered_ids": [s2["id"], s1["id"]]})
+    assert r.status_code == 200
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    assert [s["id"] for s in detail["sections"]] == [s2["id"], s1["id"]]
+
+
+@pytest.mark.asyncio
+async def test_cok_buyuk_bolum_gorseli_reddedilir(client):
+    tok = await _teacher_token(client, "cts4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
+    huge = "data:image/png;base64," + ("A" * 400_001)
+    r = await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                          json={"title": "Bölüm", "body": "", "images": [huge]})
+    assert r.status_code == 400

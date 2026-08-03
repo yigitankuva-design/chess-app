@@ -1272,3 +1272,66 @@ async def create_custom_tab_section(
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images}
+
+
+@router.patch("/custom-tab-sections/{section_id}")
+async def update_custom_tab_section(
+    section_id: int,
+    payload: CustomTabSectionUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    section = await db.get(CustomTabSection, section_id)
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+    if payload.title is not None:
+        section.title = payload.title
+    if payload.body is not None:
+        section.body = payload.body
+    if payload.images is not None:
+        for i, img in enumerate(payload.images):
+            _check_data_uri_size(img, f"{i + 1}. görsel")
+        section.images = payload.images
+    await db.commit()
+    await db.refresh(section)
+    return {"id": section.id, "order_index": section.order_index, "title": section.title,
+            "body": section.body, "images": section.images}
+
+
+@router.delete("/custom-tab-sections/{section_id}")
+async def delete_custom_tab_section(
+    section_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    section = await db.get(CustomTabSection, section_id)
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+    await db.delete(section)
+    await db.commit()
+    return {"deleted": True}
+
+
+@router.post("/custom-tabs/{tab_id}/sections/reorder")
+async def reorder_custom_tab_sections(
+    tab_id: int,
+    payload: ReorderRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    sections = (await db.execute(
+        select(CustomTabSection).where(
+            CustomTabSection.id.in_(payload.ordered_ids),
+            CustomTabSection.custom_tab_id == tab_id,
+        )
+    )).scalars().all()
+    by_id = {s.id: s for s in sections}
+    if len(by_id) != len(payload.ordered_ids):
+        raise HTTPException(status_code=400, detail="Unknown section id")
+    for i, sid in enumerate(payload.ordered_ids):
+        by_id[sid].order_index = i + 1
+    await db.commit()
+    return {"reordered": len(payload.ordered_ids)}
