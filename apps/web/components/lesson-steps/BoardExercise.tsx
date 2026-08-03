@@ -212,23 +212,30 @@ export function isTargetSquare(sq: string, targets: string[]): boolean {
 }
 
 // ─── Progress dots ────────────────────────────────────────────────────────────
-function ProgressDots({ total, current, doneCount }: { total: number; current: number; doneCount: number }) {
+type QuestionResult = 'correct' | 'wrong' | null;
+
+function ProgressDots({ total, current, doneCount, results }: {
+  total: number; current: number; doneCount: number; results: QuestionResult[];
+}) {
   return (
     <div className="flex items-center gap-1 flex-wrap">
       {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
+          data-testid={`progress-dot-${i}`}
           style={{
             display: 'inline-block',
             width: 8,
             height: 8,
             borderRadius: '50%',
-            background: i < doneCount
-              ? '#16a34a'        // completed
+            backgroundColor: results[i] === 'wrong'
+              ? '#dc2626'        // yanlış cevaplanıp kilitlenmiş
+              : results[i] === 'correct' || i < doneCount
+              ? '#16a34a'        // doğru cevaplanmış
               : i === current
               ? 'var(--t-accent)' // current
               : 'var(--t-border)', // future
-            transition: 'background 0.2s',
+            transition: 'background-color 0.2s',
           }}
         />
       ))}
@@ -259,6 +266,9 @@ export function BoardExercise({
     initialIndex > 0 && initialIndex < exercises.length ? initialIndex : 0,
   );
   const [doneCount, setDoneCount] = useState(done ? exercises.length : (initialDoneCount ?? 0));
+  /** İlerleme noktalarının doğru/yanlış rengi — yalnızca BU oturumda kesinleşen
+   *  sonuçlar işaretlenir (sayfa yenilemesinde eski davranışla aynı kalır: KURAL #3). */
+  const [results, setResults] = useState<QuestionResult[]>(() => Array(exercises.length).fill(null));
   const [status, setStatus] = useState<'idle' | 'success' | 'fail'>(
     done ? 'success' : initialAnswer === 'correct' ? 'success' : initialAnswer === 'wrong' ? 'fail' : 'idle',
   );
@@ -307,6 +317,7 @@ export function BoardExercise({
   const succeed = () => {
     setStatus('success');
     setSelected(null);
+    setResults((prev) => prev.map((r, i) => (i === currentIdx ? 'correct' : r)));
     const next = doneCount + 1;
     setDoneCount(next);
     onAnswered?.(currentIdx, next, 'correct');
@@ -333,6 +344,7 @@ export function BoardExercise({
     setSelected(null);
     if (noRetry) {
       setFailLocked(true);
+      setResults((prev) => prev.map((r, i) => (i === currentIdx ? 'wrong' : r)));
       onAnswered?.(currentIdx, doneCount, 'wrong');
       if (!isLastQuestion) {
         setShowNext(true);
@@ -355,6 +367,7 @@ export function BoardExercise({
     setStatus('fail');
     setFeedback(msg);
     setSelected(null);
+    setResults((prev) => prev.map((r, i) => (i === currentIdx ? 'wrong' : r)));
     onAnswered?.(currentIdx, doneCount, 'wrong');
     if (!isLastQuestion) {
       setShowNext(true);
@@ -521,7 +534,7 @@ export function BoardExercise({
 
       {/* Progress */}
       <div className="flex items-center justify-between">
-        <ProgressDots total={total} current={currentIdx} doneCount={doneCount} />
+        <ProgressDots total={total} current={currentIdx} doneCount={doneCount} results={results} />
         <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
           style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
           Soru {currentIdx + 1}/{total}
