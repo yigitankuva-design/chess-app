@@ -18,6 +18,42 @@ export const TEST_MIX: DifficultyBucket = { easy: 7, medium: 7, hard: 6 };
 
 type Bucket = 'easy' | 'medium' | 'hard';
 
+/**
+ * Bir kova oranını (`mix`) korunarak farklı bir toplam soru sayısına
+ * (`targetCount`) ölçekler — alt konu bazlı soru sayısı (madde 3) için.
+ *
+ * En büyük kalan yöntemi: her kovanın payı orantılı olarak hesaplanır,
+ * ondalık kısımlar taban alınır, kalan (targetCount - toplam) en büyük
+ * ondalık kalana sahip kovalara birer birer eklenir. Böylece toplam HER
+ * ZAMAN targetCount'a eşit olur, oran mümkün olduğunca korunur.
+ */
+export function scaleMix(mix: DifficultyBucket, targetCount: number): DifficultyBucket {
+  const total = mix.easy + mix.medium + mix.hard;
+  if (targetCount <= 0 || total <= 0) return { easy: 0, medium: 0, hard: 0 };
+
+  const buckets: Bucket[] = ['easy', 'medium', 'hard'];
+  const raw: Record<Bucket, number> = {
+    easy: (mix.easy / total) * targetCount,
+    medium: (mix.medium / total) * targetCount,
+    hard: (mix.hard / total) * targetCount,
+  };
+  const floored: Record<Bucket, number> = {
+    easy: Math.floor(raw.easy),
+    medium: Math.floor(raw.medium),
+    hard: Math.floor(raw.hard),
+  };
+  let remainder = targetCount - (floored.easy + floored.medium + floored.hard);
+
+  const byFraction = [...buckets].sort((a, b) => (raw[b] - floored[b]) - (raw[a] - floored[a]));
+  for (const b of byFraction) {
+    if (remainder <= 0) break;
+    floored[b] += 1;
+    remainder -= 1;
+  }
+
+  return floored;
+}
+
 export function bucketOf(difficulty: number | undefined): Bucket {
   if (difficulty === undefined) return 'medium';
   if (difficulty <= 2) return 'easy';
