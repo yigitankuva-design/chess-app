@@ -14,6 +14,8 @@ import { MatchCriteria } from '@/components/play/MatchCriteria';
 import { useRouter } from 'next/navigation';
 import { usePresenceCount } from '@/lib/presence/PresenceContext';
 import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayersBadge';
+import { listCustomTabs } from '@/lib/customTabsApi';
+import type { CustomTabSummary } from '@/lib/customTabsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -172,6 +174,8 @@ export default function ChildHomePage() {
   const showLevels = openTab === 'lessons';
   const showEglence = openTab === 'eglence';
   const [athleteName, setAthleteName] = useState<string | null>(null);
+  const [customTabs, setCustomTabs] = useState<CustomTabSummary[]>([]);
+  useEffect(() => { listCustomTabs().then(setCustomTabs); }, []);
 
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);
   const [openLevel, setOpenLevel] = useState<number | null>(null);
@@ -339,10 +343,10 @@ export default function ChildHomePage() {
           })}
 
           {/* Zafer hocanın eklediği ek sekmeler */}
-          {(settings.customTabs ?? []).map((ct, i) => (
+          {customTabs.map((ct, i) => (
             <FeatureTab
               key={ct.id} emoji={ct.emoji} label={ct.label}
-              color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]} href={ct.href}
+              color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]} href={`/custom/${ct.id}`}
             />
           ))}
         </div>
