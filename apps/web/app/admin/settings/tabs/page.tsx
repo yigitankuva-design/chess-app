@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS, mergeSettings, ALL_TABS } from '@/lib/settings/defaul
 import type { AppSettingsData, TabKey } from '@/lib/settings/defaults';
 import {
   listCustomTabs, createCustomTab, deleteCustomTab,
-  getCustomTab, createCustomTabSection, deleteCustomTabSection,
+  getCustomTab, createCustomTabSection, deleteCustomTabSection, updateCustomTabSection,
 } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { compressImageToDataUri } from '@/lib/imageCompress';
@@ -67,6 +67,11 @@ export default function AdminTabsPage() {
   const [newSectionTitle, setNewSectionTitle] = useState('');
   const [newSectionBody, setNewSectionBody] = useState('');
   const [newSectionImages, setNewSectionImages] = useState<string[]>([]);
+  /** Düzenlenmekte olan alt sekme — null ise hiçbiri düzenlenmiyor. */
+  const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [editImages, setEditImages] = useState<string[]>([]);
 
   useEffect(() => {
     const token = getToken();
@@ -122,6 +127,7 @@ export default function AdminTabsPage() {
     setOpenKey((prev) => (prev === id ? null : id));
     setOpenSectionId(null);
     setNewSectionTitle(''); setNewSectionBody(''); setNewSectionImages([]);
+    cancelEditSection();
     if (!customTabDetails[id]) {
       getCustomTab(id).then((detail) => {
         if (detail) setCustomTabDetails((prev) => ({ ...prev, [id]: detail }));
@@ -146,6 +152,45 @@ export default function AdminTabsPage() {
       return { ...prev, [tabId]: { ...existing, sections: [...existing.sections, created] } };
     });
     setNewSectionTitle(''); setNewSectionBody(''); setNewSectionImages([]);
+    setMsg('Kaydedildi ✓');
+  }
+
+  function startEditSection(s: { id: number; title: string; body: string; images: string[] }) {
+    setEditingSectionId(s.id);
+    setEditTitle(s.title);
+    setEditBody(s.body);
+    setEditImages(s.images);
+  }
+
+  function cancelEditSection() {
+    setEditingSectionId(null);
+    setEditTitle(''); setEditBody(''); setEditImages([]);
+  }
+
+  async function onEditImageFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const compressed = await Promise.all(Array.from(files).map((f) => compressImageToDataUri(f)));
+    setEditImages((prev) => [...prev, ...compressed]);
+  }
+
+  async function saveEditSection(tabId: number, sectionId: number) {
+    const title = editTitle.trim();
+    if (!title) { setMsg('Alt sekme başlığı gerekli'); return; }
+    const patch = { title, body: editBody.trim(), images: editImages };
+    const ok = await updateCustomTabSection(sectionId, patch);
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const existing = prev[tabId];
+      if (!existing) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...existing,
+          sections: existing.sections.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)),
+        },
+      };
+    });
+    cancelEditSection();
     setMsg('Kaydedildi ✓');
   }
 
@@ -376,6 +421,7 @@ export default function AdminTabsPage() {
                       )}
                       {detail.sections.map((s) => {
                         const sOpen = openSectionId === s.id;
+                        const isEditing = editingSectionId === s.id;
                         return (
                           <div key={s.id} className="rounded-lg border border-white/10 bg-white/[0.03]">
                             <div className="flex items-center gap-2 px-3 py-2.5">
@@ -386,13 +432,49 @@ export default function AdminTabsPage() {
                                 <span className="text-sm font-semibold n-text flex-1">{s.title}</span>
                                 <span className="text-xs n-muted">{sOpen ? '▴' : '▾'}</span>
                               </button>
+                              <button type="button" onClick={() => startEditSection(s)}
+                                aria-label={`${s.title} alt sekmesini düzenle`}
+                                className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">
+                                Düzenle
+                              </button>
                               <button type="button" onClick={() => removeAltSection(c.id, s.id)}
                                 aria-label={`${s.title} alt sekmesini sil`}
                                 className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
                                 Sil
                               </button>
                             </div>
-                            {sOpen && (
+                            {isEditing ? (
+                              <div className="px-3 pb-3 space-y-2">
+                                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                                  placeholder="Alt sekme başlığı" className="neon-input text-sm" />
+                                <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)}
+                                  placeholder="Yazı" rows={3} className="neon-input text-sm" />
+                                <input type="file" accept="image/*" multiple className="hidden" id={`edit-section-image-${s.id}`}
+                                  onChange={(e) => onEditImageFiles(e.target.files)} />
+                                <label htmlFor={`edit-section-image-${s.id}`}
+                                  className="inline-block px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
+                                  Bilgisayardan Seç
+                                </label>
+                                {editImages.length > 0 && (
+                                  <div className="flex gap-2 flex-wrap">
+                                    {editImages.map((uri, imgI) => (
+                                      <img key={imgI} src={uri} alt={`Görsel ${imgI + 1}`}
+                                        style={{ maxWidth: 60, maxHeight: 45, objectFit: 'contain' }} />
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button type="button" onClick={() => saveEditSection(c.id, s.id)} disabled={!editTitle.trim()}
+                                    className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-40 text-sm transition-colors">
+                                    Kaydet
+                                  </button>
+                                  <button type="button" onClick={cancelEditSection}
+                                    className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+                                    Vazgeç
+                                  </button>
+                                </div>
+                              </div>
+                            ) : sOpen && (
                               <div className="px-3 pb-3 space-y-2">
                                 {s.body && <p className="text-sm n-muted whitespace-pre-wrap">{s.body}</p>}
                                 {s.images.length > 0 && (

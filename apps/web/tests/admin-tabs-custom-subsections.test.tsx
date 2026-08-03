@@ -12,14 +12,16 @@ vi.mock('@/lib/customTabsApi', () => ({
   getCustomTab: vi.fn(),
   createCustomTabSection: vi.fn(),
   deleteCustomTabSection: vi.fn(() => Promise.resolve(true)),
+  updateCustomTabSection: vi.fn(() => Promise.resolve(true)),
 }));
 
 import AdminTabsPage from '@/app/admin/settings/tabs/page';
 import {
-  listCustomTabs, getCustomTab, createCustomTabSection,
+  listCustomTabs, getCustomTab, createCustomTabSection, updateCustomTabSection,
 } from '@/lib/customTabsApi';
 
 beforeEach(() => {
+  vi.clearAllMocks();
   global.fetch = vi.fn(() =>
     Promise.resolve({ ok: true, json: async () => ({}) }),
   ) as never;
@@ -82,5 +84,38 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     await waitFor(() => screen.getByText('Açılış Pratiği Yap'));
     const link = screen.getByText('Açılış Pratiği Yap').closest('a');
     expect(link).toHaveAttribute('href', '/admin/openings');
+  });
+});
+
+describe('Admin özel sekme — alt sekme düzenleme', () => {
+  it('Düzenle basınca başlık/yazı düzenlenebilir kutucuklara döner', async () => {
+    await openTurnuvalar();
+    fireEvent.click(screen.getByLabelText('Kayıt Şartları alt sekmesini düzenle'));
+    const titleInput = screen.getByDisplayValue('Kayıt Şartları');
+    const bodyInput = screen.getByDisplayValue('En az 8 yaş');
+    expect(titleInput).toBeInTheDocument();
+    expect(bodyInput).toBeInTheDocument();
+  });
+
+  it('Kaydet basınca updateCustomTabSection çağrılır ve liste güncellenir', async () => {
+    (updateCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    await openTurnuvalar();
+    fireEvent.click(screen.getByLabelText('Kayıt Şartları alt sekmesini düzenle'));
+    fireEvent.change(screen.getByDisplayValue('Kayıt Şartları'), { target: { value: 'Katılım Şartları' } });
+    fireEvent.click(screen.getByText('Kaydet'));
+    await waitFor(() => expect(updateCustomTabSection).toHaveBeenCalledWith(
+      10, { title: 'Katılım Şartları', body: 'En az 8 yaş', images: [] },
+    ));
+    await waitFor(() => screen.getByText('Katılım Şartları'));
+    expect(screen.queryByText('Kayıt Şartları')).not.toBeInTheDocument();
+  });
+
+  it('Vazgeç basınca düzenleme kapanır, değişiklik kaydedilmez', async () => {
+    await openTurnuvalar();
+    fireEvent.click(screen.getByLabelText('Kayıt Şartları alt sekmesini düzenle'));
+    fireEvent.change(screen.getByDisplayValue('Kayıt Şartları'), { target: { value: 'Silinecek' } });
+    fireEvent.click(screen.getByText('Vazgeç'));
+    expect(screen.getByText('Kayıt Şartları')).toBeInTheDocument();
+    expect(updateCustomTabSection).not.toHaveBeenCalled();
   });
 });
