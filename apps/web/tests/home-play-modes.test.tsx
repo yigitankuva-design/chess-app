@@ -23,14 +23,14 @@ vi.mock('@/lib/practice/practiceApi', () => ({ fetchLessonScores: async () => nu
 
 import ChildHomePage from '@/app/(child)/home/page';
 
-const MODES = ['Arkadaşla Oyna', 'Bota Karşı Oyna', 'Açılış Pratiği Yap', 'Turnuvaya Katıl'];
+const MODES = ['Arkadaşla Oyna', 'Bota Karşı Oyna', 'Turnuvaya Katıl'];
 
 function openPlayTab() {
   render(<ChildHomePage />);
   fireEvent.click(screen.getByText('Maç Yap'));
 }
 
-describe('Ana sayfa — Maç Yap sekmesi 4 maç türü', () => {
+describe('Ana sayfa — Maç Yap sekmesi 3 maç türü', () => {
   beforeEach(() => {
     global.fetch = vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })) as never;
   });
@@ -40,7 +40,7 @@ describe('Ana sayfa — Maç Yap sekmesi 4 maç türü', () => {
     for (const m of MODES) expect(screen.queryByText(m)).not.toBeInTheDocument();
   });
 
-  it('sekmeye tıklanınca dört maç türü de sekmenin altında açılır', () => {
+  it('sekmeye tıklanınca üç maç türü de sekmenin altında açılır', () => {
     openPlayTab();
     for (const m of MODES) expect(screen.getByText(m)).toBeInTheDocument();
   });
@@ -50,9 +50,9 @@ describe('Ana sayfa — Maç Yap sekmesi 4 maç türü', () => {
     expect(screen.getByText('Arkadaşla Oyna').closest('a')).toHaveAttribute('href', '/play?mode=friend');
   });
 
-  it('Açılış Pratiği Yap açılış akışına götürür', () => {
+  it('REGRESYON: Açılış Pratiği Yap artık burada değil (Pratik Yap özel sekmesine taşındı)', () => {
     openPlayTab();
-    expect(screen.getByText('Açılış Pratiği Yap').closest('a')).toHaveAttribute('href', '/play?mode=opening');
+    expect(screen.queryByText('Açılış Pratiği Yap')).not.toBeInTheDocument();
   });
 
   it('Turnuvaya Katıl turnuva akışına götürür', () => {

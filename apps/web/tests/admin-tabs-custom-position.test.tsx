@@ -24,9 +24,9 @@ beforeAll(() => {
 describe('Admin Sekmeler — eklenen sekme "Sporcuda görünen sekmeler" içinde gösterilir', () => {
   it('eklenen sekme "+ Yeni Sekme Ekle" kartının İÇİNDE değil, DIŞINDA (öncesinde) yer alır', async () => {
     render(<AdminTabsPage />);
-    await waitFor(() => screen.getByText('Turnuvalar'));
+    await waitFor(() => screen.getByText(/Turnuvalar/));
 
-    const customLabel = screen.getByText('Turnuvalar');
+    const customLabel = screen.getByText(/Turnuvalar/);
     const addCardHeading = screen.getByText('+ Yeni Sekme Ekle');
 
     // DOCUMENT_POSITION_PRECEDING (2) = customLabel, addCardHeading'den ÖNCE gelir.
@@ -37,7 +37,7 @@ describe('Admin Sekmeler — eklenen sekme "Sporcuda görünen sekmeler" içinde
 
   it('"Sporcuda görünen sekmeler" sayacı eklenen sekmeyi de sayar', async () => {
     render(<AdminTabsPage />);
-    await waitFor(() => screen.getByText('Turnuvalar'));
+    await waitFor(() => screen.getByText(/Turnuvalar/));
     expect(screen.getByText('Sporcuda görünen sekmeler (5)')).toBeInTheDocument();
   });
 });

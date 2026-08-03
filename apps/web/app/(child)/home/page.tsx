@@ -64,12 +64,6 @@ const IconFriends = ({ s = 20 }: { s?: number }) => (
     <path d="M17.6 13.7a4.6 4.6 0 0 1 2.8 4.4v1.1" />
   </svg>
 );
-const IconBook = ({ s = 20 }: { s?: number }) => (
-  <svg width={s} height={s} {...svgBase}>
-    <path d="M4 5.2a1.6 1.6 0 0 1 1.6-1.6H10a2.4 2.4 0 0 1 2 1.1 2.4 2.4 0 0 1 2-1.1h4.4A1.6 1.6 0 0 1 20 5.2v12a1.6 1.6 0 0 1-1.6 1.6H14a2.4 2.4 0 0 0-2 1.1 2.4 2.4 0 0 0-2-1.1H5.6A1.6 1.6 0 0 1 4 17.2z" />
-    <path d="M12 4.7v15.2" />
-  </svg>
-);
 const IconTrophy = ({ s = 20 }: { s?: number }) => (
   <svg width={s} height={s} {...svgBase}>
     <path d="M8 4h8v4.6a4 4 0 0 1-8 0z" />
@@ -409,17 +403,6 @@ export default function ChildHomePage() {
                 />
               </div>
             )}
-
-            <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
-
-            {/* Açılış Pratiği Yap — açılış seçimi /play tarafında yapılır */}
-            <Link href="/play?mode=opening" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
-              <span className="flex items-center justify-center flex-shrink-0"
-                style={{ ...raised(999, 4), width: 44, height: 44, color: 'var(--t-text-1)' }}>
-                <IconBook s={20} />
-              </span>
-              <span className="font-bold text-sm" style={{ color: 'var(--t-text-1)' }}>Açılış Pratiği Yap</span>
-            </Link>
 
             <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
 

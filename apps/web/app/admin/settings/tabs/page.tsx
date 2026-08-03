@@ -5,8 +5,12 @@ import { getToken } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
 import { DEFAULT_SETTINGS, mergeSettings, ALL_TABS } from '@/lib/settings/defaults';
 import type { AppSettingsData, TabKey } from '@/lib/settings/defaults';
-import { listCustomTabs, createCustomTab, deleteCustomTab } from '@/lib/customTabsApi';
-import type { CustomTabSummary } from '@/lib/customTabsApi';
+import {
+  listCustomTabs, createCustomTab, deleteCustomTab,
+  getCustomTab, createCustomTabSection, deleteCustomTabSection,
+} from '@/lib/customTabsApi';
+import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
+import { compressImageToDataUri } from '@/lib/imageCompress';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -32,15 +36,12 @@ const TAB_CONTENT: Record<TabKey, { href: string; emoji: string; title: string; 
   eglence: null,
 };
 
-/** Maç Yap kartının 4 alt penceresi. Aynı anda tek pencere açık.
- *  Açılış Listesi yönetimi "Açılış Pratiği Yap"ın altındadır; diğerleri iskelet. */
+/** Maç Yap kartının 3 alt penceresi. Aynı anda tek pencere açık.
+ *  "Açılış Pratiği Yap" artık burada değil — "Pratik Yap" özel sekmesine taşındı. */
 const PLAY_SUBSECTIONS: { key: string; emoji: string; title: string;
   content: { href: string; emoji: string; title: string; desc: string } | null }[] = [
   { key: 'friend',     emoji: '🤝', title: 'Arkadaşınla Oyna',   content: null },
   { key: 'bot',        emoji: '🤖', title: 'Bota Karşı Oyna',    content: null },
-  { key: 'opening',    emoji: '📖', title: 'Açılış Pratiği Yap',
-    content: { href: '/admin/openings', emoji: '📖', title: 'Açılış Listesi',
-               desc: 'Açılış pratiği için açılış ekle ve kaldır' } },
   { key: 'tournament', emoji: '🏆', title: 'Turnuvaya Katıl',    content: null },
 ];
 
@@ -53,10 +54,19 @@ export default function AdminTabsPage() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  /** Tek seferde yalnızca bir kart açık (akordiyon) — sporcu ana sayfasıyla aynı dil. */
-  const [openKey, setOpenKey] = useState<TabKey | null>(null);
+  /** Tek seferde yalnızca bir kart açık (akordiyon) — sporcu ana sayfasıyla aynı dil.
+   *  number ise özel (Zafer hocanın eklediği) bir sekmenin id'sidir. */
+  const [openKey, setOpenKey] = useState<TabKey | number | null>(null);
   /** Maç Yap içindeki açık alt pencere; null = hepsi kapalı (tek-açık kuralı). */
   const [openPlaySub, setOpenPlaySub] = useState<string | null>(null);
+  /** Açılan özel sekmenin alt sekmeleri (id'ye göre) — açılınca yüklenir. */
+  const [customTabDetails, setCustomTabDetails] = useState<Record<number, CustomTabDetail>>({});
+  /** Açık özel sekmenin içinde hangi alt sekme genişletilmiş. */
+  const [openSectionId, setOpenSectionId] = useState<number | null>(null);
+  /** "+ Alt Sekme Ekle" formu — o an açık olan özel sekmeye aittir. */
+  const [newSectionTitle, setNewSectionTitle] = useState('');
+  const [newSectionBody, setNewSectionBody] = useState('');
+  const [newSectionImages, setNewSectionImages] = useState<string[]>([]);
 
   useEffect(() => {
     const token = getToken();
@@ -105,6 +115,48 @@ export default function AdminTabsPage() {
     const ok = await deleteCustomTab(id);
     if (!ok) { setMsg('Silinemedi'); return; }
     setCustomTabs((prev) => prev.filter((c) => c.id !== id));
+    setMsg('Kaydedildi ✓');
+  }
+
+  function toggleCustomTab(id: number) {
+    setOpenKey((prev) => (prev === id ? null : id));
+    setOpenSectionId(null);
+    setNewSectionTitle(''); setNewSectionBody(''); setNewSectionImages([]);
+    if (!customTabDetails[id]) {
+      getCustomTab(id).then((detail) => {
+        if (detail) setCustomTabDetails((prev) => ({ ...prev, [id]: detail }));
+      });
+    }
+  }
+
+  async function onNewSectionImageFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const compressed = await Promise.all(Array.from(files).map((f) => compressImageToDataUri(f)));
+    setNewSectionImages((prev) => [...prev, ...compressed]);
+  }
+
+  async function addAltSection(tabId: number) {
+    const title = newSectionTitle.trim();
+    if (!title) { setMsg('Alt sekme başlığı gerekli'); return; }
+    const created = await createCustomTabSection(tabId, title, newSectionBody.trim(), newSectionImages);
+    if (!created) { setMsg('Eklenemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const existing = prev[tabId];
+      if (!existing) return prev;
+      return { ...prev, [tabId]: { ...existing, sections: [...existing.sections, created] } };
+    });
+    setNewSectionTitle(''); setNewSectionBody(''); setNewSectionImages([]);
+    setMsg('Kaydedildi ✓');
+  }
+
+  async function removeAltSection(tabId: number, sectionId: number) {
+    const ok = await deleteCustomTabSection(sectionId);
+    if (!ok) { setMsg('Silinemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const existing = prev[tabId];
+      if (!existing) return prev;
+      return { ...prev, [tabId]: { ...existing, sections: existing.sections.filter((s) => s.id !== sectionId) } };
+    });
     setMsg('Kaydedildi ✓');
   }
 
@@ -256,38 +308,147 @@ export default function AdminTabsPage() {
           );
         })}
 
-        {/* Zafer hocanın eklediği sekmeler — diğerleriyle AYNI listede,
-            "+ Yeni Sekme Ekle" kartının DIŞINDA gösterilir (kullanıcı kararı). */}
-        {customTabs.map((c, i) => (
-          <div key={c.id} className="neon-card p-4"
-            style={{ borderColor: CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length] }}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl leading-none">{c.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold n-text" style={{ color: CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length] }}>
-                  {c.label}
-                </p>
-                <p className="text-xs n-muted">Zafer hocanın eklediği sekme</p>
+        {/* Zafer hocanın eklediği sekmeler — diğerleriyle AYNI listede ve AYNI
+            görünümde (numaralı, dairesel AÇ/KAPAT) gösterilir (kullanıcı kararı). */}
+        {customTabs.map((c, i) => {
+          const idx = shown.length + i;
+          const color = CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length];
+          const open = openKey === c.id;
+          const detail = customTabDetails[c.id];
+          const isPratikYap = c.label === 'Pratik Yap';
+          return (
+            <div key={c.id} className="neon-card p-4" style={{ borderColor: color }}>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl leading-none">{c.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold n-text" style={{ color }}>{idx + 1}. {c.label}</p>
+                  <p className="text-xs n-muted">Zafer hocanın eklediği sekme</p>
+                </div>
+                <button onClick={() => removeCustomTab(c.id)}
+                  className="px-2.5 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
+                  Kaldır
+                </button>
               </div>
-              <Link href={`/admin/custom-tabs/${c.id}`}
-                className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
-                İçeriği düzenle
-              </Link>
-              <button onClick={() => removeCustomTab(c.id)}
-                className="px-2.5 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
-                Kaldır
-              </button>
+
+              {/* Dairesel AÇ / KAPAT düğmesi — yerleşik sekmelerle aynı */}
+              <div className="flex justify-center mt-3">
+                <button
+                  type="button"
+                  onClick={() => toggleCustomTab(c.id)}
+                  aria-expanded={open}
+                  aria-label={`${c.label} sekmesini ${open ? 'kapat' : 'aç'}`}
+                  className="flex items-center justify-center rounded-full font-bold transition-colors"
+                  style={{
+                    width: 60,
+                    height: 60,
+                    fontSize: '0.975rem',
+                    letterSpacing: '0.04em',
+                    border: `2px solid ${color}`,
+                    color,
+                    background: open ? `${color}26` : 'transparent',
+                  }}
+                >
+                  {open ? 'KAPAT' : 'AÇ'}
+                </button>
+              </div>
+
+              {open && (
+                <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                  {isPratikYap && (
+                    <Link href="/admin/openings"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:brightness-125 transition-all"
+                      style={{ background: `${color}1a`, border: `1px solid ${color}66` }}>
+                      <span className="text-xl leading-none">📖</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold" style={{ color }}>Açılış Pratiği Yap</p>
+                        <p className="text-xs n-muted">Açılış pratiği için açılış ekle ve kaldır</p>
+                      </div>
+                      <span className="text-sm" style={{ color }}>→</span>
+                    </Link>
+                  )}
+
+                  {!detail ? (
+                    <p className="text-sm n-muted">Yükleniyor...</p>
+                  ) : (
+                    <>
+                      {detail.sections.length === 0 && !isPratikYap && (
+                        <p className="text-sm n-muted">Henüz alt sekme yok. Aşağıdan ekleyebilirsin.</p>
+                      )}
+                      {detail.sections.map((s) => {
+                        const sOpen = openSectionId === s.id;
+                        return (
+                          <div key={s.id} className="rounded-lg border border-white/10 bg-white/[0.03]">
+                            <div className="flex items-center gap-2 px-3 py-2.5">
+                              <button type="button"
+                                onClick={() => setOpenSectionId((p) => (p === s.id ? null : s.id))}
+                                aria-expanded={sOpen}
+                                className="flex-1 flex items-center gap-2 text-left hover:bg-white/5 transition-colors">
+                                <span className="text-sm font-semibold n-text flex-1">{s.title}</span>
+                                <span className="text-xs n-muted">{sOpen ? '▴' : '▾'}</span>
+                              </button>
+                              <button type="button" onClick={() => removeAltSection(c.id, s.id)}
+                                aria-label={`${s.title} alt sekmesini sil`}
+                                className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
+                                Sil
+                              </button>
+                            </div>
+                            {sOpen && (
+                              <div className="px-3 pb-3 space-y-2">
+                                {s.body && <p className="text-sm n-muted whitespace-pre-wrap">{s.body}</p>}
+                                {s.images.length > 0 && (
+                                  <div className="flex gap-2 flex-wrap">
+                                    {s.images.map((uri, imgI) => (
+                                      <img key={imgI} src={uri} alt={`${s.title} görseli ${imgI + 1}`}
+                                        style={{ maxWidth: 80, maxHeight: 60, objectFit: 'contain' }} />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2">
+                        <p className="text-xs font-bold n-muted uppercase tracking-widest">+ Alt Sekme Ekle</p>
+                        <input value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)}
+                          placeholder="Alt sekme başlığı" className="neon-input text-sm" />
+                        <textarea value={newSectionBody} onChange={(e) => setNewSectionBody(e.target.value)}
+                          placeholder="Yazı" rows={3} className="neon-input text-sm" />
+                        <input type="file" accept="image/*" multiple className="hidden" id={`new-section-image-${c.id}`}
+                          onChange={(e) => onNewSectionImageFiles(e.target.files)} />
+                        <label htmlFor={`new-section-image-${c.id}`}
+                          className="inline-block px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 cursor-pointer">
+                          Bilgisayardan Seç
+                        </label>
+                        {newSectionImages.length > 0 && (
+                          <div className="flex gap-2 flex-wrap">
+                            {newSectionImages.map((uri, imgI) => (
+                              <img key={imgI} src={uri} alt={`Yeni görsel ${imgI + 1}`}
+                                style={{ maxWidth: 60, maxHeight: 45, objectFit: 'contain' }} />
+                            ))}
+                          </div>
+                        )}
+                        <button onClick={() => addAltSection(c.id)} disabled={!newSectionTitle.trim()}
+                          className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-40 text-sm transition-colors">
+                          Alt sekme ekle
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Yeni sekme ekleme ── */}
       <div className="neon-card neon-green p-5 mb-8">
         <h2 className="font-bold mb-1 n-text">+ Yeni Sekme Ekle</h2>
         <p className="text-xs n-muted mb-4">
-          Sekmeye bir ad ver. Kendi sayfası oluşur, içeriğini (başlık/yazı/görsel
-          bölümleri) &quot;İçeriği düzenle&quot; linkinden doldurabilirsin.
+          Sekmeye bir ad ver. Yukarıdaki listede görünür — AÇ&apos;a basıp içine
+          alt sekmeler (başlık/yazı/görsel) ekleyebilirsin.
         </p>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>

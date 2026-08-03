@@ -56,23 +56,14 @@ describe('Admin Sekmeler — akordiyon', () => {
     expect(link).toHaveAttribute('href', '/admin/content');
   });
 
-  it('Maç Yap kartı açılınca 4 alt pencere başlığı görünür', async () => {
+  it('Maç Yap kartı açılınca 3 alt pencere başlığı görünür', async () => {
     await renderPage();
     fireEvent.click(screen.getByLabelText('Maç Yap sekmesini aç'));
     expect(screen.getByText('Arkadaşınla Oyna')).toBeInTheDocument();
     expect(screen.getByText('Bota Karşı Oyna')).toBeInTheDocument();
-    expect(screen.getByText('Açılış Pratiği Yap')).toBeInTheDocument();
     expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
-    // Alt pencereler KAPALI başlar: link henüz yok
-    expect(screen.queryByText('Açılış Listesi')).not.toBeInTheDocument();
-  });
-
-  it('Açılış Pratiği Yap penceresi açılınca Açılış Listesi linki görünür', async () => {
-    await renderPage();
-    fireEvent.click(screen.getByLabelText('Maç Yap sekmesini aç'));
-    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
-    const link = screen.getByText('Açılış Listesi').closest('a');
-    expect(link).toHaveAttribute('href', '/admin/openings');
+    // "Açılış Pratiği Yap" artık burada değil — "Pratik Yap" özel sekmesine taşındı.
+    expect(screen.queryByText('Açılış Pratiği Yap')).not.toBeInTheDocument();
   });
 
   it('Bota Karşı Oyna penceresi açılınca yakında notu görünür', async () => {
@@ -85,10 +76,11 @@ describe('Admin Sekmeler — akordiyon', () => {
   it('alt pencereler TEK-AÇIK çalışır: biri açılınca öteki kapanır', async () => {
     await renderPage();
     fireEvent.click(screen.getByLabelText('Maç Yap sekmesini aç'));
-    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
-    expect(screen.getByText('Açılış Listesi')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Bota Karşı Oyna'));
+    expect(screen.getByText('Bota Karşı Oyna').closest('button')).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(screen.getByText('Turnuvaya Katıl'));
-    expect(screen.queryByText('Açılış Listesi')).not.toBeInTheDocument();
+    expect(screen.getByText('Bota Karşı Oyna').closest('button')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Turnuvaya Katıl').closest('button')).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('Analiz Et kartı açılınca yakında notu görünür', async () => {
@@ -122,8 +114,7 @@ describe('Admin Sekmeler — akordiyon', () => {
     await renderPage();
     fireEvent.click(screen.getByLabelText('Dersler sekmesini aç'));
     fireEvent.click(screen.getByLabelText('Maç Yap sekmesini aç'));
-    // Maç Yap artık 4 alt pencere gösterir (Açılış Listesi bir alt pencerenin içinde).
-    expect(screen.getByText('Açılış Pratiği Yap')).toBeInTheDocument();
+    expect(screen.getByText('Arkadaşınla Oyna')).toBeInTheDocument();
     expect(screen.queryByText('Ders İçeriği')).not.toBeInTheDocument();
   });
 
@@ -152,14 +143,14 @@ describe('Admin Sekmeler — Yeni Sekme Ekle (B grubu)', () => {
     await waitFor(() => expect(createCustomTab).toHaveBeenCalledWith('Turnuvalar'));
   });
 
-  it('eklenen sekmenin yanında "İçeriği düzenle" linki vardır', async () => {
+  it('eklenen sekme diğerleri gibi numaralı ve AÇ butonludur', async () => {
     const { listCustomTabs } = await import('@/lib/customTabsApi');
     (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
       { id: 1, order_index: 1, label: 'Turnuvalar', emoji: '📌' },
     ]);
     await renderPage();
-    await waitFor(() => screen.getByText('Turnuvalar'));
-    const link = screen.getByText('İçeriği düzenle').closest('a');
-    expect(link).toHaveAttribute('href', '/admin/custom-tabs/1');
+    await waitFor(() => screen.getByText(/Turnuvalar/));
+    expect(screen.getByText(/5\. Turnuvalar/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Turnuvalar sekmesini aç')).toHaveTextContent('AÇ');
   });
 });

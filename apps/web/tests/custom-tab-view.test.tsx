@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '5' }),
@@ -11,7 +11,7 @@ import CustomTabViewPage from '@/app/(child)/custom/[id]/page';
 import { getCustomTab } from '@/lib/customTabsApi';
 
 describe('Sporcu özel sekme sayfası', () => {
-  it('bölümler sırayla başlık+yazı+görsellerle render edilir', async () => {
+  it('bölüm başlıkları listelenir; tıklanınca yazı+görseller açılır (akordiyon)', async () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 5, label: 'Turnuvalar', emoji: '📌',
       sections: [
@@ -22,9 +22,24 @@ describe('Sporcu özel sekme sayfası', () => {
     render(<CustomTabViewPage />);
     await waitFor(() => screen.getByText('Turnuvalar'));
     expect(screen.getByText('Kayıt Şartları')).toBeInTheDocument();
-    expect(screen.getByText('En az 8 yaş')).toBeInTheDocument();
     expect(screen.getByText('Ödüller')).toBeInTheDocument();
+    // Kapalı akordiyon: yazı/görsel henüz görünmez.
+    expect(screen.queryByText('En az 8 yaş')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Kayıt Şartları'));
+    expect(screen.getByText('En az 8 yaş')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Ödüller'));
+    expect(screen.getByText('Kupa verilir')).toBeInTheDocument();
     expect(screen.getByAltText('Ödüller görseli 1')).toBeInTheDocument();
+  });
+
+  it('etiketi "Pratik Yap" olan sekmede sabit "Açılış Pratiği Yap" kısayolu görünür', async () => {
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 5, label: 'Pratik Yap', emoji: '🧩', sections: [],
+    });
+    render(<CustomTabViewPage />);
+    await waitFor(() => screen.getByText('Pratik Yap'));
+    const link = screen.getByText('Açılış Pratiği Yap').closest('a');
+    expect(link).toHaveAttribute('href', '/play?mode=opening');
   });
 
   it('bölüm yoksa "Henüz içerik eklenmedi" mesajı görünür', async () => {
