@@ -8,6 +8,7 @@ import type { BoardExercise } from '@/components/admin/ExerciseForm';
 import { assignExerciseCodes, nextExerciseCode } from '@/lib/exerciseCodes';
 import { exerciseBadgeTitle } from '@/lib/exerciseBadge';
 import { difficultyColor } from '@/lib/difficultyLabels';
+import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -257,6 +258,22 @@ export default function AdminStepEditorPage() {
     return s.type;
   }
 
+  async function renameStepTitle(s: StepRow, title: string): Promise<boolean> {
+    const token = getToken();
+    try {
+      const r = await fetch(`${API_BASE}/admin/steps/${s.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content_json: { ...s.content_json, title } }),
+      });
+      if (!r.ok) return false;
+      await refresh();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   if (loading) return <p className="n-muted">Yükleniyor...</p>;
 
   const accents = ['neon-cyan', 'neon-purple', 'neon-green', 'neon-amber', 'neon-blue', 'neon-pink'];
@@ -281,7 +298,16 @@ export default function AdminStepEditorPage() {
                     <p className="text-xs n-muted uppercase tracking-wide">
                       {s.type === 'explanation' ? 'Alt Konu' : s.type === 'quiz' ? 'Soru' : s.type}
                     </p>
-                    <p className="font-semibold n-text truncate">{stepSummary(s)}</p>
+                    {s.type === 'explanation' ? (
+                      <InlineTitleEdit
+                        value={stepSummary(s)}
+                        onSave={(next) => renameStepTitle(s, next)}
+                        ariaLabel={`${stepSummary(s)} başlığını düzenle`}
+                        textClassName="font-semibold n-text truncate"
+                      />
+                    ) : (
+                      <p className="font-semibold n-text truncate">{stepSummary(s)}</p>
+                    )}
                   </div>
                   {s.type === 'explanation' && (
                     <button onClick={() => { setOpenExercises(openExercises === s.id ? null : s.id); setOpenMode(null); setEditingExercise(null); }}

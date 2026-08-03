@@ -119,3 +119,31 @@ describe('Admin ders sayfası — havuz dairesi zorluk rengi (A grubu madde 4)',
     expect(circle.style.color).toBe('#fbbf24'); // mode.color
   });
 });
+
+describe('Admin ders sayfası — Alt Konu başlığı düzenleme (A grubu madde 2)', () => {
+  it('düzenle tıklanınca başlık değişir ve PATCH /admin/steps/1 içerik title günceller', async () => {
+    vi.stubGlobal('fetch', vi.fn((_url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PATCH') return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(STEPS) });
+    }) as unknown as typeof fetch);
+
+    render(<AdminStepEditorPage />);
+    await waitFor(() => screen.getByText('Piyon Hareketleri'));
+
+    fireEvent.click(screen.getByLabelText('Piyon Hareketleri başlığını düzenle'));
+    fireEvent.change(screen.getByLabelText('Piyon Hareketleri başlığını düzenle'), {
+      target: { value: 'Piyon ve Fil Hareketleri' },
+    });
+    fireEvent.click(screen.getByText('Kaydet'));
+
+    await waitFor(() => {
+      const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const patchCall = calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
+      expect(patchCall).toBeTruthy();
+      expect(patchCall![0]).toContain('/admin/steps/1');
+      const body = JSON.parse((patchCall![1] as RequestInit).body as string);
+      expect(body.content_json.title).toBe('Piyon ve Fil Hareketleri');
+      expect(body.content_json.board_exercises).toEqual([]);
+    });
+  });
+});
