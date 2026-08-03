@@ -5,6 +5,11 @@ vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'test-token' }));
 vi.mock('@/lib/settings/settings-context', () => ({
   useSettings: () => ({ reload: vi.fn() }),
 }));
+vi.mock('@/lib/customTabsApi', () => ({
+  listCustomTabs: vi.fn(() => Promise.resolve([])),
+  createCustomTab: vi.fn(() => Promise.resolve({ id: 1, order_index: 1, label: 'Turnuvalar', emoji: '📌' })),
+  deleteCustomTab: vi.fn(() => Promise.resolve(true)),
+}));
 
 import AdminTabsPage from '@/app/admin/settings/tabs/page';
 
@@ -130,5 +135,31 @@ describe('Admin Sekmeler — akordiyon', () => {
     fireEvent.click(screen.getAllByText('Kaldır')[0]);
     // PATCH isteği gönderilir (ilk çağrı açılıştaki GET'ti)
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('Admin Sekmeler — Yeni Sekme Ekle (B grubu)', () => {
+  it('eski "Nereyi açsın?" seçici artık yok', async () => {
+    await renderPage();
+    expect(screen.queryByText('Nereyi açsın?')).not.toBeInTheDocument();
+  });
+
+  it('sadece ad girip Ekle ile yeni sekme oluşturulur', async () => {
+    const { createCustomTab } = await import('@/lib/customTabsApi');
+    await renderPage();
+    fireEvent.change(screen.getByPlaceholderText('örn. Bulmacalar'), { target: { value: 'Turnuvalar' } });
+    fireEvent.click(screen.getByText('Ekle'));
+    await waitFor(() => expect(createCustomTab).toHaveBeenCalledWith('Turnuvalar'));
+  });
+
+  it('eklenen sekmenin yanında "İçeriği düzenle" linki vardır', async () => {
+    const { listCustomTabs } = await import('@/lib/customTabsApi');
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { id: 1, order_index: 1, label: 'Turnuvalar', emoji: '📌' },
+    ]);
+    await renderPage();
+    await waitFor(() => screen.getByText('Turnuvalar'));
+    const link = screen.getByText('İçeriği düzenle').closest('a');
+    expect(link).toHaveAttribute('href', '/admin/custom-tabs/1');
   });
 });

@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
-import { DEFAULT_SETTINGS, mergeSettings, ALL_TABS, TAB_DESTINATIONS } from '@/lib/settings/defaults';
-import type { AppSettingsData, TabKey, CustomTab } from '@/lib/settings/defaults';
+import { DEFAULT_SETTINGS, mergeSettings, ALL_TABS } from '@/lib/settings/defaults';
+import type { AppSettingsData, TabKey } from '@/lib/settings/defaults';
+import { listCustomTabs, createCustomTab, deleteCustomTab } from '@/lib/customTabsApi';
+import type { CustomTabSummary } from '@/lib/customTabsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -42,9 +44,8 @@ export default function AdminTabsPage() {
   const { reload } = useSettings();
   const [tabs, setTabs] = useState<AppSettingsData['tabs']>(DEFAULT_SETTINGS.tabs);
   const [order, setOrder] = useState<TabKey[]>(DEFAULT_SETTINGS.tabOrder);
-  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [customTabs, setCustomTabs] = useState<CustomTabSummary[]>([]);
   const [newLabel, setNewLabel] = useState('');
-  const [newDest, setNewDest] = useState(TAB_DESTINATIONS[0].href);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,19 +64,22 @@ export default function AdminTabsPage() {
         // Bozuk/eksik sırayı onar: bilinen sekmeler, eksikler sona
         const clean = (Array.isArray(s.tabOrder) ? s.tabOrder : []).filter((t): t is TabKey => ALL_TABS.includes(t as TabKey));
         setOrder([...clean, ...ALL_TABS.filter((t) => !clean.includes(t))]);
-        setCustomTabs(Array.isArray(s.customTabs) ? s.customTabs : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  async function persist(nextTabs: AppSettingsData['tabs'], nextOrder: TabKey[], nextCustom: CustomTab[] = customTabs) {
+  useEffect(() => {
+    listCustomTabs().then(setCustomTabs);
+  }, []);
+
+  async function persist(nextTabs: AppSettingsData['tabs'], nextOrder: TabKey[]) {
     setSaving(true); setMsg(null);
     const token = getToken();
     const r = await fetch(`${API_BASE}/admin/settings`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ tabs: nextTabs, tabOrder: nextOrder, customTabs: nextCustom }),
+      body: JSON.stringify({ tabs: nextTabs, tabOrder: nextOrder }),
     });
     setSaving(false);
     if (!r.ok) { setMsg('Kaydedilemedi'); return; }
@@ -83,23 +87,21 @@ export default function AdminTabsPage() {
     reload();
   }
 
-  function addCustomTab() {
+  async function addCustomTab() {
     const label = newLabel.trim();
     if (!label) { setMsg('Sekme adı gerekli'); return; }
-    const dest = TAB_DESTINATIONS.find((d) => d.href === newDest)!;
-    const next: CustomTab[] = [
-      ...customTabs,
-      { id: `c${Date.now()}`, label, emoji: dest.emoji, href: dest.href },
-    ];
-    setCustomTabs(next);
+    const created = await createCustomTab(label);
+    if (!created) { setMsg('Eklenemedi'); return; }
+    setCustomTabs((prev) => [...prev, created]);
     setNewLabel('');
-    persist(tabs, order, next);
+    setMsg('Kaydedildi ✓');
   }
 
-  function removeCustomTab(id: string) {
-    const next = customTabs.filter((c) => c.id !== id);
-    setCustomTabs(next);
-    persist(tabs, order, next);
+  async function removeCustomTab(id: number) {
+    const ok = await deleteCustomTab(id);
+    if (!ok) { setMsg('Silinemedi'); return; }
+    setCustomTabs((prev) => prev.filter((c) => c.id !== id));
+    setMsg('Kaydedildi ✓');
   }
 
   function move(key: TabKey, dir: -1 | 1) {
@@ -255,24 +257,16 @@ export default function AdminTabsPage() {
       <div className="neon-card neon-green p-5 mb-8">
         <h2 className="font-bold mb-1 n-text">+ Yeni Sekme Ekle</h2>
         <p className="text-xs n-muted mb-4">
-          Sekmeye bir ad ver ve hangi bölümü açacağını seç. Sekme sporcunun Hızlı Erişim
-          ekranında görünür.
+          Sekmeye bir ad ver. Kendi sayfası oluşur, içeriğini (başlık/yazı/görsel
+          bölümleri) "İçeriği düzenle" linkinden doldurabilirsin.
         </p>
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
             <label className="text-xs n-muted block mb-1">Sekme adı</label>
             <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
               placeholder="örn. Bulmacalar" className="neon-input w-full" />
           </div>
-          <div>
-            <label className="text-xs n-muted block mb-1">Nereyi açsın?</label>
-            <select value={newDest} onChange={(e) => setNewDest(e.target.value)} className="neon-input">
-              {TAB_DESTINATIONS.map((d) => (
-                <option key={d.href} value={d.href}>{d.emoji} {d.label}</option>
-              ))}
-            </select>
-          </div>
-          <button onClick={addCustomTab} disabled={saving || !newLabel.trim()}
+          <button onClick={addCustomTab} disabled={!newLabel.trim()}
             className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm disabled:opacity-40 transition-colors">
             Ekle
           </button>
@@ -285,12 +279,13 @@ export default function AdminTabsPage() {
                 <span className="text-xl leading-none">{c.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold n-text">{c.label}</p>
-                  <p className="text-xs n-muted">
-                    {TAB_DESTINATIONS.find((d) => d.href === c.href)?.label ?? c.href}
-                  </p>
                 </div>
-                <button onClick={() => removeCustomTab(c.id)} disabled={saving}
-                  className="px-2.5 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs disabled:opacity-40">
+                <Link href={`/admin/custom-tabs/${c.id}`}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
+                  İçeriği düzenle
+                </Link>
+                <button onClick={() => removeCustomTab(c.id)}
+                  className="px-2.5 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
                   Kaldır
                 </button>
               </div>
