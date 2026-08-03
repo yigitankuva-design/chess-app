@@ -7,6 +7,7 @@ import { CollapsibleCard } from '@/components/admin/CollapsibleCard';
 import type { BoardExercise } from '@/components/admin/ExerciseForm';
 import { assignExerciseCodes, nextExerciseCode } from '@/lib/exerciseCodes';
 import { exerciseBadgeTitle } from '@/lib/exerciseBadge';
+import { difficultyColor } from '@/lib/difficultyLabels';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -347,6 +348,9 @@ export default function AdminStepEditorPage() {
                                 {list.map((ex, idx) => {
                                   const editingThis = editingExercise?.stepId === s.id
                                     && editingExercise.field === mode.field && editingExercise.idx === idx;
+                                  const circleColor = mode.field === 'board_exercises'
+                                    ? difficultyColor((ex as { difficulty?: number }).difficulty ?? 1)
+                                    : mode.color;
                                   return (
                                     <button
                                       key={idx}
@@ -355,10 +359,10 @@ export default function AdminStepEditorPage() {
                                       className="aspect-square rounded-full flex items-center justify-center font-mono font-bold transition-all"
                                       style={{
                                         fontSize: '0.85rem',
-                                        border: `1.5px solid ${mode.color}`,
-                                        background: editingThis ? mode.color : `color-mix(in srgb, ${mode.color} 12%, transparent)`,
-                                        color: editingThis ? '#0b0f1a' : mode.color,
-                                        boxShadow: editingThis ? `0 0 12px -2px ${mode.color}` : 'none',
+                                        border: `1.5px solid ${circleColor}`,
+                                        background: editingThis ? circleColor : `color-mix(in srgb, ${circleColor} 12%, transparent)`,
+                                        color: editingThis ? '#0b0f1a' : circleColor,
+                                        boxShadow: editingThis ? `0 0 12px -2px ${circleColor}` : 'none',
                                       }}
                                     >
                                       {codes[idx]}
