@@ -2,6 +2,9 @@
 import type { ChoiceTypeConfig } from './BoardExercise';
 import { EmptyBoardGrid } from '@/components/chess/EmptyBoardGrid';
 import { toneToFilter } from '@/lib/chess/imagePlacement';
+import { Chessboard } from 'react-chessboard';
+import { BOARD_CARD_BG, BOARD_STYLE, getBoardColors, getPieceSet } from '@/lib/chess/boardSkin';
+import { useSettings } from '@/lib/settings/settings-context';
 
 interface Props {
   exercise: ChoiceTypeConfig;
@@ -9,14 +12,33 @@ interface Props {
 
 /** Çoktan seçmeli sorunun GÖRSEL kısmı — resim veya boş tahta ızgarası.
  *  Yatay yerleşimde tahtanın olduğu alana (`board`) konur; cümle tipi
- *  sorularda hiçbir şey render etmez (görsel yok). */
+ *  sorularda hiçbir şey render etmez (görsel yok) — YALNIZCA hoca opsiyonel
+ *  bir tahta kurduysa (madde 5, `fen` doluysa) sabit tahta gösterilir. */
 export function ChoiceQuestionVisual({ exercise }: Props) {
+  const { settings } = useSettings();
+  const boardColors = getBoardColors(settings.board);
+  const pieceSet = getPieceSet(settings.board.pieces);
   const hasMulti = exercise.type === 'image_question'
     && !!exercise.prompt_images && exercise.prompt_images.length > 0;
   const hasLegacyPlacement = exercise.type === 'image_question' && !hasMulti && exercise.image_x !== undefined;
 
   return (
     <>
+      {exercise.type === 'sentence_question' && exercise.fen && exercise.sentence_show_board !== false && (
+        <div data-testid="sentence-board" className="rounded-xl p-2" style={{ backgroundColor: BOARD_CARD_BG, maxWidth: 240, margin: '0 auto' }}>
+          <div className="aspect-square" style={BOARD_STYLE}>
+            <Chessboard options={{
+              position: exercise.fen,
+              allowDragging: false,
+              pieces: pieceSet,
+              lightSquareStyle: { backgroundColor: boardColors.light },
+              darkSquareStyle: { backgroundColor: boardColors.dark },
+              showNotation: false,
+            }} />
+          </div>
+        </div>
+      )}
+
       {exercise.type === 'image_question' && !hasMulti && !hasLegacyPlacement && (
         <div className="rounded-xl overflow-hidden" style={{ maxWidth: 340, margin: '0 auto' }}>
           <img src={exercise.prompt_image} alt="Soru görseli"

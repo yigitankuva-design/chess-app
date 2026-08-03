@@ -118,6 +118,10 @@ export interface SentenceQuestionEx {
   fail_msg?: string;
   code?: string;
   difficulty?: number;
+  /** Talimat ile Seçenek Sayısı arasında gösterilen opsiyonel sabit tahta (A grubu madde 5). */
+  fen?: string;
+  /** Sporcu tahtayı görsün mü — varsayılan true (fen doluysa). */
+  sentence_show_board?: boolean;
 }
 
 export interface ImageQuestionEx {
