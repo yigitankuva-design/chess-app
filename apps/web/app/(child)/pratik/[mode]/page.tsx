@@ -8,7 +8,7 @@ import type { BoardExerciseConfig } from '@/components/lesson-steps/BoardExercis
 import { resultHeadline } from '@/lib/practice/resultHeadline';
 import { sessionKey, loadSession, saveSession, clearSession } from '@/lib/play/practiceSession';
 import { isSessionStale } from '@/lib/play/staleSession';
-import { pickWeighted, UNTIMED_MIX, TIMED_MIX, TEST_MIX } from '@/lib/play/questionPicker';
+import { pickWeighted, scaleMix, UNTIMED_MIX, TIMED_MIX, TEST_MIX } from '@/lib/play/questionPicker';
 import type { DifficultyBucket } from '@/lib/play/questionPicker';
 import { loadPreviousCodes, saveShownCodes } from '@/lib/play/practiceHistory';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
@@ -20,19 +20,20 @@ import { fetchLessonScores, submitPracticeResult } from '@/lib/practice/practice
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+/** Alt konu için özel bir soru sayısı belirlenmediyse kullanılan eski sabit (KURAL #3). */
+const DEFAULT_QUESTION_COUNT = 20;
+
 /** Admin'deki 3 pratik modu → adım içeriğindeki soru listesi alanı */
 const MODES: Record<string, {
   emoji: string; title: string; field: string; timed: boolean; scored: boolean;
-  /** Havuzdan rastgele kaç soru seçilsin (0 = hepsi, sırayla) */
-  randomPick: number;
-  /** Zorluk dağılımı (madde 4/5/6) — randomPick 0 ise kullanılmaz. */
+  /** Zorluk dağılım ORANI (madde 4/5/6) — çözülen soru sayısına scaleMix ile ölçeklenir. */
   mix: DifficultyBucket;
   /** "Bırak" düğmesinin yazısı — başlıktan türetilmez, açıkça yazılır. */
   quitLabel: string;
 }> = {
-  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, randomPick: 20, mix: UNTIMED_MIX, quitLabel: 'Süresiz Pratik Yapmayı Bırak' },
-  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, randomPick: 20, mix: TIMED_MIX,   quitLabel: 'Süreli Pratik Yapmayı Bırak' },
-  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  randomPick: 20, mix: TEST_MIX,    quitLabel: 'Testi Bırak' },
+  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, mix: UNTIMED_MIX, quitLabel: 'Süresiz Pratik Yapmayı Bırak' },
+  sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, mix: TIMED_MIX,   quitLabel: 'Süreli Pratik Yapmayı Bırak' },
+  test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  mix: TEST_MIX,    quitLabel: 'Testi Bırak' },
 };
 
 const TIMED_SECONDS = 300; // Süreli mod: 5 dakika
@@ -60,6 +61,8 @@ function PratikInner() {
 
   const [exercises, setExercises] = useState<BoardExerciseConfig[] | null>(null);
   const [poolSize, setPoolSize] = useState(0);
+  /** Bu alt konu + mod için çözülecek soru sayısı — admin'de belirlenmediyse 20. */
+  const [randomPick, setRandomPick] = useState(DEFAULT_QUESTION_COUNT);
   const [loading, setLoading] = useState(true);
   const [solved, setSolved] = useState(0);
   const [left, setLeft] = useState(TIMED_SECONDS);
@@ -88,6 +91,12 @@ function PratikInner() {
         const raw = (step?.content_json?.[mode.field] as BoardExerciseConfig[] | undefined) ?? [];
         const rawPool = Array.isArray(raw) ? raw : [];
         setPoolSize(rawPool.length);
+        // Madde 3: Zafer hoca bu alt konu + mod için özel bir soru sayısı
+        // belirlediyse onu kullan; yoksa eskisi gibi 20 (geriye dönük uyumlu).
+        const counts = step?.content_json?.question_counts as Record<string, number> | undefined;
+        const configured = counts?.[mode.field];
+        const resolvedPick = configured && configured > 0 ? configured : DEFAULT_QUESTION_COUNT;
+        setRandomPick(resolvedPick);
         // Alt konu sırası: başlıklı explanation adımları — home/page.tsx:270 ile aynı kural.
         const ordered = (d.steps as StepRow[] | undefined ?? [])
           .filter((s) => s.type === 'explanation' && (s.content_json as { title?: string } | undefined)?.title)
@@ -103,7 +112,7 @@ function PratikInner() {
         const saved = loadSession<BoardExerciseConfig>(key);
         // Madde 4: kayıt varsa ama havuzla artık UYUŞMUYORSA (Zafer Hoca
         // sonradan soru ekledi/çıkardı) bayat sayılır — yeniden üretilir.
-        if (saved && !isSessionStale(saved.items.length, rawPool.length, mode.randomPick)) {
+        if (saved && !isSessionStale(saved.items.length, rawPool.length, resolvedPick)) {
           setExercises(saved.items);
           setStartIndex(saved.index);
           setStartAnswer(saved.currentAnswer);
@@ -115,9 +124,9 @@ function PratikInner() {
         // Havuzdan zorluk dagilimina gore secim (madde 4/5/6): mumkunse
         // bir onceki turda gosterilen sorulardan farkli.
         const previousCodes = loadPreviousCodes(stepId, slug);
-        const picked = mode.randomPick > 0
+        const picked = resolvedPick > 0
           ? pickWeighted(
-              pool, mode.mix,
+              pool, scaleMix(mode.mix, resolvedPick),
               (ex) => (ex as { difficulty?: number }).difficulty,
               (ex) => ex.code ?? '',
               previousCodes,
@@ -128,7 +137,7 @@ function PratikInner() {
         setStartAnswer(null);
         setStartDoneCount(0);
         saveSession(key, { items: picked, index: 0, currentAnswer: null, doneCount: 0 });
-        if (mode.randomPick > 0) {
+        if (resolvedPick > 0) {
           saveShownCodes(stepId, slug, picked.map((ex) => ex.code ?? '').filter(Boolean));
         }
         setLoading(false);
@@ -310,7 +319,7 @@ function PratikInner() {
               Puan: <b style={{ color: 'var(--t-accent)' }}>{solved}</b> / {exercises.length}
             </p>
           )}
-          {mode.randomPick > 0 && poolSize > exercises.length && (
+          {randomPick > 0 && poolSize > exercises.length && (
             <p className="text-xs t-muted mb-2">
               🎲 {poolSize} soruluk havuzdan rastgele <b style={{ color: 'var(--t-accent)' }}>{exercises.length}</b> soru seçildi
               <span className="opacity-70"> — her girişte farklı sorular gelir</span>
