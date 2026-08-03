@@ -20,7 +20,7 @@ export type QuestionFamily = 'sentence_question' | 'image_question' | 'konum';
 export interface BoardExercise {
   type: ExerciseType | 'sentence_question' | 'image_question';
   instruction: string;
-  /** Sadece tahta tipleri (Konum Ekle) için zorunlu. */
+  /** Sadece tahta tipleri (Konum Ekle) VE sentence_question (madde 5) için. */
   fen?: string;
   target_squares?: string[];
   piece_square?: string;
@@ -57,6 +57,8 @@ export interface BoardExercise {
   pieces?: { piece: string; square: string }[];
   /** Sadece click_piece için — cevap taşlarının bulunduğu kareler. */
   piece_squares?: string[];
+  /** Sadece sentence_question için — sporcu tahtayı görsün mü (madde 5, varsayılan true). */
+  sentence_show_board?: boolean;
 }
 
 interface Props {

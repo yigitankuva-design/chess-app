@@ -10,6 +10,9 @@ import { POOL_CATEGORIES, addPoolImage } from '@/lib/admin/poolApi';
 import { MultiImagePlacer } from './MultiImagePlacer';
 import type { PlacedImage } from './MultiImagePlacer';
 import { defaultPlacementForIndex } from '@/lib/chess/imagePlacement';
+import { BoardEditor } from '@/components/BoardEditor';
+
+const EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
 /** Bolum taslagi: Zafer hoca baska bolume gecip dondugunde yazdiklarini
  *  kaybetmesin diye ExerciseForm'da saklanan alanlar. YALNIZCA yeni soru
@@ -28,6 +31,8 @@ export interface ChoiceDraft {
   answerKindChosen: boolean;
   difficultyChosen: boolean;
   imageShowBoard: boolean;
+  sentenceFen: string;
+  sentenceShowBoard: boolean;
 }
 
 interface Props {
@@ -58,6 +63,11 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
   });
   const [showBoard, setShowBoard] = useState(
     draft?.imageShowBoard ?? initial?.image_show_board ?? true,
+  );
+  const [sentenceFen, setSentenceFen] = useState(draft?.sentenceFen ?? initial?.fen ?? EMPTY_FEN);
+  const [sentenceTurn, setSentenceTurn] = useState<'w' | 'b'>('w');
+  const [sentenceShowBoard, setSentenceShowBoard] = useState(
+    draft?.sentenceShowBoard ?? initial?.sentence_show_board ?? true,
   );
   const [optionCount, setOptionCount] = useState<2 | 3 | 4>(
     draft?.optionCount ?? ((initial?.options?.length ?? 2) as 2 | 3 | 4),
@@ -107,11 +117,13 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
       options, correctIndex, successMsg, failMsg, difficulty,
       optionCountChosen, answerKindChosen, difficultyChosen,
       imageShowBoard: showBoard,
+      sentenceFen, sentenceShowBoard,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instruction, images, optionCount, answerKind, options,
       correctIndex, successMsg, failMsg, difficulty,
-      optionCountChosen, answerKindChosen, difficultyChosen, showBoard]);
+      optionCountChosen, answerKindChosen, difficultyChosen, showBoard,
+      sentenceFen, sentenceShowBoard]);
 
   function setCount(n: 2 | 3 | 4) {
     setOptionCount(n);
@@ -194,6 +206,10 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
       base.prompt_images = images;
       base.image_show_board = showBoard;
     }
+    if (kind === 'sentence_question' && sentenceFen !== EMPTY_FEN) {
+      base.fen = sentenceFen;
+      base.sentence_show_board = sentenceShowBoard;
+    }
     if (initial?.code) base.code = initial.code;
     if (successMsg.trim()) base.success_msg = successMsg.trim();
     if (failMsg.trim()) base.fail_msg = failMsg.trim();
@@ -204,6 +220,7 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
         setOptions(['', '']); setCorrectIndex(0); setSuccessMsg(''); setFailMsg(''); setDifficulty(1);
         setOptionCountChosen(false); setAnswerKindChosen(false); setDifficultyChosen(false);
         setShowBoard(true);
+        setSentenceFen(EMPTY_FEN); setSentenceTurn('w'); setSentenceShowBoard(true);
       }
     } catch {
       setErr('Kaydedilemedi');
@@ -219,8 +236,24 @@ export function ChoiceExerciseFields({ kind, onSubmit, initial, onCancel, draft,
         ariaLabel={kind === 'sentence_question' ? 'Cümle Ekle adımları' : 'Görüntü Ekle adımları'}
       />
       {kind === 'sentence_question' ? (
-        <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-          placeholder="Soru cümlesi (örn. Atın hareket şekli nasıldır?)" className="neon-input" />
+        <div className="space-y-2">
+          <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
+            placeholder="Soru cümlesi (örn. Atın hareket şekli nasıldır?)" className="neon-input" />
+          <div className="space-y-2">
+            <span className="text-xs n-muted block">Tahta (opsiyonel)</span>
+            <div style={{ maxWidth: 260 }}>
+              <BoardEditor fen={sentenceFen} turn={sentenceTurn}
+                onChange={setSentenceFen} onTurnChange={setSentenceTurn} />
+            </div>
+            <label className="flex items-center gap-2 text-xs n-muted">
+              <input type="checkbox" checked={sentenceShowBoard}
+                onChange={(e) => setSentenceShowBoard(e.target.checked)}
+                aria-label="Sporcu tahtayı da görsün (Cümle Ekle)"
+                className="h-4 w-4 accent-cyan-400" />
+              Sporcu tahtayı da görsün
+            </label>
+          </div>
+        </div>
       ) : (
         <div className="space-y-2">
           {/* Madde 5: Talimat, tahtadan (Bilgisayardan Seç bloğu) ÖNCE gelir. */}

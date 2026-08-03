@@ -72,4 +72,49 @@ describe('ChoiceExerciseFields', () => {
     const position = instructionInput.compareDocumentPosition(uploadLabel);
     expect(position & 4).toBeTruthy();
   });
+
+  it('sentence_question: tahta kurulup kaydedilirse submit fen ve sentence_show_board gönderir', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<ChoiceExerciseFields kind="sentence_question" onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Soru cümlesi/), { target: { value: 'Hangi kare?' } });
+    // Tahtaya bir taş koy — palet taşına tıkla, sonra kareye tıkla (BoardEditor tıkla-ekle deseni).
+    fireEvent.click(screen.getByLabelText('Beyaz Vezir'));
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
+
+    const boardShowCheckbox = screen.getByLabelText('Sporcu tahtayı da görsün (Cümle Ekle)');
+    expect(boardShowCheckbox).toBeChecked();
+    fireEvent.click(boardShowCheckbox);
+    expect(boardShowCheckbox).not.toBeChecked();
+
+    const optionInputs = screen.getAllByPlaceholderText(/\d\. şık/);
+    fireEvent.change(optionInputs[0], { target: { value: 'A' } });
+    fireEvent.change(optionInputs[1], { target: { value: 'B' } });
+    fireEvent.click(screen.getByText('2 seçenek'));
+    fireEvent.click(screen.getByText('Cümle'));
+    fireEvent.click(screen.getByText('Kolay'));
+    fireEvent.click(screen.getByText('Soruyu ekle'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'sentence_question',
+      sentence_show_board: false,
+    }));
+  });
+
+  it('sentence_question: tahta kurulmazsa (boş) fen gönderilmez', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<ChoiceExerciseFields kind="sentence_question" onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByPlaceholderText(/Soru cümlesi/), { target: { value: 'Soru?' } });
+    const optionInputs = screen.getAllByPlaceholderText(/\d\. şık/);
+    fireEvent.change(optionInputs[0], { target: { value: 'A' } });
+    fireEvent.change(optionInputs[1], { target: { value: 'B' } });
+    fireEvent.click(screen.getByText('2 seçenek'));
+    fireEvent.click(screen.getByText('Cümle'));
+    fireEvent.click(screen.getByText('Kolay'));
+    fireEvent.click(screen.getByText('Soruyu ekle'));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const call = onSubmit.mock.calls[0][0];
+    expect(call.fen).toBeUndefined();
+  });
 });
