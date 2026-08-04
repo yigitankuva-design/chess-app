@@ -190,3 +190,18 @@ async def test_konum_havuzu_bos_id_reddedilir(client):
     r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
                            json={"practice_positions": [{"id": "", "fen": "8/8/8/8/8/8/8/8 w - - 0 1"}]})
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client):
+    tok = await _teacher_token(client, "ctp3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Süresiz Pratik", "body": "", "images": []})).json()
+    fen = "8/8/8/4k3/8/8/4P3/4K3 w - - 0 1"
+    await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                       json={"practice_positions": [{"id": "p1", "fen": fen}]})
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    assert detail["sections"][0]["practice_positions"] == [{"id": "p1", "fen": fen}]

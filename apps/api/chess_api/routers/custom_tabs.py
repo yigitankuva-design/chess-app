@@ -31,7 +31,8 @@ async def get_custom_tab(tab_id: int, db: AsyncSession = Depends(get_db)):
     return {
         "id": tab.id, "label": tab.label, "emoji": tab.emoji,
         "sections": [
-            {"id": s.id, "order_index": s.order_index, "title": s.title, "body": s.body, "images": s.images}
+            {"id": s.id, "order_index": s.order_index, "title": s.title, "body": s.body,
+             "images": s.images, "practice_positions": s.practice_positions}
             for s in sections
         ],
     }
