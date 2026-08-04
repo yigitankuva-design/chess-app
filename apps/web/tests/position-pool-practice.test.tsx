@@ -1,0 +1,42 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+
+vi.mock('@/components/ChessBoard', () => ({
+  ChessBoard: ({ fen }: { fen: string }) => <div data-testid="board" data-fen={fen} />,
+}));
+vi.mock('@/lib/chess/stockfish', () => ({
+  StockfishEngine: class {
+    async init() {}
+    setSkill() {}
+    async bestMove() { return '(none)'; }
+    destroy() {}
+  },
+}));
+vi.mock('@/lib/auth-storage', () => ({
+  getToken: () => 'tok',
+  getAthleteName: () => 'Ahmet',
+}));
+vi.mock('@/lib/avatars', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/avatars')>('@/lib/avatars');
+  return { ...actual, getSavedAvatar: () => 'unicorn' };
+});
+vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ game_id: 1 }) }));
+
+import { PositionPoolPractice } from '@/components/play/PositionPoolPractice';
+
+const POOL = [
+  { id: 'p1', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' },
+];
+
+describe('PositionPoolPractice', () => {
+  it('havuz boşsa bilgi mesajı gösterir, MatchCriteria hiç görünmez', () => {
+    render(<PositionPoolPractice positions={[]} />);
+    expect(screen.getByText(/Henüz konum eklenmedi/)).toBeInTheDocument();
+    expect(screen.queryByText('Pratiğe Başla')).not.toBeInTheDocument();
+  });
+
+  it('havuz doluysa MatchCriteria gösterir', () => {
+    render(<PositionPoolPractice positions={POOL} />);
+    expect(screen.getByText(/Pratiğe Başla/)).toBeInTheDocument();
+  });
+});
