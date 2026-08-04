@@ -33,6 +33,8 @@ interface Props {
   /** Verilmezse "Yeniden Oyna" butonu HİÇ render edilmez (insan-insan maçı). */
   onRematch?: () => void;
   rematchEnabled?: boolean;
+  /** Rematch butonunun metni. Verilmezse "Yeniden Oyna" (geriye dönük uyumlu). */
+  rematchLabel?: string;
 }
 
 function cardBorder(active: boolean) {
@@ -100,6 +102,7 @@ function TimeBox({ ms, active }: { ms: number | null; active: boolean }) {
 export function MatchLayout({
   top, bottom, board, moveList, extra, over, resultSlot,
   drawLabel, drawDisabled, onOfferDraw, onResign, onRematch, rematchEnabled,
+  rematchLabel = 'Yeniden Oyna',
 }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 space-y-2">
@@ -153,7 +156,7 @@ export function MatchLayout({
               onClick={onRematch}
               className="t-btn-ghost w-full h-full px-2 py-2 text-sm text-center disabled:opacity-40"
             >
-              Yeniden Oyna
+              {rematchLabel}
             </button>
           </div>
         )}
