@@ -15,6 +15,7 @@ export interface CustomTabSection {
   title: string;
   body: string;
   images: string[];
+  practice_positions: { id: string; fen: string }[];
 }
 
 export interface CustomTabDetail {
@@ -90,7 +91,8 @@ export async function createCustomTabSection(
 }
 
 export async function updateCustomTabSection(
-  sectionId: number, patch: { title?: string; body?: string; images?: string[] },
+  sectionId: number,
+  patch: { title?: string; body?: string; images?: string[]; practice_positions?: { id: string; fen: string }[] },
 ): Promise<boolean> {
   const token = getToken();
   try {
