@@ -41,11 +41,19 @@ interface Props {
   onGameEnd: (result: 'win' | 'loss' | 'draw') => void;
   /** Verilirse maç bitince "Yeniden Oyna" butonu görünür ve aktif olur. */
   onRematch?: () => void;
+  /** Verilirse Beraberlik Teklif Et YERİNE bu iki eylem gösterilir (Pratik Yap
+   *  konum havuzu akışı — bota karşı serbest pratik, beraberlik teklifi anlamsız). */
+  practiceActions?: {
+    onPlaySame: () => void;
+    onPlayDifferent: () => void;
+  };
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd, onRematch }: Props) {
+export function BotGame({
+  skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd, onRematch, practiceActions,
+}: Props) {
   // Oturum anahtarı render'lar arasında sabittir; prop'lardan türetilir.
   const sessionKeyStr = botGameKey(skillLevel, studentColor, startFen);
   /** Kayıttan okunan hamleler — ilk render'da tahtayı kurmak için kullanılır.
@@ -401,12 +409,13 @@ export function BotGame({ skillLevel, depth, timeControl, studentColor = 'w', st
           {resultText}
         </div>
       }
-      drawLabel={`Beraberlik Teklif Et (${offersLeft(drawOffersUsed)})`}
-      drawDisabled={!canOfferDraw(drawOffersUsed)}
-      onOfferDraw={offerDrawToBot}
+      drawLabel={practiceActions ? 'Aynı Konumu Pratik Et' : `Beraberlik Teklif Et (${offersLeft(drawOffersUsed)})`}
+      drawDisabled={practiceActions ? status !== 'over' : !canOfferDraw(drawOffersUsed)}
+      onOfferDraw={practiceActions ? practiceActions.onPlaySame : offerDrawToBot}
       onResign={resignToBot}
-      onRematch={onRematch}
+      onRematch={practiceActions ? practiceActions.onPlayDifferent : onRematch}
       rematchEnabled={status === 'over'}
+      rematchLabel={practiceActions ? 'Farklı Bir Konumu Pratik Yap' : 'Yeniden Oyna'}
     />
   );
 }
