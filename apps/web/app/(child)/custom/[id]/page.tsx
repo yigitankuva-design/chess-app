@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getCustomTab } from '@/lib/customTabsApi';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
+import { PositionPoolPractice } from '@/components/play/PositionPoolPractice';
 
 export default function CustomTabViewPage() {
   const params = useParams();
@@ -54,14 +55,20 @@ export default function CustomTabViewPage() {
                 </button>
                 {open && (
                   <div className="px-4 pb-4 space-y-3">
-                    {s.body && <p className="t-muted whitespace-pre-wrap">{s.body}</p>}
-                    {s.images.length > 0 && (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {s.images.map((uri, i) => (
-                          <img key={i} src={uri} alt={`${s.title} görseli ${i + 1}`}
-                            className="rounded-lg w-full" style={{ objectFit: 'contain' }} />
-                        ))}
-                      </div>
+                    {isPratikYap ? (
+                      <PositionPoolPractice positions={s.practice_positions} />
+                    ) : (
+                      <>
+                        {s.body && <p className="t-muted whitespace-pre-wrap">{s.body}</p>}
+                        {s.images.length > 0 && (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {s.images.map((uri, i) => (
+                              <img key={i} src={uri} alt={`${s.title} görseli ${i + 1}`}
+                                className="rounded-lg w-full" style={{ objectFit: 'contain' }} />
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

@@ -6,6 +6,25 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ back: vi.fn() }),
 }));
 vi.mock('@/lib/customTabsApi', () => ({ getCustomTab: vi.fn() }));
+vi.mock('@/components/ChessBoard', () => ({
+  ChessBoard: ({ fen }: { fen: string }) => <div data-testid="board" data-fen={fen} />,
+}));
+vi.mock('@/lib/chess/stockfish', () => ({
+  StockfishEngine: class {
+    async init() {}
+    setSkill() {}
+    async bestMove() { return '(none)'; }
+    destroy() {}
+  },
+}));
+vi.mock('@/lib/auth-storage', () => ({
+  getToken: () => 'tok',
+  getAthleteName: () => 'Ahmet',
+}));
+vi.mock('@/lib/avatars', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/avatars')>('@/lib/avatars');
+  return { ...actual, getSavedAvatar: () => 'unicorn' };
+});
 
 import CustomTabViewPage from '@/app/(child)/custom/[id]/page';
 import { getCustomTab } from '@/lib/customTabsApi';
@@ -55,5 +74,33 @@ describe('Sporcu özel sekme sayfası', () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     render(<CustomTabViewPage />);
     await waitFor(() => screen.getByText('Sayfa bulunamadı'));
+  });
+
+  it('Pratik Yap alt sekmesi tıklanınca body/images yerine PositionPoolPractice görünür', async () => {
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1, label: 'Pratik Yap', emoji: '🎯',
+      sections: [{
+        id: 10, order_index: 1, title: 'Süresiz Pratik', body: 'bu metin görünmemeli', images: [],
+        practice_positions: [{ id: 'p1', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }],
+      }],
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ game_id: 1 }) }));
+    render(<CustomTabViewPage />);
+    await waitFor(() => screen.getByText('Süresiz Pratik'));
+    fireEvent.click(screen.getByText('Süresiz Pratik'));
+
+    await waitFor(() => screen.getByText(/Pratiğe Başla/));
+    expect(screen.queryByText('bu metin görünmemeli')).not.toBeInTheDocument();
+  });
+
+  it('Pratik Yap OLMAYAN sekmede alt sekme hâlâ body/images gösterir (regresyon)', async () => {
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 2, label: 'Bulmacalar', emoji: '🧩',
+      sections: [{ id: 20, order_index: 1, title: 'Bölüm', body: 'normal metin', images: [], practice_positions: [] }],
+    });
+    render(<CustomTabViewPage />);
+    await waitFor(() => screen.getByText('Bölüm'));
+    fireEvent.click(screen.getByText('Bölüm'));
+    await waitFor(() => screen.getByText('normal metin'));
   });
 });
