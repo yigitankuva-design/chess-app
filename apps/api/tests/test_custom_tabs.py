@@ -161,3 +161,32 @@ async def test_cok_buyuk_bolum_gorseli_reddedilir(client):
     r = await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
                           json={"title": "Bölüm", "body": "", "images": [huge]})
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_konum_havuzu_kaydedilir(client):
+    tok = await _teacher_token(client, "ctp1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Süresiz Pratik", "body": "", "images": []})).json()
+    assert section["practice_positions"] == []
+
+    fen = "8/8/8/4k3/8/8/4P3/4K3 w - - 0 1"
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"practice_positions": [{"id": "p1", "fen": fen}]})
+    assert r.status_code == 200
+    assert r.json()["practice_positions"] == [{"id": "p1", "fen": fen}]
+
+
+@pytest.mark.asyncio
+async def test_konum_havuzu_bos_id_reddedilir(client):
+    tok = await _teacher_token(client, "ctp2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Süresiz Pratik", "body": "", "images": []})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"practice_positions": [{"id": "", "fen": "8/8/8/8/8/8/8/8 w - - 0 1"}]})
+    assert r.status_code == 422

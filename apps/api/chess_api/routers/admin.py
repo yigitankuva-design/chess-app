@@ -1251,10 +1251,16 @@ class CustomTabSectionCreateRequest(BaseModel):
     images: list[str] = []
 
 
+class PracticePosition(BaseModel):
+    id: str = Field(min_length=1)
+    fen: str = Field(min_length=1)
+
+
 class CustomTabSectionUpdateRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     body: str | None = None
     images: list[str] | None = None
+    practice_positions: list[PracticePosition] | None = None
 
 
 @router.post("/custom-tabs", status_code=201)
@@ -1337,7 +1343,8 @@ async def create_custom_tab_section(
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
-            "body": section.body, "images": section.images}
+            "body": section.body, "images": section.images,
+            "practice_positions": section.practice_positions}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1359,10 +1366,13 @@ async def update_custom_tab_section(
         for i, img in enumerate(payload.images):
             _check_data_uri_size(img, f"{i + 1}. görsel")
         section.images = payload.images
+    if payload.practice_positions is not None:
+        section.practice_positions = [p.model_dump() for p in payload.practice_positions]
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
-            "body": section.body, "images": section.images}
+            "body": section.body, "images": section.images,
+            "practice_positions": section.practice_positions}
 
 
 @router.delete("/custom-tab-sections/{section_id}")
