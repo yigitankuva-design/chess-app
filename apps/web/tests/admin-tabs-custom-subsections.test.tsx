@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'test-token' }));
-vi.mock('@/lib/settings/settings-context', () => ({
-  useSettings: () => ({ reload: vi.fn() }),
-}));
+vi.mock('@/lib/settings/settings-context', async () => {
+  const { DEFAULT_SETTINGS } = await import('@/lib/settings/defaults');
+  return { useSettings: () => ({ settings: DEFAULT_SETTINGS, reload: vi.fn() }) };
+});
 vi.mock('@/lib/customTabsApi', () => ({
   listCustomTabs: vi.fn(),
   createCustomTab: vi.fn(),
@@ -117,5 +118,40 @@ describe('Admin özel sekme — alt sekme düzenleme', () => {
     fireEvent.click(screen.getByText('Vazgeç'));
     expect(screen.getByText('Kayıt Şartları')).toBeInTheDocument();
     expect(updateCustomTabSection).not.toHaveBeenCalled();
+  });
+});
+
+describe('Admin özel sekme — Pratik Yap konum havuzu', () => {
+  it('Pratik Yap alt sekmesinde Konumu Kaydet ile havuza konum eklenir', async () => {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 1, order_index: 1, label: 'Pratik Yap', emoji: '🎯' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1, label: 'Pratik Yap', emoji: '🎯',
+      sections: [{ id: 10, order_index: 1, title: 'Süresiz Pratik', body: '', images: [], practice_positions: [] }],
+    });
+    (updateCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Pratik Yap/));
+    fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
+    await waitFor(() => screen.getByText('Süresiz Pratik'));
+    fireEvent.click(screen.getByText('Süresiz Pratik'));
+    await waitFor(() => screen.getByText('Konum Havuzu (0)'));
+
+    fireEvent.click(screen.getByText('Konumu Kaydet'));
+
+    await waitFor(() => {
+      expect(updateCustomTabSection).toHaveBeenCalledWith(
+        10, expect.objectContaining({ practice_positions: expect.any(Array) }),
+      );
+    });
+  });
+
+  it('Pratik Yap OLMAYAN sekmede konum havuzu bölümü GÖRÜNMEZ', async () => {
+    await openTurnuvalar();
+    fireEvent.click(screen.getByText('Kayıt Şartları'));
+    await waitFor(() => screen.getByText('En az 8 yaş'));
+    expect(screen.queryByText(/Konum Havuzu/)).not.toBeInTheDocument();
   });
 });

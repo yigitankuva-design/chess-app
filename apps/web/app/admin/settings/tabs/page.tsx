@@ -11,6 +11,8 @@ import {
 } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { compressImageToDataUri } from '@/lib/imageCompress';
+import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
+import { START_FEN } from '@/components/BoardEditor';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -72,6 +74,9 @@ export default function AdminTabsPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
   const [editImages, setEditImages] = useState<string[]>([]);
+  /** Konum havuzu düzenleme dizme alanı — açık alt sekmeye ait, geçici (kaydedilmemiş) taslak. */
+  const [poolFen, setPoolFen] = useState(START_FEN);
+  const [poolTurn, setPoolTurn] = useState<'w' | 'b'>('w');
 
   useEffect(() => {
     const token = getToken();
@@ -128,6 +133,7 @@ export default function AdminTabsPage() {
     setOpenSectionId(null);
     setNewSectionTitle(''); setNewSectionBody(''); setNewSectionImages([]);
     cancelEditSection();
+    setPoolFen(START_FEN); setPoolTurn('w');
     if (!customTabDetails[id]) {
       getCustomTab(id).then((detail) => {
         if (detail) setCustomTabDetails((prev) => ({ ...prev, [id]: detail }));
@@ -191,6 +197,48 @@ export default function AdminTabsPage() {
       };
     });
     cancelEditSection();
+    setMsg('Kaydedildi ✓');
+  }
+
+  async function savePosition(tabId: number, sectionId: number) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const newPos = { id: crypto.randomUUID(), fen: poolFen };
+    const nextPool = [...existing.practice_positions, newPos];
+    const ok = await updateCustomTabSection(sectionId, { practice_positions: nextPool });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, practice_positions: nextPool } : s)),
+        },
+      };
+    });
+    setPoolFen(START_FEN); setPoolTurn('w');
+    setMsg('Kaydedildi ✓');
+  }
+
+  async function deletePosition(tabId: number, sectionId: number, positionId: string) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = existing.practice_positions.filter((p) => p.id !== positionId);
+    const ok = await updateCustomTabSection(sectionId, { practice_positions: nextPool });
+    if (!ok) { setMsg('Silinemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, practice_positions: nextPool } : s)),
+        },
+      };
+    });
     setMsg('Kaydedildi ✓');
   }
 
@@ -483,6 +531,17 @@ export default function AdminTabsPage() {
                                       <img key={imgI} src={uri} alt={`${s.title} görseli ${imgI + 1}`}
                                         style={{ maxWidth: 80, maxHeight: 60, objectFit: 'contain' }} />
                                     ))}
+                                  </div>
+                                )}
+                                {isPratikYap && (
+                                  <div className="pt-2 border-t border-white/10">
+                                    <PositionPoolFields
+                                      fen={poolFen} turn={poolTurn}
+                                      onFenChange={setPoolFen} onTurnChange={setPoolTurn}
+                                      onSavePosition={() => savePosition(c.id, s.id)}
+                                      pool={s.practice_positions}
+                                      onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
+                                    />
                                   </div>
                                 )}
                               </div>
