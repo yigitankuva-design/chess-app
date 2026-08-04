@@ -15,7 +15,9 @@ class CustomTab(Base):
 
 
 class CustomTabSection(Base):
-    """Bir ozel sekmenin sayfasindaki tek bir bolum — baslik + yazi + gorseller."""
+    """Bir ozel sekmenin sayfasindaki tek bir bolum — baslik + yazi + gorseller.
+    Pratik Yap sekmesi icin ayrica bir bot-pratigi konum havuzu tutar
+    (practice_positions) — {id, fen} sozlukleri; turn FEN icinde zaten var."""
 
     __tablename__ = "custom_tab_sections"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -24,3 +26,4 @@ class CustomTabSection(Base):
     title: Mapped[str] = mapped_column(String(160))
     body: Mapped[str] = mapped_column(Text)
     images: Mapped[list] = mapped_column(JSON, default=list)
+    practice_positions: Mapped[list] = mapped_column(JSON, default=list)
