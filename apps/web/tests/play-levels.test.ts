@@ -2,21 +2,34 @@ import { describe, it, expect } from 'vitest';
 import { LEVELS, TIME_GROUPS, ALL_TIMES } from '@/lib/play/levels';
 
 describe('LEVELS', () => {
-  it('tam 8 seviye vardır', () => expect(LEVELS).toHaveLength(8));
+  it('tam 10 seviye vardır', () => expect(LEVELS).toHaveLength(10));
 
-  it('seviye numaraları 1..8 sıralıdır', () => {
-    expect(LEVELS.map((l) => l.level)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  it('seviye numaraları 1..10 sıralıdır', () => {
+    expect(LEVELS.map((l) => l.level)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
-  it('skill_level 0..20 aralığında ve artan sıradadır', () => {
+  it('skill_level 0..20 aralığındadır', () => {
     const skills = LEVELS.map((l) => l.skill);
-    expect(skills).toEqual([0, 3, 6, 9, 12, 15, 18, 20]);
-    expect(Math.min(...skills)).toBeGreaterThanOrEqual(0);
-    expect(Math.max(...skills)).toBeLessThanOrEqual(20);
+    for (const s of skills) {
+      expect(s).toBeGreaterThanOrEqual(0);
+      expect(s).toBeLessThanOrEqual(20);
+    }
   });
 
-  it('depth artan sıradadır', () => {
-    expect(LEVELS.map((l) => l.depth)).toEqual([1, 3, 5, 7, 8, 9, 11, 12]);
+  it('1-5. seviyelerde hata ihtimali VAR ve azalan sıradadır', () => {
+    const chances = LEVELS.slice(0, 5).map((l) => l.blunderChance);
+    expect(chances).toEqual([0.6, 0.45, 0.3, 0.15, 0.05]);
+    for (let i = 1; i < chances.length; i++) expect(chances[i]).toBeLessThan(chances[i - 1]);
+  });
+
+  it('6-10. seviyelerde hata ihtimali YOKTUR (0)', () => {
+    const chances = LEVELS.slice(5).map((l) => l.blunderChance);
+    expect(chances).toEqual([0, 0, 0, 0, 0]);
+  });
+
+  it('6-10. seviyelerde skill artan sıradadır', () => {
+    const skills = LEVELS.slice(5).map((l) => l.skill);
+    for (let i = 1; i < skills.length; i++) expect(skills[i]).toBeGreaterThan(skills[i - 1]);
   });
 });
 
