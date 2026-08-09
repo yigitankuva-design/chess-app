@@ -204,6 +204,7 @@ function PlayInner() {
         key={gameKey}
         skillLevel={botCriteria.level.skill}
         depth={botCriteria.level.depth}
+        blunderChance={botCriteria.level.blunderChance}
         timeControl={botCriteria.timeControl}
         studentColor={botColor}
         onGameEnd={() => {}}

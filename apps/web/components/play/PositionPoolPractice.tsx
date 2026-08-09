@@ -46,6 +46,7 @@ export function PositionPoolPractice({ positions }: Props) {
       key={matchKey}
       skillLevel={criteria.level.skill}
       depth={criteria.level.depth}
+      blunderChance={criteria.level.blunderChance}
       timeControl={criteria.timeControl}
       studentColor={color}
       startFen={current.fen}

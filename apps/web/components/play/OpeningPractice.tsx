@@ -67,6 +67,7 @@ export function OpeningPractice() {
         key={matchKey}
         skillLevel={criteria.level.skill}
         depth={criteria.level.depth}
+        blunderChance={criteria.level.blunderChance}
         timeControl={criteria.timeControl}
         studentColor={color}
         startFen={chosen.start_fen}
