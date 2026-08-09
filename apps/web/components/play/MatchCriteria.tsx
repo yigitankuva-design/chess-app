@@ -52,7 +52,7 @@ export function MatchCriteria({ onStart, startLabel, showLevel = true }: Props) 
       {showLevel && (
         <div className="t-card-i p-4 space-y-3">
           <p className="text-xs font-semibold t-muted uppercase tracking-wide">
-            1. Düzey Seç <span className="normal-case">(1 en kolay · 8 en zor)</span>
+            1. Düzey Seç <span className="normal-case">(1 en kolay · 10 en zor)</span>
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {LEVELS.map((l) => {
