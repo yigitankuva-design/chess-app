@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 
 describe('MatchCriteria', () => {
-  it('8 zorluk düzeyi butonu gösterir', () => {
+  it('10 zorluk düzeyi butonu gösterir', () => {
     render(<MatchCriteria onStart={vi.fn()} startLabel="Oyuna Başla" />);
-    for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
       expect(screen.getByRole('button', { name: `Düzey ${n}` })).toBeInTheDocument();
     }
   });
@@ -39,7 +39,7 @@ describe('MatchCriteria', () => {
     expect(onStart).toHaveBeenCalledTimes(1);
     const arg = onStart.mock.calls[0][0];
     expect(arg.level.level).toBe(3);
-    expect(arg.level.skill).toBe(6);
+    expect(arg.level.skill).toBe(20);
     expect(arg.timeControl.label).toBe('5+0');
     expect(arg.colorChoice).toBe('black');
   });

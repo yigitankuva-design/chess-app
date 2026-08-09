@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 
 describe('MatchCriteria — üç yatay sıra (madde 5)', () => {
-  it('1. sırada 8 dairesel düzey kartı vardır, üzerlerinde sadece rakam', () => {
+  it('1. sırada 10 dairesel düzey kartı vardır, üzerlerinde sadece rakam', () => {
     render(<MatchCriteria startLabel="Maça Başla" onStart={vi.fn()} />);
-    for (let n = 1; n <= 8; n++) {
+    for (let n = 1; n <= 10; n++) {
       const btn = screen.getByRole('button', { name: `Düzey ${n}` });
       expect(btn).toHaveTextContent(String(n));
     }
