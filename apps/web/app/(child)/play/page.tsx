@@ -44,9 +44,12 @@ function PlayInner() {
   const searchParams = useSearchParams();
 
   // Hızlı Erişim patikasından (skill+tc) gelinmişse doğrudan bot maçına gir.
+  // "skill" param adı tarihseldir — artık ham Stockfish skill değeri DEĞİL,
+  // LEVELS'teki düzey numarasını (1-10) taşır (10 seviyeli sisteme geçişte
+  // skill değerleri artık düzeyler arasında benzersiz olmadığı için).
   const skillParam = searchParams.get('skill');
   const tcParam = searchParams.get('tc');
-  const quickLevel = skillParam !== null ? LEVELS.find((l) => l.skill === Number(skillParam)) : undefined;
+  const quickLevel = skillParam !== null ? LEVELS.find((l) => l.level === Number(skillParam)) : undefined;
   const quickTc = tcParam ? ALL_TIMES.find((t) => t.label === tcParam) : undefined;
   const colorParam = searchParams.get('color');
   const quickColor: ColorChoice =

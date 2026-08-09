@@ -59,7 +59,7 @@ describe('/play — ?mode= ile doğrudan akış açılır', () => {
   });
 
   it('skill+tc kısayolu mode parametresini ezip bot maçına girer (regresyon)', () => {
-    renderWith('skill=0&depth=1&tc=3%2B2&mode=tournament');
+    renderWith('skill=1&depth=1&tc=3%2B2&mode=tournament');
     expect(screen.getByTestId('bot-game')).toBeInTheDocument();
   });
 });

@@ -395,7 +395,7 @@ export default function ChildHomePage() {
                   startLabel="Maça Başla"
                   onStart={(v) => {
                     router.push(
-                      `/play?mode=bot&skill=${v.level.skill}`
+                      `/play?mode=bot&skill=${v.level.level}`
                       + `&tc=${encodeURIComponent(v.timeControl.label)}`
                       + `&color=${v.colorChoice}`,
                     );
