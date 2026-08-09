@@ -1,5 +1,5 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BotGame } from '@/components/BotGame';
 import { OfferBoard } from '@/components/play/OfferBoard';
@@ -12,8 +12,12 @@ import type { PieceColor, ColorChoice } from '@/lib/play/color';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
 import { usePresenceCount } from '@/lib/presence/PresenceContext';
 import { ActivePlayersBadge } from '@/components/play/ActivePlayersBadge';
+import { getCustomTab } from '@/lib/customTabsApi';
+import { PositionPoolPractice } from '@/components/play/PositionPoolPractice';
+import type { PoolPosition } from '@/lib/play/positionPool';
 
-type Mode = 'friend' | 'bot' | 'opening' | 'tournament';
+/** "pool" ana ekrandaki özel sekme alt sekmesinden gelir — kart listesinde YOKTUR. */
+type Mode = 'friend' | 'bot' | 'opening' | 'tournament' | 'pool';
 
 const MODE_CARDS: { mode: Mode; emoji: string; title: string; subtitle: string }[] = [
   { mode: 'friend',     emoji: '🤝', title: 'Arkadaşla Oyna',     subtitle: 'Aktif sporcuya teklif gönder' },
@@ -61,12 +65,19 @@ function PlayInner() {
     : null;
 
   // Ana sayfadaki maç türü kartından gelinmişse o akışı doğrudan aç.
+  // "pool" modu ana ekrandaki özel sekme alt sekmesinden gelir; kriterler zaten
+  // seçilmiş olduğu için quickStart'tan ÖNCE değerlendirilir.
   const modeParam = searchParams.get('mode');
-  const initialMode: Mode | null = quickStart
-    ? 'bot'
-    : MODE_CARDS.some((c) => c.mode === modeParam)
-      ? (modeParam as Mode)
-      : null;
+  const sectionParam = searchParams.get('section');
+  const tabParam = searchParams.get('tab');
+  const initialMode: Mode | null =
+    modeParam === 'pool' && sectionParam && tabParam
+      ? 'pool'
+      : quickStart
+        ? 'bot'
+        : MODE_CARDS.some((c) => c.mode === modeParam)
+          ? (modeParam as Mode)
+          : null;
 
   const [mode, setMode] = useState<Mode | null>(initialMode);
   const [botCriteria, setBotCriteria] = useState<MatchCriteriaValue | null>(quickStart);
@@ -74,6 +85,19 @@ function PlayInner() {
     quickStart ? resolveColor(quickStart.colorChoice) : 'w',
   );
   const [gameKey, setGameKey] = useState(0);
+
+  /** pool modu: seçilen alt sekmenin konum havuzu. undefined = henüz yükleniyor. */
+  const [poolPositions, setPoolPositions] = useState<PoolPosition[] | undefined>(undefined);
+  const [poolTitle, setPoolTitle] = useState('');
+
+  useEffect(() => {
+    if (initialMode !== 'pool' || !tabParam || !sectionParam) return;
+    getCustomTab(Number(tabParam)).then((detail) => {
+      const section = detail?.sections.find((s) => s.id === Number(sectionParam));
+      setPoolPositions(section?.practice_positions ?? []);
+      setPoolTitle(section?.title ?? '');
+    });
+  }, [initialMode, tabParam, sectionParam]);
 
   /** Secimleri ADRESE yazar. Boylece F5/yenile sonrasi sporcu ayni ekranda
    *  kalir; React durumu kaybolsa da adres bilgiyi tasir (madde 4 ve 9). */
@@ -135,6 +159,27 @@ function PlayInner() {
       ←
     </button>
   );
+
+  // ── Konum havuzu pratiği (özel sekme alt sekmesinden gelindi) ──────────────
+  if (mode === 'pool') {
+    return (
+      <main className="pb-12">
+        <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
+          <p className="font-semibold text-sm">🎯 {poolTitle || 'Pratik'}</p>
+        </div>
+        {poolPositions === undefined ? (
+          <p className="px-4 text-sm t-muted">Yükleniyor...</p>
+        ) : poolPositions.length === 0 ? (
+          <p className="px-4 text-sm t-muted">Bu bölümde henüz konum yok.</p>
+        ) : (
+          <PositionPoolPractice
+            positions={poolPositions}
+            initialCriteria={quickStart ?? undefined}
+          />
+        )}
+      </main>
+    );
+  }
 
   // ── Turnuva: henüz özellikleri belirlenmedi ────────────────────────────────
   if (mode === 'tournament') {
