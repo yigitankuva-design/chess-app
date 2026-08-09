@@ -14,8 +14,9 @@ import { MatchCriteria } from '@/components/play/MatchCriteria';
 import { useRouter } from 'next/navigation';
 import { usePresenceCount } from '@/lib/presence/PresenceContext';
 import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayersBadge';
-import { listCustomTabs } from '@/lib/customTabsApi';
-import type { CustomTabSummary } from '@/lib/customTabsApi';
+import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
+import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
+import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -164,11 +165,16 @@ export default function ChildHomePage() {
   const { settings } = useSettings();
   const activeCount = usePresenceCount();
   // Tek seferde yalnızca bir sekme açık (akordiyon)
-  const [openTab, setOpenTab] = useState<TabKey | null>(null);
+  // Sayı değer = Zafer hocanın eklediği özel sekmenin id'si — yerleşik
+  // sekmelerle AYNI akordiyona girer (aynı anda tek sekme açık).
+  const [openTab, setOpenTab] = useState<TabKey | number | null>(null);
   const showLevels = openTab === 'lessons';
   const showEglence = openTab === 'eglence';
   const [athleteName, setAthleteName] = useState<string | null>(null);
   const [customTabs, setCustomTabs] = useState<CustomTabSummary[]>([]);
+  /** Açılan özel sekmenin alt sekmeleri — açılınca yüklenir, tekrar açılınca
+   *  yeniden istek atılmaz. */
+  const [customTabDetails, setCustomTabDetails] = useState<Record<number, CustomTabDetail>>({});
   useEffect(() => { listCustomTabs().then(setCustomTabs); }, []);
 
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);
@@ -196,6 +202,18 @@ export default function ChildHomePage() {
     setOpenLevel(null); setOpenLessonId(null); setOpenSubtopic(null);
     // Maç Yap dalı
     setOpenBot(false);
+  }
+
+  /** Özel sekme kutucuğu — yerleşik sekmelerle aynı akordiyon kuralına girer. */
+  function toggleCustomTab(id: number) {
+    setOpenTab((prev) => (prev === id ? null : id));
+    setOpenLevel(null); setOpenLessonId(null); setOpenSubtopic(null);
+    setOpenBot(false);
+    if (!customTabDetails[id]) {
+      getCustomTab(id).then((detail) => {
+        if (detail) setCustomTabDetails((prev) => ({ ...prev, [id]: detail }));
+      });
+    }
   }
 
   useEffect(() => { setAthleteName(getAthleteName()); }, []);
@@ -336,14 +354,25 @@ export default function ChildHomePage() {
             );
           })}
 
-          {/* Zafer hocanın eklediği ek sekmeler */}
+          {/* Zafer hocanın eklediği ek sekmeler — ayrı sayfaya GİTMEZ, yerleşik
+              sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09). */}
           {customTabs.map((ct, i) => (
             <FeatureTab
               key={ct.id} emoji={ct.emoji} label={ct.label}
-              color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]} href={`/custom/${ct.id}`}
+              color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]}
+              active={openTab === ct.id} onClick={() => toggleCustomTab(ct.id)}
             />
           ))}
         </div>
+
+        {/* Açık özel sekmenin alt sekmeleri — aynı ekranda */}
+        {typeof openTab === 'number' && (
+          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
+            {customTabDetails[openTab]
+              ? <CustomTabPanel tab={customTabDetails[openTab]} />
+              : <p className="text-sm t-muted">Yükleniyor...</p>}
+          </div>
+        )}
 
         {/* Maç Yap patikası — Oyun türü › Zorluk › Tempo › Süre */}
         {showPlay && (

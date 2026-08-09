@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 vi.mock('@/lib/auth-storage', () => ({ getAthleteName: () => 'Test Sporcu', getToken: () => 'tok' }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -19,6 +19,10 @@ vi.mock('@/lib/customTabsApi', () => ({
   listCustomTabs: vi.fn(() => Promise.resolve([
     { id: 5, order_index: 1, label: 'Turnuvalar', emoji: '📌' },
   ])),
+  getCustomTab: vi.fn(() => Promise.resolve({
+    id: 5, label: 'Turnuvalar', emoji: '📌',
+    sections: [{ id: 50, order_index: 1, title: 'Kayıt', body: 'En az 8 yaş', images: [], practice_positions: [] }],
+  })),
 }));
 
 beforeEach(() => {
@@ -28,10 +32,17 @@ beforeEach(() => {
 import HomePage from '@/app/(child)/home/page';
 
 describe('Ana sayfa — özel sekme kartı (B grubu)', () => {
-  it('özel sekme kartı görünür ve /custom/5 linkine gider', async () => {
+  it('özel sekme kartı AYRI SAYFAYA GİTMEZ (link değil, düğme)', async () => {
     render(<HomePage />);
     await waitFor(() => screen.getByText('Turnuvalar'));
-    const link = screen.getByText('Turnuvalar').closest('a');
-    expect(link).toHaveAttribute('href', '/custom/5');
+    expect(screen.getByText('Turnuvalar').closest('a')).toBeNull();
+  });
+
+  it('karta tıklayınca alt sekmeler aynı ekranda görünür', async () => {
+    render(<HomePage />);
+    await waitFor(() => screen.getByText('Turnuvalar'));
+    fireEvent.click(screen.getByText('Turnuvalar'));
+    await waitFor(() => screen.getByText('Kayıt'));
+    expect(screen.getByText('Kayıt')).toBeInTheDocument();
   });
 });
