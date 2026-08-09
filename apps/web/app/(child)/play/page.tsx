@@ -83,7 +83,10 @@ function PlayInner() {
     if (m) q.set('mode', m);
     const c = next.criteria !== undefined ? next.criteria : botCriteria;
     if (c) {
-      q.set('skill', String(c.level.skill));
+      // Adrese DÜZEY NUMARASI yazılır (1-10). Ham skill değeri 10 seviyeli
+      // sistemde düzeyler arasında benzersiz DEĞİL — okuyucu taraf (quickLevel)
+      // bunu düzey numarası olarak arıyor.
+      q.set('skill', String(c.level.level));
       q.set('tc', c.timeControl.label);
       q.set('color', c.colorChoice);
     }
