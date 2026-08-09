@@ -23,6 +23,7 @@ import { useMoveHistoryNav } from '@/lib/chess/useMoveHistoryNav';
 import { HistoryBanner } from '@/components/play/HistoryBanner';
 import { resolvePremove } from '@/lib/play/premove';
 import type { Premove } from '@/lib/play/premove';
+import { shouldBlunder, pickBlunderMove } from '@/lib/play/blunder';
 
 export interface TimeControl {
   base: number;       // seconds on the clock at start
@@ -38,6 +39,8 @@ interface Props {
   studentColor?: 'w' | 'b';
   /** Acilis pratigi icin baslangic pozisyonu. Verilmezse standart baslangic. */
   startFen?: string;
+  /** 0-1 arası: botun kasıtlı zayıf hamle yapma ihtimali. Verilmezse/0 ise eski davranış. */
+  blunderChance?: number;
   onGameEnd: (result: 'win' | 'loss' | 'draw') => void;
   /** Verilirse maç bitince "Yeniden Oyna" butonu görünür ve aktif olur. */
   onRematch?: () => void;
@@ -52,7 +55,8 @@ interface Props {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export function BotGame({
-  skillLevel, depth, timeControl, studentColor = 'w', startFen, onGameEnd, onRematch, practiceActions,
+  skillLevel, depth, timeControl, studentColor = 'w', startFen, blunderChance = 0,
+  onGameEnd, onRematch, practiceActions,
 }: Props) {
   // Oturum anahtarı render'lar arasında sabittir; prop'lardan türetilir.
   const sessionKeyStr = botGameKey(skillLevel, studentColor, startFen);
@@ -156,8 +160,8 @@ export function BotGame({
       if (!cancelled && movesRef.current.length === 0 && chessRef.current.turn() === botColor) {
         setThinking(true);
         try {
-          const uci = await eng.bestMove(chessRef.current.fen(), depth);
-          if (uci && uci !== '(none)') {
+          const uci = await pickBotMove(chessRef.current.fen());
+          if (uci) {
             chessRef.current.move({
               from: uci.slice(0, 2) as Square,
               to: uci.slice(2, 4) as Square,
@@ -204,6 +208,18 @@ export function BotGame({
       onGameEnd('win');
     }
   }, [whiteTime, blackTime, status, tc, onGameEnd, studentColor, sessionKeyStr]);
+
+  /** Botun bu hamlede oynayacağı UCI hamleyi getirir — blunder mekanizması dahil. */
+  async function pickBotMove(fen: string): Promise<string | undefined> {
+    const eng = engineRef.current!;
+    if (blunderChance > 0) {
+      const candidates = await eng.bestMoveCandidates(fen, depth, 4);
+      if (candidates.length === 0) return undefined;
+      return shouldBlunder(blunderChance) ? pickBlunderMove(candidates) : candidates[0];
+    }
+    const mv = await eng.bestMove(fen, depth);
+    return mv && mv !== '(none)' ? mv : undefined;
+  }
 
   /** Oyunun o anki durumunu sekmeye yazar. Her hamleden sonra çağrılır. */
   function saveSession() {
@@ -292,8 +308,8 @@ export function BotGame({
       if (chess.isGameOver()) { finish(); return; }
 
       setThinking(true);
-      const botUci = await engineRef.current!.bestMove(chess.fen(), depth);
-      if (botUci && botUci !== '(none)') {
+      const botUci = await pickBotMove(chess.fen());
+      if (botUci) {
         try {
           // Motor ata da terfi edebilir; UCI'deki harf neyse o uygulanir.
           chess.move({
