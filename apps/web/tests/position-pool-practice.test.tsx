@@ -39,4 +39,16 @@ describe('PositionPoolPractice', () => {
     render(<PositionPoolPractice positions={POOL} />);
     expect(screen.getByText(/Pratiğe Başla/)).toBeInTheDocument();
   });
+
+  it('initialCriteria verilince kriter ekranı ATLANIR, tahta gelir', async () => {
+    const { LEVELS, ALL_TIMES } = await import('@/lib/play/levels');
+    render(
+      <PositionPoolPractice
+        positions={POOL}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white' }}
+      />,
+    );
+    expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
+    expect(await screen.findByTestId('board')).toBeInTheDocument();
+  });
 });

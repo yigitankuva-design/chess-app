@@ -10,6 +10,8 @@ import type { PieceColor } from '@/lib/play/color';
 
 interface Props {
   positions: PoolPosition[];
+  /** Kriterler dışarıda seçildiyse (ana ekrandan gelindi) kriter ekranı ATLANIR. */
+  initialCriteria?: MatchCriteriaValue;
 }
 
 /**
@@ -18,10 +20,14 @@ interface Props {
  * Pratik Et" / "Farklı Bir Konumu Pratik Yap" kartları (BotGame'in
  * practiceActions prop'u üzerinden) görünür. Puan/skor KAYDEDİLMEZ.
  */
-export function PositionPoolPractice({ positions }: Props) {
-  const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
-  const [color, setColor] = useState<PieceColor>('w');
-  const [current, setCurrent] = useState<PoolPosition | null>(null);
+export function PositionPoolPractice({ positions, initialCriteria }: Props) {
+  const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(initialCriteria ?? null);
+  const [color, setColor] = useState<PieceColor>(
+    initialCriteria ? resolveColor(initialCriteria.colorChoice) : 'w',
+  );
+  const [current, setCurrent] = useState<PoolPosition | null>(
+    initialCriteria && positions.length > 0 ? pickRandomPosition(positions) : null,
+  );
   const [matchKey, setMatchKey] = useState(0);
 
   if (positions.length === 0) {
