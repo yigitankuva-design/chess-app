@@ -20,7 +20,6 @@ const NAV_GROUPS: { title: string; items: { href: string; label: string }[] }[] 
       { href: '/admin/settings/tabs', label: 'Sekmeler' },
       { href: '/admin/settings/labels', label: 'Yazılar & Etiketler' },
       { href: '/admin/settings/board', label: 'Görünüm — Tahta & Taş' },
-      { href: '/admin/openings', label: 'Açılış Listesi' },
       { href: '/admin/pool-images', label: 'Görsel Havuzu' },
     ],
   },

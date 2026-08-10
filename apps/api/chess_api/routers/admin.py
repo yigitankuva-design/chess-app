@@ -1054,18 +1054,31 @@ async def admin_patch_settings(
 # Acilis pratigi: acilis listesi (Zafer Hoca girer)
 # ---------------------------------------------------------------------------
 
+OPENING_CATEGORIES = ("e4", "d4", "diger")
+
+
 class OpeningCreateRequest(BaseModel):
     name: str
     start_fen: str
+    # Eski istemciler gondermez -> "Diğerleri" grubuna duser.
+    category: str = "diger"
 
 
 class OpeningUpdateRequest(BaseModel):
     name: str
     start_fen: str
+    # None = "dokunma": eski istemci gondermezse mevcut kategori korunur.
+    category: str | None = None
 
 
 class OpeningMoveRequest(BaseModel):
     direction: str  # 'up' | 'down'
+
+
+def _validate_category(value: str) -> str:
+    if value not in OPENING_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Geçersiz açılış türü")
+    return value
 
 
 def _validate_fen(fen: str) -> None:
@@ -1088,12 +1101,19 @@ async def create_opening(
         raise HTTPException(status_code=400, detail="Açılış adı gerekli")
     _validate_fen(payload.start_fen)
     # Yeni acilis listenin SONUNA eklenir (madde 8 siralamasi bozulmasin).
+    category = _validate_category(payload.category)
     max_order = (await db.execute(select(func.max(Opening.sort_order)))).scalar() or 0
-    op_row = Opening(name=name, start_fen=payload.start_fen, sort_order=max_order + 1)
+    op_row = Opening(
+        name=name, start_fen=payload.start_fen,
+        sort_order=max_order + 1, category=category,
+    )
     db.add(op_row)
     await db.commit()
     await db.refresh(op_row)
-    return {"id": op_row.id, "name": op_row.name, "start_fen": op_row.start_fen}
+    return {
+        "id": op_row.id, "name": op_row.name,
+        "start_fen": op_row.start_fen, "category": op_row.category,
+    }
 
 
 @router.patch("/openings/{opening_id}")
@@ -1116,9 +1136,14 @@ async def update_opening(
     _validate_fen(payload.start_fen)
     row.name = name
     row.start_fen = payload.start_fen
+    if payload.category is not None:
+        row.category = _validate_category(payload.category)
     await db.commit()
     await db.refresh(row)
-    return {"id": row.id, "name": row.name, "start_fen": row.start_fen}
+    return {
+        "id": row.id, "name": row.name,
+        "start_fen": row.start_fen, "category": row.category,
+    }
 
 
 @router.post("/openings/{opening_id}/move")

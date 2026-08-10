@@ -16,3 +16,7 @@ class Opening(Base):
     # Sporcuya gosterilen sira (madde 8). Varsayilan 0 -> id sirasina duser,
     # mevcut kayitlarda migration id'yi kopyalar.
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Acilis turu: 'e4' | 'd4' | 'diger'. Eski kayitlar 'diger' olur.
+    category: Mapped[str] = mapped_column(
+        String(20), default="diger", server_default="diger"
+    )

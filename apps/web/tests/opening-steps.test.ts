@@ -1,5 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { isCriteriaUnlocked, openingSummary } from '@/lib/play/openingSteps';
+import {
+  isCriteriaUnlocked, isOpeningUnlocked, openingSummary, categorySummary,
+} from '@/lib/play/openingSteps';
+
+describe('isOpeningUnlocked', () => {
+  it('tür seçilmediyse kilitlidir', () => {
+    expect(isOpeningUnlocked(null)).toBe(false);
+  });
+
+  it('tür seçildiyse açılabilir', () => {
+    expect(isOpeningUnlocked('e4')).toBe(true);
+    expect(isOpeningUnlocked('diger')).toBe(true);
+  });
+});
+
+describe('categorySummary', () => {
+  it('seçim yoksa null döner', () => {
+    expect(categorySummary(null)).toBeNull();
+  });
+
+  it('seçim varsa tik işaretli tür adı döner', () => {
+    expect(categorySummary('d4')).toBe('✓ d4 ile Başlayanlar');
+  });
+});
 
 describe('isCriteriaUnlocked', () => {
   it('açılış seçilmediyse kilitlidir', () => {

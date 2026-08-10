@@ -11,7 +11,7 @@ import { getToken } from '@/lib/auth-storage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-type StepKey = 'opening' | 'criteria' | 'friend';
+type StepKey = 'type' | 'opening' | 'criteria' | 'friend';
 
 /** Kriterleri WS'e gonderilecek sade nesneye cevirir (renk burada cozulur).
  *  ChallengeScreen'den TASINDI — alan adlari sunucudaki
@@ -30,18 +30,21 @@ function criteriaPayload(v: MatchCriteriaValue, startFen?: string | null) {
 }
 
 interface Props {
-  /** Acilis pratiginden gelindiyse 1. adim olarak acilis secimi gosterilir.
-   *  Verilmezse (Arkadasla Oyna gibi duz akislar) o adim HIC cizilmez. */
+  /** Acilis pratiginden gelindiyse 1. ve 2. adim olarak tur + acilis secimi
+   *  gosterilir. Verilmezse (Arkadasla Oyna gibi duz akislar) HIC cizilmez. */
   openingStep?: {
-    render: (onPicked: () => void) => React.ReactNode;
-    summary: string | null;
+    renderTypes: (onPicked: () => void) => React.ReactNode;
+    typeSummary: string | null;
+    typePicked: boolean;
+    renderOpenings: (onPicked: () => void) => React.ReactNode;
+    openingSummary: string | null;
     picked: boolean;
     startFen: string | null;
   };
 }
 
-/** Arkadasa karsi pratik. Madde 6 sirasi:
- *  1) Acilis Konumu Sec  2) Mac Kriterlerini Belirle  3) Arkadasini Sec */
+/** Arkadasa karsi pratik. Acilis pratiginden gelindiginde sira:
+ *  1) Acilis Turunu Sec 2) Acilis Konumunu Sec 3) Mac Kriterleri 4) Arkadas */
 export function FriendChallenge({ openingStep }: Props = {}) {
   const { players, challenge } = useLobbyContext();
   // Madde 4: acilis adimi varsa BASTAN KAPALI — sporcu basliga tiklamadan
@@ -78,8 +81,8 @@ export function FriendChallenge({ openingStep }: Props = {}) {
     setWaitingFor(selected.display_name);
   }
 
-  /** Adim numaralari acilis adimi varsa 1 kayar. */
-  const n = (base: 1 | 2) => (openingStep ? base + 1 : base);
+  /** Adim numaralari acilis adimlari (tur + konum) varsa 2 kayar. */
+  const n = (base: 1 | 2) => (openingStep ? base + 2 : base);
   const criteriaLocked = openingStep ? !openingStep.picked : false;
 
   if (waitingFor) {
@@ -98,15 +101,28 @@ export function FriendChallenge({ openingStep }: Props = {}) {
   return (
     <div className="space-y-3">
       {openingStep && (
-        <StepCard
-          stepNumber={1}
-          title="Açılış Konumunu Seç"
-          summary={openingStep.summary}
-          open={open === 'opening'}
-          onToggle={() => setOpen((p) => (p === 'opening' ? null : 'opening'))}
-        >
-          {openingStep.render(() => setOpen('criteria'))}
-        </StepCard>
+        <>
+          <StepCard
+            stepNumber={1}
+            title="Açılış Türünü Seç"
+            summary={openingStep.typeSummary}
+            open={open === 'type'}
+            onToggle={() => setOpen((p) => (p === 'type' ? null : 'type'))}
+          >
+            {openingStep.renderTypes(() => setOpen('opening'))}
+          </StepCard>
+
+          <StepCard
+            stepNumber={2}
+            title="Açılış Konumunu Seç"
+            summary={openingStep.openingSummary}
+            open={open === 'opening'}
+            locked={!openingStep.typePicked}
+            onToggle={() => setOpen((p) => (p === 'opening' ? null : 'opening'))}
+          >
+            {openingStep.renderOpenings(() => setOpen('criteria'))}
+          </StepCard>
+        </>
       )}
 
       <StepCard

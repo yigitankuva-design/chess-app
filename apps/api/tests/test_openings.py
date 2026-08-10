@@ -168,3 +168,66 @@ async def test_TUZAK_listenin_ucundaki_tasima_sessizce_hicbir_sey_yapmaz(client)
 
     listing = await client.get("/openings")
     assert [o["name"] for o in listing.json()] == ["A", "B"]
+
+
+# ── Kategori (e4 / d4 / diger) ───────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_kategorisiz_eklenen_acilis_diger_olur(client):
+    """Eski istemciler category gondermez — kayit "Diğerleri"ne duser."""
+    tok = await _teacher_token(client, "opc1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    r = await client.post("/admin/openings", headers=h,
+                          json={"name": "Eski Usul", "start_fen": VALID_FEN})
+    assert r.status_code == 201
+    assert r.json()["category"] == "diger"
+    listing = await client.get("/openings")
+    assert listing.json()[0]["category"] == "diger"
+
+
+@pytest.mark.asyncio
+async def test_kategori_ile_eklenir_ve_listede_doner(client):
+    tok = await _teacher_token(client, "opc2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    await client.post("/admin/openings", headers=h,
+                      json={"name": "İtalyan", "start_fen": VALID_FEN, "category": "e4"})
+    await client.post("/admin/openings", headers=h,
+                      json={"name": "Slav", "start_fen": VALID_FEN, "category": "d4"})
+    listing = await client.get("/openings")
+    assert [(o["name"], o["category"]) for o in listing.json()] == [
+        ("İtalyan", "e4"), ("Slav", "d4"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_gecersiz_kategori_reddedilir(client):
+    tok = await _teacher_token(client, "opc3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    r = await client.post("/admin/openings", headers=h,
+                          json={"name": "X", "start_fen": VALID_FEN, "category": "c4"})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_duzenlemede_kategori_degistirilebilir(client):
+    tok = await _teacher_token(client, "opc4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    created = await client.post("/admin/openings", headers=h,
+                                json={"name": "Taşınacak", "start_fen": VALID_FEN})
+    oid = created.json()["id"]
+    r = await client.patch(f"/admin/openings/{oid}", headers=h,
+                           json={"name": "Taşınacak", "start_fen": VALID_FEN, "category": "e4"})
+    assert r.status_code == 200 and r.json()["category"] == "e4"
+
+
+@pytest.mark.asyncio
+async def test_duzenlemede_kategori_gonderilmezse_korunur(client):
+    """Eski istemci category gondermezse mevcut kategori SILINMEZ."""
+    tok = await _teacher_token(client, "opc5@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    created = await client.post("/admin/openings", headers=h,
+                                json={"name": "Kalsın", "start_fen": VALID_FEN, "category": "d4"})
+    oid = created.json()["id"]
+    r = await client.patch(f"/admin/openings/{oid}", headers=h,
+                           json={"name": "Kalsın 2", "start_fen": VALID_FEN})
+    assert r.status_code == 200 and r.json()["category"] == "d4"

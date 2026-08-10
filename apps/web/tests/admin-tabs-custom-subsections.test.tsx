@@ -87,8 +87,10 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     await waitFor(() => screen.getByText(/Pratik Yap/));
     fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
     await waitFor(() => screen.getByText('Açılış Pratiği Yap'));
-    const link = screen.getByText('Açılış Pratiği Yap').closest('a');
-    expect(link).toHaveAttribute('href', '/admin/openings');
+    // Ayrı sayfa yerine yerinde açılan üç tür kartı.
+    expect(screen.getByText('e4 ile Başlayanlar')).toBeInTheDocument();
+    expect(screen.getByText('d4 ile Başlayanlar')).toBeInTheDocument();
+    expect(screen.getByText('Diğerleri')).toBeInTheDocument();
   });
 });
 

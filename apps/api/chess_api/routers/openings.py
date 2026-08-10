@@ -14,4 +14,10 @@ async def list_openings(db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(
         select(Opening).order_by(Opening.sort_order, Opening.id)
     )).scalars().all()
-    return [{"id": o.id, "name": o.name, "start_fen": o.start_fen} for o in rows]
+    return [
+        {
+            "id": o.id, "name": o.name, "start_fen": o.start_fen,
+            "category": o.category or "diger",
+        }
+        for o in rows
+    ]

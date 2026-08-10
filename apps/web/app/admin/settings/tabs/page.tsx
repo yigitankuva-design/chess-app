@@ -13,9 +13,10 @@ import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
+import { OpeningCategoryCards } from '@/components/admin/OpeningCategoryCards';
 import { START_FEN } from '@/components/BoardEditor';
 import {
-  PRATIK_YAP_LABEL, OPENING_ROW, FIXED_SECTIONS, OYUNSONU_SECTION,
+  PRATIK_YAP_LABEL, FIXED_SECTIONS, OYUNSONU_SECTION,
   isFixedSection, sectionEmoji, sortPratikSections,
 } from '@/lib/customTabs/pratikYap';
 
@@ -38,7 +39,8 @@ const CUSTOM_TAB_COLORS = ['#fbbf24', '#2dd4bf', '#fb7185', '#60a5fa', '#c084fc'
  */
 const TAB_CONTENT: Record<TabKey, { href: string; emoji: string; title: string; desc: string } | null> = {
   lessons: { href: '/admin/content',  emoji: '📘', title: 'Ders İçeriği',   desc: 'Düzey, ders, alt konu ve soruları yönet' },
-  play:    { href: '/admin/openings', emoji: '📖', title: 'Açılış Listesi', desc: 'Açılış pratiği için açılış ekle ve kaldır' },
+  // Açılış listesi artık "Pratik Yap" sekmesinin içindeki üç kartta yönetiliyor.
+  play:    null,
   analiz:  null,
   eglence: null,
 };
@@ -497,18 +499,7 @@ export default function AdminTabsPage() {
 
               {open && (
                 <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
-                  {isPratikYap && (
-                    <Link href="/admin/openings"
-                      className="flex items-center gap-3 p-3 rounded-lg hover:brightness-125 transition-all"
-                      style={{ background: `${color}1a`, border: `1px solid ${color}66` }}>
-                      <span className="text-xl leading-none">{OPENING_ROW.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold" style={{ color }}>{OPENING_ROW.title}</p>
-                        <p className="text-xs n-muted">Açılış pratiği için açılış ekle ve kaldır</p>
-                      </div>
-                      <span className="text-sm" style={{ color }}>→</span>
-                    </Link>
-                  )}
+                  {isPratikYap && <OpeningCategoryCards color={color} />}
 
                   {!detail ? (
                     <p className="text-sm n-muted">Yükleniyor...</p>
