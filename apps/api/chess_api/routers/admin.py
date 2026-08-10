@@ -1257,6 +1257,9 @@ class PracticePosition(BaseModel):
     # Oyunsonu Pratiği'nde konumlar 5 kategoriye ayrılır. Kategorisiz kayıt da
     # geçerlidir — eski konumlarda bu alan yok (KURAL #3).
     category: str | None = None
+    # Sporcuya ve hocaya gösterilen kalıcı numara ("001"). Eski konumlarda yok;
+    # o durumda ekran tarafı sıraya göre tutarlı bir kod üretir.
+    code: str | None = None
 
 
 class CustomTabSectionUpdateRequest(BaseModel):
