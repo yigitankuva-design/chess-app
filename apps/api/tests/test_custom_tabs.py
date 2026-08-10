@@ -176,7 +176,7 @@ async def test_konum_havuzu_kaydedilir(client):
     r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
                            json={"practice_positions": [{"id": "p1", "fen": fen}]})
     assert r.status_code == 200
-    assert r.json()["practice_positions"] == [{"id": "p1", "fen": fen}]
+    assert r.json()["practice_positions"] == [{"id": "p1", "fen": fen, "category": None}]
 
 
 @pytest.mark.asyncio
@@ -193,6 +193,27 @@ async def test_konum_havuzu_bos_id_reddedilir(client):
 
 
 @pytest.mark.asyncio
+async def test_konum_kategori_alani_korunur(client):
+    tok = await _teacher_token(client, "ctp4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Oyunsonu Pratiği Yap", "body": "", "images": []})).json()
+
+    fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"practice_positions": [
+                               {"id": "p1", "fen": fen, "category": "Piyon Finalleri"},
+                               {"id": "p2", "fen": fen},
+                           ]})
+    assert r.status_code == 200
+    poz = r.json()["practice_positions"]
+    assert poz[0]["category"] == "Piyon Finalleri"
+    # Kategorisiz kayit da calisir (eski veriler bozulmaz).
+    assert poz[1].get("category") is None
+
+
+@pytest.mark.asyncio
 async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client):
     tok = await _teacher_token(client, "ctp3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
@@ -204,4 +225,4 @@ async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client):
                        json={"practice_positions": [{"id": "p1", "fen": fen}]})
 
     detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
-    assert detail["sections"][0]["practice_positions"] == [{"id": "p1", "fen": fen}]
+    assert detail["sections"][0]["practice_positions"] == [{"id": "p1", "fen": fen, "category": None}]

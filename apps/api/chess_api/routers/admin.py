@@ -1254,6 +1254,9 @@ class CustomTabSectionCreateRequest(BaseModel):
 class PracticePosition(BaseModel):
     id: str = Field(min_length=1)
     fen: str = Field(min_length=1)
+    # Oyunsonu Pratiği'nde konumlar 5 kategoriye ayrılır. Kategorisiz kayıt da
+    # geçerlidir — eski konumlarda bu alan yok (KURAL #3).
+    category: str | None = None
 
 
 class CustomTabSectionUpdateRequest(BaseModel):
