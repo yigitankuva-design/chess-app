@@ -52,3 +52,35 @@ describe('PositionPoolPractice', () => {
     expect(await screen.findByTestId('board')).toBeInTheDocument();
   });
 });
+
+describe('PositionPoolPractice — başlıkta kod', () => {
+  it('title verilince başlıkta bölüm adı ve konum kodu görünür', async () => {
+    const { LEVELS, ALL_TIMES } = await import('@/lib/play/levels');
+    render(
+      <PositionPoolPractice
+        title="Kale Finalleri"
+        positions={[{ id: 'p1', fen: POOL[0].fen, code: '003' }]}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white' }}
+      />,
+    );
+    expect(await screen.findByText(/Kale Finalleri/)).toBeInTheDocument();
+    expect(screen.getByText(/003/)).toBeInTheDocument();
+  });
+
+  it('kodsuz konuma sırasına göre kod üretilir', async () => {
+    const { LEVELS, ALL_TIMES } = await import('@/lib/play/levels');
+    render(
+      <PositionPoolPractice
+        title="Piyon Finalleri"
+        positions={[{ id: 'p1', fen: POOL[0].fen }]}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white' }}
+      />,
+    );
+    expect(await screen.findByText(/001/)).toBeInTheDocument();
+  });
+
+  it('title verilmezse başlık çizilmez (eski kullanım bozulmaz)', () => {
+    render(<PositionPoolPractice positions={POOL} />);
+    expect(screen.getByText(/Pratiğe Başla/)).toBeInTheDocument();
+  });
+});

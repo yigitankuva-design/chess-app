@@ -1,6 +1,10 @@
 export interface PoolPosition {
   id: string;
   fen: string;
+  /** Oyunsonu kategorisi (varsa) — seçimi etkilemez, sadece taşınır. */
+  category?: string | null;
+  /** Hoca'nın verdiği kalıcı numara ("001"). Eski konumlarda yok. */
+  code?: string;
 }
 
 /** Havuzdan tamamen rastgele bir konum seçer. Havuz boş olamaz (çağıran kontrol eder). */

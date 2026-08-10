@@ -164,15 +164,20 @@ function PlayInner() {
   if (mode === 'pool') {
     return (
       <main className="pb-12">
-        <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
-          <p className="font-semibold text-sm">🎯 {poolTitle || 'Pratik'}</p>
-        </div>
         {poolPositions === undefined ? (
-          <p className="px-4 text-sm t-muted">Yükleniyor...</p>
+          <p className="px-4 pt-3 text-sm t-muted">Yükleniyor...</p>
         ) : poolPositions.length === 0 ? (
-          <p className="px-4 text-sm t-muted">Bu bölümde henüz konum yok.</p>
+          <>
+            <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
+              <p className="font-semibold text-sm">🎯 {poolTitle || 'Pratik'}</p>
+            </div>
+            <p className="px-4 text-sm t-muted">Bu bölümde henüz konum yok.</p>
+          </>
         ) : (
+          /* Başlık (bölüm adı + konum kodu) bileşenin KENDİSİ çizer — kod o an
+             oynanan konumdan gelir ve konum değişince kendiliğinden güncellenir. */
           <PositionPoolPractice
+            title={poolTitle || 'Pratik'}
             positions={poolPositions}
             initialCriteria={quickStart ?? undefined}
           />

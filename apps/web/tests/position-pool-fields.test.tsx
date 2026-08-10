@@ -13,6 +13,7 @@ function setup(over: Partial<React.ComponentProps<typeof PositionPoolFields>> = 
     onSavePosition: vi.fn(),
     pool: [] as { id: string; fen: string }[],
     onDeletePosition: vi.fn(),
+    onUpdatePosition: vi.fn(),
     ...over,
   };
   render(<PositionPoolFields {...props} />);
@@ -97,16 +98,16 @@ describe('PositionPoolFields — FEN ile ekleme', () => {
 });
 
 describe('PositionPoolFields — havuz listesi (regresyon)', () => {
-  it('havuzdaki her konum için Sil butonu gösterir', () => {
-    const p = setup({ pool: [{ id: 'p1', fen: START_FEN }, { id: 'p2', fen: START_FEN }] });
-    const delButtons = screen.getAllByText('Sil');
-    expect(delButtons).toHaveLength(2);
-    fireEvent.click(delButtons[0]);
-    expect(p.onDeletePosition).toHaveBeenCalledWith('p1');
+  it('havuz kartı konum sayısını gösterir (kodlar kapalı durur)', () => {
+    setup({ pool: [{ id: 'p1', fen: START_FEN }, { id: 'p2', fen: START_FEN }] });
+    expect(screen.getByText(/Konum Havuzu/).closest('button')).toHaveTextContent('2');
+    // Kod kartları havuz açılmadan görünmez — ayrıntılı testler
+    // tests/position-pool-view.test.tsx dosyasında.
+    expect(screen.queryByRole('button', { name: 'Konum 001' })).not.toBeInTheDocument();
   });
 
-  it('havuz boşsa bilgi metni gösterir', () => {
+  it('havuz boşken kart 0 gösterir', () => {
     setup();
-    expect(screen.getByText(/Henüz konum eklenmedi/)).toBeInTheDocument();
+    expect(screen.getByText(/Konum Havuzu/).closest('button')).toHaveTextContent('0');
   });
 });

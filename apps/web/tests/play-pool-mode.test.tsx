@@ -11,12 +11,14 @@ vi.mock('@/components/BotGame', () => ({ BotGame: () => <div data-testid="bot-ga
 vi.mock('@/components/play/OfferBoard', () => ({ OfferBoard: () => <div /> }));
 vi.mock('@/components/play/OpeningPractice', () => ({ OpeningPractice: () => <div /> }));
 vi.mock('@/components/play/PositionPoolPractice', () => ({
-  PositionPoolPractice: ({ positions, initialCriteria }: {
-    positions: { id: string }[]; initialCriteria?: { level: { level: number } };
+  PositionPoolPractice: ({ positions, initialCriteria, title }: {
+    positions: { id: string }[]; initialCriteria?: { level: { level: number } }; title?: string;
   }) => (
     <div data-testid="pool-practice"
       data-count={positions.length}
-      data-level={initialCriteria ? String(initialCriteria.level.level) : 'yok'} />
+      data-level={initialCriteria ? String(initialCriteria.level.level) : 'yok'}>
+      {title}
+    </div>
   ),
 }));
 

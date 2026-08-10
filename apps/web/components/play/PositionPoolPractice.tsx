@@ -7,11 +7,14 @@ import { pickRandomPosition, pickDifferentPosition } from '@/lib/play/positionPo
 import type { PoolPosition } from '@/lib/play/positionPool';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
+import { assignExerciseCodes } from '@/lib/exerciseCodes';
 
 interface Props {
   positions: PoolPosition[];
   /** Kriterler dışarıda seçildiyse (ana ekrandan gelindi) kriter ekranı ATLANIR. */
   initialCriteria?: MatchCriteriaValue;
+  /** Verilirse maçın üstünde "bölüm adı · konum kodu" satırı çizilir. */
+  title?: string;
 }
 
 /**
@@ -20,7 +23,7 @@ interface Props {
  * Pratik Et" / "Farklı Bir Konumu Pratik Yap" kartları (BotGame'in
  * practiceActions prop'u üzerinden) görünür. Puan/skor KAYDEDİLMEZ.
  */
-export function PositionPoolPractice({ positions, initialCriteria }: Props) {
+export function PositionPoolPractice({ positions, initialCriteria, title }: Props) {
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(initialCriteria ?? null);
   const [color, setColor] = useState<PieceColor>(
     initialCriteria ? resolveColor(initialCriteria.colorChoice) : 'w',
@@ -47,7 +50,21 @@ export function PositionPoolPractice({ positions, initialCriteria }: Props) {
     );
   }
 
+  // Kod, hoca'nın admin panelinde gördüğü numarayla AYNI mantıkla üretilir —
+  // sporcu ile hoca aynı konumu numarasıyla konuşabilsin.
+  const kodlar = assignExerciseCodes(positions);
+  const kod = kodlar[positions.findIndex((p) => p.id === current.id)];
+
   return (
+    <>
+      {title && (
+        <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
+          <p className="font-semibold text-sm">
+            🎯 {title}
+            {kod && <span className="t-muted font-mono"> · {kod}</span>}
+          </p>
+        </div>
+      )}
     <BotGame
       key={matchKey}
       skillLevel={criteria.level.skill}
@@ -67,5 +84,6 @@ export function PositionPoolPractice({ positions, initialCriteria }: Props) {
         },
       }}
     />
+    </>
   );
 }

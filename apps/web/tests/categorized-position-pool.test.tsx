@@ -11,6 +11,7 @@ function setup(over: Partial<React.ComponentProps<typeof CategorizedPositionPool
     onSavePosition: vi.fn(),
     pool: [] as { id: string; fen: string; category?: string | null }[],
     onDeletePosition: vi.fn(),
+    onUpdatePosition: vi.fn(),
     ...over,
   };
   render(<CategorizedPositionPool {...props} />);
@@ -76,7 +77,7 @@ describe('CategorizedPositionPool', () => {
       ],
     });
     fireEvent.click(screen.getByText('Kale Finalleri'));
-    expect(screen.getByText('Konum Havuzu (1)')).toBeInTheDocument();
+    expect(screen.getByText(/Konum Havuzu/).closest('button')).toHaveTextContent('1');
   });
 
   it('kategorisiz eski konumlar varsa ayrı bir grupta gösterilir', () => {

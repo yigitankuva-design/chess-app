@@ -248,6 +248,30 @@ export default function AdminTabsPage() {
     setMsg('Kaydedildi ✓');
   }
 
+  /** Havuzdaki bir konumu düzenleyip yeniden kaydeder (kodu değişmez). */
+  async function updatePosition(
+    tabId: number, sectionId: number, positionId: string,
+    next: { id: string; fen: string; category?: string | null; code?: string },
+  ) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = existing.practice_positions.map((p) => (p.id === positionId ? next : p));
+    const ok = await updateCustomTabSection(sectionId, { practice_positions: nextPool });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, practice_positions: nextPool } : s)),
+        },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
   async function deletePosition(tabId: number, sectionId: number, positionId: string) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
@@ -579,6 +603,7 @@ export default function AdminTabsPage() {
                                         onSavePosition={(f, cat) => savePosition(c.id, s.id, f, cat)}
                                         pool={s.practice_positions}
                                         onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
+                                        onUpdatePosition={(posId, next) => updatePosition(c.id, s.id, posId, next)}
                                       />
                                     ) : (
                                       <PositionPoolFields
@@ -587,6 +612,7 @@ export default function AdminTabsPage() {
                                         onSavePosition={(f) => savePosition(c.id, s.id, f)}
                                         pool={s.practice_positions}
                                         onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
+                                        onUpdatePosition={(posId, next) => updatePosition(c.id, s.id, posId, next)}
                                       />
                                     )}
                                   </div>

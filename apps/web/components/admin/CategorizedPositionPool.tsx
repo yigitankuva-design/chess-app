@@ -18,6 +18,7 @@ interface Props {
   onSavePosition: (fen: string | undefined, category: string) => void;
   pool: PoolPosition[];
   onDeletePosition: (id: string) => void;
+  onUpdatePosition: (id: string, next: PoolPosition) => void;
 }
 
 /**
@@ -29,7 +30,7 @@ interface Props {
  * böyle konum VARSA gösterilir.
  */
 export function CategorizedPositionPool({
-  fen, turn, onFenChange, onTurnChange, onSavePosition, pool, onDeletePosition,
+  fen, turn, onFenChange, onTurnChange, onSavePosition, pool, onDeletePosition, onUpdatePosition,
 }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const groups = groupByCategory(pool);
@@ -63,6 +64,7 @@ export function CategorizedPositionPool({
                   onSavePosition={(f) => onSavePosition(f, cat)}
                   pool={groups[cat]}
                   onDeletePosition={onDeletePosition}
+                  onUpdatePosition={onUpdatePosition}
                 />
               </div>
             )}

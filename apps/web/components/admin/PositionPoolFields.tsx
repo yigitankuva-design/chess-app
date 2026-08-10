@@ -3,11 +3,8 @@ import { useState } from 'react';
 import { BoardEditor } from '@/components/BoardEditor';
 import { SavedPositionBoard } from './SavedPositionBoard';
 import { parseFenInput, withTurn } from '@/lib/chess/fenInput';
-
-interface PoolPosition {
-  id: string;
-  fen: string;
-}
+import { PositionPoolView } from './PositionPoolView';
+import type { PoolPosition } from './PositionPoolView';
 
 interface Props {
   /** Dizme aşamasındaki FEN (havuza eklenmeden önce). */
@@ -22,6 +19,8 @@ interface Props {
   onSavePosition: (fen?: string) => void;
   pool: PoolPosition[];
   onDeletePosition: (id: string) => void;
+  /** Havuzdaki bir konum düzenlenip yeniden kaydedildiğinde çağrılır. */
+  onUpdatePosition: (id: string, next: PoolPosition) => void;
 }
 
 /** Hangi ekleme yöntemi açık; null = henüz seçilmedi (iki kart yan yana). */
@@ -40,7 +39,7 @@ const CARD =
  * "Taşı Oynat" (move_piece) akışının aksine hamle dizisi KAYDEDİLMEZ.
  */
 export function PositionPoolFields({
-  fen, turn, onFenChange, onTurnChange, onSavePosition, pool, onDeletePosition,
+  fen, turn, onFenChange, onTurnChange, onSavePosition, pool, onDeletePosition, onUpdatePosition,
 }: Props) {
   const [mode, setMode] = useState<Mode>(null);
   const [fenText, setFenText] = useState('');
@@ -144,24 +143,11 @@ export function PositionPoolFields({
       )}
 
       <div className="pt-2 border-t border-white/10">
-        <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
-          Konum Havuzu ({pool.length})
-        </p>
-        {pool.length === 0 ? (
-          <p className="text-sm n-muted">Henüz konum eklenmedi.</p>
-        ) : (
-          <div className="flex flex-wrap gap-3">
-            {pool.map((p) => (
-              <div key={p.id} className="flex flex-col items-center gap-1">
-                <SavedPositionBoard fen={p.fen} marked={[]} />
-                <button type="button" onClick={() => onDeletePosition(p.id)}
-                  className="text-xs text-rose-300 hover:text-rose-200">
-                  Sil
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <PositionPoolView
+          pool={pool}
+          onUpdatePosition={onUpdatePosition}
+          onDeletePosition={onDeletePosition}
+        />
       </div>
     </div>
   );
