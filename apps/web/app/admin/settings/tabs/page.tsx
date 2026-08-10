@@ -12,9 +12,10 @@ import {
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
+import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
 import { START_FEN } from '@/components/BoardEditor';
 import {
-  PRATIK_YAP_LABEL, OPENING_ROW, FIXED_SECTIONS,
+  PRATIK_YAP_LABEL, OPENING_ROW, FIXED_SECTIONS, OYUNSONU_SECTION,
   isFixedSection, sectionEmoji, sortPratikSections,
 } from '@/lib/customTabs/pratikYap';
 
@@ -215,11 +216,20 @@ export default function AdminTabsPage() {
     setMsg('Kaydedildi ✓');
   }
 
-  /** fenOverride: FEN yapıştırma dalından gelir; yoksa elle dizilen konum kaydedilir. */
-  async function savePosition(tabId: number, sectionId: number, fenOverride?: string) {
+  /**
+   * fenOverride: FEN yapıştırma dalından gelir; yoksa elle dizilen konum kaydedilir.
+   * category: yalnızca Oyunsonu Pratiği'nde dolu gelir (5 kategori kartı).
+   */
+  async function savePosition(
+    tabId: number, sectionId: number, fenOverride?: string, category?: string,
+  ) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
-    const newPos = { id: crypto.randomUUID(), fen: fenOverride ?? poolFen };
+    const newPos = {
+      id: crypto.randomUUID(),
+      fen: fenOverride ?? poolFen,
+      ...(category ? { category } : {}),
+    };
     const nextPool = [...existing.practice_positions, newPos];
     const ok = await updateCustomTabSection(sectionId, { practice_positions: nextPool });
     if (!ok) { setMsg('Kaydedilemedi'); return; }
@@ -561,13 +571,24 @@ export default function AdminTabsPage() {
                                 )}
                                 {isPratikYap && (
                                   <div className="pt-2 border-t border-white/10">
-                                    <PositionPoolFields
-                                      fen={poolFen} turn={poolTurn}
-                                      onFenChange={setPoolFen} onTurnChange={setPoolTurn}
-                                      onSavePosition={(f) => savePosition(c.id, s.id, f)}
-                                      pool={s.practice_positions}
-                                      onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
-                                    />
+                                    {s.title === OYUNSONU_SECTION ? (
+                                      /* Oyunsonu: konumlar 5 kategoriye ayrılır. */
+                                      <CategorizedPositionPool
+                                        fen={poolFen} turn={poolTurn}
+                                        onFenChange={setPoolFen} onTurnChange={setPoolTurn}
+                                        onSavePosition={(f, cat) => savePosition(c.id, s.id, f, cat)}
+                                        pool={s.practice_positions}
+                                        onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
+                                      />
+                                    ) : (
+                                      <PositionPoolFields
+                                        fen={poolFen} turn={poolTurn}
+                                        onFenChange={setPoolFen} onTurnChange={setPoolTurn}
+                                        onSavePosition={(f) => savePosition(c.id, s.id, f)}
+                                        pool={s.practice_positions}
+                                        onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
+                                      />
+                                    )}
                                   </div>
                                 )}
                               </div>
