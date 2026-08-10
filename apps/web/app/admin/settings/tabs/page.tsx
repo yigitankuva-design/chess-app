@@ -215,10 +215,11 @@ export default function AdminTabsPage() {
     setMsg('Kaydedildi ✓');
   }
 
-  async function savePosition(tabId: number, sectionId: number) {
+  /** fenOverride: FEN yapıştırma dalından gelir; yoksa elle dizilen konum kaydedilir. */
+  async function savePosition(tabId: number, sectionId: number, fenOverride?: string) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
-    const newPos = { id: crypto.randomUUID(), fen: poolFen };
+    const newPos = { id: crypto.randomUUID(), fen: fenOverride ?? poolFen };
     const nextPool = [...existing.practice_positions, newPos];
     const ok = await updateCustomTabSection(sectionId, { practice_positions: nextPool });
     if (!ok) { setMsg('Kaydedilemedi'); return; }
@@ -563,7 +564,7 @@ export default function AdminTabsPage() {
                                     <PositionPoolFields
                                       fen={poolFen} turn={poolTurn}
                                       onFenChange={setPoolFen} onTurnChange={setPoolTurn}
-                                      onSavePosition={() => savePosition(c.id, s.id)}
+                                      onSavePosition={(f) => savePosition(c.id, s.id, f)}
                                       pool={s.practice_positions}
                                       onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
                                     />

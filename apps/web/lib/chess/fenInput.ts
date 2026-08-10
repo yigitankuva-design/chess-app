@@ -14,6 +14,18 @@ export type FenParseResult =
  * Not: chess.js şahsız konumu kabul etmez; bu bizim için doğru davranıştır,
  * çünkü bu konumlar bota karşı OYNANACAK.
  */
+/**
+ * FEN'in hamle sırası alanını (2. alan) değiştirir. Hoca yapıştırdığı konumun
+ * sırasını elle düzelttiğinde kullanılır — konum havuzunda sıra ayrı bir alanda
+ * DEĞİL, FEN'in kendi içinde tutulur.
+ */
+export function withTurn(fen: string, turn: 'w' | 'b'): string {
+  const parts = fen.trim().split(/\s+/);
+  if (parts.length < 2) return fen;
+  parts[1] = turn;
+  return parts.join(' ');
+}
+
 export function parseFenInput(raw: string): FenParseResult {
   const fen = raw.trim();
   if (!fen) return { ok: false };

@@ -143,6 +143,8 @@ describe('Admin özel sekme — Pratik Yap konum havuzu', () => {
     fireEvent.click(screen.getByText('Süresiz Pratik'));
     await waitFor(() => screen.getByText('Konum Havuzu (0)'));
 
+    // Artık önce ekleme yöntemi seçiliyor (Konum Dizerek Ekle / FEN Ekle).
+    fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
     fireEvent.click(screen.getByText('Konumu Kaydet'));
 
     await waitFor(() => {

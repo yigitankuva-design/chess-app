@@ -44,3 +44,20 @@ describe('parseFenInput', () => {
     expect(parseFenInput('8/8/8/8/8/8/8/8 w - - 0 1').ok).toBe(false);
   });
 });
+
+describe('withTurn', () => {
+  it('hamle sırasını FEN içinde değiştirir', async () => {
+    const { withTurn } = await import('@/lib/chess/fenInput');
+    expect(withTurn(START, 'b')).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1');
+  });
+
+  it('aynı sıra verilirse FEN değişmez', async () => {
+    const { withTurn } = await import('@/lib/chess/fenInput');
+    expect(withTurn(START, 'w')).toBe(START);
+  });
+
+  it('siyahtan beyaza çevirir', async () => {
+    const { withTurn } = await import('@/lib/chess/fenInput');
+    expect(withTurn(SIYAH_SIRASI, 'w')).toContain(' w ');
+  });
+});
