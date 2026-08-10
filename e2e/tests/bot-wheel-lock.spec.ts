@@ -10,7 +10,9 @@ test('tekerlek tahtayı geçmişe kilitliyor mu (gerçek tahta)', async ({ page 
     sessionStorage.setItem('bea_athlete_name', 'Test');
   });
 
-  await page.goto('/play?skill=0&tc=5%2B0');
+  // "skill" adres parametresi DÜZEY NUMARASI taşır (1-10). Eskiden 0 geçerliydi;
+  // 10 seviyeli sisteme geçişte 0 diye bir düzey kalmadı, maç hiç başlamıyordu.
+  await page.goto('/play?skill=1&tc=5%2B0');
 
   // Tahta gerçekten çizildi mi?
   const e2 = page.locator('[data-square="e2"]');
