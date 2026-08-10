@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
+import { sectionEmoji, sortPratikSections } from '@/lib/customTabs/pratikYap';
 
 interface Props {
   tab: CustomTabDetail;
@@ -37,15 +38,19 @@ export function CustomTabPanel({ tab }: Props) {
         <p className="t-muted">Henüz içerik eklenmedi</p>
       )}
 
-      {tab.sections.map((s) => {
+      {(isPratikYap ? sortPratikSections(tab.sections) : tab.sections).map((s) => {
         const open = openSectionId === s.id;
+        const emoji = isPratikYap ? sectionEmoji(s.title) : null;
         return (
           <div key={s.id} className="rounded-2xl overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
             <button type="button"
               onClick={() => setOpenSectionId((p) => (p === s.id ? null : s.id))}
               aria-expanded={open}
               className="w-full flex items-center justify-between px-4 py-3 text-left">
-              <span className="text-lg font-bold t-premium">{s.title}</span>
+              <span className="text-lg font-bold t-premium flex items-center gap-2">
+                {emoji && <span className="leading-none">{emoji}</span>}
+                {s.title}
+              </span>
               <span className="t-muted">{open ? '▴' : '▾'}</span>
             </button>
             {open && (

@@ -73,4 +73,24 @@ describe('CustomTabPanel', () => {
     expect(screen.getByText(/Henüz konum eklenmedi/)).toBeInTheDocument();
     expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
   });
+
+  it('Pratik Yap sekmesinde sabit alt sekmeler ikonlu ve önce gelir', () => {
+    const tab: CustomTabDetail = {
+      id: 1, label: 'Pratik Yap', emoji: '🎯',
+      sections: [
+        { id: 30, order_index: 1, title: 'Hocanın Sekmesi', body: 'x', images: [], practice_positions: [] },
+        { id: 31, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
+        { id: 32, order_index: 3, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    const sira = screen.getAllByRole('button')
+      .map((b) => b.textContent || '')
+      .filter((t) => /Kazanç|Oyunsonu|Hocanın/.test(t));
+    expect(sira[0]).toContain('Kazanç Konumunu Pratik Yap');
+    expect(sira[1]).toContain('Oyunsonu Pratiği Yap');
+    expect(sira[2]).toContain('Hocanın Sekmesi');
+    expect(sira[0]).toContain('🏆');
+    expect(sira[1]).toContain('🏁');
+  });
 });
