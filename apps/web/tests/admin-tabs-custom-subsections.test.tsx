@@ -23,6 +23,10 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // clearAllMocks ÇAĞRILARI temizler ama mockResolvedValue ile kurulan
+  // davranışı BIRAKIR — bu mock testler arasında sızıp sahte alt sekme
+  // üretiyordu (aynı key uyarısı). Bunu her testte sıfırdan kuruyoruz.
+  (createCustomTabSection as ReturnType<typeof vi.fn>).mockReset();
   global.fetch = vi.fn(() =>
     Promise.resolve({ ok: true, json: async () => ({}) }),
   ) as never;
@@ -153,5 +157,75 @@ describe('Admin özel sekme — Pratik Yap konum havuzu', () => {
     fireEvent.click(screen.getByText('Kayıt Şartları'));
     await waitFor(() => screen.getByText('En az 8 yaş'));
     expect(screen.queryByText(/Konum Havuzu/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
+  it('eksik sabit alt sekmeler açılışta oluşturulur', async () => {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 9, order_index: 1, label: 'Pratik Yap', emoji: '🧩' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 9, label: 'Pratik Yap', emoji: '🧩', sections: [],
+    });
+    (createCustomTabSection as ReturnType<typeof vi.fn>).mockImplementation(
+      (_tabId: number, title: string) => Promise.resolve({
+        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [],
+      }),
+    );
+
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Pratik Yap/));
+    fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
+
+    await waitFor(() => {
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Kazanç Konumunu Pratik Yap', '', []);
+    });
+    await waitFor(() => {
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Oyunsonu Pratiği Yap', '', []);
+    });
+  });
+
+  it('sabit sekmeler zaten varsa TEKRAR oluşturulmaz', async () => {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 9, order_index: 1, label: 'Pratik Yap', emoji: '🧩' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 9, label: 'Pratik Yap', emoji: '🧩',
+      sections: [
+        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
+        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
+      ],
+    });
+
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Pratik Yap/));
+    fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
+    await waitFor(() => screen.getByText('Kazanç Konumunu Pratik Yap'));
+    expect(createCustomTabSection).not.toHaveBeenCalled();
+  });
+
+  it('sabit sekmelerde Düzenle/Sil YOK, hocanınkinde VAR', async () => {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 9, order_index: 1, label: 'Pratik Yap', emoji: '🧩' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 9, label: 'Pratik Yap', emoji: '🧩',
+      sections: [
+        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
+        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
+        { id: 3, order_index: 3, title: 'Hocanın Sekmesi', body: '', images: [], practice_positions: [] },
+      ],
+    });
+
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Pratik Yap/));
+    fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
+    await waitFor(() => screen.getByText('Hocanın Sekmesi'));
+
+    expect(screen.queryByLabelText('Kazanç Konumunu Pratik Yap alt sekmesini sil')).toBeNull();
+    expect(screen.queryByLabelText('Kazanç Konumunu Pratik Yap alt sekmesini düzenle')).toBeNull();
+    expect(screen.getByLabelText('Hocanın Sekmesi alt sekmesini sil')).toBeInTheDocument();
+    expect(screen.getByLabelText('Hocanın Sekmesi alt sekmesini düzenle')).toBeInTheDocument();
   });
 });

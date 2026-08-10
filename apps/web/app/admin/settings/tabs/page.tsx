@@ -13,6 +13,10 @@ import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { START_FEN } from '@/components/BoardEditor';
+import {
+  PRATIK_YAP_LABEL, OPENING_ROW, FIXED_SECTIONS,
+  isFixedSection, sectionEmoji, sortPratikSections,
+} from '@/lib/customTabs/pratikYap';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -135,8 +139,19 @@ export default function AdminTabsPage() {
     cancelEditSection();
     setPoolFen(START_FEN); setPoolTurn('w');
     if (!customTabDetails[id]) {
-      getCustomTab(id).then((detail) => {
-        if (detail) setCustomTabDetails((prev) => ({ ...prev, [id]: detail }));
+      getCustomTab(id).then(async (loaded) => {
+        if (!loaded) return;
+        let detail = loaded;
+        // "Pratik Yap" sekmesinde 3 sabit alt sekme HER ZAMAN bulunur; eksik
+        // olanlar ilk açılışta oluşturulur (adına göre kontrol — iki kez oluşmaz).
+        if (detail.label === PRATIK_YAP_LABEL) {
+          for (const f of FIXED_SECTIONS) {
+            if (detail.sections.some((s) => s.title === f.title)) continue;
+            const created = await createCustomTabSection(id, f.title, '', []);
+            if (created) detail = { ...detail, sections: [...detail.sections, created] };
+          }
+        }
+        setCustomTabDetails((prev) => ({ ...prev, [id]: detail }));
       });
     }
   }
@@ -451,9 +466,9 @@ export default function AdminTabsPage() {
                     <Link href="/admin/openings"
                       className="flex items-center gap-3 p-3 rounded-lg hover:brightness-125 transition-all"
                       style={{ background: `${color}1a`, border: `1px solid ${color}66` }}>
-                      <span className="text-xl leading-none">📖</span>
+                      <span className="text-xl leading-none">{OPENING_ROW.emoji}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold" style={{ color }}>Açılış Pratiği Yap</p>
+                        <p className="text-sm font-semibold" style={{ color }}>{OPENING_ROW.title}</p>
                         <p className="text-xs n-muted">Açılış pratiği için açılış ekle ve kaldır</p>
                       </div>
                       <span className="text-sm" style={{ color }}>→</span>
@@ -467,9 +482,12 @@ export default function AdminTabsPage() {
                       {detail.sections.length === 0 && !isPratikYap && (
                         <p className="text-sm n-muted">Henüz alt sekme yok. Aşağıdan ekleyebilirsin.</p>
                       )}
-                      {detail.sections.map((s) => {
+                      {(isPratikYap ? sortPratikSections(detail.sections) : detail.sections).map((s) => {
                         const sOpen = openSectionId === s.id;
                         const isEditing = editingSectionId === s.id;
+                        // Sabit sekmeler (Kazanç/Oyunsonu) adı değiştirilemez ve silinemez.
+                        const fixed = isPratikYap && isFixedSection(s.title);
+                        const emoji = isPratikYap ? sectionEmoji(s.title) : null;
                         return (
                           <div key={s.id} className="rounded-lg border border-white/10 bg-white/[0.03]">
                             <div className="flex items-center gap-2 px-3 py-2.5">
@@ -477,19 +495,26 @@ export default function AdminTabsPage() {
                                 onClick={() => setOpenSectionId((p) => (p === s.id ? null : s.id))}
                                 aria-expanded={sOpen}
                                 className="flex-1 flex items-center gap-2 text-left hover:bg-white/5 transition-colors">
-                                <span className="text-sm font-semibold n-text flex-1">{s.title}</span>
+                                <span className="text-sm font-semibold n-text flex-1 flex items-center gap-2">
+                                  {emoji && <span className="text-base leading-none">{emoji}</span>}
+                                  {s.title}
+                                </span>
                                 <span className="text-xs n-muted">{sOpen ? '▴' : '▾'}</span>
                               </button>
-                              <button type="button" onClick={() => startEditSection(s)}
-                                aria-label={`${s.title} alt sekmesini düzenle`}
-                                className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">
-                                Düzenle
-                              </button>
-                              <button type="button" onClick={() => removeAltSection(c.id, s.id)}
-                                aria-label={`${s.title} alt sekmesini sil`}
-                                className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
-                                Sil
-                              </button>
+                              {!fixed && (
+                                <>
+                                  <button type="button" onClick={() => startEditSection(s)}
+                                    aria-label={`${s.title} alt sekmesini düzenle`}
+                                    className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">
+                                    Düzenle
+                                  </button>
+                                  <button type="button" onClick={() => removeAltSection(c.id, s.id)}
+                                    aria-label={`${s.title} alt sekmesini sil`}
+                                    className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
+                                    Sil
+                                  </button>
+                                </>
+                              )}
                             </div>
                             {isEditing ? (
                               <div className="px-3 pb-3 space-y-2">
