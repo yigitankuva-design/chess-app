@@ -17,6 +17,8 @@ interface Opening { id: number; name: string; start_fen: string; category?: stri
  */
 export function OpeningCategoryCards({ color }: { color: string }) {
   const [list, setList] = useState<Opening[] | null>(null);
+  /** "Açılış Pratiği Yap" başlığı kapalıyken üç kategori kartı görünmez. */
+  const [sectionOpen, setSectionOpen] = useState(false);
   const [openKey, setOpenKey] = useState<OpeningCategory | null>(null);
   const [name, setName] = useState('');
   const [fen, setFen] = useState('');
@@ -112,13 +114,22 @@ export function OpeningCategoryCards({ color }: { color: string }) {
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3 px-1">
+    <div className="rounded-lg border border-white/10 bg-white/[0.03]">
+      <button
+        type="button"
+        onClick={() => setSectionOpen((p) => !p)}
+        aria-expanded={sectionOpen}
+        aria-label={`Açılış Pratiği Yap kartını ${sectionOpen ? 'kapat' : 'aç'}`}
+        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
+      >
         <span className="text-xl leading-none">📖</span>
-        <p className="text-sm font-semibold" style={{ color }}>Açılış Pratiği Yap</p>
-      </div>
+        <span className="text-sm font-semibold flex-1" style={{ color }}>Açılış Pratiği Yap</span>
+        <span className="text-xs n-muted">{sectionOpen ? '▴' : '▾'}</span>
+      </button>
 
-      {OPENING_CATEGORIES.map((cat) => {
+      {sectionOpen && (
+        <div className="px-3 pb-3 space-y-2">
+          {OPENING_CATEGORIES.map((cat) => {
         const rows = groups[cat.key];
         const open = openKey === cat.key;
         return (
@@ -229,8 +240,10 @@ export function OpeningCategoryCards({ color }: { color: string }) {
               </div>
             )}
           </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
