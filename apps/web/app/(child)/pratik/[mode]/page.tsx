@@ -14,8 +14,8 @@ import { loadPreviousCodes, saveShownCodes } from '@/lib/play/practiceHistory';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 import { PracticeResult } from '@/components/practice/PracticeResult';
 import { scorePercent } from '@/lib/practice/scoring';
-import { isModeUnlocked, unlockedLabel, UNLOCK_THRESHOLD } from '@/lib/practice/unlock';
-import type { PracticeMode, ScoreMap } from '@/lib/practice/unlock';
+import { isModeUnlocked, unlockedLabel, thresholdFor, PRACTICE_MODE_FIELDS } from '@/lib/practice/unlock';
+import type { PracticeMode, ScoreMap, ThresholdMap } from '@/lib/practice/unlock';
 import { fetchLessonScores, submitPracticeResult } from '@/lib/practice/practiceApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -70,6 +70,8 @@ function PratikInner() {
   /** null = kilit sistemi uygulanmıyor (token yok / sunucuya ulaşılamadı). */
   const [scores, setScores] = useState<ScoreMap | null>(null);
   const [orderedStepIds, setOrderedStepIds] = useState<number[]>([]);
+  /** stepId → mod → hoca'nın Admin'de girdiği geçme puanı; boşsa UNLOCK_THRESHOLD (85). */
+  const [thresholds, setThresholds] = useState<ThresholdMap>({});
   const [finished, setFinished] = useState<{ correct: number; total: number; score: number } | null>(null);
   const [unlockedNow, setUnlockedNow] = useState<string | null>(null);
   /** Tekrar Dene: BoardExercise'ı sıfırdan kurmak için artan sayaç. */
@@ -102,6 +104,20 @@ function PratikInner() {
           .filter((s) => s.type === 'explanation' && (s.content_json as { title?: string } | undefined)?.title)
           .map((s) => s.id);
         setOrderedStepIds(ordered);
+        // Hoca'nın alt konu + mod başına girdiği başarı puanları — girilmeyen
+        // mod eskisi gibi UNLOCK_THRESHOLD (85) kullanır (thresholdFor).
+        const nextThresholds: ThresholdMap = {};
+        for (const s of (d.steps as StepRow[] | undefined) ?? []) {
+          const raw = s.content_json?.success_scores as Record<string, number> | undefined;
+          if (!raw) continue;
+          const entry: Partial<Record<PracticeMode, number>> = {};
+          for (const key of Object.keys(PRACTICE_MODE_FIELDS) as PracticeMode[]) {
+            const field = PRACTICE_MODE_FIELDS[key];
+            if (typeof raw[field] === 'number') entry[key] = raw[field];
+          }
+          if (Object.keys(entry).length > 0) nextThresholds[s.id] = entry;
+        }
+        setThresholds(nextThresholds);
         // Kodlar ADMİN'DEKİ SIRAYA göre (havuz karıştırılmadan önce) hesaplanır — yoksa
         // öğrenciye gösterilen kod, admin panelindeki dairesel kartla eşleşmez.
         const codes = assignExerciseCodes(rawPool);
@@ -171,6 +187,8 @@ function PratikInner() {
   }, [timeUp]);
 
   const modeKey = slug as PracticeMode;
+  /** Bu alt konu + modun geçme eşiği — hoca girmediyse 85 (thresholdFor). */
+  const passThreshold = thresholdFor(thresholds, stepId, modeKey);
 
   /** Oturum bitti: puanı sunucuya yaz, sonuç ekranını hazırla. */
   async function handleFinish(r: { correct: number; total: number }) {
@@ -182,7 +200,7 @@ function PratikInner() {
 
     // Kilit YALNIZCA sunucuya yazılabildiyse açılmış sayılır — aksi halde
     // öğrenciye açıldı deyip yenilemede kapalı bulmasına yol açardık.
-    const opened = saved !== null && before < UNLOCK_THRESHOLD && score >= UNLOCK_THRESHOLD;
+    const opened = saved !== null && before < passThreshold && score >= passThreshold;
     setUnlockedNow(opened ? unlockedLabel(modeKey) : null);
 
     if (saved !== null) {
@@ -220,7 +238,13 @@ function PratikInner() {
   }
 
   /** Kilit yalnızca skor haritası GERÇEKTEN alındıysa uygulanır. */
-  const locked = scores !== null && !isModeUnlocked(orderedStepIds, stepId, modeKey, scores);
+  const locked = scores !== null && !isModeUnlocked(orderedStepIds, stepId, modeKey, scores, thresholds);
+  /** Kilit ekranında gösterilecek eşik: bu modu açmak için ÖNCEKİ modun eşiği
+   *  (sureli için suresiz'in eşiği, test için sureli'nin eşiği). */
+  const prevModeThreshold =
+    modeKey === 'sureli' ? thresholdFor(thresholds, stepId, 'suresiz')
+    : modeKey === 'test' ? thresholdFor(thresholds, stepId, 'sureli')
+    : null;
 
   if (!mode) {
     return <ComingSoon emoji="🎯" title="Pratik" description="Bu içerik hazırlanıyor." />;
@@ -281,9 +305,9 @@ function PratikInner() {
           <p className="font-bold text-sm mb-1">Bu bölüm henüz kilitli</p>
           <p className="text-xs t-muted mb-4">
             {modeKey === 'sureli'
-              ? 'Önce “Süresiz Pratik Yap”ta 85 puan ve üzeri al.'
+              ? `Önce "Süresiz Pratik Yap"ta ${prevModeThreshold} puan ve üzeri al.`
               : modeKey === 'test'
-                ? 'Önce “Süreli Pratik Yap”ta 85 puan ve üzeri al.'
+                ? `Önce "Süreli Pratik Yap"ta ${prevModeThreshold} puan ve üzeri al.`
                 : 'Önce bir önceki alt konuyu tamamla.'}
           </p>
           <Link href="/home" className="t-btn inline-block px-5 py-2.5 text-sm">Ana Sayfaya Dön</Link>
@@ -299,7 +323,7 @@ function PratikInner() {
           onRetry={handleRetry}
           // Madde 7: son sorunun tahtası matlaşarak arka planda kalır.
           boardFen={[...(exercises ?? [])].reverse().find(isBoardExercise)?.fen ?? ''}
-          headline={resultHeadline(modeKey, finished.score)}
+          headline={resultHeadline(modeKey, finished.score, passThreshold)}
         />
       )}
 

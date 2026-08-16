@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isLessonCompleted, isLessonUnlocked, UNLOCK_THRESHOLD } from '@/lib/practice/unlock';
-import type { ScoreMap } from '@/lib/practice/unlock';
+import type { ScoreMap, ThresholdMap } from '@/lib/practice/unlock';
 
 describe('isLessonCompleted (madde 10)', () => {
   it('son alt konuda test 85+ ise ders bitmiştir', () => {
@@ -23,6 +23,20 @@ describe('isLessonCompleted (madde 10)', () => {
 
   it('KURAL #3: alt konusu olmayan ders yolu tıkamaz — bitmiş sayılır', () => {
     expect(isLessonCompleted([], {})).toBe(true);
+  });
+
+  it('hoca özel başarı puanı girdiyse 85 yerine O puan kullanılır', () => {
+    const scores: ScoreMap = { 10: { test: 90 } };
+    const thresholds: ThresholdMap = { 10: { test: 95 } };
+    // 90, hoca'nın istediği 95'in altında — hâlâ bitmemiş sayılır.
+    expect(isLessonCompleted([10], scores, thresholds)).toBe(false);
+    expect(isLessonCompleted([10], { 10: { test: 95 } }, thresholds)).toBe(true);
+  });
+
+  it('özel puan girilmemiş alt konu eskisi gibi 85 kullanır', () => {
+    const scores: ScoreMap = { 10: { test: 85 } };
+    const thresholds: ThresholdMap = { 10: { test: 95 } }; // farklı bir stepId için
+    expect(isLessonCompleted([20], { 20: { test: 85 } }, thresholds)).toBe(true);
   });
 });
 

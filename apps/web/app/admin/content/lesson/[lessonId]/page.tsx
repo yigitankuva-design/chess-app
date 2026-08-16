@@ -73,8 +73,10 @@ export default function AdminStepEditorPage() {
   const [openExercises, setOpenExercises] = useState<number | null>(initialUi.openExercises);
   const [openMode, setOpenMode] = useState<{ stepId: number; field: string } | null>(initialUi.openMode);
   const [editingExercise, setEditingExercise] = useState<{ stepId: number; field: string; idx: number } | null>(initialUi.editingExercise);
-  /** "Soru Sayısını Belirle" kutusu — o an açık moda ait taslak değer/hata. */
+  /** "Soru Sayısını Belirle" ve "Başarı Puanı Belirle" kutuları — o an açık
+   *  moda ait taslak değerler. İkisi de dolu olmadan kaydedilemez (zorunlu). */
   const [countDraft, setCountDraft] = useState('');
+  const [scoreDraft, setScoreDraft] = useState('');
   const [countMsg, setCountMsg] = useState<string | null>(null);
 
   // TEK bir yerden, DEGISIM SONRASI (commit edilmis state ile) yazilir.
@@ -184,36 +186,54 @@ export default function AdminStepEditorPage() {
     return counts?.[field];
   }
 
-  async function saveQuestionCount(s: StepRow, field: string, raw: string) {
+  function successScoreOf(s: StepRow, field: string): number | undefined {
+    const scores = s.content_json.success_scores as Record<string, number> | undefined;
+    return scores?.[field];
+  }
+
+  /**
+   * Soru Sayısı ve Başarı Puanı BİRLİKTE, zorunlu olarak kaydedilir — biri
+   * boşsa hiçbiri kaydedilmez (kullanıcı kararı: her ikisi de girilmeden bu
+   * mod sporcuya eksik ayarla açılmasın).
+   */
+  async function saveQuestionCountAndScore(s: StepRow, field: string, countRaw: string, scoreRaw: string) {
     setCountMsg(null);
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      // Boş bırakmak "eskisi gibi 20 soru" demektir — alan tamamen kaldırılır.
-      const counts = { ...(s.content_json.question_counts as Record<string, number> | undefined) };
-      delete counts[field];
-      await saveQuestionCountsPatch(s, counts);
+    const countTrimmed = countRaw.trim();
+    const scoreTrimmed = scoreRaw.trim();
+    if (!countTrimmed || !scoreTrimmed) {
+      setCountMsg('Soru Sayısı Belirle ve Başarı Puanı Belirle — ikisi de girilmeli');
       return;
     }
-    const value = Number(trimmed);
-    if (!Number.isInteger(value) || value < 1) {
+    const countValue = Number(countTrimmed);
+    if (!Number.isInteger(countValue) || countValue < 1) {
       setCountMsg('Soru sayısı 1 veya daha büyük bir tam sayı olmalı');
       return;
     }
     const poolSize = exercisesOf(s, field).length;
-    if (value > poolSize) {
+    if (countValue > poolSize) {
       setCountMsg(`Soru sayısı havuzdaki soru sayısından (${poolSize}) fazla olamaz`);
       return;
     }
-    const counts = { ...(s.content_json.question_counts as Record<string, number> | undefined), [field]: value };
-    await saveQuestionCountsPatch(s, counts);
+    const scoreValue = Number(scoreTrimmed);
+    if (!Number.isInteger(scoreValue) || scoreValue < 1 || scoreValue > 100) {
+      setCountMsg('Başarı puanı 1-100 arasında bir tam sayı olmalı');
+      return;
+    }
+    const counts = { ...(s.content_json.question_counts as Record<string, number> | undefined), [field]: countValue };
+    const scores = { ...(s.content_json.success_scores as Record<string, number> | undefined), [field]: scoreValue };
+    await saveQuestionCountAndScorePatch(s, counts, scores);
   }
 
-  async function saveQuestionCountsPatch(s: StepRow, counts: Record<string, number>) {
+  async function saveQuestionCountAndScorePatch(
+    s: StepRow, counts: Record<string, number>, scores: Record<string, number>,
+  ) {
     const token = getToken();
     const r = await fetch(`${API_BASE}/admin/steps/${s.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ content_json: { ...s.content_json, question_counts: counts } }),
+      body: JSON.stringify({
+        content_json: { ...s.content_json, question_counts: counts, success_scores: scores },
+      }),
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
@@ -388,6 +408,7 @@ export default function AdminStepEditorPage() {
                               setEditingExercise(null);
                               setCountMsg(null);
                               setCountDraft(active ? '' : String(questionCountOf(s, m.field) ?? ''));
+                              setScoreDraft(active ? '' : String(successScoreOf(s, m.field) ?? ''));
                             }}
                             className="rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-1 border transition-all"
                             style={{
@@ -423,11 +444,26 @@ export default function AdminStepEditorPage() {
                               min={1}
                               value={countDraft}
                               onChange={(e) => setCountDraft(e.target.value)}
-                              placeholder="20 (varsayılan)"
+                              placeholder="zorunlu"
                               className="neon-input text-sm"
-                              style={{ width: 140 }}
+                              style={{ width: 100 }}
                             />
-                            <button type="button" onClick={() => saveQuestionCount(s, mode.field, countDraft)}
+                            <label className="text-xs n-muted" htmlFor={`score-${s.id}-${mode.field}`}>
+                              Başarı Puanı Belirle
+                            </label>
+                            <input
+                              id={`score-${s.id}-${mode.field}`}
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={scoreDraft}
+                              onChange={(e) => setScoreDraft(e.target.value)}
+                              placeholder="zorunlu"
+                              className="neon-input text-sm"
+                              style={{ width: 100 }}
+                            />
+                            <button type="button"
+                              onClick={() => saveQuestionCountAndScore(s, mode.field, countDraft, scoreDraft)}
                               className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
                               Kaydet
                             </button>

@@ -6,9 +6,9 @@ import { useSettings } from '@/lib/settings/settings-context';
 import { visibleTabsInOrder } from '@/lib/settings/defaults';
 import type { TabKey } from '@/lib/settings/defaults';
 import {
-  isModeUnlocked, isSubtopicUnlocked, isLessonCompleted, isLessonUnlocked,
+  isModeUnlocked, isSubtopicUnlocked, isLessonCompleted, isLessonUnlocked, PRACTICE_MODE_FIELDS,
 } from '@/lib/practice/unlock';
-import type { PracticeMode, ScoreMap } from '@/lib/practice/unlock';
+import type { PracticeMode, ScoreMap, ThresholdMap } from '@/lib/practice/unlock';
 import { fetchLessonScores } from '@/lib/practice/practiceApi';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import { useRouter } from 'next/navigation';
@@ -184,6 +184,8 @@ export default function ChildHomePage() {
   const [subtopicsByLesson, setSubtopicsByLesson] = useState<Record<number, Subtopic[]>>({});
   /** lessonId → skor haritası. null değer = kilit uygulanmaz (token yok). */
   const [scoresByLesson, setScoresByLesson] = useState<Record<number, ScoreMap | null>>({});
+  /** lessonId → hoca'nın alt konu + mod başına girdiği başarı puanları. */
+  const [thresholdsByLesson, setThresholdsByLesson] = useState<Record<number, ThresholdMap>>({});
   const [openSubtopic, setOpenSubtopic] = useState<{ lessonId: number; stepId: number; title: string } | null>(null);
 
   // Maç Yap: Oyun türü → Zorluk → Tempo → Süre
@@ -254,6 +256,21 @@ export default function ChildHomePage() {
         .filter((s: { type: string; content_json?: { title?: string } }) => s.type === 'explanation' && s.content_json?.title)
         .map((s: { id: number; content_json: { title: string } }) => ({ stepId: s.id, title: s.content_json.title }));
       setSubtopicsByLesson((prev) => ({ ...prev, [lessonId]: subs }));
+      // Hoca'nın alt konu + mod başına girdiği başarı puanları — girilmeyen
+      // mod isModeUnlocked/isSubtopicUnlocked/isLessonCompleted içinde eskisi
+      // gibi UNLOCK_THRESHOLD (85) kullanır.
+      const thresholds: ThresholdMap = {};
+      for (const s of (detail.steps ?? []) as { id: number; content_json?: { success_scores?: Record<string, number> } }[]) {
+        const raw = s.content_json?.success_scores;
+        if (!raw) continue;
+        const entry: Partial<Record<PracticeMode, number>> = {};
+        for (const key of Object.keys(PRACTICE_MODE_FIELDS) as PracticeMode[]) {
+          const field = PRACTICE_MODE_FIELDS[key];
+          if (typeof raw[field] === 'number') entry[key] = raw[field];
+        }
+        if (Object.keys(entry).length > 0) thresholds[s.id] = entry;
+      }
+      setThresholdsByLesson((prev) => ({ ...prev, [lessonId]: thresholds }));
       const scoreMap = await fetchLessonScores(lessonId);
       setScoresByLesson((prev) => ({ ...prev, [lessonId]: scoreMap }));
     } catch {
@@ -486,18 +503,20 @@ export default function ChildHomePage() {
                             const st = (subtopicsByLesson[l.id] ?? []).map((x) => x.stepId);
                             const sc = scoresByLesson[l.id];
                             // null da "henuz bilinmiyor" demektir — kilit uygulanmaz.
-                            return [l.id, sc == null ? undefined : isLessonCompleted(st, sc)];
+                            return [l.id, sc == null ? undefined : isLessonCompleted(st, sc, thresholdsByLesson[l.id])];
                           })),
                         );
                         const subs = subtopicsByLesson[les.id];
                         const lessonScores = scoresByLesson[les.id];
+                        const lessonThresholds = thresholdsByLesson[les.id];
                         const orderedStepIds = (subs ?? []).map((s) => s.stepId);
                         /** Kilit YALNIZCA skor haritası gerçekten alındıysa uygulanır. */
                         const subLocked = (stepId: number) =>
-                          lessonScores != null && !isSubtopicUnlocked(orderedStepIds, stepId, lessonScores);
+                          lessonScores != null
+                          && !isSubtopicUnlocked(orderedStepIds, stepId, lessonScores, lessonThresholds);
                         const modeLocked = (stepId: number, slug: string) =>
                           lessonScores != null &&
-                          !isModeUnlocked(orderedStepIds, stepId, slug as PracticeMode, lessonScores);
+                          !isModeUnlocked(orderedStepIds, stepId, slug as PracticeMode, lessonScores, lessonThresholds);
                         return (
                           <div key={les.id}>
                             <PathNode

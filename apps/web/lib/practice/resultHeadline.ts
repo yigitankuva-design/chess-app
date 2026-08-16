@@ -10,10 +10,15 @@ const MODE_TITLE: Record<PracticeMode, string> = {
 
 export interface ResultHeadline { text: string; tone: 'success' | 'retry' }
 
-/** 85 altı: kırmızı "tekrar yap" uyarısı. 85+: yeşil "bir sonrakine geçebilirsin"
- *  müjdesi. Test modunda sonraki adım yok — özel bir tebrik metni kullanılır. */
-export function resultHeadline(mode: PracticeMode, score: number): ResultHeadline {
-  if (score < UNLOCK_THRESHOLD) {
+/**
+ * threshold altı: kırmızı "tekrar yap" uyarısı. threshold+: yeşil
+ * "bir sonrakine geçebilirsin" müjdesi. Test modunda sonraki adım yok — özel
+ * bir tebrik metni kullanılır. threshold verilmezse UNLOCK_THRESHOLD (85).
+ */
+export function resultHeadline(
+  mode: PracticeMode, score: number, threshold: number = UNLOCK_THRESHOLD,
+): ResultHeadline {
+  if (score < threshold) {
     return { text: `Üzgünüm Yeniden ${MODE_TITLE[mode]} Yapmalısın`, tone: 'retry' };
   }
   const next = unlockedLabel(mode);

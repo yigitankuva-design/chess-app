@@ -8,42 +8,68 @@
  * biri kilitli moda girebilir. Skorun kendisi sunucuda hesaplanır.
  */
 
+/** Hoca bir alt konu + mod için özel puan girmediyse kullanılan varsayılan eşik. */
 export const UNLOCK_THRESHOLD = 85;
 
 export type PracticeMode = 'suresiz' | 'sureli' | 'test';
 
+/**
+ * Mod → adım content_json'daki soru/puan alanı. Admin'in question_counts ve
+ * success_scores kayıtları bu alan adlarıyla anahtarlanır — tek kaynak,
+ * birden fazla yerde aynı string'in elle yazılıp yanlış yazılma riski olmasın.
+ */
+export const PRACTICE_MODE_FIELDS: Record<PracticeMode, string> = {
+  suresiz: 'board_exercises',
+  sureli: 'board_exercises_timed',
+  test: 'board_exercises_test',
+};
+
 /** stepId → mod → o çocuğun o moddaki EN YÜKSEK skoru (0–100). */
 export type ScoreMap = Record<number, Partial<Record<PracticeMode, number>>>;
 
-/** Kayıt yoksa 0 — hiç oynanmamış mod, 85 eşiğini geçemez. */
+/**
+ * stepId → mod → hoca'nın o alt konu + mod için Admin'de belirlediği geçme
+ * puanı (0–100). Girilmemişse thresholdFor UNLOCK_THRESHOLD (85) döner.
+ */
+export type ThresholdMap = Record<number, Partial<Record<PracticeMode, number>>>;
+
+/** Kayıt yoksa 0 — hiç oynanmamış mod, eşiği geçemez. */
 export function bestScore(scores: ScoreMap, stepId: number, mode: PracticeMode): number {
   return scores[stepId]?.[mode] ?? 0;
 }
 
+/** Bu alt konu + modun geçme eşiği — hoca girmediyse UNLOCK_THRESHOLD (85). */
+export function thresholdFor(
+  thresholds: ThresholdMap | undefined, stepId: number, mode: PracticeMode,
+): number {
+  return thresholds?.[stepId]?.[mode] ?? UNLOCK_THRESHOLD;
+}
+
 /**
  * Alt konu açık mı? İlk alt konu her zaman açıktır; sonrakiler bir önceki alt
- * konunun "test" modunda 85+ gerektirir.
+ * konunun "test" modunda kendi eşiğini (girilmediyse 85) geçmeyi gerektirir.
  *
  * Listede olmayan stepId AÇIK sayılır: eksik/bozuk veri yüzünden öğrenciyi
  * dışarıda bırakmak, gereğinden fazla erişim vermekten daha kötüdür (KURAL #3).
  */
 export function isSubtopicUnlocked(
-  orderedStepIds: number[], stepId: number, scores: ScoreMap,
+  orderedStepIds: number[], stepId: number, scores: ScoreMap, thresholds?: ThresholdMap,
 ): boolean {
   const idx = orderedStepIds.indexOf(stepId);
   if (idx === -1) return true; // listede yok → kilitleme
   if (idx === 0) return true;  // ilk alt konu
-  return bestScore(scores, orderedStepIds[idx - 1], 'test') >= UNLOCK_THRESHOLD;
+  const prevId = orderedStepIds[idx - 1];
+  return bestScore(scores, prevId, 'test') >= thresholdFor(thresholds, prevId, 'test');
 }
 
 /** Bir alt konunun belirli bir pratik modu açık mı? */
 export function isModeUnlocked(
-  orderedStepIds: number[], stepId: number, mode: PracticeMode, scores: ScoreMap,
+  orderedStepIds: number[], stepId: number, mode: PracticeMode, scores: ScoreMap, thresholds?: ThresholdMap,
 ): boolean {
-  if (!isSubtopicUnlocked(orderedStepIds, stepId, scores)) return false;
+  if (!isSubtopicUnlocked(orderedStepIds, stepId, scores, thresholds)) return false;
   if (mode === 'suresiz') return true;
-  if (mode === 'sureli') return bestScore(scores, stepId, 'suresiz') >= UNLOCK_THRESHOLD;
-  return bestScore(scores, stepId, 'sureli') >= UNLOCK_THRESHOLD;
+  if (mode === 'sureli') return bestScore(scores, stepId, 'suresiz') >= thresholdFor(thresholds, stepId, 'suresiz');
+  return bestScore(scores, stepId, 'sureli') >= thresholdFor(thresholds, stepId, 'sureli');
 }
 
 /** Bu modda 85+ alınırsa NE açılır — sonuç ekranındaki kutlama satırı için. */
@@ -55,7 +81,8 @@ export function unlockedLabel(mode: PracticeMode): string {
 
 /**
  * Bir DERS tamamlandı mı? Kural: dersin SON alt konusunda "Kendini Test Et"
- * 85+ ise ders bitmiştir — alt konu zinciri zaten öncekileri zorunlu kılar.
+ * kendi eşiğini (girilmediyse 85) geçmişse ders bitmiştir — alt konu zinciri
+ * zaten öncekileri zorunlu kılar.
  *
  * scores henüz alınmadıysa (undefined) false döner; çağıran bu durumda KİLİT
  * UYGULAMAZ (yükleniyor diye öğrenciyi dışarıda bırakmayız).
@@ -64,12 +91,12 @@ export function unlockedLabel(mode: PracticeMode): string {
  * sonraki dersleri kilitlemesin (KURAL #3).
  */
 export function isLessonCompleted(
-  orderedStepIds: number[], scores: ScoreMap | undefined,
+  orderedStepIds: number[], scores: ScoreMap | undefined, thresholds?: ThresholdMap,
 ): boolean {
   if (!scores) return false;
   if (orderedStepIds.length === 0) return true;
   const last = orderedStepIds[orderedStepIds.length - 1];
-  return bestScore(scores, last, 'test') >= UNLOCK_THRESHOLD;
+  return bestScore(scores, last, 'test') >= thresholdFor(thresholds, last, 'test');
 }
 
 /**

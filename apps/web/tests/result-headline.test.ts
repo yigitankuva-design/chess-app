@@ -42,4 +42,15 @@ describe('resultHeadline (madde 7)', () => {
     expect(resultHeadline('suresiz', 85).tone).toBe('success');
     expect(resultHeadline('suresiz', 84).tone).toBe('retry');
   });
+
+  it('hoca özel eşik verdiyse (3. parametre) 85 yerine O kullanılır', () => {
+    expect(resultHeadline('suresiz', 70, 70).tone).toBe('success');
+    expect(resultHeadline('suresiz', 69, 70).tone).toBe('retry');
+    // Eskiden 85 yeterliydi ama hoca 90 istediyse artık yetmez.
+    expect(resultHeadline('sureli', 85, 90).tone).toBe('retry');
+  });
+
+  it('3. parametre verilmezse eskisi gibi 85 kullanılır', () => {
+    expect(resultHeadline('suresiz', 85).tone).toBe('success');
+  });
 });
