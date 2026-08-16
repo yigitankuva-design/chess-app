@@ -70,6 +70,8 @@ function PlayInner() {
   const modeParam = searchParams.get('mode');
   const sectionParam = searchParams.get('section');
   const tabParam = searchParams.get('tab');
+  /** Oyunsonu Pratiği Yap'ta sporcunun seçtiği kategori — yoksa havuz filtrelenmez. */
+  const categoryParam = searchParams.get('category');
   const initialMode: Mode | null =
     modeParam === 'pool' && sectionParam && tabParam
       ? 'pool'
@@ -94,10 +96,12 @@ function PlayInner() {
     if (initialMode !== 'pool' || !tabParam || !sectionParam) return;
     getCustomTab(Number(tabParam)).then((detail) => {
       const section = detail?.sections.find((s) => s.id === Number(sectionParam));
-      setPoolPositions(section?.practice_positions ?? []);
+      const all = section?.practice_positions ?? [];
+      // Oyunsonu Pratiği Yap'tan kategoriyle gelindiyse havuz o kategoriyle sınırlanır.
+      setPoolPositions(categoryParam ? all.filter((p) => p.category === categoryParam) : all);
       setPoolTitle(section?.title ?? '');
     });
-  }, [initialMode, tabParam, sectionParam]);
+  }, [initialMode, tabParam, sectionParam, categoryParam]);
 
   /** Secimleri ADRESE yazar. Boylece F5/yenile sonrasi sporcu ayni ekranda
    *  kalir; React durumu kaybolsa da adres bilgiyi tasir (madde 4 ve 9). */

@@ -32,6 +32,15 @@ const SECTION = {
   practice_positions: [{ id: 'p1', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }],
 };
 
+const OYUNSONU_SECTION = {
+  id: 41, order_index: 1, title: 'Oyunsonu Pratiği Yap', body: '', images: [],
+  practice_positions: [
+    { id: 'a', fen: 'x', category: 'Piyon Finalleri' },
+    { id: 'b', fen: 'y', category: 'Kale Finalleri' },
+    { id: 'c', fen: 'z', category: 'Kale Finalleri' },
+  ],
+};
+
 beforeEach(() => {
   getCustomTab.mockReset();
   getCustomTab.mockResolvedValue({ id: 1, label: 'Pratik Yap', emoji: '🎯', sections: [SECTION] });
@@ -56,5 +65,22 @@ describe('/play — pool modu', () => {
     search.value = 'mode=pool&tab=1&section=10&skill=2&tc=5%2B0&color=white';
     render(<PlayPage />);
     await waitFor(() => screen.getByText(/Süresiz Pratik/));
+  });
+
+  it('kategori adreste varsa havuz o kategoriyle sınırlanır', async () => {
+    getCustomTab.mockResolvedValue({ id: 1, label: 'Pratik Yap', emoji: '🎯', sections: [OYUNSONU_SECTION] });
+    search.value = 'mode=pool&tab=1&section=41&category=Kale+Finalleri&skill=2&tc=5%2B0&color=white';
+    render(<PlayPage />);
+    const el = await screen.findByTestId('pool-practice');
+    // 3 konumdan yalnız Kale Finalleri kategorisindeki 2 tanesi gelmeli.
+    expect(el).toHaveAttribute('data-count', '2');
+  });
+
+  it('kategori adreste yoksa havuz filtrelenmez (Kazanç Konumunu Pratik Yap gibi)', async () => {
+    getCustomTab.mockResolvedValue({ id: 1, label: 'Pratik Yap', emoji: '🎯', sections: [OYUNSONU_SECTION] });
+    search.value = 'mode=pool&tab=1&section=41&skill=2&tc=5%2B0&color=white';
+    render(<PlayPage />);
+    const el = await screen.findByTestId('pool-practice');
+    expect(el).toHaveAttribute('data-count', '3');
   });
 });

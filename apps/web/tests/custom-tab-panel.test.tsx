@@ -74,6 +74,74 @@ describe('CustomTabPanel', () => {
     expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
   });
 
+  it('Oyunsonu Pratiği Yap açılınca kriter değil, 5 kategori seçeneği görünür', () => {
+    const tab: CustomTabDetail = {
+      id: 1, label: 'Pratik Yap', emoji: '🎯',
+      sections: [{
+        id: 40, order_index: 1, title: 'Oyunsonu Pratiği Yap', body: '', images: [],
+        practice_positions: [
+          { id: 'a', fen: 'x', category: 'Piyon Finalleri' },
+          { id: 'b', fen: 'y', category: 'Kale Finalleri' },
+          { id: 'c', fen: 'z', category: 'Kale Finalleri' },
+        ],
+      }],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Oyunsonu Pratiği Yap'));
+    expect(screen.getByText('Piyon Finalleri')).toBeInTheDocument();
+    expect(screen.getByText('Kale Finalleri')).toBeInTheDocument();
+    expect(screen.getByText('Hafif Taşlar Arası Mücadele')).toBeInTheDocument();
+    expect(screen.getByText('Ağır Taşlar Arası Mücadele')).toBeInTheDocument();
+    expect(screen.getByText('Ağır Taşlar ile Hafif Taşlar Arası Mücadele')).toBeInTheDocument();
+    expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
+    // Kategorisiz konum bu listede yok, bu yüzden kategori sayıları toplamı 3'ü geçmez.
+    expect(screen.queryByText('Kategorisiz')).not.toBeInTheDocument();
+  });
+
+  it('Oyunsonu kategorisine tıklayınca o kategorinin kriter ekranı gelir ve adrese kategori yazılır', async () => {
+    push.mockClear();
+    const tab: CustomTabDetail = {
+      id: 5, label: 'Pratik Yap', emoji: '🎯',
+      sections: [{
+        id: 41, order_index: 1, title: 'Oyunsonu Pratiği Yap', body: '', images: [],
+        practice_positions: [
+          { id: 'a', fen: 'x', category: 'Piyon Finalleri' },
+          { id: 'b', fen: 'y', category: 'Kale Finalleri' },
+        ],
+      }],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Oyunsonu Pratiği Yap'));
+    fireEvent.click(screen.getByText('Piyon Finalleri'));
+    expect(screen.getByText(/Pratiğe Başla/)).toBeInTheDocument();
+    // Diğer kategorinin adı artık ekranda yok — kriter ekranına geçildi.
+    expect(screen.queryByText('Kale Finalleri')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    fireEvent.click(screen.getByRole('button', { name: '5+0' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Beyaz' }));
+    fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    const url = push.mock.calls[0][0] as string;
+    expect(url).toContain('mode=pool');
+    expect(url).toContain('section=41');
+    expect(url).toContain('category=Piyon');
+  });
+
+  it('konumu olmayan bir Oyunsonu kategorisine tıklayınca bilgi mesajı görünür', () => {
+    const tab: CustomTabDetail = {
+      id: 6, label: 'Pratik Yap', emoji: '🎯',
+      sections: [{
+        id: 42, order_index: 1, title: 'Oyunsonu Pratiği Yap', body: '', images: [],
+        practice_positions: [{ id: 'a', fen: 'x', category: 'Piyon Finalleri' }],
+      }],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Oyunsonu Pratiği Yap'));
+    fireEvent.click(screen.getByText('Kale Finalleri'));
+    expect(screen.getByText(/Bu kategoride henüz konum yok/)).toBeInTheDocument();
+  });
+
   it('Pratik Yap sekmesinde sabit alt sekmeler ikonlu ve önce gelir', () => {
     const tab: CustomTabDetail = {
       id: 1, label: 'Pratik Yap', emoji: '🎯',
