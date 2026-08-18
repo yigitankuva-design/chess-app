@@ -50,7 +50,7 @@ describe('CustomTabPanel', () => {
     push.mockClear();
     render(<CustomTabPanel tab={PRATIK} />);
     fireEvent.click(screen.getByText('Süresiz Pratik'));
-    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: 'Beyaz' }));
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
@@ -59,8 +59,17 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('mode=pool');
     expect(url).toContain('tab=1');
     expect(url).toContain('section=10');
-    expect(url).toContain('skill=2');
+    expect(url).toContain('skill=7');
     expect(url).toContain('color=white');
+  });
+
+  it('kriter ekranında 10 düzey yerine Kolay/Orta/Zor gösterir (madde: Pratik Yap basitleştirilmiş düzey)', () => {
+    render(<CustomTabPanel tab={PRATIK} />);
+    fireEvent.click(screen.getByText('Süresiz Pratik'));
+    expect(screen.getByRole('button', { name: 'Kolay' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Orta' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Zor' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Düzey 1' })).not.toBeInTheDocument();
   });
 
   it('havuzu boş olan Pratik Yap alt sekmesinde bilgi mesajı görünür', () => {
