@@ -1,0 +1,91 @@
+'use client';
+import type { ReactNode } from 'react';
+import { AvatarBox, NameBox, TimeBox } from '@/components/play/MatchLayout';
+import type { PlayerInfo } from '@/components/play/MatchLayout';
+
+/** Pratiğin bittiği anki sonuç — geri bildirim kartının rengini/metnini belirler. */
+export type PracticeOutcome = 'win' | 'draw' | 'loss';
+
+export interface PracticeAction {
+  /** Ekranda gösterilen tek karakter/emoji — kartlarda YAZI olmaz (madde 2c). */
+  icon: string;
+  /** Ekranda görünmez, ekran okuyucu ve test'ler için. */
+  label: string;
+  onClick: () => void;
+  enabled: boolean;
+}
+
+interface Props {
+  top: PlayerInfo;
+  bottom: PlayerInfo;
+  board: ReactNode;
+  moveList: ReactNode;
+  /** Pratik hâlâ sürüyorsa null — geri bildirim kartı o zaman hiç render edilmez. */
+  outcome: PracticeOutcome | null;
+  /** Tam olarak 4 eylem, sırasıyla: tekrar et, beraberlik teklif et, terk et, farklı konum. */
+  actions: [PracticeAction, PracticeAction, PracticeAction, PracticeAction];
+  /** Terfi seçici, reddedilen beraberlik notu gibi serbest alan (board/eylemler arası). */
+  extra?: ReactNode;
+}
+
+const OUTCOME_TEXT: Record<PracticeOutcome, string> = {
+  win: 'Tebrikler Kazandın',
+  draw: 'Berabere Bitti',
+  loss: 'Bot Kazandı',
+};
+const OUTCOME_CLASS: Record<PracticeOutcome, string> = {
+  win: 't-ok',
+  draw: 't-info',
+  loss: 't-err',
+};
+
+/**
+ * Pratik Yap ekranı (Kazanç Konumu / Oyunsonu / Açılış — bota karşı pratik).
+ * Gerçek maç ekranından (MatchLayout) BAĞIMSIZDIR: 4 dairesel, ikon'lu eylem
+ * kartı + renkli geri bildirim + EN ALTTA notasyon. Yalnızca BotGame'in
+ * `practiceActions` verildiği dallarda kullanılır.
+ */
+export function PracticeMatchLayout({
+  top, bottom, board, moveList, outcome, actions, extra,
+}: Props) {
+  return (
+    <div className="max-w-2xl mx-auto px-4 space-y-2">
+      <div className="pm-grid">
+        <div className="pm-avatar-top"><AvatarBox avatarId={top.avatarId} active={top.active} /></div>
+        <div className="pm-name-top"><NameBox name={top.name} active={top.active} /></div>
+        <div className="pm-time-top"><TimeBox ms={top.ms} active={top.active} /></div>
+        <div className="pm-board">{board}</div>
+        <div className="pm-avatar-bottom"><AvatarBox avatarId={bottom.avatarId} active={bottom.active} /></div>
+        <div className="pm-name-bottom"><NameBox name={bottom.name} active={bottom.active} /></div>
+        <div className="pm-time-bottom"><TimeBox ms={bottom.ms} active={bottom.active} /></div>
+
+        <div className="pm-actions">
+          <div className="pm-actions-row">
+            {actions.map((a, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={a.onClick}
+                disabled={!a.enabled}
+                data-enabled={a.enabled ? 'true' : 'false'}
+                aria-label={a.label}
+                className="pm-circle t-card-i"
+              >
+                <span aria-hidden="true">{a.icon}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {outcome && (
+          <div className={`pm-feedback ${OUTCOME_CLASS[outcome]} p-4 text-center text-lg font-bold`}>
+            {OUTCOME_TEXT[outcome]}
+          </div>
+        )}
+
+        <div className="pm-moves">{moveList}</div>
+      </div>
+      {extra}
+    </div>
+  );
+}

@@ -13,6 +13,7 @@ import { OPENING_CATEGORIES, groupOpenings } from '@/lib/play/openingCategories'
 import type { OpeningCategory } from '@/lib/play/openingCategories';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
+import { pickDifferentPosition } from '@/lib/play/positionPool';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -103,7 +104,15 @@ export function OpeningPractice() {
         studentColor={color}
         startFen={chosen.start_fen}
         onGameEnd={() => {}}
-        onRematch={() => setMatchKey((k) => k + 1)}
+        practiceActions={{
+          onPlaySame: () => setMatchKey((k) => k + 1),
+          onPlayDifferent: () => {
+            if (category === null) return;
+            const next = pickDifferentPosition(groups[category], chosen.id);
+            setChosen(next);
+            setMatchKey((k) => k + 1);
+          },
+        }}
       />
     );
   }

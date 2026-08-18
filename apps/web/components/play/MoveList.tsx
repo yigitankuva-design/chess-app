@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { parseFenStart } from '@/lib/play/moveList';
 import { turkishMoveRows } from '@/lib/play/sanTr';
 import type { TurkishMove } from '@/lib/play/sanTr';
+import { useBoardNotation } from '@/lib/board-notation-context';
 
 interface Props {
   /** Oynanan hamleler (SAN, chess.js'ten İngilizce gelir). */
@@ -22,6 +23,7 @@ interface Props {
 export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
   const rows = turkishMoveRows(san, parseFenStart(startFen));
   const boxRef = useRef<HTMLDivElement>(null);
+  const { hideNotation, toggleHideNotation } = useBoardNotation();
 
   useEffect(() => {
     const el = boxRef.current;
@@ -51,9 +53,22 @@ export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
     <section aria-label="Hamleler"
       /* Genislik TAHTAYLA AYNI: notasyon tahta hizasini gecmez. */
       className="t-card-i mt-3 p-3 w-full max-w-[600px] mx-auto">
-      <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-2">
-        Hamleler
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-xs font-semibold t-muted uppercase tracking-widest">
+          Hamleler
+        </p>
+        <label className="flex items-center gap-1.5 text-xs t-muted cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={hideNotation}
+            onChange={toggleHideNotation}
+            aria-label="Notasyon Verilerini Gizle"
+            className="h-3.5 w-3.5"
+            style={{ accentColor: 'var(--t-accent)' }}
+          />
+          Notasyon Verilerini Gizle
+        </label>
+      </div>
       {rows.length === 0 ? (
         <p className="text-sm t-muted">Henüz hamle yapılmadı.</p>
       ) : (

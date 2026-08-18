@@ -40,6 +40,9 @@ body {
   --t-err-bg:    #fff0f0;
   --t-err-bd:    #d93030;
   --t-err-text:  #c03030;
+  --t-info-bg:   #eef4fb;
+  --t-info-bd:   #3b82f6;
+  --t-info-text: #1d4ed8;
   --t-prog-bg:   #e2ddd5;
   --t-prog-fill: #759900;
   --t-glow:      transparent;
@@ -64,6 +67,9 @@ body {
   --t-err-bg:    #2e0d0d;
   --t-err-bd:    #c03030;
   --t-err-text:  #f87171;
+  --t-info-bg:   #0d1f2e;
+  --t-info-bd:   #3b82f6;
+  --t-info-text: #7dd3fc;
   --t-prog-bg:   #3a3836;
   --t-prog-fill: #759900;
   --t-glow:      transparent;
@@ -89,6 +95,9 @@ body {
   --t-err-bg:    rgba(244,63,94,0.12);
   --t-err-bd:    #f43f5e;
   --t-err-text:  #fb7185;
+  --t-info-bg:   rgba(59,130,246,0.12);
+  --t-info-bd:   #3b82f6;
+  --t-info-text: #93c5fd;
   --t-prog-bg:   rgba(255,255,255,0.08);
   --t-prog-fill: #22d3ee;
   --t-glow:      rgba(34,211,238,0.45);
@@ -288,6 +297,12 @@ body {
   background: var(--t-err-bg);
   border: 1px solid var(--t-err-bd);
   color: var(--t-err-text);
+  border-radius: 8px;
+}
+.t-info {
+  background: var(--t-info-bg);
+  border: 1px solid var(--t-info-bd);
+  color: var(--t-info-text);
   border-radius: 8px;
 }
 
@@ -609,6 +624,67 @@ body {
   }
   .match-grid > .ml-board { max-width: 60vh; justify-self: center; min-width: 0; }
   .match-grid > .ml-moves { grid-row: 1 / 4; min-height: 0; overflow: auto; }
+}
+
+/* Pratik Yap ekranı (Kazanç Konumu / Oyunsonu / Açılış — bota karşı pratik)
+   yerleşimi — bkz. components/play/PracticeMatchLayout.tsx. Gerçek maç
+   ekranından (.match-grid) BAĞIMSIZDIR: 4 dairesel eylem kartı, altında
+   renkli geri bildirim, EN ALTTA notasyon. */
+.pm-grid {
+  --mc-h: clamp(2.75rem, 9vw, 3.75rem);
+  --pm-circle: clamp(3rem, 11vw, 4rem);
+  display: grid;
+  gap: 0.5rem;
+  max-width: 32rem;
+  margin: 0 auto;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-areas:
+    "avatar-top    name-top    time-top"
+    "board         board       board"
+    "avatar-bottom name-bottom time-bottom"
+    "actions       actions     actions"
+    "feedback      feedback    feedback"
+    "moves         moves       moves";
+}
+.pm-grid > .pm-avatar-top    { grid-area: avatar-top; }
+.pm-grid > .pm-name-top      { grid-area: name-top; }
+.pm-grid > .pm-time-top      { grid-area: time-top; }
+.pm-grid > .pm-board         { grid-area: board; min-width: 0; }
+.pm-grid > .pm-avatar-bottom { grid-area: avatar-bottom; }
+.pm-grid > .pm-name-bottom   { grid-area: name-bottom; }
+.pm-grid > .pm-time-bottom   { grid-area: time-bottom; }
+.pm-grid > .pm-actions       { grid-area: actions; }
+.pm-grid > .pm-feedback      { grid-area: feedback; }
+.pm-grid > .pm-moves         { grid-area: moves; min-height: 0; }
+
+/* 4 eşit boyutlu dairesel eylem kartı, yan yana. */
+.pm-actions-row {
+  display: flex;
+  gap: clamp(0.4rem, 2vw, 0.75rem);
+  justify-content: center;
+}
+.pm-circle {
+  width: var(--pm-circle);
+  height: var(--pm-circle);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.pm-circle[data-enabled='true'] {
+  border: 2px solid var(--t-accent);
+  box-shadow: 0 0 16px -3px var(--t-glow, var(--t-accent));
+  opacity: 1;
+  cursor: pointer;
+}
+.pm-circle[data-enabled='false'] {
+  border: 1px solid var(--t-border);
+  box-shadow: none;
+  opacity: 0.35;
+  cursor: default;
 }
 
 /* Pratik ekranı (Süresiz/Süreli Pratik Yap, Kendini Test Et) yerleşimi —

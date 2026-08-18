@@ -39,7 +39,10 @@ describe('MoveList — hamleye tıklayarak gezinme (madde 1)', () => {
   it('tıklanabilir haldeyken de yazım aynı kalır (Türkçe, virgüllü)', () => {
     render(<MoveList san={['e4', 'e5', 'Nf3', 'Nc6']} onSelectPly={vi.fn()} />);
     const metin = screen.getByLabelText('Hamleler').textContent!
-      .replace(/\s+/g, ' ').replace(/^\s*Hamleler\s*/, '').trim();
+      .replace(/\s+/g, ' ')
+      .replace(/^\s*Hamleler\s*/, '')
+      .replace(/^\s*Notasyon Verilerini Gizle\s*/, '')
+      .trim();
     expect(metin).toBe('1. e4 – e5, 2. Af3 – Ac6');
   });
 });

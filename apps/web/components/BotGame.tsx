@@ -4,6 +4,8 @@ import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { MatchLayout } from '@/components/play/MatchLayout';
 import type { PlayerInfo } from '@/components/play/MatchLayout';
+import { PracticeMatchLayout } from '@/components/play/PracticeMatchLayout';
+import type { PracticeAction, PracticeOutcome } from '@/components/play/PracticeMatchLayout';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
@@ -12,6 +14,7 @@ import { botAcceptsDraw } from '@/lib/play/botDraw';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
 import type { PromotionPiece } from '@/lib/play/promotion';
 import { ChessBoard } from './ChessBoard';
+import { useBoardNotation } from '@/lib/board-notation-context';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
 import { getSavedAvatar } from '@/lib/avatars';
@@ -58,6 +61,7 @@ export function BotGame({
   skillLevel, depth, timeControl, studentColor = 'w', startFen, blunderChance = 0,
   onGameEnd, onRematch, practiceActions,
 }: Props) {
+  const { hideNotation } = useBoardNotation();
   // Oturum anahtarı render'lar arasında sabittir; prop'lardan türetilir.
   const sessionKeyStr = botGameKey(skillLevel, studentColor, startFen);
   /** Kayıttan okunan hamleler — ilk render'da tahtayı kurmak için kullanılır.
@@ -114,6 +118,9 @@ export function BotGame({
   const [thinking, setThinking] = useState(false);
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
   const [resultText, setResultText] = useState<string>('');
+  /** Pratik modunda (practiceActions) geri bildirim kartı için — win/draw/loss,
+   *  onGameEnd'e giden değerle AYNI. Gerçek maçlarda kullanılmaz. */
+  const [outcome, setOutcome] = useState<PracticeOutcome | null>(null);
 
   // Notasyon ve gezinme AYNI kaynaktan beslenir: chess.js geçmişi.
   // `fen` state'i her hamlede değiştiği için bağımlılık olarak yeterlidir.
@@ -200,11 +207,13 @@ export function BotGame({
       setStatus('over');
       clearBotGame(sessionKeyStr);
       setResultText('⏰ Süren bitti — Bot kazandı.');
+      setOutcome('loss');
       onGameEnd('loss');
     } else if (botTime <= 0) {
       setStatus('over');
       clearBotGame(sessionKeyStr);
       setResultText('⏰ Botun süresi bitti — Kazandın! 🎉');
+      setOutcome('win');
       onGameEnd('win');
     }
   }, [whiteTime, blackTime, status, tc, onGameEnd, studentColor, sessionKeyStr]);
@@ -255,9 +264,11 @@ export function BotGame({
       // Mat olan taraf SIRASI GELEN taraftir; sporcu mat edildiyse kaybetti.
       const studentWon = chess.turn() === botColor;
       setResultText(studentWon ? '🎉 Kazandın! Mat!' : '😔 Bot kazandı.');
+      setOutcome(studentWon ? 'win' : 'loss');
       onGameEnd(studentWon ? 'win' : 'loss');
     } else {
       setResultText('🤝 Berabere.');
+      setOutcome('draw');
       onGameEnd('draw');
     }
   }
@@ -266,6 +277,7 @@ export function BotGame({
     setStatus('over');
     clearBotGame(sessionKeyStr);
     setResultText('🏳️ Maçı terk ettin — Bot kazandı.');
+    setOutcome('loss');
     onGameEnd('loss');
   }
 
@@ -276,6 +288,7 @@ export function BotGame({
       setStatus('over');
       clearBotGame(sessionKeyStr);
       setResultText('🤝 Bot beraberliği kabul etti.');
+      setOutcome('draw');
       onGameEnd('draw');
     } else {
       setDrawNote('Bot beraberliği reddetti.');
@@ -366,7 +379,6 @@ export function BotGame({
     name: 'Bot',
     ms: tc ? botTimeSec * 1000 : null,
     active: status === 'playing' && chessRef.current.turn() === botColor,
-    thinking,
   };
   const bottom: PlayerInfo = {
     avatarId: studentAvatar,
@@ -375,63 +387,106 @@ export function BotGame({
     active: status === 'playing' && chessRef.current.turn() === studentColor,
   };
 
+  const board = (
+    <>
+      <ChessBoard
+        fen={nav.viewFen}
+        interactive={status === 'playing' && !thinking && nav.isLive}
+        onPieceDrop={handleDrop}
+        boardOrientation={studentColor === 'w' ? 'white' : 'black'}
+        onWheelStep={nav.step}
+        historyView={!nav.isLive}
+        onLeaveHistory={nav.goLive}
+        onPremove={choosePremove}
+        premoveColor={studentColor}
+        premoveSquares={premove}
+        hideNotation={hideNotation}
+      />
+      <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
+    </>
+  );
+  const moveList = (
+    <MoveList
+      san={sanHistory}
+      startFen={startFen}
+      onSelectPly={nav.goTo}
+      activePly={nav.isLive ? undefined : nav.viewIndex}
+    />
+  );
+  const extra = (
+    <>
+      {pending && (
+        <PromotionPicker
+          onPick={(piece) => {
+            const p = pending;
+            setPending(null);
+            applyStudentMove(p.from, p.to, piece);
+          }}
+          onCancel={() => setPending(null)}
+        />
+      )}
+      {drawNote && status !== 'over' && <p className="text-center text-sm t-muted">{drawNote}</p>}
+    </>
+  );
+
+  // Pratik Yap akışları (Kazanç Konumu / Oyunsonu / Açılış) — 4 dairesel
+  // eylem kartı + renkli geri bildirim. Gerçek maçlar (Bota Karşı Oyna)
+  // eskisi gibi MatchLayout'ta kalır.
+  if (practiceActions) {
+    const actions: [PracticeAction, PracticeAction, PracticeAction, PracticeAction] = [
+      {
+        icon: '🔁', label: 'Aynı konumu tekrar pratik yap',
+        onClick: practiceActions.onPlaySame, enabled: status === 'over',
+      },
+      {
+        icon: '🤝', label: 'Beraberlik teklif et',
+        onClick: offerDrawToBot, enabled: status === 'playing' && canOfferDraw(drawOffersUsed),
+      },
+      {
+        icon: '🏳️', label: 'Pratiği terk et',
+        onClick: () => {
+          if (confirm('Pratiği terk etmek istiyor musun?')) resignToBot();
+        },
+        enabled: status === 'playing',
+      },
+      {
+        icon: '🎲', label: 'Farklı bir konumu pratik yap',
+        onClick: practiceActions.onPlayDifferent, enabled: status === 'over',
+      },
+    ];
+    return (
+      <PracticeMatchLayout
+        top={top}
+        bottom={bottom}
+        board={board}
+        moveList={moveList}
+        outcome={outcome}
+        actions={actions}
+        extra={extra}
+      />
+    );
+  }
+
   return (
     <MatchLayout
       top={top}
       bottom={bottom}
-      board={
-        <>
-          <ChessBoard
-            fen={nav.viewFen}
-            interactive={status === 'playing' && !thinking && nav.isLive}
-            onPieceDrop={handleDrop}
-            boardOrientation={studentColor === 'w' ? 'white' : 'black'}
-            onWheelStep={nav.step}
-            historyView={!nav.isLive}
-            onLeaveHistory={nav.goLive}
-            onPremove={choosePremove}
-            premoveColor={studentColor}
-            premoveSquares={premove}
-          />
-          <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
-        </>
-      }
-      moveList={
-        <MoveList
-          san={sanHistory}
-          startFen={startFen}
-          onSelectPly={nav.goTo}
-          activePly={nav.isLive ? undefined : nav.viewIndex}
-        />
-      }
-      extra={
-        <>
-          {pending && (
-            <PromotionPicker
-              onPick={(piece) => {
-                const p = pending;
-                setPending(null);
-                applyStudentMove(p.from, p.to, piece);
-              }}
-              onCancel={() => setPending(null)}
-            />
-          )}
-          {drawNote && status !== 'over' && <p className="text-center text-sm t-muted">{drawNote}</p>}
-        </>
-      }
+      board={board}
+      moveList={moveList}
+      extra={extra}
       over={status === 'over'}
       resultSlot={
         <div className="t-ok p-4 text-center text-lg font-bold">
           {resultText}
         </div>
       }
-      drawLabel={practiceActions ? 'Aynı Konumu Pratik Et' : `Beraberlik Teklif Et (${offersLeft(drawOffersUsed)})`}
-      drawDisabled={practiceActions ? status !== 'over' : !canOfferDraw(drawOffersUsed)}
-      onOfferDraw={practiceActions ? practiceActions.onPlaySame : offerDrawToBot}
+      drawLabel={`Beraberlik Teklif Et (${offersLeft(drawOffersUsed)})`}
+      drawDisabled={!canOfferDraw(drawOffersUsed)}
+      onOfferDraw={offerDrawToBot}
       onResign={resignToBot}
-      onRematch={practiceActions ? practiceActions.onPlayDifferent : onRematch}
+      onRematch={onRematch}
       rematchEnabled={status === 'over'}
-      rematchLabel={practiceActions ? 'Farklı Bir Konumu Pratik Yap' : 'Yeniden Oyna'}
+      rematchLabel="Yeniden Oyna"
     />
   );
 }

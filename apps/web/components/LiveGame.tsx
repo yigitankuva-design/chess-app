@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { ChessBoard } from './ChessBoard';
+import { useBoardNotation } from '@/lib/board-notation-context';
 import { getToken } from '@/lib/auth-storage';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
 import { formatGameResult } from '@/lib/play/resultText';
@@ -22,7 +23,12 @@ import type { Premove } from '@/lib/play/premove';
 
 interface Props { gameId: number; myColor: 'white' | 'black'; }
 
+/** Backend'deki FIRST_MOVE_TIMEOUT_SECONDS ile AYNI (madde 4) — yalnızca
+ *  görsel geri sayım için; gerçek iptal kararı sunucuda verilir. */
+const FIRST_MOVE_TIMEOUT_SECONDS = 10;
+
 export function LiveGame({ gameId, myColor }: Props) {
+  const { hideNotation } = useBoardNotation();
   const chessRef = useRef(new Chess());
   const [fen, setFen] = useState(chessRef.current.fen());
   const [status, setStatus] = useState<'active' | 'over'>('active');
@@ -41,6 +47,8 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [startFen, setStartFen] = useState<string | null>(null);
   const [pending, setPending] = useState<{ from: Square; to: Square } | null>(null);
   const [premove, setPremove] = useState<Premove | null>(null);
+  /** Madde 4: ilk hamle için görsel geri sayım — null = gösterilmiyor. */
+  const [firstMoveCountdown, setFirstMoveCountdown] = useState<number | null>(null);
   /** WebSocket geri çağrısı eski closure'ı görebilir; ref ile ikizlenir. */
   const premoveRef = useRef<Premove | null>(null);
 
@@ -91,9 +99,12 @@ export function LiveGame({ gameId, myColor }: Props) {
       fen?: string;
       message?: string;
       status?: string;
+      reason?: string;
     };
     const t = msg?.type;
     if (t === 'move_made') {
+      // Madde 4: ilk hamle geldi — geri sayım artık anlamsız, kapanır.
+      setFirstMoveCountdown(null);
       const chess = chessRef.current;
       // chess.load() gecmisi SILER; notasyon bu yuzden ayrica biriktirilir.
       if (typeof msg.san === 'string') setSanList((p) => [...p, msg.san as string]);
@@ -129,11 +140,23 @@ export function LiveGame({ gameId, myColor }: Props) {
       // bildirdigi konuma kurulur. Yeniden baglanmada da dogru konum gelir.
       setStartFen(typeof msg.start_fen === 'string' ? msg.start_fen : null);
       if (Array.isArray(msg.moves)) setSanList(msg.moves.map(String));
+      // Madde 4: hiç hamle yokken (mac yeni basladi) gorsel geri sayim baslar.
+      // Gercek 10sn'lik iptal karari sunucuda — bu SADECE gorseldir.
+      setFirstMoveCountdown(
+        Array.isArray(msg.moves) && msg.moves.length === 0 && msg.status === 'active'
+          ? FIRST_MOVE_TIMEOUT_SECONDS
+          : null,
+      );
       // Mac bitmisse ekran bunu SOYLER; aksi halde sporcu bitmis macta
       // hamle yapmaya calisip "olmuyor" der.
       if (msg.status && msg.status !== 'active') {
         setStatus('over');
         setResultLine(formatGameResult(msg.result));
+        // Madde 4: iptal edilmis maca SONRADAN baglanan sporcu da (game_aborted
+        // yayinini kacirmis olsa bile) nedeni gorsun — bos ekranla kalmasin.
+        if (msg.status === 'aborted') {
+          setInfo('İlk hamle 10 saniye içinde yapılmadığı için maç iptal edildi.');
+        }
       }
       if (typeof msg.current_fen === 'string' && msg.current_fen) {
         try { chessRef.current.load(msg.current_fen); setFen(msg.current_fen); }
@@ -149,6 +172,11 @@ export function LiveGame({ gameId, myColor }: Props) {
       setStatus('over');
       setResultLine(formatGameResult(msg.result));
       setInfo(msg.by_resign ? 'Maç terk edildi.' : '');
+    } else if (t === 'game_aborted') {
+      // Madde 4: sunucu 10sn'de ilk hamle gelmediğine karar verdi, mac iptal.
+      setFirstMoveCountdown(null);
+      setStatus('over');
+      setInfo('İlk hamle 10 saniye içinde yapılmadığı için maç iptal edildi.');
     } else if (t === 'opponent_disconnected') {
       setInfo('Rakip bağlantısı koptu.');
     } else if (t === 'invalid_move' || t === 'error') {
@@ -171,6 +199,20 @@ export function LiveGame({ gameId, myColor }: Props) {
       setInfo('Beraberlik teklif hakkın kalmadı.');
     }
   });
+
+  // Madde 4: ilk hamle geri sayımı da YEREL/GÖRSELDİR — gerçek iptal kararını
+  // sunucu verir (game_aborted mesajı). 0'da durur, negatife inmez.
+  // TEK bir setInterval — her tikte YENİDEN kurulan setTimeout DEĞİL (mevcut
+  // saat efekti ile aynı desen); "aktif mi" bilgisi ayrı bir bağımlılık
+  // olarak tutulur ki interval her azalışta yeniden kurulup bozulmasın.
+  const countdownActive = firstMoveCountdown !== null && status === 'active';
+  useEffect(() => {
+    if (!countdownActive) return;
+    const id = setInterval(() => {
+      setFirstMoveCountdown((v) => (v === null || v <= 0 ? v : v - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [countdownActive]);
 
   // YEREL geri sayim SADECE GORSELDIR. Gercek sure sunucuda; her hamlede
   // gelen 'clock' mesaji bu degerin uzerine yazar.
@@ -259,7 +301,7 @@ export function LiveGame({ gameId, myColor }: Props) {
       top={top}
       bottom={bottom}
       board={
-        <>
+        <div style={{ position: 'relative' }}>
           <ChessBoard
             fen={nav.isLive ? fen : nav.viewFen}
             interactive={status === 'active' && nav.isLive}
@@ -271,9 +313,35 @@ export function LiveGame({ gameId, myColor }: Props) {
             onPremove={choosePremove}
             premoveColor={myColor === 'white' ? 'w' : 'b'}
             premoveSquares={premove}
+            hideNotation={hideNotation}
           />
+          {firstMoveCountdown !== null && (
+            <div
+              role="timer"
+              aria-label={`İlk hamle için ${firstMoveCountdown} saniye kaldı`}
+              className="t-card-i"
+              style={{
+                position: 'absolute',
+                top: 8,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.35rem 0.9rem',
+                borderRadius: 999,
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                background: 'var(--t-surface)',
+              }}
+            >
+              <span aria-hidden="true">⏳</span>
+              <span>İlk hamle: {firstMoveCountdown}sn</span>
+            </div>
+          )}
           <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />
-        </>
+        </div>
       }
       moveList={
         <MoveList

@@ -7,7 +7,8 @@ import { MoveList } from '@/components/play/MoveList';
 function notation(): string {
   return screen.getByLabelText('Hamleler').textContent!
     .replace(/\s+/g, ' ')
-    .replace(/^\s*Hamleler\s*/, '')   // bolum basligi karsilastirmaya girmez
+    .replace(/^\s*Hamleler\s*/, '')                     // bolum basligi karsilastirmaya girmez
+    .replace(/^\s*Notasyon Verilerini Gizle\s*/, '')    // gizleme onay kutusu etiketi de girmez
     .trim();
 }
 

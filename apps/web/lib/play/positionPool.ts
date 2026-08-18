@@ -7,14 +7,17 @@ export interface PoolPosition {
   code?: string;
 }
 
-/** Havuzdan tamamen rastgele bir konum seçer. Havuz boş olamaz (çağıran kontrol eder). */
-export function pickRandomPosition(pool: PoolPosition[]): PoolPosition {
+/** Havuzdan tamamen rastgele bir öğe seçer. Havuz boş olamaz (çağıran kontrol eder).
+ *  Yalnızca konum havuzları için değil, id'li herhangi bir liste için (örn. açılışlar). */
+export function pickRandomPosition<T extends { id: string | number }>(pool: T[]): T {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-/** Havuzdan rastgele bir konum seçer; `excludeId` verilmişse VE havuzda 2+ öğe
- *  varsa o öğeyi hariç tutar (art arda aynı konum gelmesin — kullanıcı kararı). */
-export function pickDifferentPosition(pool: PoolPosition[], excludeId: string | null): PoolPosition {
+/** Havuzdan rastgele bir öğe seçer; `excludeId` verilmişse VE havuzda 2+ öğe
+ *  varsa o öğeyi hariç tutar (art arda aynısı gelmesin — kullanıcı kararı). */
+export function pickDifferentPosition<T extends { id: string | number }>(
+  pool: T[], excludeId: string | number | null,
+): T {
   if (excludeId === null || pool.length <= 1) return pickRandomPosition(pool);
   const candidates = pool.filter((p) => p.id !== excludeId);
   return pickRandomPosition(candidates);

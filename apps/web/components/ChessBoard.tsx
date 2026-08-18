@@ -42,6 +42,10 @@ interface ChessBoardProps {
   historyView?: boolean;
   /** Geçmiş görünümündeyken tahtaya dokununca çağrılır (canlıya dön). */
   onLeaveHistory?: () => void;
+  /** true ise tahtanın solundaki rakam (8-1) ve alttaki harf (a-h) etiketleri
+   *  gizlenir, tahta o kadar daha geniş render edilir. Hamle verisi/notasyonu
+   *  ETKİLENMEZ — yalnızca bu görsel etiketler kalkar. */
+  hideNotation?: boolean;
 }
 
 export function ChessBoard({
@@ -58,6 +62,7 @@ export function ChessBoard({
   premoveSquares = null,
   historyView = false,
   onLeaveHistory,
+  hideNotation = false,
 }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
@@ -275,7 +280,7 @@ export function ChessBoard({
 
   const { ranks, files } = coordLabels(boardOrientation);
   const coordFontSize = 'clamp(11px, 3.2vw, 15px)';
-  const coordLabelWidth = 'clamp(16px, 4.5vw, 22px)';
+  const coordLabelWidth = hideNotation ? '0px' : 'clamp(16px, 4.5vw, 22px)';
 
   return (
     <div
@@ -283,20 +288,22 @@ export function ChessBoard({
       style={{ backgroundColor: BOARD_CARD_BG }}
     >
       <div className="flex">
-        <div
-          className="grid shrink-0"
-          style={{ gridTemplateRows: 'repeat(8, 1fr)', width: coordLabelWidth }}
-        >
-          {ranks.map((r) => (
-            <span
-              key={r}
-              className="flex items-center justify-center font-semibold select-none"
-              style={{ fontSize: coordFontSize, color: BOARD_LABEL_COLOR }}
-            >
-              {r}
-            </span>
-          ))}
-        </div>
+        {!hideNotation && (
+          <div
+            className="grid shrink-0"
+            style={{ gridTemplateRows: 'repeat(8, 1fr)', width: coordLabelWidth }}
+          >
+            {ranks.map((r) => (
+              <span
+                key={r}
+                className="flex items-center justify-center font-semibold select-none"
+                style={{ fontSize: coordFontSize, color: BOARD_LABEL_COLOR }}
+              >
+                {r}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div
           ref={boardBoxRef}
@@ -381,17 +388,19 @@ export function ChessBoard({
         </div>
       </div>
 
-      <div className="flex" style={{ paddingLeft: coordLabelWidth }}>
-        {files.map((f) => (
-          <span
-            key={f}
-            className="flex-1 text-center font-semibold select-none"
-            style={{ fontSize: coordFontSize, color: BOARD_LABEL_COLOR }}
-          >
-            {f}
-          </span>
-        ))}
-      </div>
+      {!hideNotation && (
+        <div className="flex" style={{ paddingLeft: coordLabelWidth }}>
+          {files.map((f) => (
+            <span
+              key={f}
+              className="flex-1 text-center font-semibold select-none"
+              style={{ fontSize: coordFontSize, color: BOARD_LABEL_COLOR }}
+            >
+              {f}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

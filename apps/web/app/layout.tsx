@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { ChessThemeProvider } from '@/lib/chess-theme-context';
+import { BoardNotationProvider } from '@/lib/board-notation-context';
 import { SettingsProvider } from '@/lib/settings/settings-context';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -37,7 +38,9 @@ export default function RootLayout({
         </a>
         <SettingsProvider>
           <ChessThemeProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <BoardNotationProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </BoardNotationProvider>
           </ChessThemeProvider>
         </SettingsProvider>
         <ThemeToggle />

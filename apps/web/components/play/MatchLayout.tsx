@@ -10,8 +10,6 @@ export interface PlayerInfo {
   ms: number | null;
   /** Sırası bu oyuncuda mı — kutu vurgulanır. */
   active: boolean;
-  /** true ise isim kartında isim yerine "Bot Düşünüyor" gösterilir. */
-  thinking?: boolean;
 }
 
 interface Props {
@@ -37,7 +35,9 @@ interface Props {
   rematchLabel?: string;
 }
 
-function cardBorder(active: boolean) {
+/** Diğer maç düzenlerinde de (bkz. PracticeMatchLayout) aynı kart kutuları
+ *  kullanılsın diye dışa açık — burada BİR KEZ tanımlanır, kopyalanmaz. */
+export function cardBorder(active: boolean) {
   return {
     border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
     background: active ? 'var(--t-surface-2)' : undefined,
@@ -45,7 +45,7 @@ function cardBorder(active: boolean) {
 }
 
 /** Kare kart — Avatar. */
-function AvatarBox({ avatarId, active }: { avatarId: string; active: boolean }) {
+export function AvatarBox({ avatarId, active }: { avatarId: string; active: boolean }) {
   return (
     <div
       data-active={active ? 'true' : 'false'}
@@ -57,21 +57,21 @@ function AvatarBox({ avatarId, active }: { avatarId: string; active: boolean }) 
   );
 }
 
-/** Dikdörtgen kart — oyuncu ismi (veya bot düşünürken "Bot Düşünüyor"). */
-function NameBox({ name, active, thinking }: { name: string; active: boolean; thinking?: boolean }) {
+/** Dikdörtgen kart — oyuncu ismi. */
+export function NameBox({ name, active }: { name: string; active: boolean }) {
   return (
     <div
       data-active={active ? 'true' : 'false'}
       className="mc-rect t-card-i flex items-center justify-center text-center px-2"
       style={cardBorder(active)}
     >
-      <span className="font-semibold text-sm truncate">{thinking ? 'Bot Düşünüyor' : name}</span>
+      <span className="font-semibold text-sm truncate">{name}</span>
     </div>
   );
 }
 
 /** Kare kart — kalan süre. */
-function TimeBox({ ms, active }: { ms: number | null; active: boolean }) {
+export function TimeBox({ ms, active }: { ms: number | null; active: boolean }) {
   const low = ms !== null && isLowTime(ms);
   return (
     <div
@@ -111,7 +111,7 @@ export function MatchLayout({
           <AvatarBox avatarId={top.avatarId} active={top.active} />
         </div>
         <div className="ml-name-top">
-          <NameBox name={top.name} active={top.active} thinking={top.thinking} />
+          <NameBox name={top.name} active={top.active} />
         </div>
         <div className="ml-time-top">
           <TimeBox ms={top.ms} active={top.active} />
@@ -121,7 +121,7 @@ export function MatchLayout({
           <AvatarBox avatarId={bottom.avatarId} active={bottom.active} />
         </div>
         <div className="ml-name-bottom">
-          <NameBox name={bottom.name} active={bottom.active} thinking={bottom.thinking} />
+          <NameBox name={bottom.name} active={bottom.active} />
         </div>
         <div className="ml-time-bottom">
           <TimeBox ms={bottom.ms} active={bottom.active} />

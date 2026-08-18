@@ -74,14 +74,8 @@ describe('MatchLayout — avatar ve isim gösterimi', () => {
   });
 });
 
-describe('MatchLayout — bot düşünürken isim kartı', () => {
-  it('top.thinking=true ise isim yerine "Bot Düşünüyor" yazar', () => {
-    renderLayout({ top: { ...top, thinking: true } });
-    expect(screen.getByText('Bot Düşünüyor')).toBeInTheDocument();
-    expect(screen.queryByText('Bot')).not.toBeInTheDocument();
-  });
-
-  it('top.thinking=false/undefined ise normal isim görünür', () => {
+describe('MatchLayout — "Bot Düşünüyor" yazısı kaldırıldı', () => {
+  it('isim kartında hiçbir zaman "Bot Düşünüyor" yazmaz, her zaman gerçek isim görünür', () => {
     renderLayout();
     expect(screen.queryByText('Bot Düşünüyor')).not.toBeInTheDocument();
     expect(screen.getByText('Bot')).toBeInTheDocument();

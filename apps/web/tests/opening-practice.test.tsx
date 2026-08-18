@@ -2,8 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/components/BotGame', () => ({
-  BotGame: ({ startFen }: { startFen?: string }) => (
-    <div data-testid="bot-game" data-start-fen={startFen ?? ''} />
+  BotGame: ({ startFen, practiceActions }: {
+    startFen?: string;
+    practiceActions?: { onPlaySame: () => void; onPlayDifferent: () => void };
+  }) => (
+    <div data-testid="bot-game" data-start-fen={startFen ?? ''}>
+      {practiceActions && (
+        <>
+          <button onClick={practiceActions.onPlaySame}>test-play-same</button>
+          <button onClick={practiceActions.onPlayDifferent}>test-play-different</button>
+        </>
+      )}
+    </div>
   ),
 }));
 
@@ -85,6 +95,43 @@ describe('OpeningPractice — akordiyon', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
+    expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
+  });
+
+  it('practiceActions verilir: "tekrar et" aynı FEN\'i, "farklı konum" AYNI kategoriden BAŞKA bir açılışı seçer', async () => {
+    const FEN2 = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => [
+        { id: 1, name: 'İtalyan Açılışı', start_fen: FEN, category: 'e4' },
+        { id: 2, name: 'İspanyol Açılışı', start_fen: FEN2, category: 'e4' },
+      ],
+    })));
+    // Math.random() 0 döner → pickDifferentPosition ilk uygun adayı seçer (deterministik).
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    render(<OpeningPractice />);
+    await openBotCard();
+    fireEvent.click(screen.getByText('İtalyan Açılışı'));
+    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    fireEvent.click(screen.getByRole('button', { name: '5+0' }));
+    fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
+    expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
+
+    fireEvent.click(screen.getByText('test-play-different'));
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN2),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('practiceActions "tekrar et": aynı açılışla devam eder (FEN değişmez)', async () => {
+    render(<OpeningPractice />);
+    await openBotCard();
+    fireEvent.click(screen.getByText('İtalyan Açılışı'));
+    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    fireEvent.click(screen.getByRole('button', { name: '5+0' }));
+    fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
+    fireEvent.click(screen.getByText('test-play-same'));
     expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
   });
 
