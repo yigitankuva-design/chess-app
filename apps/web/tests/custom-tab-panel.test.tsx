@@ -3,6 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+vi.mock('@/components/play/OpeningPractice', () => ({
+  OpeningPractice: () => <div data-testid="opening-practice">açılış pratiği içeriği</div>,
+}));
 
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
@@ -21,10 +24,34 @@ const BULMACA: CustomTabDetail = {
 };
 
 describe('CustomTabPanel', () => {
-  it('Pratik Yap sekmesinde sabit Açılış Pratiği Yap satırı vardır', () => {
+  it('Açılış Pratiği Yap SAYFA DEĞİŞTİRMEZ, tıklanınca aynı sayfada açılır (madde: 2026-08-18)', () => {
     render(<CustomTabPanel tab={PRATIK} />);
-    const link = screen.getByText('Açılış Pratiği Yap').closest('a');
-    expect(link).toHaveAttribute('href', '/play?mode=opening');
+    // Eskiden bir <a href="/play?mode=opening"> idi — artık link YOKTUR.
+    expect(screen.getByText('Açılış Pratiği Yap').closest('a')).toBeNull();
+    expect(screen.queryByTestId('opening-practice')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
+    // Tekrar tıklayınca kapanır.
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    expect(screen.queryByTestId('opening-practice')).not.toBeInTheDocument();
+  });
+
+  it('Açılış Pratiği Yap açıkken bir alt sekme açılırsa Açılış Pratiği kapanır (tek akordiyon)', () => {
+    render(<CustomTabPanel tab={PRATIK} />);
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Süresiz Pratik'));
+    expect(screen.queryByTestId('opening-practice')).not.toBeInTheDocument();
+    expect(screen.getByText(/Pratiğe Başla/)).toBeInTheDocument();
+  });
+
+  it('bir alt sekme açıkken Açılış Pratiği Yap açılırsa alt sekme kapanır (tek akordiyon)', () => {
+    render(<CustomTabPanel tab={PRATIK} />);
+    fireEvent.click(screen.getByText('Süresiz Pratik'));
+    expect(screen.getByText(/Pratiğe Başla/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
+    expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
   });
 
   it('Pratik Yap OLMAYAN sekmede Açılış Pratiği Yap YOKTUR', () => {

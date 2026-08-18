@@ -25,6 +25,9 @@ vi.mock('@/lib/avatars', async () => {
   const actual = await vi.importActual<typeof import('@/lib/avatars')>('@/lib/avatars');
   return { ...actual, getSavedAvatar: () => 'unicorn' };
 });
+vi.mock('@/components/play/OpeningPractice', () => ({
+  OpeningPractice: () => <div data-testid="opening-practice">açılış pratiği içeriği</div>,
+}));
 
 import CustomTabViewPage from '@/app/(child)/custom/[id]/page';
 import { getCustomTab } from '@/lib/customTabsApi';
@@ -51,14 +54,15 @@ describe('Sporcu özel sekme sayfası', () => {
     expect(screen.getByAltText('Ödüller görseli 1')).toBeInTheDocument();
   });
 
-  it('etiketi "Pratik Yap" olan sekmede sabit "Açılış Pratiği Yap" kısayolu görünür', async () => {
+  it('etiketi "Pratik Yap" olan sekmede sabit "Açılış Pratiği Yap" satırı görünür ve aynı sayfada açılır', async () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 5, label: 'Pratik Yap', emoji: '🧩', sections: [],
     });
     render(<CustomTabViewPage />);
     await waitFor(() => screen.getByText('Pratik Yap'));
-    const link = screen.getByText('Açılış Pratiği Yap').closest('a');
-    expect(link).toHaveAttribute('href', '/play?mode=opening');
+    expect(screen.getByText('Açılış Pratiği Yap').closest('a')).toBeNull();
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
   });
 
   it('bölüm yoksa "Henüz içerik eklenmedi" mesajı görünür', async () => {

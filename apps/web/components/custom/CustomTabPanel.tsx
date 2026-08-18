@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
+import { OpeningPractice } from '@/components/play/OpeningPractice';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 import {
   sectionEmoji, sortPratikSections, OYUNSONU_SECTION, OYUNSONU_CATEGORIES, groupByCategory,
@@ -19,12 +19,18 @@ interface Props {
  *
  * "Pratik Yap" sekmesi özeldir: en üstte sabit Açılış Pratiği Yap satırı durur ve
  * alt sekmeleri yazı/görsel yerine bota karşı pratik kriterlerini gösterir.
+ * Açılış Pratiği Yap, DİĞER alt sekmeler gibi AYNI SAYFADA açılır (sayfa
+ * değiştirmez) — eskiden /play?mode=opening'e yönlendiriyordu, artık
+ * OpeningPractice doğrudan akordiyonun içine gömülür (2026-08-18 kararı).
  * "Oyunsonu Pratiği Yap" ayrıca özeldir: kriter ekranından önce sporcu 5
  * kategoriden birini seçer — kategorisiz (eski) konumlar sporcuya gösterilmez.
  */
 export function CustomTabPanel({ tab }: Props) {
   const router = useRouter();
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
+  /** Açılış Pratiği Yap satırı diğer alt sekmelerle AYNI akordiyona katılır
+   *  (biri açılınca öbürü kapanır) ama numaralı bir bölüm id'si taşımaz. */
+  const [openOpening, setOpenOpening] = useState(false);
   /** "Oyunsonu Pratiği Yap" içinde seçilen kategori — null = kategori listesi gösterilir. */
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const isPratikYap = tab.label === 'Pratik Yap';
@@ -32,12 +38,21 @@ export function CustomTabPanel({ tab }: Props) {
   return (
     <div className="space-y-2">
       {isPratikYap && (
-        <Link href="/play?mode=opening"
-          className="flex items-center gap-3 p-4 rounded-2xl"
-          style={{ textDecoration: 'none', background: 'var(--t-surface-2)' }}>
-          <span className="text-xl leading-none">📖</span>
-          <span className="font-bold t-premium">Açılış Pratiği Yap</span>
-        </Link>
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
+          <button type="button"
+            onClick={() => { setOpenOpening((p) => !p); setOpenSectionId(null); setOpenCategory(null); }}
+            aria-expanded={openOpening}
+            className="w-full flex items-center gap-3 px-4 py-3 text-left">
+            <span className="text-xl leading-none">📖</span>
+            <span className="font-bold t-premium flex-1">Açılış Pratiği Yap</span>
+            <span className="t-muted">{openOpening ? '▴' : '▾'}</span>
+          </button>
+          {openOpening && (
+            <div className="px-4 pb-4">
+              <OpeningPractice />
+            </div>
+          )}
+        </div>
       )}
 
       {tab.sections.length === 0 && !isPratikYap && (
@@ -45,12 +60,16 @@ export function CustomTabPanel({ tab }: Props) {
       )}
 
       {(isPratikYap ? sortPratikSections(tab.sections) : tab.sections).map((s) => {
-        const open = openSectionId === s.id;
+        const open = !openOpening && openSectionId === s.id;
         const emoji = isPratikYap ? sectionEmoji(s.title) : null;
         return (
           <div key={s.id} className="rounded-2xl overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
             <button type="button"
-              onClick={() => { setOpenSectionId((p) => (p === s.id ? null : s.id)); setOpenCategory(null); }}
+              onClick={() => {
+                setOpenSectionId((p) => (p === s.id ? null : s.id));
+                setOpenCategory(null);
+                setOpenOpening(false);
+              }}
               aria-expanded={open}
               className="w-full flex items-center justify-between px-4 py-3 text-left">
               <span className="text-lg font-bold t-premium flex items-center gap-2">
