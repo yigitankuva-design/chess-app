@@ -157,6 +157,7 @@ export function OpeningPractice() {
           >
             <MatchCriteria
               startLabel="Pratiğe Başla"
+              simplifiedLevels
               onStart={(v) => {
                 // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
                 if (!chosen) return;

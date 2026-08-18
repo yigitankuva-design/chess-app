@@ -41,6 +41,7 @@ export function PositionPoolPractice({ positions, initialCriteria, title }: Prop
     return (
       <MatchCriteria
         startLabel="Pratiğe Başla"
+        simplifiedLevels
         onStart={(v) => {
           setCurrent(pickRandomPosition(positions));
           setCriteria(v);

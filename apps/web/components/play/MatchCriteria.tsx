@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { LEVELS, TIME_GROUPS } from '@/lib/play/levels';
+import { LEVELS, LEVEL_GROUPS, TIME_GROUPS } from '@/lib/play/levels';
 import type { PlayLevel } from '@/lib/play/levels';
 import { COLOR_CHOICES } from '@/lib/play/color';
 import type { ColorChoice } from '@/lib/play/color';
@@ -23,11 +23,17 @@ interface Props {
    * MatchCriteriaValue'da durmaya devam eder (çağıranlar kırılmaz).
    */
   showLevel?: boolean;
+  /**
+   * Pratik Yap akışlarında (Kazanç Konumu, Oyunsonu, Açılış Pratiği) 10
+   * düzey yerine 3 gruplu (Kolay/Orta/Zor) seçim gösterir. "Bota Karşı
+   * Oyna" gerçek maçında geçilmez, orada tam 10 düzey kalır.
+   */
+  simplifiedLevels?: boolean;
 }
 
 /** Üç yatay sıra (madde 5): 1) Düzey  2) Tempo/Süre + Renk  3) Maça Başla.
  *  Adımlar SIRAYLA açılır: düzey seçilmeden tempo, tempo seçilmeden başlat. */
-export function MatchCriteria({ onStart, startLabel, showLevel = true }: Props) {
+export function MatchCriteria({ onStart, startLabel, showLevel = true, simplifiedLevels = false }: Props) {
   /**
    * null = HENÜZ SEÇİLMEDİ. Varsayılan LEVELS[0] verilseydi 1. adım daha
    * başlarken tamamlanmış sayılır ve sıralı kilit işlevsiz kalırdı.
@@ -48,8 +54,33 @@ export function MatchCriteria({ onStart, startLabel, showLevel = true }: Props) 
 
   return (
     <div className="space-y-4">
-      {/* ── 1. YATAY SIRA: Düzey — 8 dairesel kart, sadece rakam ── */}
-      {showLevel && (
+      {/* ── 1. YATAY SIRA: Düzey ── */}
+      {showLevel && simplifiedLevels && (
+        <div className="t-card-i p-4 space-y-3">
+          <p className="text-xs font-semibold t-muted uppercase tracking-wide">
+            1. Düzey Seç
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {LEVEL_GROUPS.map((g) => {
+              const active = level?.level === g.level.level;
+              return (
+                <button key={g.label} type="button" onClick={() => setLevel(g.level)}
+                  className="py-3 rounded-xl text-sm font-bold transition-all"
+                  style={{
+                    border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
+                    background: active
+                      ? 'color-mix(in srgb, var(--t-accent) 15%, transparent)'
+                      : 'var(--t-surface)',
+                    color: active ? 'var(--t-accent)' : 'var(--t-text)',
+                  }}>
+                  {g.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {showLevel && !simplifiedLevels && (
         <div className="t-card-i p-4 space-y-3">
           <p className="text-xs font-semibold t-muted uppercase tracking-wide">
             1. Düzey Seç <span className="normal-case">(1 en kolay · 10 en zor)</span>

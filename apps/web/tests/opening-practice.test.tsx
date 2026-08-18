@@ -65,7 +65,7 @@ describe('OpeningPractice — akordiyon', () => {
     const criteriaBtn = screen.getByRole('button', { name: /3\. Maç Kriterlerini Seç/ });
     expect(criteriaBtn).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(criteriaBtn);
-    expect(screen.queryByRole('button', { name: 'Düzey 1' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Kolay' })).not.toBeInTheDocument();
   });
 
   it('açılış seçilince 2. kart kapanır, ✓ özet çıkar, 3. kart kendiliğinden açılır', async () => {
@@ -77,7 +77,7 @@ describe('OpeningPractice — akordiyon', () => {
     // Ozet basliga tasindi
     expect(screen.getByText('✓ İtalyan Açılışı')).toBeInTheDocument();
     // 3. kart acildi
-    expect(screen.getByRole('button', { name: 'Düzey 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kolay' })).toBeInTheDocument();
   });
 
   it('kapanan 2. karta tekrar tıklanınca açılış değiştirilebilir', async () => {
@@ -92,7 +92,7 @@ describe('OpeningPractice — akordiyon', () => {
     render(<OpeningPractice />);
     await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
-    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
     expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
@@ -112,7 +112,7 @@ describe('OpeningPractice — akordiyon', () => {
     render(<OpeningPractice />);
     await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
-    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
     expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
@@ -128,7 +128,7 @@ describe('OpeningPractice — akordiyon', () => {
     render(<OpeningPractice />);
     await openBotCard();
     fireEvent.click(screen.getByText('İtalyan Açılışı'));
-    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
     fireEvent.click(screen.getByText('test-play-same'));
