@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import random
 from datetime import datetime, timezone
@@ -29,6 +30,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+# Madde 4: arkadaslar birbirini uzun sure bekletmesin — iki taraf da odaya
+# baglandiktan sonra ilk hamle icin 10sn verilir, gecerse mac otomatik iptal
+# olur (GameStatus.aborted). Yalnizca insan-insan (GameType.human) maclarda
+# calisir; bot maclarinda "rakip baglanmasi" beklenmez.
+FIRST_MOVE_TIMEOUT_SECONDS = 10
+# game_id bazinda: zamanlayici zaten kuruldu mu (iki kez kurulmasin —
+# ornegin ayni sporcu iki cihazdan baglanirsa join iki kez tetiklenebilir).
+_first_move_timer_started: set[int] = set()
 
 
 def _child_id_from_token(token: str) -> int | None:
@@ -167,6 +177,39 @@ async def _current_fen_and_ply(db, game_id: int) -> tuple[str, int]:
     return (game.start_fen if game and game.start_fen else INITIAL_FEN), 1
 
 
+async def _start_first_move_timer(game_id: int, room) -> None:
+    """Iki taraf da odaya baglandiktan sonra CAGRILIR. 10sn icinde ilk hamle
+    gelmezse mac GameStatus.aborted olur ve iki tarafa da bildirilir.
+
+    Sunucu otoritesi ilkesiyle tutarli (bkz. _handle_flag): zamanlayici
+    tetiklendiginde durumu KENDI DOGRULAR (hala aktif mi, hala 0 hamle mi) —
+    bu arada gercekten hamle yapildiysa sessizce hicbir sey yapmaz.
+    """
+    if game_id in _first_move_timer_started:
+        return
+    _first_move_timer_started.add(game_id)
+
+    async def _timeout():
+        try:
+            await asyncio.sleep(FIRST_MOVE_TIMEOUT_SECONDS)
+            async with get_session_factory()() as db:
+                game = await db.get(Game, game_id)
+                if not game or game.status != GameStatus.active:
+                    return
+                _, ply = await _current_fen_and_ply(db, game_id)
+                if ply != 1:
+                    return  # ilk hamle zaten yapilmis, iptal gerekmez
+                game.status = GameStatus.aborted
+                await db.commit()
+            await room.broadcast({
+                "type": "game_aborted", "reason": "first_move_timeout",
+            })
+        finally:
+            _first_move_timer_started.discard(game_id)
+
+    asyncio.create_task(_timeout())
+
+
 @router.websocket("/ws/game/{game_id}")
 async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
     await websocket.accept()
@@ -183,10 +226,17 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             return
         white_id = game.white_child_id
         black_id = game.black_child_id
+        is_human_game = game.type == GameType.human
 
     room = get_room(game_id)
     conn_id = room.join(child_id, websocket)
     await room.broadcast({"type": "player_joined", "child_id": child_id})
+
+    # Madde 4: iki taraf da (arkadaslar) odaya baglandiysa 10sn ilk hamle
+    # sayaci baslar. Bot maclarinda calismaz — "rakip baglanmasi" yok.
+    if is_human_game and white_id is not None and black_id is not None \
+            and white_id in room.players and black_id in room.players:
+        await _start_first_move_timer(game_id, room)
 
     # Katilana macin kimlik ve saat bilgisi — isimler burada gider.
     async with get_session_factory()() as db:
