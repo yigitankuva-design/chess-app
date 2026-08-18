@@ -62,13 +62,14 @@ export const ALL_TIMES: TimeControl[] = TIME_GROUPS.flatMap((g) => g.items);
 
 /**
  * Pratik Yap akışları için 10 düzey yerine 3 gruplu basitleştirilmiş seçim
- * (Zafer hoca kararı, 2026-08-18). Her grup, o gruptaki EN ZOR eski düzeyi
- * kullanır: Kolay→3, Orta→7, Zor→10. Yalnızca Pratik Yap ekranlarında
- * kullanılır (bkz. MatchCriteria'nın simplifiedLevels prop'u) — "Bota Karşı
- * Oyna" gerçek maçı hâlâ 10 düzeyin tamamını gösterir.
+ * (Zafer hoca kararı, 2026-08-18; eşleme 2026-08-19'da güncellendi):
+ * Kolay→eski Düzey 1, Orta→eski Düzey 5, Zor→eski Düzey 10. Yalnızca
+ * Pratik Yap ekranlarında kullanılır (bkz. MatchCriteria'nın
+ * simplifiedLevels prop'u) — "Bota Karşı Oyna" gerçek maçı hâlâ 10
+ * düzeyin tamamını gösterir.
  */
 export const LEVEL_GROUPS: { label: string; level: PlayLevel }[] = [
-  { label: 'Kolay', level: LEVELS[2] },
-  { label: 'Orta', level: LEVELS[6] },
+  { label: 'Kolay', level: LEVELS[0] },
+  { label: 'Orta', level: LEVELS[4] },
   { label: 'Zor', level: LEVELS[9] },
 ];

@@ -19,25 +19,25 @@ describe('MatchCriteria — simplifiedLevels (Pratik Yap: Kolay/Orta/Zor)', () =
     expect(screen.queryByRole('button', { name: 'Düzey 1' })).not.toBeInTheDocument();
   });
 
-  it('Kolay seçilince eski düzey 3 (grubun en zoru) gönderilir', () => {
+  it('Kolay seçilince eski düzey 1 gönderilir', () => {
     const onStart = vi.fn();
     render(<MatchCriteria onStart={onStart} startLabel="Başla" simplifiedLevels />);
     fireEvent.click(screen.getByRole('button', { name: 'Kolay' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: /Başla/ }));
-    expect(onStart.mock.calls[0][0].level.level).toBe(3);
+    expect(onStart.mock.calls[0][0].level.level).toBe(1);
   });
 
-  it('Orta seçilince eski düzey 7 (grubun en zoru) gönderilir', () => {
+  it('Orta seçilince eski düzey 5 gönderilir', () => {
     const onStart = vi.fn();
     render(<MatchCriteria onStart={onStart} startLabel="Başla" simplifiedLevels />);
     fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: /Başla/ }));
-    expect(onStart.mock.calls[0][0].level.level).toBe(7);
+    expect(onStart.mock.calls[0][0].level.level).toBe(5);
   });
 
-  it('Zor seçilince eski düzey 10 (grubun en zoru) gönderilir', () => {
+  it('Zor seçilince eski düzey 10 gönderilir', () => {
     const onStart = vi.fn();
     render(<MatchCriteria onStart={onStart} startLabel="Başla" simplifiedLevels />);
     fireEvent.click(screen.getByRole('button', { name: 'Zor' }));

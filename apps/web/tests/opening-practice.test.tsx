@@ -179,7 +179,7 @@ describe('OpeningPractice — onReadyToStart (madde: pratik ayrı sayfada oynan�
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
     expect(onReadyToStart).toHaveBeenCalledTimes(1);
     expect(onReadyToStart.mock.calls[0][0]).toMatchObject({ id: 1, name: 'İtalyan Açılışı' });
-    expect(onReadyToStart.mock.calls[0][1].level.level).toBe(7); // "Orta" -> eski düzey 7
+    expect(onReadyToStart.mock.calls[0][1].level.level).toBe(5); // "Orta" -> eski düzey 5
     expect(screen.queryByTestId('bot-game')).not.toBeInTheDocument();
   });
 });

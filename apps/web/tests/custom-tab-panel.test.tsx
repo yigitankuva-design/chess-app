@@ -116,7 +116,7 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('mode=pool');
     expect(url).toContain('tab=1');
     expect(url).toContain('section=10');
-    expect(url).toContain('skill=7');
+    expect(url).toContain('skill=5');
     expect(url).toContain('color=white');
   });
 
@@ -195,7 +195,7 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('mode=pool');
     expect(url).toContain('section=41');
     expect(url).toContain('category=Piyon');
-    expect(url).toContain('skill=7');
+    expect(url).toContain('skill=5');
   });
 
   it('konumu olmayan bir Oyunsonu kategorisine tıklayınca bilgi mesajı görünür', () => {
