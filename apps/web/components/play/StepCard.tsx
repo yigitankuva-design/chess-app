@@ -17,18 +17,31 @@ interface Props {
    *  kartlarini tasidigi icin ustune bir kart daha binmesin — boylece secim
    *  alani her bolumde AYNI genislikte gorunur (madde 5). */
   flush?: boolean;
+  /**
+   * Bota Karşı Pratik Yap'ın 3 dış adımını (Tür/Konum/Kriter) birbirinden
+   * ayırt etmek için AYNI accent renginin 3 farklı tonu (1=en güçlü,
+   * 3=en soluk). Verilmezse tema varsayılan tek-tonlu görünüm kullanılır —
+   * diğer StepCard kullanımları (Arkadaşa Karşı akışı vb.) ETKİLENMEZ.
+   */
+  tone?: 1 | 2 | 3;
   onToggle: () => void;
   children: ReactNode;
 }
 
+const TONE_PCT: Record<1 | 2 | 3, number> = { 1: 100, 2: 68, 3: 40 };
+
 /** Sirali akordiyon karti. Is mantigi YOK — acik/kilitli kararini cagiran verir. */
 export function StepCard({
   title, emoji, stepNumber, summary, open, locked = false, flush = false,
-  onToggle, children,
+  tone, onToggle, children,
 }: Props) {
   const label = stepNumber === undefined ? title : `${stepNumber}. ${title}`;
+  const toneStyle = tone ? {
+    borderColor: `color-mix(in srgb, var(--t-accent) ${TONE_PCT[tone]}%, var(--t-border))`,
+    boxShadow: `0 0 18px -6px color-mix(in srgb, var(--t-glow) ${TONE_PCT[tone]}%, transparent)`,
+  } : undefined;
   return (
-    <div className="t-card-i overflow-hidden">
+    <div className="t-card-i overflow-hidden" style={toneStyle}>
       <button
         type="button"
         onClick={() => { if (!locked) onToggle(); }}

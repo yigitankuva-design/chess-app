@@ -96,37 +96,50 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
 
   const groups = groupOpenings(openings ?? []);
 
-  /** Tur listesi iki dalda da AYNI — tek yerde durur, kopyalanmaz. */
+  /** Tur listesi iki dalda da AYNI — tek yerde durur, kopyalanmaz.
+   *  Akordiyon gorunumu: TEK cerceve, satirlar arasinda ince ayirici cizgi —
+   *  her secenek kendi basina isiltili/kenarlikli bir "kart" DEGIL (madde 1). */
   const typeList = (onPicked: () => void) => (
-    <div className="space-y-2">
-      {OPENING_CATEGORIES.map((c) => (
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
+      {OPENING_CATEGORIES.map((c, i) => (
         <button key={c.key} type="button"
           onClick={() => { pickCategory(c.key); onPicked(); }}
-          className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left">
-          <span className="text-xl">{c.emoji}</span>
+          className="w-full flex items-center px-4 py-3 text-left"
+          style={{
+            background: 'var(--t-surface)',
+            borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
+          }}>
           <span className="font-medium text-sm flex-1">{c.title}</span>
         </button>
       ))}
     </div>
   );
 
-  /** Secili turdeki acilislar. */
+  /** Secili turdeki acilislar. Ayni akordiyon gorunumu (madde 3) — ikon KALIR. */
   const openingList = (onPicked: () => void) => {
     const rows = category === null ? [] : groups[category];
     return (
-      <div className="space-y-2">
+      <div>
         {openings === null && <p className="text-sm t-muted">Yükleniyor…</p>}
         {openings !== null && rows.length === 0 && (
           <p className="text-sm t-muted">Bu türde henüz açılış yok.</p>
         )}
-        {rows.map((o) => (
-          <button key={o.id} type="button"
-            onClick={() => { setChosen(o); onPicked(); }}
-            className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left">
-            <span className="text-xl">📖</span>
-            <span className="font-medium text-sm flex-1">{o.name}</span>
-          </button>
-        ))}
+        {rows.length > 0 && (
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
+            {rows.map((o, i) => (
+              <button key={o.id} type="button"
+                onClick={() => { setChosen(o); onPicked(); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                style={{
+                  background: 'var(--t-surface)',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
+                }}>
+                <span className="text-xl">📖</span>
+                <span className="font-medium text-sm flex-1">{o.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -178,6 +191,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
             title="Açılış Türünü Seç"
             summary={categorySummary(category)}
             open={openInner === 'type'}
+            tone={1}
             onToggle={() => setOpenInner((p) => (p === 'type' ? null : 'type'))}
           >
             {typeList(() => setOpenInner('opening'))}
@@ -189,6 +203,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
             summary={openingSummary(chosen?.name ?? null)}
             open={openInner === 'opening'}
             locked={!isOpeningUnlocked(category)}
+            tone={2}
             onToggle={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
           >
             {openingList(() => setOpenInner('criteria'))}
@@ -200,6 +215,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
             flush
             open={openInner === 'criteria'}
             locked={!isCriteriaUnlocked(chosen?.name ?? null)}
+            tone={3}
             onToggle={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
           >
             <MatchCriteria
