@@ -126,7 +126,10 @@ describe('CustomTabPanel', () => {
     // Diğer kategorinin adı artık ekranda yok — kriter ekranına geçildi.
     expect(screen.queryByText('Kale Finalleri')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Düzey 2' }));
+    expect(screen.getByRole('button', { name: 'Kolay' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Düzey 1' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
     fireEvent.click(screen.getByRole('button', { name: 'Beyaz' }));
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
@@ -135,6 +138,7 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('mode=pool');
     expect(url).toContain('section=41');
     expect(url).toContain('category=Piyon');
+    expect(url).toContain('skill=7');
   });
 
   it('konumu olmayan bir Oyunsonu kategorisine tıklayınca bilgi mesajı görünür', () => {

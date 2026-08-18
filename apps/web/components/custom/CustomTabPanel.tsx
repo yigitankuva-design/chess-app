@@ -91,6 +91,7 @@ export function CustomTabPanel({ tab }: Props) {
                           ) : (
                             <MatchCriteria
                               startLabel="Pratiğe Başla"
+                              simplifiedLevels
                               onStart={(v) => {
                                 router.push(
                                   `/play?mode=pool&tab=${tab.id}&section=${s.id}`
