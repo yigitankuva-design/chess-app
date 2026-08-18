@@ -4,7 +4,23 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/components/play/OpeningPractice', () => ({
-  OpeningPractice: () => <div data-testid="opening-practice">açılış pratiği içeriği</div>,
+  OpeningPractice: ({ onReadyToStart }: {
+    onReadyToStart?: (opening: { id: number }, criteria: {
+      level: { level: number }; timeControl: { label: string }; colorChoice: string;
+    }) => void;
+  }) => (
+    <div data-testid="opening-practice">
+      açılış pratiği içeriği
+      {onReadyToStart && (
+        <button onClick={() => onReadyToStart(
+          { id: 7 },
+          { level: { level: 5 }, timeControl: { label: '5+0' }, colorChoice: 'white' },
+        )}>
+          test-ready-to-start
+        </button>
+      )}
+    </div>
+  ),
 }));
 
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
@@ -34,6 +50,20 @@ describe('CustomTabPanel', () => {
     // Tekrar tıklayınca kapanır.
     fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
     expect(screen.queryByTestId('opening-practice')).not.toBeInTheDocument();
+  });
+
+  it('Açılış Pratiği seçimi bitince ASIL MAÇ /play sayfasına yönlendirilir, burada açılmaz (madde: 2026-08-19)', () => {
+    push.mockClear();
+    render(<CustomTabPanel tab={PRATIK} />);
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    fireEvent.click(screen.getByText('test-ready-to-start'));
+    expect(push).toHaveBeenCalledTimes(1);
+    const url = push.mock.calls[0][0] as string;
+    expect(url).toContain('mode=opening');
+    expect(url).toContain('opening=7');
+    expect(url).toContain('skill=5');
+    expect(url).toContain('tc=5%2B0');
+    expect(url).toContain('color=white');
   });
 
   it('Açılış Pratiği Yap açıkken bir alt sekme açılırsa Açılış Pratiği kapanır (tek akordiyon)', () => {

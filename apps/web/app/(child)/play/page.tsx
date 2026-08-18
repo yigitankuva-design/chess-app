@@ -66,20 +66,26 @@ function PlayInner() {
 
   // Ana sayfadaki maç türü kartından gelinmişse o akışı doğrudan aç.
   // "pool" modu ana ekrandaki özel sekme alt sekmesinden gelir; kriterler zaten
-  // seçilmiş olduğu için quickStart'tan ÖNCE değerlendirilir.
+  // seçilmiş olduğu için quickStart'tan ÖNCE değerlendirilir. "opening" modu da
+  // AYNI SEBEPLE öncelikli: Açılış Pratiği'nde sporcu açılışı ve kriterleri
+  // CustomTabPanel'de seçip buraya yönlendirilir (2026-08-19).
   const modeParam = searchParams.get('mode');
   const sectionParam = searchParams.get('section');
   const tabParam = searchParams.get('tab');
   /** Oyunsonu Pratiği Yap'ta sporcunun seçtiği kategori — yoksa havuz filtrelenmez. */
   const categoryParam = searchParams.get('category');
+  /** Açılış Pratiği'nde CustomTabPanel'de seçilen açılışın id'si. */
+  const openingIdParam = searchParams.get('opening');
   const initialMode: Mode | null =
     modeParam === 'pool' && sectionParam && tabParam
       ? 'pool'
-      : quickStart
-        ? 'bot'
-        : MODE_CARDS.some((c) => c.mode === modeParam)
-          ? (modeParam as Mode)
-          : null;
+      : modeParam === 'opening' && openingIdParam
+        ? 'opening'
+        : quickStart
+          ? 'bot'
+          : MODE_CARDS.some((c) => c.mode === modeParam)
+            ? (modeParam as Mode)
+            : null;
 
   const [mode, setMode] = useState<Mode | null>(initialMode);
   const [botCriteria, setBotCriteria] = useState<MatchCriteriaValue | null>(quickStart);
@@ -215,7 +221,10 @@ function PlayInner() {
           <p className="font-semibold text-sm">📖 Açılışı Pratiği Yap</p>
           {backBtn}
         </div>
-        <OpeningPractice />
+        <OpeningPractice
+          initialOpeningId={openingIdParam ? Number(openingIdParam) : undefined}
+          initialCriteria={quickStart ?? undefined}
+        />
       </main>
     );
   }

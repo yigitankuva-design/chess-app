@@ -22,6 +22,13 @@ vi.mock('@/components/play/FriendChallenge', () => ({
 }));
 
 import { OpeningPractice } from '@/components/play/OpeningPractice';
+import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
+
+const CRITERIA: MatchCriteriaValue = {
+  level: { level: 7, skill: 13, depth: 9, blunderChance: 0 },
+  timeControl: { label: '5+0', base: 300, increment: 0 },
+  colorChoice: 'white',
+};
 
 const FEN = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1';
 
@@ -158,5 +165,42 @@ describe('OpeningPractice — akordiyon', () => {
     await waitFor(() =>
       expect(screen.getByText(/Bu türde henüz açılış yok/i)).toBeInTheDocument(),
     );
+  });
+});
+
+describe('OpeningPractice — onReadyToStart (madde: pratik ayrı sayfada oynanır, 2026-08-19)', () => {
+  it('verilirse "Pratiğe Başla" maçı BURADA AÇMAZ, seçilen açılış+kriterle callback çağırır', async () => {
+    const onReadyToStart = vi.fn();
+    render(<OpeningPractice onReadyToStart={onReadyToStart} />);
+    await openBotCard();
+    fireEvent.click(screen.getByText('İtalyan Açılışı'));
+    fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
+    fireEvent.click(screen.getByRole('button', { name: '5+0' }));
+    fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
+    expect(onReadyToStart).toHaveBeenCalledTimes(1);
+    expect(onReadyToStart.mock.calls[0][0]).toMatchObject({ id: 1, name: 'İtalyan Açılışı' });
+    expect(onReadyToStart.mock.calls[0][1].level.level).toBe(7); // "Orta" -> eski düzey 7
+    expect(screen.queryByTestId('bot-game')).not.toBeInTheDocument();
+  });
+});
+
+describe('OpeningPractice — initialOpeningId/initialCriteria (doğrudan-başlat, /play sayfası)', () => {
+  it('ikisi de verilirse seçim adımları ATLANIR, doğrudan o açılışla maç açılır', async () => {
+    render(<OpeningPractice initialOpeningId={1} initialCriteria={CRITERIA} />);
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN),
+    );
+    expect(screen.queryByRole('button', { name: /Bota Karşı Pratik Yap/ })).not.toBeInTheDocument();
+  });
+
+  it('yalnızca initialOpeningId verilip initialCriteria eksikse normal akordiyon akışı çalışır', () => {
+    render(<OpeningPractice initialOpeningId={1} />);
+    expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
+    expect(screen.queryByTestId('bot-game')).not.toBeInTheDocument();
+  });
+
+  it('id listede yoksa "Açılış bulunamadı" gösterir', async () => {
+    render(<OpeningPractice initialOpeningId={999} initialCriteria={CRITERIA} />);
+    await waitFor(() => expect(screen.getByText('Açılış bulunamadı.')).toBeInTheDocument());
   });
 });

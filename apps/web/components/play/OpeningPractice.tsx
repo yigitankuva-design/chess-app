@@ -9,7 +9,7 @@ import {
   isCriteriaUnlocked, isOpeningUnlocked, openingSummary, categorySummary,
 } from '@/lib/play/openingSteps';
 import type { BotStepKey } from '@/lib/play/openingSteps';
-import { OPENING_CATEGORIES, groupOpenings } from '@/lib/play/openingCategories';
+import { OPENING_CATEGORIES, groupOpenings, normalizeCategory } from '@/lib/play/openingCategories';
 import type { OpeningCategory } from '@/lib/play/openingCategories';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
@@ -17,11 +17,30 @@ import { pickDifferentPosition } from '@/lib/play/positionPool';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface Opening { id: number; name: string; start_fen: string; category?: string | null }
+export interface Opening { id: number; name: string; start_fen: string; category?: string | null }
+
+interface Props {
+  /**
+   * Doğrudan-başlat: /play sayfası, CustomTabPanel'den yönlendirilince bunu
+   * verir — seçim adımları (tür/açılış/kriter) ATLANIR, doğrudan bu açılış
+   * id'si ve kriterle maça girilir. İkisi de dolu değilse normal akordiyon
+   * akışı çalışır (madde: 2026-08-19).
+   */
+  initialOpeningId?: number;
+  initialCriteria?: MatchCriteriaValue;
+  /**
+   * Verilirse, kriter seçilip "Pratiğe Başla"ya tıklanınca BotGame BURADA
+   * render EDİLMEZ — bunun yerine bu callback çağrılır, navigasyon çağırana
+   * bırakılır. CustomTabPanel bunu kullanarak sporcuyu /play sayfasına
+   * yönlendirir (pratik ayrı sayfada oynanır). Verilmezse (örn. /play
+   * sayfasının kendisi) maç eskisi gibi burada açılır.
+   */
+  onReadyToStart?: (opening: Opening, criteria: MatchCriteriaValue) => void;
+}
 
 /** Acilis pratigi: sirali ve kilitli acilir kartlar (akordiyon).
  *  Dis katman: bot / arkadas. Ic katman (bot): tur -> acilis -> kriterler. */
-export function OpeningPractice() {
+export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToStart }: Props = {}) {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
   // tum acilislari gormemeli.
@@ -32,6 +51,9 @@ export function OpeningPractice() {
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
   const [color, setColor] = useState<PieceColor>('w');
   const [matchKey, setMatchKey] = useState(0);
+
+  /** initialOpeningId+initialCriteria ikisi de doluysa doğrudan-başlat modu. */
+  const directStart = initialOpeningId !== undefined && !!initialCriteria;
 
   const loadOpenings = useCallback(async () => {
     try {
@@ -47,6 +69,23 @@ export function OpeningPractice() {
   useEffect(() => {
     if (openOuter !== null && openings === null) void loadOpenings();
   }, [openOuter, openings, loadOpenings]);
+
+  // Dogrudan-baslat: dal acilmasi beklenmez, liste hemen cekilir.
+  useEffect(() => {
+    if (directStart && openings === null) void loadOpenings();
+  }, [directStart, openings, loadOpenings]);
+
+  // Dogrudan-baslat: liste gelince eslesen acilisi bul, kategori+kriterleri uygula.
+  useEffect(() => {
+    if (!directStart || !openings || chosen) return;
+    const found = openings.find((o) => o.id === initialOpeningId);
+    if (found && initialCriteria) {
+      setChosen(found);
+      setCategory(normalizeCategory(found.category));
+      setCriteria(initialCriteria);
+      setColor(resolveColor(initialCriteria.colorChoice));
+    }
+  }, [directStart, openings, initialOpeningId, initialCriteria, chosen]);
 
   /** Tur degisince secili acilis SIFIRLANIR — yanlis turden kalan bir
    *  acilisla mac baslamasin. */
@@ -91,6 +130,14 @@ export function OpeningPractice() {
       </div>
     );
   };
+
+  // Dogrudan-baslat: acilis bulununcaya kadar bilgilendirme goster.
+  if (directStart && !(criteria && chosen)) {
+    if (openings === null) return <p className="text-sm t-muted">Yükleniyor…</p>;
+    const found = openings.find((o) => o.id === initialOpeningId);
+    if (!found) return <p className="text-sm t-muted">Açılış bulunamadı.</p>;
+    return <p className="text-sm t-muted">Yükleniyor…</p>;
+  }
 
   // Kriterler secildi -> mac basladi; akordiyon yerini tahtaya birakir.
   if (criteria && chosen) {
@@ -161,6 +208,7 @@ export function OpeningPractice() {
               onStart={(v) => {
                 // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
                 if (!chosen) return;
+                if (onReadyToStart) { onReadyToStart(chosen, v); return; }
                 setCriteria(v);
                 setColor(resolveColor(v.colorChoice));
               }}

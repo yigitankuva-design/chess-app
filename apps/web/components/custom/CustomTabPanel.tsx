@@ -19,9 +19,10 @@ interface Props {
  *
  * "Pratik Yap" sekmesi özeldir: en üstte sabit Açılış Pratiği Yap satırı durur ve
  * alt sekmeleri yazı/görsel yerine bota karşı pratik kriterlerini gösterir.
- * Açılış Pratiği Yap, DİĞER alt sekmeler gibi AYNI SAYFADA açılır (sayfa
- * değiştirmez) — eskiden /play?mode=opening'e yönlendiriyordu, artık
- * OpeningPractice doğrudan akordiyonun içine gömülür (2026-08-18 kararı).
+ * Açılış Pratiği Yap, DİĞER alt sekmeler gibi seçim adımlarını (tür/açılış/
+ * düzey) AYNI SAYFADA gösterir (2026-08-18 kararı) — ama Kazanç Konumu ve
+ * Oyunsonu'nda olduğu gibi, "Pratiğe Başla"ya basılınca ASIL MAÇ /play
+ * sayfasına yönlendirilir (OpeningPractice'in onReadyToStart prop'u, 2026-08-19).
  * "Oyunsonu Pratiği Yap" ayrıca özeldir: kriter ekranından önce sporcu 5
  * kategoriden birini seçer — kategorisiz (eski) konumlar sporcuya gösterilmez.
  */
@@ -49,7 +50,16 @@ export function CustomTabPanel({ tab }: Props) {
           </button>
           {openOpening && (
             <div className="px-4 pb-4">
-              <OpeningPractice />
+              <OpeningPractice
+                onReadyToStart={(opening, v) => {
+                  router.push(
+                    `/play?mode=opening&opening=${opening.id}`
+                    + `&skill=${v.level.level}`
+                    + `&tc=${encodeURIComponent(v.timeControl.label)}`
+                    + `&color=${v.colorChoice}`,
+                  );
+                }}
+              />
             </div>
           )}
         </div>
