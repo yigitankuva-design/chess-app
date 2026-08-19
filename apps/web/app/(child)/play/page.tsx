@@ -214,13 +214,12 @@ function PlayInner() {
   }
 
   // ── Açılış Pratiği ─────────────────────────────────────────────────────────
+  // Madde 1 (2026-08-19): geri ok kaldırıldı — bu ekrana artık HER ZAMAN
+  // Pratik Yap'tan direkt gelinir, eski 4-kart menü yolu kullanılmıyor.
   if (mode === 'opening') {
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="font-semibold text-sm">📖 Açılışı Pratiği Yap</p>
-          {backBtn}
-        </div>
+        <p className="font-semibold text-sm">📖 Açılışı Pratiği Yap</p>
         <OpeningPractice
           initialOpeningId={openingIdParam ? Number(openingIdParam) : undefined}
           initialCriteria={quickStart ?? undefined}

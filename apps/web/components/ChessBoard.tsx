@@ -6,7 +6,7 @@ import type { Square } from 'chess.js';
 import { useChessTheme } from '@/lib/chess-theme-context';
 import { buildSquareStyles } from '@/lib/chess-themes';
 import {
-  BOARD_CARD_BG, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
+  BOARD_CARD_BG_MATCH, BOARD_LABEL_COLOR, BOARD_STYLE, coordLabels,
   getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
@@ -284,8 +284,11 @@ export function ChessBoard({
 
   return (
     <div
-      className="w-full max-w-[600px] mx-auto p-3 rounded-2xl"
-      style={{ backgroundColor: BOARD_CARD_BG }}
+      className="w-full max-w-[640px] mx-auto p-1.5 rounded-2xl"
+      style={{
+        backgroundColor: BOARD_CARD_BG_MATCH,
+        border: '1px solid var(--t-border)',
+      }}
     >
       <div className="flex">
         {!hideNotation && (

@@ -609,6 +609,26 @@ body {
   min-height: var(--mc-h);
 }
 
+/* Sırası gelen oyuncunun saatinde yanan LED (madde 4, 2026-08-19). */
+.mc-led {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--t-accent);
+  box-shadow: 0 0 8px 2px var(--t-glow, var(--t-accent));
+  animation: mc-led-pulse 1.4s ease-in-out infinite;
+}
+@keyframes mc-led-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-led { animation: none; }
+}
+
 @media (orientation: landscape) {
   .match-grid {
     grid-template-columns: minmax(5.5rem, 6.5rem) minmax(0, 1fr) minmax(7rem, 9rem);
@@ -632,12 +652,16 @@ body {
    renkli geri bildirim, EN ALTTA notasyon. */
 .pm-grid {
   --mc-h: clamp(2.75rem, 9vw, 3.75rem);
-  --pm-circle: clamp(3rem, 11vw, 4rem);
+  --pm-circle: clamp(4.5rem, 16.5vw, 6rem);
   display: grid;
   gap: 0.5rem;
   max-width: 32rem;
   margin: 0 auto;
-  grid-template-columns: 1fr 1fr 1fr;
+  /* Madde 3 (2026-08-19): oto-esnek-oto — ikon/saat sabit kare, isim kartı
+     aradaki tüm boşluğu doldurur; satır tahtanın tam genişliğine (başı-sonu)
+     denk gelir. Eskiden 1fr 1fr 1fr idi (üç eşit sütun). */
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
   grid-template-areas:
     "avatar-top    name-top    time-top"
     "board         board       board"
@@ -657,10 +681,11 @@ body {
 .pm-grid > .pm-feedback      { grid-area: feedback; }
 .pm-grid > .pm-moves         { grid-area: moves; min-height: 0; }
 
-/* 4 eşit boyutlu dairesel eylem kartı, yan yana. */
+/* 4 eşit boyutlu dairesel eylem kartı, yan yana — %50 büyütüldü, aralarında
+   daireler birbirine değmesin diye BÜYÜK boşluk (madde 5, 2026-08-19). */
 .pm-actions-row {
   display: flex;
-  gap: clamp(0.4rem, 2vw, 0.75rem);
+  gap: clamp(0.75rem, 4vw, 1.5rem);
   justify-content: center;
 }
 .pm-circle {

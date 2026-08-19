@@ -12,7 +12,13 @@ import { defaultPieces } from 'react-chessboard';
 
 export const BOARD_LIGHT_SQUARE = '#eef0fb';
 export const BOARD_DARK_SQUARE = '#c3c6ee';
+/** Admin editörü ve ders/alıştırma tahtalarının kartı — HER ZAMAN beyaz
+ *  (bilerek, o ekranlarda tema fark etmez). Maç ekranı (ChessBoard.tsx)
+ *  bunu KULLANMAZ, kendi temaya-uyan BOARD_CARD_BG_MATCH'ini kullanır
+ *  (madde 2, 2026-08-19) — ikisi kasıtlı olarak AYRI. */
 export const BOARD_CARD_BG = '#ffffff';
+/** Maç ekranındaki tahta kartının arka planı — temaya uyar (2026-08-19). */
+export const BOARD_CARD_BG_MATCH = 'var(--t-surface)';
 export const BOARD_LABEL_COLOR = '#6b7280';
 
 export const LIGHT_SQUARE_STYLE: CSSProperties = { backgroundColor: BOARD_LIGHT_SQUARE };
