@@ -631,6 +631,48 @@ body {
   .match-grid > .ml-moves { grid-row: 1 / 4; min-height: 0; overflow: auto; }
 }
 
+/* Maç Yap ekranının BİLGİSAYAR düzeni (min-width:901px) — Pratik Yap
+   ekranıyla (.pm-grid) TUTARLI: ikon sabit kare solda, isim ortada esner,
+   saat kartı %30 geniş sağda; notasyon EN ALTA alınır; oyuncu satırı ile
+   Beraberlik/Terk Et/Yeniden Oyna satırı arasına kalın çizgi girer; tahta
+   %30 küçültülür; "Ayarları değiştir" kartı kaldırılır (2026-08-19). */
+@media (min-width: 901px) {
+  .match-grid {
+    grid-template-columns: auto 1fr calc(var(--mc-h) * 1.3);
+    grid-template-areas:
+      "avatar-top    name-top    time-top"
+      "board         board       board"
+      "avatar-bottom name-bottom time-bottom"
+      "act-draw      act-resign  act-rematch"
+      "moves         moves       moves";
+  }
+  .match-grid > .ml-avatar-top,
+  .match-grid > .ml-name-top,
+  .match-grid > .ml-time-top,
+  .match-grid > .ml-avatar-bottom,
+  .match-grid > .ml-name-bottom,
+  .match-grid > .ml-time-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .match-grid > .ml-time-top .mc-square,
+  .match-grid > .ml-time-bottom .mc-square {
+    width: 100%;
+  }
+  .match-grid > .ml-board {
+    max-width: 448px; /* ChessBoard'un 640px tavanının %70'i (madde 1) */
+    margin: 0 auto;
+  }
+  .match-grid > .ml-act-draw,
+  .match-grid > .ml-act-resign,
+  .match-grid > .ml-act-rematch {
+    border-top: 3px solid var(--t-border);
+    padding-top: 0.75rem;
+  }
+  .ml-settings-btn { display: none; }
+}
+
 /* Pratik Yap ekranı (Kazanç Konumu / Oyunsonu / Açılış — bota karşı pratik)
    yerleşimi — bkz. components/play/PracticeMatchLayout.tsx. Gerçek maç
    ekranından (.match-grid) BAĞIMSIZDIR: 4 dairesel eylem kartı, altında

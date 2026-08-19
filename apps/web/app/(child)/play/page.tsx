@@ -263,7 +263,7 @@ function PlayInner() {
           {botColor === 'w' ? 'Beyaz' : 'Siyah'}
         </p>
         <button onClick={() => { setBotCriteria(null); writeUrl({ mode: 'bot', criteria: null }); }}
-          className="t-btn-ghost text-xs px-3 py-1.5">
+          className="t-btn-ghost text-xs px-3 py-1.5 ml-settings-btn">
           Ayarları değiştir
         </button>
       </div>
