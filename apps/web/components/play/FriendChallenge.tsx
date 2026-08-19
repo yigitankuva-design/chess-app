@@ -8,6 +8,7 @@ import { filterAthletes, mergeOnline } from '@/lib/play/athleteFilter';
 import type { Athlete, AthleteRow } from '@/lib/play/athleteFilter';
 import { resolveColor } from '@/lib/play/color';
 import { getToken } from '@/lib/auth-storage';
+import { tempoCategoryOfLabel } from '@/lib/play/levels';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -21,6 +22,9 @@ function criteriaPayload(v: MatchCriteriaValue, startFen?: string | null) {
     color: resolveColor(v.colorChoice),
     skill: v.level.skill,
     depth: v.level.depth,
+    // Madde 2 (2026-08-20): karsi tarafin bildirim kartinda "Tempo ve Sure"
+    // gosterilebilsin diye tempo kategorisi de (Yildirim/Hizli/Klasik) gider.
+    tempo: tempoCategoryOfLabel(v.timeControl.label),
     tc_label: v.timeControl.label,
     tc_base: v.timeControl.base,
     tc_increment: v.timeControl.increment,

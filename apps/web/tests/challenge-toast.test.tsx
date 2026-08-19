@@ -14,7 +14,7 @@ vi.mock('@/lib/lobby/LobbyContext', () => ({
   }),
 }));
 
-import { IncomingChallengeBanner } from '@/components/play/IncomingChallengeBanner';
+import { ChallengeToast } from '@/components/play/ChallengeToast';
 
 beforeEach(() => {
   acceptChallenge.mockReset();
@@ -22,36 +22,43 @@ beforeEach(() => {
   incoming = null;
 });
 
-describe('IncomingChallengeBanner', () => {
+describe('ChallengeToast (madde 2, 2026-08-20)', () => {
   it('teklif yokken hiç render edilmez', () => {
-    const { container } = render(<IncomingChallengeBanner />);
+    const { container } = render(<ChallengeToast />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('teklif varken ad ve tempo görünür', () => {
-    incoming = { from_child_id: 5, from_name: 'Ayşe', criteria: { tc_label: '5+0' } };
-    render(<IncomingChallengeBanner />);
-    expect(screen.getByText(/Ayşe sana maç teklif etti/)).toBeInTheDocument();
-    expect(screen.getByText(/5\+0/)).toBeInTheDocument();
+  it('teklif varken 3 satır görünür: Meydan Okuma / isim / tempo+süre', () => {
+    incoming = { from_child_id: 5, from_name: 'Ayşe', criteria: { tempo: 'Hızlı', tc_label: '10+5' } };
+    render(<ChallengeToast />);
+    expect(screen.getByText('⚔️ Meydan Okuma')).toBeInTheDocument();
+    expect(screen.getByText('Ayşe')).toBeInTheDocument();
+    expect(screen.getByText('Hızlı · 10+5')).toBeInTheDocument();
   });
 
-  it('tempo bilgisi yoksa UYDURULMAZ', () => {
+  it('yalnızca tc_label varsa (eski davetler) sadece o gösterilir', () => {
+    incoming = { from_child_id: 5, from_name: 'Ayşe', criteria: { tc_label: '5+0' } };
+    render(<ChallengeToast />);
+    expect(screen.getByText('5+0')).toBeInTheDocument();
+  });
+
+  it('tempo/süre bilgisi yoksa UYDURULMAZ — satır hiç yok', () => {
     incoming = { from_child_id: 5, from_name: 'Ayşe', criteria: {} };
-    render(<IncomingChallengeBanner />);
-    expect(screen.getByText(/Ayşe sana maç teklif etti/)).toBeInTheDocument();
+    render(<ChallengeToast />);
+    expect(screen.getByText('Ayşe')).toBeInTheDocument();
     expect(screen.queryByText(/—/)).not.toBeInTheDocument();
   });
 
   it('Evet acceptChallenge çağırır', () => {
     incoming = { from_child_id: 5, from_name: 'Ayşe', criteria: {} };
-    render(<IncomingChallengeBanner />);
+    render(<ChallengeToast />);
     fireEvent.click(screen.getByRole('button', { name: 'Evet' }));
     expect(acceptChallenge).toHaveBeenCalledTimes(1);
   });
 
   it('Hayır declineChallenge çağırır', () => {
     incoming = { from_child_id: 5, from_name: 'Ayşe', criteria: {} };
-    render(<IncomingChallengeBanner />);
+    render(<ChallengeToast />);
     fireEvent.click(screen.getByRole('button', { name: 'Hayır' }));
     expect(declineChallenge).toHaveBeenCalledTimes(1);
   });

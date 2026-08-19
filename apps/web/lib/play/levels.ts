@@ -60,6 +60,12 @@ export const TIME_GROUPS: { cat: string; emoji: string; items: TimeControl[] }[]
 
 export const ALL_TIMES: TimeControl[] = TIME_GROUPS.flatMap((g) => g.items);
 
+/** Bir süre etiketinin (örn. "5+3") ait olduğu tempo kategorisini bulur
+ *  (Yıldırım/Hızlı/Klasik). Eşleşme yoksa BOŞ dizge — uydurulmaz. */
+export function tempoCategoryOfLabel(tcLabel: string): string {
+  return TIME_GROUPS.find((g) => g.items.some((i) => i.label === tcLabel))?.cat ?? '';
+}
+
 /**
  * Pratik Yap akışları için 10 düzey yerine 3 gruplu basitleştirilmiş seçim
  * (Zafer hoca kararı, 2026-08-18; eşleme 2026-08-19'da güncellendi):

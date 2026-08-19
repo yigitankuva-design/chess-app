@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BotGame } from '@/components/BotGame';
 import { OfferBoard } from '@/components/play/OfferBoard';
+import { FriendChallenge } from '@/components/play/FriendChallenge';
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
@@ -93,6 +94,10 @@ function PlayInner() {
     quickStart ? resolveColor(quickStart.colorChoice) : 'w',
   );
   const [gameKey, setGameKey] = useState(0);
+  /** Madde 2 (2026-08-20): Arkadaşla Oyna'da iki giriş — açık ilan panosu ve
+   *  belirli bir sporcuyu arayıp teklif etme. İkisi de aynı sayfada,
+   *  sekmeyle geçilir (ayrı sayfaya gidilmez). */
+  const [friendSubMode, setFriendSubMode] = useState<'board' | 'search'>('board');
 
   /** pool modu: seçilen alt sekmenin konum havuzu. undefined = henüz yükleniyor. */
   const [poolPositions, setPoolPositions] = useState<PoolPosition[] | undefined>(undefined);
@@ -233,10 +238,30 @@ function PlayInner() {
   // ana sayfadaki Maç Yap sekmesinden direkt gelinir, eski 4-kart menü
   // yolu kullanılmıyor (Açılış Pratiği'nde yapılan aynı karar).
   if (mode === 'friend') {
+    const tab = (key: 'board' | 'search', label: string) => (
+      <button
+        type="button"
+        onClick={() => setFriendSubMode(key)}
+        className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+        style={{
+          border: friendSubMode === key ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
+          background: friendSubMode === key
+            ? 'color-mix(in srgb, var(--t-accent) 12%, transparent)'
+            : 'var(--t-surface)',
+          color: friendSubMode === key ? 'var(--t-accent)' : 'var(--t-text)',
+        }}
+      >
+        {label}
+      </button>
+    );
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
         <p className="font-semibold text-sm">🤝 Arkadaşla Oyna</p>
-        <OfferBoard />
+        <div className="flex gap-2">
+          {tab('board', '📋 İlan Panosu')}
+          {tab('search', '🔍 Sporcu Ara')}
+        </div>
+        {friendSubMode === 'board' ? <OfferBoard /> : <FriendChallenge />}
       </main>
     );
   }
