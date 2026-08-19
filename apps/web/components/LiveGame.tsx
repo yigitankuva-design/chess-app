@@ -25,7 +25,7 @@ interface Props { gameId: number; myColor: 'white' | 'black'; }
 
 /** Backend'deki FIRST_MOVE_TIMEOUT_SECONDS ile AYNI (madde 4) — yalnızca
  *  görsel geri sayım için; gerçek iptal kararı sunucuda verilir. */
-const FIRST_MOVE_TIMEOUT_SECONDS = 10;
+const FIRST_MOVE_TIMEOUT_SECONDS = 15;
 
 export function LiveGame({ gameId, myColor }: Props) {
   const { hideNotation } = useBoardNotation();
@@ -141,7 +141,7 @@ export function LiveGame({ gameId, myColor }: Props) {
       setStartFen(typeof msg.start_fen === 'string' ? msg.start_fen : null);
       if (Array.isArray(msg.moves)) setSanList(msg.moves.map(String));
       // Madde 4: hiç hamle yokken (mac yeni basladi) gorsel geri sayim baslar.
-      // Gercek 10sn'lik iptal karari sunucuda — bu SADECE gorseldir.
+      // Gercek iptal karari sunucuda (FIRST_MOVE_TIMEOUT_SECONDS) — bu SADECE gorseldir.
       setFirstMoveCountdown(
         Array.isArray(msg.moves) && msg.moves.length === 0 && msg.status === 'active'
           ? FIRST_MOVE_TIMEOUT_SECONDS
@@ -155,7 +155,7 @@ export function LiveGame({ gameId, myColor }: Props) {
         // Madde 4: iptal edilmis maca SONRADAN baglanan sporcu da (game_aborted
         // yayinini kacirmis olsa bile) nedeni gorsun — bos ekranla kalmasin.
         if (msg.status === 'aborted') {
-          setInfo('İlk hamle 10 saniye içinde yapılmadığı için maç iptal edildi.');
+          setInfo(`İlk hamle ${FIRST_MOVE_TIMEOUT_SECONDS} saniye içinde yapılmadığı için maç iptal edildi.`);
         }
       }
       if (typeof msg.current_fen === 'string' && msg.current_fen) {
@@ -176,7 +176,7 @@ export function LiveGame({ gameId, myColor }: Props) {
       // Madde 4: sunucu 10sn'de ilk hamle gelmediğine karar verdi, mac iptal.
       setFirstMoveCountdown(null);
       setStatus('over');
-      setInfo('İlk hamle 10 saniye içinde yapılmadığı için maç iptal edildi.');
+      setInfo(`İlk hamle ${FIRST_MOVE_TIMEOUT_SECONDS} saniye içinde yapılmadığı için maç iptal edildi.`);
     } else if (t === 'opponent_disconnected') {
       setInfo('Rakip bağlantısı koptu.');
     } else if (t === 'invalid_move' || t === 'error') {
@@ -322,18 +322,19 @@ export function LiveGame({ gameId, myColor }: Props) {
               className="t-card-i"
               style={{
                 position: 'absolute',
-                top: 8,
+                top: '50%',
                 left: '50%',
-                transform: 'translateX(-50%)',
+                transform: 'translate(-50%, -50%)',
                 zIndex: 10,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.35rem 0.9rem',
+                gap: '0.8rem',
+                padding: '0.7rem 1.8rem',
                 borderRadius: 999,
                 fontWeight: 700,
-                fontSize: '0.9rem',
+                fontSize: '1.8rem',
                 background: 'var(--t-surface)',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
               }}
             >
               <span aria-hidden="true">⏳</span>

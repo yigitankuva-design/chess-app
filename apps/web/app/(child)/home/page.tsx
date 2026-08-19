@@ -290,13 +290,13 @@ export default function ChildHomePage() {
     const lit = ledOn ?? active ?? false;
     const style: React.CSSProperties = {
       ...(active ? pressed(16) : raised(16)),
-      padding: '1rem 0.5rem',
-      minHeight: 88,
+      padding: '1.5rem 0.75rem',
+      minHeight: 132,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '0.4rem',
+      gap: '0.6rem',
       cursor: 'pointer',
       textDecoration: 'none',
       position: 'relative',
@@ -306,11 +306,15 @@ export default function ChildHomePage() {
     const contentStyle: React.CSSProperties = lit
       ? { color, opacity: 1, filter: `drop-shadow(0 0 5px ${color})` }
       : { color, opacity: 0.4 };
+    /* Madde 1 (2026-08-20): ikon+isim %50 büyütüldü. Emoji ikonlara (admin
+       ikon havuzundan seçilen) SVG yedek ikonlarla (s=45) AYNI görsel taban
+       için açık font-size verilir — yoksa emoji tarayıcı varsayılan boyutta
+       (~1em) kalır ve SVG'den küçük görünürdü. */
     const inner = (
       <>
         <span aria-hidden="true" className="qa-led" data-active={lit ? 'true' : 'false'} />
-        <span className="leading-none" style={contentStyle}>{icon}</span>
-        <span className="text-xs font-bold leading-tight text-center" style={contentStyle}>{label}</span>
+        <span className="leading-none" style={{ ...contentStyle, fontSize: '2.8125rem' }}>{icon}</span>
+        <span className="text-lg font-bold leading-tight text-center" style={contentStyle}>{label}</span>
       </>
     );
     return href
@@ -342,14 +346,14 @@ export default function ChildHomePage() {
             // o kullanılır; seçmediyse eski sabit çizgi-ikona düşer.
             if (key === 'analiz') {
               return (
-                <FeatureTab key={key} icon={L.icons.analiz || <IconAnalyst s={30} />} label={L.features.analiz}
+                <FeatureTab key={key} icon={L.icons.analiz || <IconAnalyst s={45} />} label={L.features.analiz}
                   color={FEATURE_COLORS.analiz} href="/analiz" ledOn={openTab === null} />
               );
             }
             const meta = {
-              play:    { icon: L.icons.play || <IconSwords s={30} />, label: L.features.play,    color: FEATURE_COLORS.play },
-              lessons: { icon: L.icons.lessons || <IconBook s={30} />, label: L.features.lessons, color: FEATURE_COLORS.lessons },
-              eglence: { icon: L.icons.eglence || <IconPuzzle s={30} />, label: L.features.eglence, color: FEATURE_COLORS.eglence },
+              play:    { icon: L.icons.play || <IconSwords s={45} />, label: L.features.play,    color: FEATURE_COLORS.play },
+              lessons: { icon: L.icons.lessons || <IconBook s={45} />, label: L.features.lessons, color: FEATURE_COLORS.lessons },
+              eglence: { icon: L.icons.eglence || <IconPuzzle s={45} />, label: L.features.eglence, color: FEATURE_COLORS.eglence },
             }[key];
             return (
               <FeatureTab

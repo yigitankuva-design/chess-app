@@ -32,10 +32,10 @@ router = APIRouter()
 INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 # Madde 4: arkadaslar birbirini uzun sure bekletmesin — iki taraf da odaya
-# baglandiktan sonra ilk hamle icin 10sn verilir, gecerse mac otomatik iptal
+# baglandiktan sonra ilk hamle icin 15sn verilir, gecerse mac otomatik iptal
 # olur (GameStatus.aborted). Yalnizca insan-insan (GameType.human) maclarda
 # calisir; bot maclarinda "rakip baglanmasi" beklenmez.
-FIRST_MOVE_TIMEOUT_SECONDS = 10
+FIRST_MOVE_TIMEOUT_SECONDS = 15
 # game_id bazinda: zamanlayici zaten kuruldu mu (iki kez kurulmasin —
 # ornegin ayni sporcu iki cihazdan baglanirsa join iki kez tetiklenebilir).
 _first_move_timer_started: set[int] = set()
@@ -178,8 +178,8 @@ async def _current_fen_and_ply(db, game_id: int) -> tuple[str, int]:
 
 
 async def _start_first_move_timer(game_id: int, room) -> None:
-    """Iki taraf da odaya baglandiktan sonra CAGRILIR. 10sn icinde ilk hamle
-    gelmezse mac GameStatus.aborted olur ve iki tarafa da bildirilir.
+    """Iki taraf da odaya baglandiktan sonra CAGRILIR. FIRST_MOVE_TIMEOUT_SECONDS
+    icinde ilk hamle gelmezse mac GameStatus.aborted olur ve iki tarafa da bildirilir.
 
     Sunucu otoritesi ilkesiyle tutarli (bkz. _handle_flag): zamanlayici
     tetiklendiginde durumu KENDI DOGRULAR (hala aktif mi, hala 0 hamle mi) —
@@ -232,7 +232,7 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
     conn_id = room.join(child_id, websocket)
     await room.broadcast({"type": "player_joined", "child_id": child_id})
 
-    # Madde 4: iki taraf da (arkadaslar) odaya baglandiysa 10sn ilk hamle
+    # Madde 4: iki taraf da (arkadaslar) odaya baglandiysa FIRST_MOVE_TIMEOUT_SECONDS ilk hamle
     # sayaci baslar. Bot maclarinda calismaz — "rakip baglanmasi" yok.
     if is_human_game and white_id is not None and black_id is not None \
             and white_id in room.players and black_id in room.players:

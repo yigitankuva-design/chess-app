@@ -27,11 +27,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('LiveGame — ilk hamle 10sn geri sayımı (madde 4)', () => {
+describe('LiveGame — ilk hamle 15sn geri sayımı (madde 4)', () => {
   it('mac hic hamlesiz basladiginda tahtanin ustunde geri sayim gorunur', () => {
     setup();
     act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
-    expect(screen.getByText(/İlk hamle: 10sn/)).toBeInTheDocument();
+    expect(screen.getByText(/İlk hamle: 15sn/)).toBeInTheDocument();
   });
 
   it('macta zaten hamle varsa (yeniden baglanma) geri sayim GORUNMEZ', () => {
@@ -43,17 +43,17 @@ describe('LiveGame — ilk hamle 10sn geri sayımı (madde 4)', () => {
   it('her saniye geri sayim bir azalir', () => {
     setup();
     act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
-    expect(screen.getByText(/İlk hamle: 10sn/)).toBeInTheDocument();
+    expect(screen.getByText(/İlk hamle: 15sn/)).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(1000); });
-    expect(screen.getByText(/İlk hamle: 9sn/)).toBeInTheDocument();
+    expect(screen.getByText(/İlk hamle: 14sn/)).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(3000); });
-    expect(screen.getByText(/İlk hamle: 6sn/)).toBeInTheDocument();
+    expect(screen.getByText(/İlk hamle: 11sn/)).toBeInTheDocument();
   });
 
   it('ilk hamle gelince (move_made) geri sayim hemen kaybolur', () => {
     setup();
     act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
-    expect(screen.getByText(/İlk hamle: 10sn/)).toBeInTheDocument();
+    expect(screen.getByText(/İlk hamle: 15sn/)).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(3000); });
     // fen_after BAŞLANGIÇ konumuyla AYNI verilir: react-chessboard'un jsdom'da
     // FEN değişiminde tahtayı yeniden ölçmesi (kütüphanenin kendi sınırı,
@@ -72,7 +72,7 @@ describe('LiveGame — ilk hamle 10sn geri sayımı (madde 4)', () => {
     act(() => handler!({ type: 'game_aborted', reason: 'first_move_timeout' }));
 
     expect(screen.queryByText(/İlk hamle:.*sn/)).not.toBeInTheDocument();
-    expect(screen.getByText(/İlk hamle 10 saniye içinde yapılmadığı için maç iptal edildi/))
+    expect(screen.getByText(/İlk hamle 15 saniye içinde yapılmadığı için maç iptal edildi/))
       .toBeInTheDocument();
     // Mac bitti — Terk Et artik devre disi.
     expect(screen.getByRole('button', { name: 'Terk Et' })).toBeDisabled();
@@ -82,14 +82,14 @@ describe('LiveGame — ilk hamle 10sn geri sayımı (madde 4)', () => {
     setup();
     // game_aborted YAYINI KAÇIRILDI — dogrudan aborted status'lu game_info geldi.
     act(() => handler!({ type: 'game_info', moves: [], status: 'aborted' }));
-    expect(screen.getByText(/İlk hamle 10 saniye içinde yapılmadığı için maç iptal edildi/))
+    expect(screen.getByText(/İlk hamle 15 saniye içinde yapılmadığı için maç iptal edildi/))
       .toBeInTheDocument();
   });
 
   it('geri sayim 0da durur, negatife inmez', () => {
     setup();
     act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
-    act(() => { vi.advanceTimersByTime(15000); });
+    act(() => { vi.advanceTimersByTime(20000); });
     expect(screen.getByText(/İlk hamle: 0sn/)).toBeInTheDocument();
   });
 });
