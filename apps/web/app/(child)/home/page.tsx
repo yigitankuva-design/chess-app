@@ -287,12 +287,16 @@ export default function ChildHomePage() {
     setOpenSubtopic(opening ? { lessonId, stepId: sub.stepId, title: sub.title } : null);
   }
 
-  /* Sekme kartı — kabartma, açıkken gömük. Arkasında seçiliyken turkuaz
-     yanan bir LED var (madde 2, 2026-08-19): sadece seçili sekmenin LED'i
-     yanık kalır, diğerleri söner. */
-  function FeatureTab({ icon, label, color, active, onClick, href }: {
-    icon: React.ReactNode; label: string; color: string; active?: boolean; onClick?: () => void; href?: string;
+  /* Sekme kartı — kabartma, açıkken gömük. Arkasında turkuaz yanan bir LED
+     var. BAŞLANGIÇTA (hiç sekme seçilmemişken) TÜMÜ yanık durur; sporcu bir
+     sekmeye tıklayınca sadece O sekmenin LED'i yanık kalır, diğerleri söner
+     (madde 1, 2026-08-19). `active` kabartma/gömük görünümünü belirler —
+     LED bundan AYRI bir kavram: `ledOn` verilmezse `active` ile aynı davranır. */
+  function FeatureTab({ icon, label, color, active, ledOn, onClick, href }: {
+    icon: React.ReactNode; label: string; color: string; active?: boolean; ledOn?: boolean;
+    onClick?: () => void; href?: string;
   }) {
+    const lit = ledOn ?? active ?? false;
     const style: React.CSSProperties = {
       ...(active ? pressed(16) : raised(16)),
       padding: '1rem 0.5rem',
@@ -306,14 +310,14 @@ export default function ChildHomePage() {
       textDecoration: 'none',
       position: 'relative',
     };
-    /* LED yanan (seçili) kartta ikon+yazı parlar; diğer kartlarda matlaşır
-       (madde 1, 2026-08-19) — tab'ın kendi rengiyle ışıldar. */
-    const contentStyle: React.CSSProperties = active
+    /* LED yanan kartta ikon+yazı parlar; sönük karttaki matlaşır — tab'ın
+       kendi rengiyle ışıldar. */
+    const contentStyle: React.CSSProperties = lit
       ? { color, opacity: 1, filter: `drop-shadow(0 0 5px ${color})` }
       : { color, opacity: 0.4 };
     const inner = (
       <>
-        <span aria-hidden="true" className="qa-led" data-active={active ? 'true' : 'false'} />
+        <span aria-hidden="true" className="qa-led" data-active={lit ? 'true' : 'false'} />
         <span className="leading-none" style={contentStyle}>{icon}</span>
         <span className="text-xs font-bold leading-tight text-center" style={contentStyle}>{label}</span>
       </>
@@ -346,7 +350,7 @@ export default function ChildHomePage() {
             if (key === 'analiz') {
               return (
                 <FeatureTab key={key} icon={<IconAnalyst s={30} />} label={L.features.analiz}
-                  color={FEATURE_COLORS.analiz} href="/analiz" />
+                  color={FEATURE_COLORS.analiz} href="/analiz" ledOn={openTab === null} />
               );
             }
             const meta = {
@@ -357,7 +361,8 @@ export default function ChildHomePage() {
             return (
               <FeatureTab
                 key={key} icon={meta.icon} label={meta.label} color={meta.color}
-                active={openTab === key} onClick={() => toggleTab(key)}
+                active={openTab === key} ledOn={openTab === key || openTab === null}
+                onClick={() => toggleTab(key)}
               />
             );
           })}
@@ -373,7 +378,8 @@ export default function ChildHomePage() {
               icon={ct.label === 'Pratik Yap' ? <IconChessPlayer s={30} /> : ct.emoji}
               label={ct.label}
               color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]}
-              active={openTab === ct.id} onClick={() => toggleCustomTab(ct.id)}
+              active={openTab === ct.id} ledOn={openTab === ct.id || openTab === null}
+              onClick={() => toggleCustomTab(ct.id)}
             />
           ))}
         </div>

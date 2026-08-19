@@ -29,11 +29,20 @@ interface Props {
    * Oyna" gerçek maçında geçilmez, orada tam 10 düzey kalır.
    */
   simplifiedLevels?: boolean;
+  /**
+   * Renk (Beyaz/Rastgele/Siyah) satırı gösterilsin mi? Pratik Yap
+   * akışlarında (Kazanç Konumu, Oyunsonu, Açılış Pratiği) false geçilir
+   * (madde 5, 2026-08-19) — renk seçimi kaldırılır ama colorChoice hâlâ
+   * varsayılan 'random' ile MatchCriteriaValue'da döner (çağıranlar kırılmaz).
+   */
+  showColor?: boolean;
 }
 
 /** Üç yatay sıra (madde 5): 1) Düzey  2) Tempo/Süre + Renk  3) Maça Başla.
  *  Adımlar SIRAYLA açılır: düzey seçilmeden tempo, tempo seçilmeden başlat. */
-export function MatchCriteria({ onStart, startLabel, showLevel = true, simplifiedLevels = false }: Props) {
+export function MatchCriteria({
+  onStart, startLabel, showLevel = true, simplifiedLevels = false, showColor = true,
+}: Props) {
   /**
    * null = HENÜZ SEÇİLMEDİ. Varsayılan LEVELS[0] verilseydi 1. adım daha
    * başlarken tamamlanmış sayılır ve sıralı kilit işlevsiz kalırdı.
@@ -132,18 +141,20 @@ export function MatchCriteria({ onStart, startLabel, showLevel = true, simplifie
           </div>
         ))}
 
-        <div className="space-y-2">
-          <p className="text-xs font-semibold t-muted uppercase tracking-wide">Renk</p>
-          <div className="grid grid-cols-3 gap-2">
-            {COLOR_CHOICES.map((c) => (
-              <button key={c.value} type="button" onClick={() => setColorChoice(c.value)}
-                className="py-3 rounded-xl text-sm font-bold transition-all"
-                style={pill(colorChoice === c.value)}>
-                {c.label}
-              </button>
-            ))}
+        {showColor && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold t-muted uppercase tracking-wide">Renk</p>
+            <div className="grid grid-cols-3 gap-2">
+              {COLOR_CHOICES.map((c) => (
+                <button key={c.value} type="button" onClick={() => setColorChoice(c.value)}
+                  className="py-3 rounded-xl text-sm font-bold transition-all"
+                  style={pill(colorChoice === c.value)}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── 3. YATAY SIRA: Başlat ── */}

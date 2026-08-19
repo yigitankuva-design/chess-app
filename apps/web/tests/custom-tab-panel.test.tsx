@@ -109,7 +109,8 @@ describe('CustomTabPanel', () => {
     fireEvent.click(screen.getByText('Süresiz Pratik'));
     fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Beyaz' }));
+    // Madde 5 (2026-08-19): Renk seçimi Pratik Yap'ta kaldırıldı — varsayılan 'random' gider.
+    expect(screen.queryByRole('button', { name: 'Beyaz' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
     await waitFor(() => expect(push).toHaveBeenCalled());
     const url = push.mock.calls[0][0] as string;
@@ -117,7 +118,7 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('tab=1');
     expect(url).toContain('section=10');
     expect(url).toContain('skill=5');
-    expect(url).toContain('color=white');
+    expect(url).toContain('color=random');
   });
 
   it('kriter ekranında 10 düzey yerine Kolay/Orta/Zor gösterir (madde: Pratik Yap basitleştirilmiş düzey)', () => {
@@ -188,7 +189,7 @@ describe('CustomTabPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
     fireEvent.click(screen.getByRole('button', { name: '5+0' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Beyaz' }));
+    expect(screen.queryByRole('button', { name: 'Beyaz' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Pratiğe Başla/ }));
     await waitFor(() => expect(push).toHaveBeenCalled());
     const url = push.mock.calls[0][0] as string;
@@ -196,6 +197,7 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('section=41');
     expect(url).toContain('category=Piyon');
     expect(url).toContain('skill=5');
+    expect(url).toContain('color=random');
   });
 
   it('konumu olmayan bir Oyunsonu kategorisine tıklayınca bilgi mesajı görünür', () => {

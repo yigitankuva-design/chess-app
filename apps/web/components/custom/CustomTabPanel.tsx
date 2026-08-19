@@ -127,6 +127,8 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
             />
             {open && (
               <Branch offset={20}>
+                {/* Madde 4 (2026-08-19): Oyunsonu'nun 5 kategorisi BEYAZ
+                    kalsın diye tint BİLEREK geçilmez. */}
                 {s.title === OYUNSONU_SECTION ? (
                   openCategory === null ? (
                     <div className="grid gap-2.5">
@@ -139,7 +141,6 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
                             label={cat}
                             active={false}
                             size={34}
-                            tint={accentColor}
                             onClick={() => setOpenCategory(cat)}
                             trailing={<span className="t-muted text-xs">{count}</span>}
                           />
@@ -160,6 +161,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
                           <MatchCriteria
                             startLabel="Pratiğe Başla"
                             simplifiedLevels
+                            showColor={false}
                             onStart={(v) => {
                               router.push(
                                 `/play?mode=pool&tab=${tab.id}&section=${s.id}`
@@ -180,6 +182,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
                   <MatchCriteria
                     startLabel="Pratiğe Başla"
                     simplifiedLevels
+                    showColor={false}
                     onStart={(v) => {
                       router.push(
                         `/play?mode=pool&tab=${tab.id}&section=${s.id}`

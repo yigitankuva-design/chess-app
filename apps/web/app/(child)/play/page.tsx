@@ -229,13 +229,13 @@ function PlayInner() {
   }
 
   // ── Arkadaşla Oyna ─────────────────────────────────────────────────────────
+  // Madde 2 (2026-08-19): geri ok kaldırıldı — bu ekrana artık HER ZAMAN
+  // ana sayfadaki Maç Yap sekmesinden direkt gelinir, eski 4-kart menü
+  // yolu kullanılmıyor (Açılış Pratiği'nde yapılan aynı karar).
   if (mode === 'friend') {
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="font-semibold text-sm">🤝 Arkadaşla Oyna</p>
-          {backBtn}
-        </div>
+        <p className="font-semibold text-sm">🤝 Arkadaşla Oyna</p>
         <OfferBoard />
       </main>
     );

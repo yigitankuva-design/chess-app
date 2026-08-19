@@ -191,6 +191,9 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
           tint={tint}
           onClick={() => setOpenOuter((p) => (p === 'bot' ? null : 'bot'))}
         />
+        {/* Madde 3 (2026-08-19): "Bota Karşı Pratik Yap" açılınca gelen 3
+            adımın (Tür/Konum/Kriter) cümleleri BEYAZ kalsın diye tint
+            BİLEREK geçilmez — sadece dış başlık tab rengini alır. */}
         {openOuter === 'bot' && (
           <Branch offset={20}>
             <div>
@@ -202,7 +205,6 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 ) : undefined}
                 active={openInner === 'type'}
                 size={34}
-                tint={tint}
                 onClick={() => setOpenInner((p) => (p === 'type' ? null : 'type'))}
               />
               {openInner === 'type' && (
@@ -220,7 +222,6 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 active={openInner === 'opening'}
                 locked={!isOpeningUnlocked(category)}
                 size={34}
-                tint={tint}
                 onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
               />
               {openInner === 'opening' && (
@@ -235,7 +236,6 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 active={openInner === 'criteria'}
                 locked={!isCriteriaUnlocked(chosen?.name ?? null)}
                 size={34}
-                tint={tint}
                 onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
               />
               {openInner === 'criteria' && (
@@ -243,6 +243,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                   <MatchCriteria
                     startLabel="Pratiğe Başla"
                     simplifiedLevels
+                    showColor={false}
                     onStart={(v) => {
                       // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
                       if (!chosen) return;

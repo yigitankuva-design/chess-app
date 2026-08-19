@@ -69,8 +69,6 @@ describe('/play — 4 sekme (madde a)', () => {
 });
 
 describe('/play — "Maç Türü" yazısı kaldırıldı (madde 4 ve 8)', () => {
-  /** Geri dönüş DÜĞMESİ duruyor, sadece yazısı gitti — sporcu 4 karta
-   *  dönebilmeli, yoksa o ekranda mahsur kalır. */
   it('Arkadaşla Oyna içinde "Maç Türü" YAZISI yoktur', () => {
     render(<PlayPage />);
     fireEvent.click(screen.getByText('Arkadaşla Oyna'));
@@ -83,11 +81,11 @@ describe('/play — "Maç Türü" yazısı kaldırıldı (madde 4 ve 8)', () => 
     expect(screen.queryByText(/Maç Türü/)).not.toBeInTheDocument();
   });
 
-  it('geri düğmesi DURUYOR ve 4 kart listesine döner', () => {
+  /** Madde 2 (2026-08-19): Arkadaşla Oyna ekranındaki geri ok kartı
+   *  kaldırıldı — bu ekrana artık her zaman ana sayfadan direkt gelinir. */
+  it('Arkadaşla Oyna ekranında geri ok kartı YOKTUR', () => {
     render(<PlayPage />);
     fireEvent.click(screen.getByText('Arkadaşla Oyna'));
-    fireEvent.click(screen.getByLabelText('Maç türü seçimine dön'));
-    expect(screen.getByText('Maç Türü Seç')).toBeInTheDocument();
-    expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Maç türü seçimine dön')).not.toBeInTheDocument();
   });
 });
