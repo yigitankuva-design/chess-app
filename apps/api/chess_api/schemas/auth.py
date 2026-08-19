@@ -102,6 +102,7 @@ class AdminModuleSummary(BaseModel):
     order_index: int
     name: str
     lesson_count: int
+    icon: str
 
 
 class AdminLessonSummary(BaseModel):
@@ -176,12 +177,14 @@ class ReorderRequest(BaseModel):
 class LessonCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     estimated_minutes: int = 10
+    icon: str | None = None
 
 
 class LessonUpdateRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     estimated_minutes: int | None = None
     module_id: int | None = None  # verilirse ders bu düzeye taşınır
+    icon: str | None = None
 
 
 class LessonPublishRequest(BaseModel):
@@ -196,6 +199,7 @@ class AdminLessonDetail(BaseModel):
     estimated_minutes: int
     published: bool
     step_count: int
+    icon: str | None = None
 
 
 class StepCreateRequest(BaseModel):

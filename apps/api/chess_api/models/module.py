@@ -27,6 +27,7 @@ class Lesson(Base):
     title: Mapped[str] = mapped_column(String(160))
     estimated_minutes: Mapped[int] = mapped_column(Integer, default=10)
     published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sa_true(), default=True)
+    icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
 
 class LessonStep(Base):

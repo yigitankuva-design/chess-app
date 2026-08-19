@@ -6,7 +6,7 @@ import { useSettings } from '@/lib/settings/settings-context';
 import { DEFAULT_SETTINGS, mergeSettings, ALL_TABS } from '@/lib/settings/defaults';
 import type { AppSettingsData, TabKey } from '@/lib/settings/defaults';
 import {
-  listCustomTabs, createCustomTab, deleteCustomTab,
+  listCustomTabs, createCustomTab, updateCustomTab, deleteCustomTab,
   getCustomTab, createCustomTabSection, deleteCustomTabSection, updateCustomTabSection,
 } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
@@ -14,6 +14,8 @@ import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
 import { OpeningCategoryCards } from '@/components/admin/OpeningCategoryCards';
+import { IconPicker } from '@/components/admin/IconPicker';
+import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
 import {
   PRATIK_YAP_LABEL, FIXED_SECTIONS, OYUNSONU_SECTION,
@@ -58,8 +60,11 @@ export default function AdminTabsPage() {
   const { reload } = useSettings();
   const [tabs, setTabs] = useState<AppSettingsData['tabs']>(DEFAULT_SETTINGS.tabs);
   const [order, setOrder] = useState<TabKey[]>(DEFAULT_SETTINGS.tabOrder);
+  /** Madde 1 (2026-08-19): 4 sabit sekmenin ikon havuzundan seçilmiş ikonu. */
+  const [icons, setIcons] = useState<AppSettingsData['labels']['icons']>(DEFAULT_SETTINGS.labels.icons);
   const [customTabs, setCustomTabs] = useState<CustomTabSummary[]>([]);
   const [newLabel, setNewLabel] = useState('');
+  const [newTabEmoji, setNewTabEmoji] = useState('');
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -92,6 +97,7 @@ export default function AdminTabsPage() {
       .then((d) => {
         const s = mergeSettings(d);
         setTabs(s.tabs);
+        setIcons(s.labels.icons);
         // Bozuk/eksik sırayı onar: bilinen sekmeler, eksikler sona
         const clean = (Array.isArray(s.tabOrder) ? s.tabOrder : []).filter((t): t is TabKey => ALL_TABS.includes(t as TabKey));
         setOrder([...clean, ...ALL_TABS.filter((t) => !clean.includes(t))]);
@@ -118,13 +124,43 @@ export default function AdminTabsPage() {
     reload();
   }
 
+  /** Madde 1 (2026-08-19): 4 sabit sekmeden birinin ikonu değişir. */
+  async function saveTabIcon(key: TabKey, emoji: string) {
+    const next = { ...icons, [key]: emoji };
+    setIcons(next);
+    const token = getToken();
+    const r = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ labels: { icons: next } }),
+    });
+    if (!r.ok) { setMsg('Kaydedilemedi'); return; }
+    setMsg('Kaydedildi ✓');
+    reload();
+  }
+
   async function addCustomTab() {
     const label = newLabel.trim();
     if (!label) { setMsg('Sekme adı gerekli'); return; }
-    const created = await createCustomTab(label);
+    const created = await createCustomTab(label, newTabEmoji || undefined);
     if (!created) { setMsg('Eklenemedi'); return; }
     setCustomTabs((prev) => [...prev, created]);
-    setNewLabel('');
+    setNewLabel(''); setNewTabEmoji('');
+    setMsg('Kaydedildi ✓');
+  }
+
+  /** Madde 1 (2026-08-19): mevcut özel sekmenin adı düzenlenir. */
+  async function renameCustomTab(id: number, label: string): Promise<boolean> {
+    const ok = await updateCustomTab(id, { label });
+    if (ok) setCustomTabs((prev) => prev.map((c) => (c.id === id ? { ...c, label } : c)));
+    return ok;
+  }
+
+  /** Madde 1/3 (2026-08-19): mevcut özel sekmenin ikonu ikon havuzundan değişir. */
+  async function saveCustomTabIcon(id: number, emoji: string) {
+    const ok = await updateCustomTab(id, { emoji });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabs((prev) => prev.map((c) => (c.id === id ? { ...c, emoji } : c)));
     setMsg('Kaydedildi ✓');
   }
 
@@ -305,6 +341,22 @@ export default function AdminTabsPage() {
     setMsg('Kaydedildi ✓');
   }
 
+  /** Madde 3 (2026-08-19): alt sekmenin ikonu değişir — sabit sekmeler
+   *  (Kazanç/Oyunsonu) dahil, başlık/silme kilidinden BAĞIMSIZ. */
+  async function saveSectionIcon(tabId: number, sectionId: number, emoji: string) {
+    const ok = await updateCustomTabSection(sectionId, { emoji });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: { ...tab, sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, emoji } : s)) },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
   function move(key: TabKey, dir: -1 | 1) {
     const visible = order.filter((t) => tabs[t] !== false);
     const i = visible.indexOf(key);
@@ -351,7 +403,11 @@ export default function AdminTabsPage() {
           return (
             <div key={key} className="neon-card p-4" style={{ borderColor: m.color }}>
               <div className="flex items-center gap-3">
-                <span className="text-2xl leading-none">{m.emoji}</span>
+                <IconPicker
+                  value={icons[key] || m.emoji}
+                  onChange={(emoji) => saveTabIcon(key, emoji)}
+                  ariaLabel={`${m.label} ikonunu değiştir`}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold n-text" style={{ color: m.color }}>{idx + 1}. {m.label}</p>
                   <p className="text-xs n-muted">{m.desc}</p>
@@ -464,9 +520,20 @@ export default function AdminTabsPage() {
           return (
             <div key={c.id} className="neon-card p-4" style={{ borderColor: color }}>
               <div className="flex items-center gap-3">
-                <span className="text-2xl leading-none">{c.emoji}</span>
+                <IconPicker
+                  value={c.emoji}
+                  onChange={(emoji) => saveCustomTabIcon(c.id, emoji)}
+                  ariaLabel={`${c.label} ikonunu değiştir`}
+                />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold n-text" style={{ color }}>{idx + 1}. {c.label}</p>
+                  <p className="font-semibold n-text" style={{ color }}>
+                    {idx + 1}.{' '}
+                    <InlineTitleEdit
+                      value={c.label}
+                      onSave={(next) => renameCustomTab(c.id, next)}
+                      ariaLabel={`${c.label} sekme adını düzenle`}
+                    />
+                  </p>
                   <p className="text-xs n-muted">Zafer hocanın eklediği sekme</p>
                 </div>
                 <button onClick={() => removeCustomTab(c.id)}
@@ -513,16 +580,23 @@ export default function AdminTabsPage() {
                         const isEditing = editingSectionId === s.id;
                         // Sabit sekmeler (Kazanç/Oyunsonu) adı değiştirilemez ve silinemez.
                         const fixed = isPratikYap && isFixedSection(s.title);
-                        const emoji = isPratikYap ? sectionEmoji(s.title) : null;
+                        // Madde 3 (2026-08-19): admin ikon seçtiyse (s.emoji) o kullanılır;
+                        // seçmediyse eski varsayılana (Kazanç/Oyunsonu → 🏆/🏁) düşer.
+                        const emoji = s.emoji || (isPratikYap ? sectionEmoji(s.title) : null);
                         return (
                           <div key={s.id} className="rounded-lg border border-white/10 bg-white/[0.03]">
                             <div className="flex items-center gap-2 px-3 py-2.5">
+                              <IconPicker
+                                value={emoji}
+                                onChange={(next) => saveSectionIcon(c.id, s.id, next)}
+                                size={30}
+                                ariaLabel={`${s.title} ikonunu değiştir`}
+                              />
                               <button type="button"
                                 onClick={() => setOpenSectionId((p) => (p === s.id ? null : s.id))}
                                 aria-expanded={sOpen}
                                 className="flex-1 flex items-center gap-2 text-left hover:bg-white/5 transition-colors">
-                                <span className="text-sm font-semibold n-text flex-1 flex items-center gap-2">
-                                  {emoji && <span className="text-base leading-none">{emoji}</span>}
+                                <span className="text-sm font-semibold n-text flex-1">
                                   {s.title}
                                 </span>
                                 <span className="text-xs n-muted">{sOpen ? '▴' : '▾'}</span>
@@ -655,7 +729,11 @@ export default function AdminTabsPage() {
           Sekmeye bir ad ver. Yukarıdaki listede görünür — AÇ&apos;a basıp içine
           alt sekmeler (başlık/yazı/görsel) ekleyebilirsin.
         </p>
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-end">
+          <div>
+            <label className="text-xs n-muted block mb-1">İkon</label>
+            <IconPicker value={newTabEmoji} onChange={setNewTabEmoji} ariaLabel="Yeni sekmenin ikonunu seç" />
+          </div>
           <div>
             <label className="text-xs n-muted block mb-1">Sekme adı</label>
             <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}

@@ -6,6 +6,12 @@ export interface AppSettingsData {
     levels: Record<string, string>;      // "1".."4"
     features: { play: string; lessons: string; analiz: string; eglence: string };
     sections: { quickAccess: string; lessonsPick: string };
+    /**
+     * 4 sabit Hızlı Erişim sekmesinin ikon havuzundan seçilmiş ikonu
+     * (madde 1, 2026-08-19). Boş string = admin hiç seçmedi, sporcu tarafı
+     * eski sabit çizgi-ikonlara (kılıç/kitap/büyüteç/yapboz) düşer.
+     */
+    icons: { play: string; lessons: string; analiz: string; eglence: string };
   };
   tabs: { play: boolean; lessons: boolean; analiz: boolean; eglence: boolean };
   /** Sekmelerin sporcu ekranındaki sırası (admin sürükleyip değiştirebilir). */
@@ -27,6 +33,7 @@ export const DEFAULT_SETTINGS: AppSettingsData = {
     levels: { '1': 'Temel Düzey', '2': 'Başlangıç Düzeyi', '3': 'Orta Düzey', '4': 'İleri Düzey' },
     features: { play: 'Maç Yap', lessons: 'Dersler', analiz: 'Analiz Et', eglence: 'Eğlence' },
     sections: { quickAccess: 'Hızlı Erişim', lessonsPick: 'Dersler — Düzey Seç' },
+    icons: { play: '', lessons: '', analiz: '', eglence: '' },
   },
   tabs: { play: true, lessons: true, analiz: true, eglence: true },
   tabOrder: ['play', 'lessons', 'analiz', 'eglence'],

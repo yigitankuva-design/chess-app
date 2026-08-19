@@ -43,7 +43,7 @@ async def module_lessons(module_id: int, db: AsyncSession = Depends(get_db)):
     )).scalars().all()
     return [
         {"id": l.id, "order_index": l.order_index, "title": l.title,
-         "estimated_minutes": l.estimated_minutes}
+         "estimated_minutes": l.estimated_minutes, "icon": l.icon}
         for l in lessons
     ]
 

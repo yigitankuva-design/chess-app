@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
+import { IconPicker } from '@/components/admin/IconPicker';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface ModuleRow { id: number; order_index: number; name: string; lesson_count: number; }
+interface ModuleRow { id: number; order_index: number; name: string; lesson_count: number; icon: string; }
 
 export default function AdminContentPage() {
   const [rows, setRows] = useState<ModuleRow[]>([]);
@@ -14,6 +15,7 @@ export default function AdminContentPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [newIcon, setNewIcon] = useState('');
   const [adding, setAdding] = useState(false);
 
   async function refresh() {
@@ -31,10 +33,11 @@ export default function AdminContentPage() {
       const r = await fetch(`${API_BASE}/admin/modules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: newName.trim(), description: '', icon: 'default' }),
+        body: JSON.stringify({ name: newName.trim(), description: '', icon: newIcon || 'default' }),
       });
       if (!r.ok) { setMsg('Düzey eklenemedi'); setAdding(false); return; }
       setNewName('');
+      setNewIcon('');
       await refresh();
       setMsg('Düzey eklendi');
     } catch {
@@ -57,6 +60,18 @@ export default function AdminContentPage() {
     } catch {
       return false;
     }
+  }
+
+  async function saveModuleIcon(id: number, icon: string) {
+    try {
+      const token = getToken();
+      const r = await fetch(`${API_BASE}/admin/modules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ icon }),
+      });
+      if (r.ok) await refresh();
+    } catch { /* ignore */ }
   }
 
   async function deleteModule(id: number, name: string) {
@@ -168,6 +183,7 @@ export default function AdminContentPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
+        <IconPicker value={newIcon} onChange={setNewIcon} ariaLabel="Yeni düzey ikonu seç" />
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
@@ -195,6 +211,13 @@ export default function AdminContentPage() {
                   <span className={`neon-avatar ${accent} w-[5.5rem] h-[5.5rem] text-4xl font-bold shrink-0`}>
                     {m.order_index}
                   </span>
+                  <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                    <IconPicker
+                      value={m.icon && m.icon !== 'default' ? m.icon : ''}
+                      onChange={(icon) => saveModuleIcon(m.id, icon)}
+                      ariaLabel={`${m.name} ikonunu düzenle`}
+                    />
+                  </div>
                   <InlineTitleEdit
                     value={m.name}
                     onSave={(next) => renameModule(m.id, next)}

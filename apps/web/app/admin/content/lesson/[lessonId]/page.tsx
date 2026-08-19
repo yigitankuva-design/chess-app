@@ -9,6 +9,7 @@ import { assignExerciseCodes, nextExerciseCode } from '@/lib/exerciseCodes';
 import { exerciseBadgeTitle } from '@/lib/exerciseBadge';
 import { difficultyColor } from '@/lib/difficultyLabels';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
+import { IconPicker } from '@/components/admin/IconPicker';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -326,6 +327,18 @@ export default function AdminStepEditorPage() {
     return s.type;
   }
 
+  async function saveStepIcon(s: StepRow, icon: string) {
+    const token = getToken();
+    try {
+      const r = await fetch(`${API_BASE}/admin/steps/${s.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content_json: { ...s.content_json, icon } }),
+      });
+      if (r.ok) await refresh();
+    } catch { /* ignore */ }
+  }
+
   async function renameStepTitle(s: StepRow, title: string): Promise<boolean> {
     const token = getToken();
     try {
@@ -362,6 +375,14 @@ export default function AdminStepEditorPage() {
               <div key={s.id}>
                 <div className={`neon-card ${accent} flex flex-wrap items-center gap-3 p-4`}>
                   <span className={`neon-avatar ${accent} w-10 h-10 text-xs shrink-0`}>{s.order_index}</span>
+                  {s.type === 'explanation' && (
+                    <IconPicker
+                      value={(s.content_json.icon as string) || ''}
+                      onChange={(icon) => saveStepIcon(s, icon)}
+                      ariaLabel={`${stepSummary(s)} ikonunu düzenle`}
+                      size={32}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs n-muted uppercase tracking-wide">
                       {s.type === 'explanation' ? 'Alt Konu' : s.type === 'quiz' ? 'Soru' : s.type}

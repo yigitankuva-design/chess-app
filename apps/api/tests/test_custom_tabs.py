@@ -11,7 +11,10 @@ def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():
 
     assert CustomTabSection.__tablename__ == "custom_tab_sections"
     cols = set(CustomTabSection.__table__.columns.keys())
-    assert cols == {"id", "custom_tab_id", "order_index", "title", "body", "images", "practice_positions"}
+    assert cols == {
+        "id", "custom_tab_id", "order_index", "title", "body", "images",
+        "practice_positions", "emoji",
+    }
 
 
 import pytest

@@ -140,7 +140,7 @@ describe('Admin Sekmeler — Yeni Sekme Ekle (B grubu)', () => {
     await renderPage();
     fireEvent.change(screen.getByPlaceholderText('örn. Bulmacalar'), { target: { value: 'Turnuvalar' } });
     fireEvent.click(screen.getByText('Ekle'));
-    await waitFor(() => expect(createCustomTab).toHaveBeenCalledWith('Turnuvalar'));
+    await waitFor(() => expect(createCustomTab).toHaveBeenCalledWith('Turnuvalar', undefined));
   });
 
   it('eklenen sekme diğerleri gibi numaralı ve AÇ butonludur', async () => {
@@ -150,7 +150,11 @@ describe('Admin Sekmeler — Yeni Sekme Ekle (B grubu)', () => {
     ]);
     await renderPage();
     await waitFor(() => screen.getByText(/Turnuvalar/));
-    expect(screen.getByText(/5\. Turnuvalar/)).toBeInTheDocument();
+    // İkon değiştirme özelliği (madde 3) sekme adını InlineTitleEdit ile sarar —
+    // "5." ve "Turnuvalar" artık ayrı DOM düğümlerinde, bu yüzden tam metni
+    // node.textContent üzerinden kontrol ediyoruz (varsayılan getByText yalnızca
+    // bir düğümün DOĞRUDAN metin çocuklarına bakar, iç içe span'ları görmez).
+    expect(screen.getByText((_, node) => node?.tagName === 'P' && /5\.\s*Turnuvalar/.test(node.textContent || ''))).toBeInTheDocument();
     expect(screen.getByLabelText('Turnuvalar sekmesini aç')).toHaveTextContent('AÇ');
   });
 });

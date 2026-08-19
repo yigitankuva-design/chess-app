@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
+import { IconPicker } from '@/components/admin/IconPicker';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -15,6 +16,7 @@ interface LessonRow {
   estimated_minutes: number;
   published: boolean;
   step_count: number;
+  icon?: string | null;
 }
 
 interface ModuleRow { id: number; order_index: number; name: string; lesson_count: number; }
@@ -109,6 +111,18 @@ export default function AdminModuleLessonsPage() {
     }
   }
 
+  async function saveLessonIcon(les: LessonRow, icon: string) {
+    const token = getToken();
+    try {
+      const r = await fetch(`${API_BASE}/admin/lessons/${les.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ icon }),
+      });
+      if (r.ok) await refresh();
+    } catch { /* ignore */ }
+  }
+
   async function deleteLesson(les: LessonRow) {
     if (!confirm(`"${les.title}" dersini silmek istiyor musun?`)) return;
     setMsg(null);
@@ -159,6 +173,12 @@ export default function AdminModuleLessonsPage() {
             return (
               <div key={les.id} className={`neon-card ${accent} flex flex-wrap items-center gap-3 p-4`}>
                 <span className={`neon-avatar ${accent} w-11 h-11 text-sm shrink-0`}>{les.order_index}</span>
+                <IconPicker
+                  value={les.icon || ''}
+                  onChange={(icon) => saveLessonIcon(les, icon)}
+                  ariaLabel={`${les.title} ders ikonunu düzenle`}
+                  size={32}
+                />
                 <div className="flex-1 min-w-0">
                   <InlineTitleEdit
                     value={les.title}

@@ -12,6 +12,7 @@ vi.mock('@/lib/settings/settings-context', () => ({
       labels: {
         sections: { quickAccess: 'Hızlı Erişim', lessonsPick: 'Ders Seç' },
         features: { play: 'Maç Yap', lessons: 'Dersler', analiz: 'Analiz', eglence: 'Eğlence' },
+        icons: { play: '', lessons: '', analiz: '', eglence: '' },
       },
       customTabs: [],
     },

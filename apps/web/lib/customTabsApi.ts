@@ -16,6 +16,9 @@ export interface CustomTabSection {
   body: string;
   images: string[];
   practice_positions: { id: string; fen: string; category?: string | null }[];
+  /** İkon havuzundan seçilmiş bölüm ikonu — yoksa sporcu tarafı eski
+   *  varsayılana (Kazanç/Oyunsonu için 🏆/🏁, diğerleri için 🎯) düşer. */
+  emoji?: string | null;
 }
 
 export interface CustomTabDetail {
@@ -45,18 +48,35 @@ export async function getCustomTab(id: number): Promise<CustomTabDetail | null> 
   }
 }
 
-export async function createCustomTab(label: string): Promise<CustomTabSummary | null> {
+export async function createCustomTab(label: string, emoji?: string): Promise<CustomTabSummary | null> {
   const token = getToken();
   try {
     const r = await fetch(`${API_BASE}/admin/custom-tabs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ label }),
+      body: JSON.stringify({ label, ...(emoji ? { emoji } : {}) }),
     });
     if (!r.ok) return null;
     return await r.json();
   } catch {
     return null;
+  }
+}
+
+/** Madde 1/3 (2026-08-19): admin sekmenin adını ve/veya ikonunu değiştirir. */
+export async function updateCustomTab(
+  id: number, patch: { label?: string; emoji?: string },
+): Promise<boolean> {
+  const token = getToken();
+  try {
+    const r = await fetch(`${API_BASE}/admin/custom-tabs/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(patch),
+    });
+    return r.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -74,14 +94,14 @@ export async function deleteCustomTab(id: number): Promise<boolean> {
 }
 
 export async function createCustomTabSection(
-  tabId: number, title: string, body: string, images: string[],
+  tabId: number, title: string, body: string, images: string[], emoji?: string,
 ): Promise<CustomTabSection | null> {
   const token = getToken();
   try {
     const r = await fetch(`${API_BASE}/admin/custom-tabs/${tabId}/sections`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ title, body, images }),
+      body: JSON.stringify({ title, body, images, ...(emoji ? { emoji } : {}) }),
     });
     if (!r.ok) return null;
     return await r.json();
@@ -95,6 +115,7 @@ export async function updateCustomTabSection(
   patch: {
     title?: string; body?: string; images?: string[];
     practice_positions?: { id: string; fen: string; category?: string | null }[];
+    emoji?: string;
   },
 ): Promise<boolean> {
   const token = getToken();

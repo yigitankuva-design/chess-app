@@ -126,7 +126,7 @@ async def content(
             select(func.count(Lesson.id)).where(Lesson.module_id == m.id)
         )).scalar_one()
         out.append(AdminModuleSummary(
-            id=m.id, order_index=m.order_index, name=m.name, lesson_count=lc,
+            id=m.id, order_index=m.order_index, name=m.name, lesson_count=lc, icon=m.icon,
         ))
     return out
 
@@ -394,7 +394,7 @@ async def delete_module(
 def _lesson_out(les: Lesson, step_count: int) -> dict:
     return {"id": les.id, "module_id": les.module_id, "order_index": les.order_index,
             "title": les.title, "estimated_minutes": les.estimated_minutes,
-            "published": les.published, "step_count": step_count}
+            "published": les.published, "step_count": step_count, "icon": les.icon}
 
 
 @router.post("/modules/{module_id}/lessons", status_code=201)
@@ -412,7 +412,8 @@ async def create_lesson(
         select(func.max(Lesson.order_index)).where(Lesson.module_id == module_id)
     )).scalar_one_or_none() or 0
     lesson = Lesson(module_id=module_id, order_index=max_order + 1, title=payload.title,
-                    estimated_minutes=payload.estimated_minutes, published=False)
+                    estimated_minutes=payload.estimated_minutes, published=False,
+                    icon=payload.icon)
     db.add(lesson)
     await db.commit()
     await db.refresh(lesson)
@@ -434,6 +435,8 @@ async def update_lesson(
         lesson.title = payload.title
     if payload.estimated_minutes is not None:
         lesson.estimated_minutes = payload.estimated_minutes
+    if payload.icon is not None:
+        lesson.icon = payload.icon
     if payload.module_id is not None and payload.module_id != lesson.module_id:
         target = await db.get(Module, payload.module_id)
         if not target:
@@ -1261,6 +1264,9 @@ CUSTOM_TAB_EMOJIS = ["📌", "⭐", "🎯", "📢", "🗂️", "🧭", "💡", "
 
 class CustomTabCreateRequest(BaseModel):
     label: str = Field(min_length=1, max_length=60)
+    # Verilmezse eski davranış: CUSTOM_TAB_EMOJIS'ten sırayla atanır
+    # (madde 3, 2026-08-19: admin artık ikon havuzundan seçebilir).
+    emoji: str | None = Field(default=None, max_length=10)
 
     @field_validator("label")
     @classmethod
@@ -1270,10 +1276,16 @@ class CustomTabCreateRequest(BaseModel):
         return v
 
 
+class CustomTabUpdateRequest(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=60)
+    emoji: str | None = Field(default=None, max_length=10)
+
+
 class CustomTabSectionCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     body: str = ""
     images: list[str] = []
+    emoji: str | None = Field(default=None, max_length=10)
 
 
 class PracticePosition(BaseModel):
@@ -1292,6 +1304,7 @@ class CustomTabSectionUpdateRequest(BaseModel):
     body: str | None = None
     images: list[str] | None = None
     practice_positions: list[PracticePosition] | None = None
+    emoji: str | None = Field(default=None, max_length=10)
 
 
 @router.post("/custom-tabs", status_code=201)
@@ -1305,9 +1318,31 @@ async def create_custom_tab(
     max_order = (await db.execute(select(func.max(CustomTab.order_index)))).scalar_one_or_none() or 0
     tab = CustomTab(
         order_index=max_order + 1, label=payload.label,
-        emoji=CUSTOM_TAB_EMOJIS[count % len(CUSTOM_TAB_EMOJIS)],
+        emoji=payload.emoji or CUSTOM_TAB_EMOJIS[count % len(CUSTOM_TAB_EMOJIS)],
     )
     db.add(tab)
+    await db.commit()
+    await db.refresh(tab)
+    return {"id": tab.id, "order_index": tab.order_index, "label": tab.label, "emoji": tab.emoji}
+
+
+@router.patch("/custom-tabs/{tab_id}")
+async def update_custom_tab(
+    tab_id: int,
+    payload: CustomTabUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 1/3 (2026-08-19): admin sekmenin adını VE ikonunu (ikon
+    havuzundan) değiştirebilsin diye — eskiden PATCH hiç yoktu."""
+    _ensure_admin(current)
+    tab = await db.get(CustomTab, tab_id)
+    if not tab:
+        raise HTTPException(status_code=404, detail="Custom tab not found")
+    if payload.label is not None:
+        tab.label = payload.label
+    if payload.emoji is not None:
+        tab.emoji = payload.emoji
     await db.commit()
     await db.refresh(tab)
     return {"id": tab.id, "order_index": tab.order_index, "label": tab.label, "emoji": tab.emoji}
@@ -1369,13 +1404,14 @@ async def create_custom_tab_section(
     section = CustomTabSection(
         custom_tab_id=tab_id, order_index=max_order + 1,
         title=payload.title, body=payload.body, images=payload.images,
+        emoji=payload.emoji,
     )
     db.add(section)
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
-            "practice_positions": section.practice_positions}
+            "practice_positions": section.practice_positions, "emoji": section.emoji}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1399,11 +1435,13 @@ async def update_custom_tab_section(
         section.images = payload.images
     if payload.practice_positions is not None:
         section.practice_positions = [p.model_dump() for p in payload.practice_positions]
+    if payload.emoji is not None:
+        section.emoji = payload.emoji
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
-            "practice_positions": section.practice_positions}
+            "practice_positions": section.practice_positions, "emoji": section.emoji}
 
 
 @router.delete("/custom-tab-sections/{section_id}")

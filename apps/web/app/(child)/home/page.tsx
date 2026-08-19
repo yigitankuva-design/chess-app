@@ -110,15 +110,6 @@ const IconPuzzle = ({ s = 20 }: { s?: number }) => (
     <path d="M5 4h4.5a1.5 1.5 0 0 1 3 0H17a1 1 0 0 1 1 1v4.5a1.5 1.5 0 0 0 0 3V17a1 1 0 0 1-1 1h-4.5a1.5 1.5 0 0 0-3 0H5a1 1 0 0 1-1-1v-4.5a1.5 1.5 0 0 0 0-3V5a1 1 0 0 1 1-1z" />
   </svg>
 );
-const IconChessPlayer = ({ s = 20 }: { s?: number }) => (
-  <svg width={s} height={s} {...svgBase}>
-    <circle cx="7.5" cy="5" r="2.2" />
-    <path d="M7.5 7.2c-2.2 0-4 1.6-4 4.3V17h5.5" />
-    <path d="M3 20h18" />
-    <path d="M15 20v-3.3c0-.8.5-1.2 1.1-1.6.6-.3.9-.7.9-1.3 0-.8-.7-1.4-1.5-1.4S14 12.9 14 13.7" />
-    <path d="M13.2 16.7h3.6" />
-  </svg>
-);
 
 /** Tempo ve Süre sütunlarının satırları hizalı kalsın diye sabit satır yüksekliği */
 
@@ -135,9 +126,9 @@ const PRACTICE_MODES = [
 
 const QA_STATE_KEY = 'bea_qa_state_v2';
 
-interface ModuleSummary { id: number; order_index: number; name: string; lessons_count: number }
-interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number }
-interface Subtopic { stepId: number; title: string }
+interface ModuleSummary { id: number; order_index: number; name: string; lessons_count: number; icon?: string }
+interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number; icon?: string | null }
+interface Subtopic { stepId: number; title: string; icon?: string }
 
 /* Yumuşak kabartma yüzeyler artık components/ui/neumorphic.tsx'te — Pratik
    Yap ekranı da (CustomTabPanel, OpeningPractice) aynı tasarımı kullanıyor
@@ -236,7 +227,7 @@ export default function ChildHomePage() {
       const detail = await fetch(`${API_BASE}/lessons/${lessonId}`).then((r) => (r.ok ? r.json() : { steps: [] }));
       const subs: Subtopic[] = (detail.steps ?? [])
         .filter((s: { type: string; content_json?: { title?: string } }) => s.type === 'explanation' && s.content_json?.title)
-        .map((s: { id: number; content_json: { title: string } }) => ({ stepId: s.id, title: s.content_json.title }));
+        .map((s: { id: number; content_json: { title: string; icon?: string } }) => ({ stepId: s.id, title: s.content_json.title, icon: s.content_json.icon }));
       setSubtopicsByLesson((prev) => ({ ...prev, [lessonId]: subs }));
       // Hoca'nın alt konu + mod başına girdiği başarı puanları — girilmeyen
       // mod isModeUnlocked/isSubtopicUnlocked/isLessonCompleted içinde eskisi
@@ -347,16 +338,18 @@ export default function ChildHomePage() {
         {/* Sekmeler — admin sırasına göre; aynı anda yalnızca biri açık */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           {orderedTabs.map((key) => {
+            // Madde 1 (2026-08-19): admin ikon havuzundan seçtiyse (L.icons.X)
+            // o kullanılır; seçmediyse eski sabit çizgi-ikona düşer.
             if (key === 'analiz') {
               return (
-                <FeatureTab key={key} icon={<IconAnalyst s={30} />} label={L.features.analiz}
+                <FeatureTab key={key} icon={L.icons.analiz || <IconAnalyst s={30} />} label={L.features.analiz}
                   color={FEATURE_COLORS.analiz} href="/analiz" ledOn={openTab === null} />
               );
             }
             const meta = {
-              play:    { icon: <IconSwords s={30} />, label: L.features.play,    color: FEATURE_COLORS.play },
-              lessons: { icon: <IconBook s={30} />,    label: L.features.lessons, color: FEATURE_COLORS.lessons },
-              eglence: { icon: <IconPuzzle s={30} />,  label: L.features.eglence, color: FEATURE_COLORS.eglence },
+              play:    { icon: L.icons.play || <IconSwords s={30} />, label: L.features.play,    color: FEATURE_COLORS.play },
+              lessons: { icon: L.icons.lessons || <IconBook s={30} />, label: L.features.lessons, color: FEATURE_COLORS.lessons },
+              eglence: { icon: L.icons.eglence || <IconPuzzle s={30} />, label: L.features.eglence, color: FEATURE_COLORS.eglence },
             }[key];
             return (
               <FeatureTab
@@ -369,13 +362,12 @@ export default function ChildHomePage() {
 
           {/* Zafer hocanın eklediği ek sekmeler — ayrı sayfaya GİTMEZ, yerleşik
               sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).
-              "Pratik Yap" özel bir ikon alır (satranç oynayan adam,
-              2026-08-19); diğer özel sekmeler admin'in kendi emoji'sini
-              kullanmaya devam eder. */}
+              İkonu admin'in ikon havuzundan seçtiği emoji belirler (madde
+              1/3, 2026-08-19) — Pratik Yap dahil hepsi aynı kurala uyar. */}
           {customTabs.map((ct, i) => (
             <FeatureTab
               key={ct.id}
-              icon={ct.label === 'Pratik Yap' ? <IconChessPlayer s={30} /> : ct.emoji}
+              icon={ct.emoji}
               label={ct.label}
               color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]}
               active={openTab === ct.id} ledOn={openTab === ct.id || openTab === null}
@@ -491,7 +483,7 @@ export default function ChildHomePage() {
                     <VerticalDivider />
                   )}
                   <PathNode
-                    icon={LEVEL_EMOJIS[li % LEVEL_EMOJIS.length]}
+                    icon={lv.icon && lv.icon !== 'default' ? lv.icon : LEVEL_EMOJIS[li % LEVEL_EMOJIS.length]}
                     label={`${li + 1}. ${lv.name}`}
                     active={levelOpen}
                     size={44}
@@ -529,7 +521,7 @@ export default function ChildHomePage() {
                         return (
                           <div key={les.id}>
                             <PathNode
-                              icon="📘"
+                              icon={les.icon || '📘'}
                               label={lessonLocked ? `🔒 ${les.title}` : les.title}
                               active={lessonOpen}
                               size={36}
@@ -544,7 +536,7 @@ export default function ChildHomePage() {
                                   return (
                                     <div key={sub.stepId}>
                                       <PathNode
-                                        icon={SUBTOPIC_EMOJIS[si % SUBTOPIC_EMOJIS.length]}
+                                        icon={sub.icon || SUBTOPIC_EMOJIS[si % SUBTOPIC_EMOJIS.length]}
                                         label={subLocked(sub.stepId) ? `🔒 ${sub.title}` : sub.title}
                                         active={subOpen}
                                         size={32}

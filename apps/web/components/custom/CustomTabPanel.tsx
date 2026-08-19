@@ -110,7 +110,9 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
 
       {sortPratikSections(tab.sections).map((s) => {
         const open = !openOpening && openSectionId === s.id;
-        const emoji = sectionEmoji(s.title) ?? '🎯';
+        // Madde 3 (2026-08-19): admin ikon havuzundan seçtiyse (s.emoji) o
+        // kullanılır; seçmediyse eski varsayılana düşer (Kazanç/Oyunsonu 🏆/🏁, diğerleri 🎯).
+        const emoji = s.emoji || sectionEmoji(s.title) || '🎯';
         return (
           <div key={s.id}>
             <PathNode

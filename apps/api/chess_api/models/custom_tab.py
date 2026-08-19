@@ -27,3 +27,4 @@ class CustomTabSection(Base):
     body: Mapped[str] = mapped_column(Text)
     images: Mapped[list] = mapped_column(JSON, default=list)
     practice_positions: Mapped[list] = mapped_column(JSON, default=list)
+    emoji: Mapped[str | None] = mapped_column(String(10), nullable=True)
