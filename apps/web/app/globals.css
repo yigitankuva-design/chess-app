@@ -609,7 +609,12 @@ body {
   min-height: var(--mc-h);
 }
 
-@media (orientation: landscape) {
+/* max-width EKLENDİ (2026-08-19): "orientation: landscape" tek başına
+   bilgisayar pencerelerini de yakalıyordu (onlar da genelde geniş/yatay) —
+   Maç Yap ekranı bilgisayarda YANLIŞLIKLA bu yatay düzene giriyordu. Artık
+   sadece gerçekten DAR ekranlarda (telefon yan çevrilince) devreye girer;
+   bilgisayarda her zaman dikey (telefon-tipi) düzen kalır. */
+@media (orientation: landscape) and (max-width: 900px) {
   .match-grid {
     grid-template-columns: minmax(5.5rem, 6.5rem) minmax(0, 1fr) minmax(7rem, 9rem);
     grid-template-rows: repeat(6, auto);
