@@ -7,6 +7,7 @@ import type { CustomTabDetail } from '@/lib/customTabsApi';
 import {
   sectionEmoji, sortPratikSections, OYUNSONU_SECTION, OYUNSONU_CATEGORIES, groupByCategory,
 } from '@/lib/customTabs/pratikYap';
+import { PathNode, Branch } from '@/components/ui/neumorphic';
 
 interface Props {
   tab: CustomTabDetail;
@@ -19,10 +20,14 @@ interface Props {
  *
  * "Pratik Yap" sekmesi özeldir: en üstte sabit Açılış Pratiği Yap satırı durur ve
  * alt sekmeleri yazı/görsel yerine bota karşı pratik kriterlerini gösterir.
+ * Pratik Yap'ın tasarımı Maç Yap/Dersler'le AYNI (yuvarlak kabartma ikon
+ * düğüm + kesikli bağlantı çizgisi, bkz. components/ui/neumorphic.tsx) —
+ * 2026-08-19 kararı. Pratik Yap OLMAYAN özel sekmeler (yazı/görsel içeren
+ * sıradan sekmeler) eski köşeli kart tasarımını korur.
  * Açılış Pratiği Yap, DİĞER alt sekmeler gibi seçim adımlarını (tür/açılış/
- * düzey) AYNI SAYFADA gösterir (2026-08-18 kararı) — ama Kazanç Konumu ve
- * Oyunsonu'nda olduğu gibi, "Pratiğe Başla"ya basılınca ASIL MAÇ /play
- * sayfasına yönlendirilir (OpeningPractice'in onReadyToStart prop'u, 2026-08-19).
+ * düzey) AYNI SAYFADA gösterir — ama Kazanç Konumu ve Oyunsonu'nda olduğu
+ * gibi, "Pratiğe Başla"ya basılınca ASIL MAÇ /play sayfasına yönlendirilir
+ * (OpeningPractice'in onReadyToStart prop'u).
  * "Oyunsonu Pratiği Yap" ayrıca özeldir: kriter ekranından önce sporcu 5
  * kategoriden birini seçer — kategorisiz (eski) konumlar sporcuya gösterilmez.
  */
@@ -36,135 +41,148 @@ export function CustomTabPanel({ tab }: Props) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const isPratikYap = tab.label === 'Pratik Yap';
 
-  return (
-    <div className="space-y-2">
-      {isPratikYap && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
-          <button type="button"
-            onClick={() => { setOpenOpening((p) => !p); setOpenSectionId(null); setOpenCategory(null); }}
-            aria-expanded={openOpening}
-            className="w-full flex items-center gap-3 px-4 py-3 text-left">
-            <span className="text-xl leading-none">📖</span>
-            <span className="font-bold t-premium flex-1">Açılış Pratiği Yap</span>
-            <span className="t-muted">{openOpening ? '▴' : '▾'}</span>
-          </button>
-          {openOpening && (
-            <div className="px-4 pb-4">
-              <OpeningPractice
-                onReadyToStart={(opening, v) => {
-                  router.push(
-                    `/play?mode=opening&opening=${opening.id}`
-                    + `&skill=${v.level.level}`
-                    + `&tc=${encodeURIComponent(v.timeControl.label)}`
-                    + `&color=${v.colorChoice}`,
-                  );
-                }}
-              />
+  if (!isPratikYap) {
+    return (
+      <div className="space-y-2">
+        {tab.sections.length === 0 && <p className="t-muted">Henüz içerik eklenmedi</p>}
+        {tab.sections.map((s) => {
+          const open = openSectionId === s.id;
+          return (
+            <div key={s.id} className="rounded-2xl overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
+              <button type="button"
+                onClick={() => setOpenSectionId((p) => (p === s.id ? null : s.id))}
+                aria-expanded={open}
+                className="w-full flex items-center justify-between px-4 py-3 text-left">
+                <span className="text-lg font-bold t-premium flex items-center gap-2">{s.title}</span>
+                <span className="t-muted">{open ? '▴' : '▾'}</span>
+              </button>
+              {open && (
+                <div className="px-4 pb-4 space-y-3">
+                  {s.body && <p className="t-muted whitespace-pre-wrap">{s.body}</p>}
+                  {s.images.length > 0 && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {s.images.map((uri, i) => (
+                        <img key={i} src={uri} alt={`${s.title} görseli ${i + 1}`}
+                          className="rounded-lg w-full" style={{ objectFit: 'contain' }} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          );
+        })}
+      </div>
+    );
+  }
 
-      {tab.sections.length === 0 && !isPratikYap && (
-        <p className="t-muted">Henüz içerik eklenmedi</p>
-      )}
+  return (
+    <div className="grid gap-3">
+      <div>
+        <PathNode
+          icon="📖"
+          label="Açılış Pratiği Yap"
+          active={openOpening}
+          size={40}
+          onClick={() => { setOpenOpening((p) => !p); setOpenSectionId(null); setOpenCategory(null); }}
+        />
+        {openOpening && (
+          <Branch offset={20}>
+            <OpeningPractice
+              onReadyToStart={(opening, v) => {
+                router.push(
+                  `/play?mode=opening&opening=${opening.id}`
+                  + `&skill=${v.level.level}`
+                  + `&tc=${encodeURIComponent(v.timeControl.label)}`
+                  + `&color=${v.colorChoice}`,
+                );
+              }}
+            />
+          </Branch>
+        )}
+      </div>
 
-      {(isPratikYap ? sortPratikSections(tab.sections) : tab.sections).map((s) => {
+      {sortPratikSections(tab.sections).map((s) => {
         const open = !openOpening && openSectionId === s.id;
-        const emoji = isPratikYap ? sectionEmoji(s.title) : null;
+        const emoji = sectionEmoji(s.title) ?? '🎯';
         return (
-          <div key={s.id} className="rounded-2xl overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
-            <button type="button"
+          <div key={s.id}>
+            <PathNode
+              icon={emoji}
+              label={s.title}
+              active={open}
+              size={40}
               onClick={() => {
                 setOpenSectionId((p) => (p === s.id ? null : s.id));
                 setOpenCategory(null);
                 setOpenOpening(false);
               }}
-              aria-expanded={open}
-              className="w-full flex items-center justify-between px-4 py-3 text-left">
-              <span className="text-lg font-bold t-premium flex items-center gap-2">
-                {emoji && <span className="leading-none">{emoji}</span>}
-                {s.title}
-              </span>
-              <span className="t-muted">{open ? '▴' : '▾'}</span>
-            </button>
+            />
             {open && (
-              <div className="px-4 pb-4 space-y-3">
-                {isPratikYap ? (
-                  s.title === OYUNSONU_SECTION ? (
-                    openCategory === null ? (
-                      <div className="space-y-2">
-                        {OYUNSONU_CATEGORIES.map((cat) => {
-                          const count = groupByCategory(s.practice_positions)[cat].length;
-                          return (
-                            <button key={cat} type="button"
-                              onClick={() => setOpenCategory(cat)}
-                              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-left"
-                              style={{ background: 'var(--t-surface-3)' }}>
-                              <span className="font-semibold text-sm t-premium">{cat}</span>
-                              <span className="t-muted text-xs">{count}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <button type="button" onClick={() => setOpenCategory(null)}
-                          className="text-xs t-muted">
-                          ← Kategorilere dön
-                        </button>
-                        {(() => {
-                          const filtered = groupByCategory(s.practice_positions)[openCategory];
-                          return filtered.length === 0 ? (
-                            <p className="t-muted text-sm">Bu kategoride henüz konum yok.</p>
-                          ) : (
-                            <MatchCriteria
-                              startLabel="Pratiğe Başla"
-                              simplifiedLevels
-                              onStart={(v) => {
-                                router.push(
-                                  `/play?mode=pool&tab=${tab.id}&section=${s.id}`
-                                  + `&category=${encodeURIComponent(openCategory)}`
-                                  + `&skill=${v.level.level}`
-                                  + `&tc=${encodeURIComponent(v.timeControl.label)}`
-                                  + `&color=${v.colorChoice}`,
-                                );
-                              }}
-                            />
-                          );
-                        })()}
-                      </div>
-                    )
-                  ) : s.practice_positions.length === 0 ? (
-                    <p className="t-muted text-sm">Henüz konum eklenmedi.</p>
-                  ) : (
-                    <MatchCriteria
-                      startLabel="Pratiğe Başla"
-                      simplifiedLevels
-                      onStart={(v) => {
-                        router.push(
-                          `/play?mode=pool&tab=${tab.id}&section=${s.id}`
-                          + `&skill=${v.level.level}`
-                          + `&tc=${encodeURIComponent(v.timeControl.label)}`
-                          + `&color=${v.colorChoice}`,
+              <Branch offset={20}>
+                {s.title === OYUNSONU_SECTION ? (
+                  openCategory === null ? (
+                    <div className="grid gap-2.5">
+                      {OYUNSONU_CATEGORIES.map((cat) => {
+                        const count = groupByCategory(s.practice_positions)[cat].length;
+                        return (
+                          <PathNode
+                            key={cat}
+                            icon="🏁"
+                            label={cat}
+                            active={false}
+                            size={34}
+                            onClick={() => setOpenCategory(cat)}
+                            trailing={<span className="t-muted text-xs">{count}</span>}
+                          />
                         );
-                      }}
-                    />
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <button type="button" onClick={() => setOpenCategory(null)}
+                        className="text-xs t-muted">
+                        ← Kategorilere dön
+                      </button>
+                      {(() => {
+                        const filtered = groupByCategory(s.practice_positions)[openCategory];
+                        return filtered.length === 0 ? (
+                          <p className="t-muted text-sm">Bu kategoride henüz konum yok.</p>
+                        ) : (
+                          <MatchCriteria
+                            startLabel="Pratiğe Başla"
+                            simplifiedLevels
+                            onStart={(v) => {
+                              router.push(
+                                `/play?mode=pool&tab=${tab.id}&section=${s.id}`
+                                + `&category=${encodeURIComponent(openCategory)}`
+                                + `&skill=${v.level.level}`
+                                + `&tc=${encodeURIComponent(v.timeControl.label)}`
+                                + `&color=${v.colorChoice}`,
+                              );
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
                   )
+                ) : s.practice_positions.length === 0 ? (
+                  <p className="t-muted text-sm">Henüz konum eklenmedi.</p>
                 ) : (
-                  <>
-                    {s.body && <p className="t-muted whitespace-pre-wrap">{s.body}</p>}
-                    {s.images.length > 0 && (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {s.images.map((uri, i) => (
-                          <img key={i} src={uri} alt={`${s.title} görseli ${i + 1}`}
-                            className="rounded-lg w-full" style={{ objectFit: 'contain' }} />
-                        ))}
-                      </div>
-                    )}
-                  </>
+                  <MatchCriteria
+                    startLabel="Pratiğe Başla"
+                    simplifiedLevels
+                    onStart={(v) => {
+                      router.push(
+                        `/play?mode=pool&tab=${tab.id}&section=${s.id}`
+                        + `&skill=${v.level.level}`
+                        + `&tc=${encodeURIComponent(v.timeControl.label)}`
+                        + `&color=${v.colorChoice}`,
+                      );
+                    }}
+                  />
                 )}
-              </div>
+              </Branch>
             )}
           </div>
         );

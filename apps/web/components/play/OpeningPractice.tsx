@@ -4,7 +4,7 @@ import { BotGame } from '@/components/BotGame';
 import { FriendChallenge } from '@/components/play/FriendChallenge';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
-import { StepCard } from '@/components/play/StepCard';
+import { PathNode, Branch } from '@/components/ui/neumorphic';
 import {
   isCriteriaUnlocked, isOpeningUnlocked, openingSummary, categorySummary,
 } from '@/lib/play/openingSteps';
@@ -178,80 +178,107 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
   }
 
   return (
-    <div className="space-y-3">
-      <StepCard
-        emoji="🤖"
-        title="Bota Karşı Pratik Yap"
-        open={openOuter === 'bot'}
-        onToggle={() => setOpenOuter((p) => (p === 'bot' ? null : 'bot'))}
-      >
-        <div className="space-y-3">
-          <StepCard
-            stepNumber={1}
-            title="Açılış Türünü Seç"
-            summary={categorySummary(category)}
-            open={openInner === 'type'}
-            tone={1}
-            onToggle={() => setOpenInner((p) => (p === 'type' ? null : 'type'))}
-          >
-            {typeList(() => setOpenInner('opening'))}
-          </StepCard>
+    <div className="grid gap-3">
+      <div>
+        <PathNode
+          icon="🤖"
+          label="Bota Karşı Pratik Yap"
+          active={openOuter === 'bot'}
+          size={40}
+          onClick={() => setOpenOuter((p) => (p === 'bot' ? null : 'bot'))}
+        />
+        {openOuter === 'bot' && (
+          <Branch offset={20}>
+            <div>
+              <PathNode
+                icon="📖"
+                label="1. Açılış Türünü Seç"
+                trailing={categorySummary(category) ? (
+                  <span className="text-xs t-muted">{categorySummary(category)}</span>
+                ) : undefined}
+                active={openInner === 'type'}
+                size={34}
+                onClick={() => setOpenInner((p) => (p === 'type' ? null : 'type'))}
+              />
+              {openInner === 'type' && (
+                <Branch offset={17}>{typeList(() => setOpenInner('opening'))}</Branch>
+              )}
+            </div>
 
-          <StepCard
-            stepNumber={2}
-            title="Açılış Konumunu Seç"
-            summary={openingSummary(chosen?.name ?? null)}
-            open={openInner === 'opening'}
-            locked={!isOpeningUnlocked(category)}
-            tone={2}
-            onToggle={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
-          >
-            {openingList(() => setOpenInner('criteria'))}
-          </StepCard>
+            <div>
+              <PathNode
+                icon="📍"
+                label="2. Açılış Konumunu Seç"
+                trailing={openingSummary(chosen?.name ?? null) ? (
+                  <span className="text-xs t-muted">{openingSummary(chosen?.name ?? null)}</span>
+                ) : undefined}
+                active={openInner === 'opening'}
+                locked={!isOpeningUnlocked(category)}
+                size={34}
+                onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
+              />
+              {openInner === 'opening' && (
+                <Branch offset={17}>{openingList(() => setOpenInner('criteria'))}</Branch>
+              )}
+            </div>
 
-          <StepCard
-            stepNumber={3}
-            title="Maç Kriterlerini Seç"
-            flush
-            open={openInner === 'criteria'}
-            locked={!isCriteriaUnlocked(chosen?.name ?? null)}
-            tone={3}
-            onToggle={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
-          >
-            <MatchCriteria
-              startLabel="Pratiğe Başla"
-              simplifiedLevels
-              onStart={(v) => {
-                // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
-                if (!chosen) return;
-                if (onReadyToStart) { onReadyToStart(chosen, v); return; }
-                setCriteria(v);
-                setColor(resolveColor(v.colorChoice));
+            <div>
+              <PathNode
+                icon="🎯"
+                label="3. Maç Kriterlerini Seç"
+                active={openInner === 'criteria'}
+                locked={!isCriteriaUnlocked(chosen?.name ?? null)}
+                size={34}
+                onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
+              />
+              {openInner === 'criteria' && (
+                <Branch offset={17}>
+                  <MatchCriteria
+                    startLabel="Pratiğe Başla"
+                    simplifiedLevels
+                    onStart={(v) => {
+                      // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
+                      if (!chosen) return;
+                      if (onReadyToStart) { onReadyToStart(chosen, v); return; }
+                      setCriteria(v);
+                      setColor(resolveColor(v.colorChoice));
+                    }}
+                  />
+                </Branch>
+              )}
+            </div>
+          </Branch>
+        )}
+      </div>
+
+      <div>
+        <PathNode
+          icon="🤝"
+          label="Arkadaşına Karşı Pratik Yap"
+          active={openOuter === 'friend'}
+          size={40}
+          onClick={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
+        />
+        {openOuter === 'friend' && (
+          /* Sira: 1) Tur 2) Acilis 3) Kriterler 4) Arkadas. FriendChallenge
+             kendi ic adimlarini HALA StepCard ile cizer — o bilesen ayrica
+             "Arkadasla Oyna" (Pratik Yap'la ilgisiz) akisinda da kullanildigi
+             icin degistirilmedi (2026-08-19 kapsam karari). */
+          <Branch offset={20}>
+            <FriendChallenge
+              openingStep={{
+                renderTypes: typeList,
+                typeSummary: categorySummary(category),
+                typePicked: category !== null,
+                renderOpenings: openingList,
+                openingSummary: openingSummary(chosen?.name ?? null),
+                picked: chosen !== null,
+                startFen: chosen?.start_fen ?? null,
               }}
             />
-          </StepCard>
-        </div>
-      </StepCard>
-
-      <StepCard
-        emoji="🤝"
-        title="Arkadaşına Karşı Pratik Yap"
-        open={openOuter === 'friend'}
-        onToggle={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
-      >
-        {/* Sira: 1) Tur 2) Acilis 3) Kriterler 4) Arkadas */}
-        <FriendChallenge
-          openingStep={{
-            renderTypes: typeList,
-            typeSummary: categorySummary(category),
-            typePicked: category !== null,
-            renderOpenings: openingList,
-            openingSummary: openingSummary(chosen?.name ?? null),
-            picked: chosen !== null,
-            startFen: chosen?.start_fen ?? null,
-          }}
-        />
-      </StepCard>
+          </Branch>
+        )}
+      </div>
     </div>
   );
 }

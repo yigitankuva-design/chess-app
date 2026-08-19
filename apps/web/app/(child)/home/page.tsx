@@ -17,6 +17,7 @@ import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayers
 import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
+import { raised, pressed, PathNode, Branch, SH_LIGHT, VerticalDivider } from '@/components/ui/neumorphic';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -74,6 +75,45 @@ const IconTrophy = ({ s = 20 }: { s?: number }) => (
   </svg>
 );
 
+/* Hızlı Erişim sekme ikonları — kullanıcının 2026-08-19 tarif ettiği
+   şekiller (çapraz kılıç, kitap, büyüteçli adam, yapboz parçası,
+   satranç oynayan adam). Emoji değil — mevcut çizgi-ikon üslubunda. */
+const IconSwords = ({ s = 20 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <line x1="4" y1="20" x2="20" y2="4" />
+    <line x1="20" y1="20" x2="4" y2="4" />
+    <path d="M3 21l2-2M21 21l-2-2M3 3l2 2M21 3l-2 2" />
+  </svg>
+);
+const IconBook = ({ s = 20 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <path d="M4 5.5C4 4.7 4.7 4 5.5 4H11a1 1 0 0 1 1 1v15a1 1 0 0 0-1-1H5.5A1.5 1.5 0 0 1 4 17.5z" />
+    <path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13a1 1 0 0 0-1 1v15a1 1 0 0 1 1-1h5.5a1.5 1.5 0 0 0 1.5-1.5z" />
+  </svg>
+);
+const IconAnalyst = ({ s = 20 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <circle cx="8.5" cy="5" r="2.2" />
+    <path d="M8.5 7.2c-2.2 0-4 1.6-4 4.3V17h4.5" />
+    <circle cx="16" cy="14" r="3.2" />
+    <path d="M18.3 16.3L21 19" />
+  </svg>
+);
+const IconPuzzle = ({ s = 20 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <path d="M5 4h4.5a1.5 1.5 0 0 1 3 0H17a1 1 0 0 1 1 1v4.5a1.5 1.5 0 0 0 0 3V17a1 1 0 0 1-1 1h-4.5a1.5 1.5 0 0 0-3 0H5a1 1 0 0 1-1-1v-4.5a1.5 1.5 0 0 0 0-3V5a1 1 0 0 1 1-1z" />
+  </svg>
+);
+const IconChessPlayer = ({ s = 20 }: { s?: number }) => (
+  <svg width={s} height={s} {...svgBase}>
+    <circle cx="7.5" cy="5" r="2.2" />
+    <path d="M7.5 7.2c-2.2 0-4 1.6-4 4.3V17h5.5" />
+    <path d="M3 20h18" />
+    <path d="M15 20v-3.3c0-.8.5-1.2 1.1-1.6.6-.3.9-.7.9-1.3 0-.8-.7-1.4-1.5-1.4S14 12.9 14 13.7" />
+    <path d="M13.2 16.7h3.6" />
+  </svg>
+);
+
 /** Tempo ve Süre sütunlarının satırları hizalı kalsın diye sabit satır yüksekliği */
 
 
@@ -93,73 +133,9 @@ interface ModuleSummary { id: number; order_index: number; name: string; lessons
 interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number }
 interface Subtopic { stepId: number; title: string }
 
-/* ── Yumuşak kabartma yüzeyler — gölgeler tema renginden türetilir ────── */
-const SH_DARK = 'color-mix(in srgb, var(--t-surface) 55%, #000)';
-const SH_LIGHT = 'color-mix(in srgb, var(--t-surface) 84%, #fff)';
-
-function raised(radius: number | string = 14, depth = 5): React.CSSProperties {
-  return {
-    background: 'var(--t-surface)',
-    borderRadius: radius,
-    border: 'none',
-    boxShadow: `${depth}px ${depth}px ${depth * 2}px ${SH_DARK}, -${depth}px -${depth}px ${depth * 2}px ${SH_LIGHT}`,
-  };
-}
-function pressed(radius: number | string = 14, depth = 4): React.CSSProperties {
-  return {
-    background: 'var(--t-surface)',
-    borderRadius: radius,
-    border: 'none',
-    boxShadow: `inset ${depth}px ${depth}px ${depth * 2}px ${SH_DARK}, inset -${depth}px -${depth}px ${depth * 2}px ${SH_LIGHT}`,
-  };
-}
-
-/* Patika düğümü: yuvarlak kabartma buton + yanında etiket */
-function PathNode({
-  emoji, label, active, size, onClick, labelColor,
-}: { emoji: string; label: string; active: boolean; size: number; onClick: () => void; labelColor?: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-3 w-full text-left transition-transform active:scale-[0.98]"
-      style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
-    >
-      <span
-        className="flex items-center justify-center flex-shrink-0"
-        style={{ ...(active ? pressed(999, 3) : raised(999, 4)), width: size, height: size, fontSize: size * 0.44 }}
-      >
-        {emoji}
-      </span>
-      <span
-        className="font-bold leading-tight"
-        style={{
-          fontSize: size >= 40 ? '0.86rem' : size >= 34 ? '0.8rem' : '0.75rem',
-          color: active ? (labelColor ?? 'var(--t-accent)') : 'var(--t-text-1)',
-        }}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
-
-/* Katmanlar arası kesikli bağlantı çizgisi */
-function Branch({ offset, children }: { offset: number; children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        marginLeft: offset,
-        paddingLeft: 18,
-        borderLeft: `2px dashed ${SH_LIGHT}`,
-        marginTop: 10,
-        display: 'grid',
-        gap: 10,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+/* Yumuşak kabartma yüzeyler artık components/ui/neumorphic.tsx'te — Pratik
+   Yap ekranı da (CustomTabPanel, OpeningPractice) aynı tasarımı kullanıyor
+   (2026-08-19). */
 
 export default function ChildHomePage() {
   const { settings } = useSettings();
@@ -305,9 +281,11 @@ export default function ChildHomePage() {
     setOpenSubtopic(opening ? { lessonId, stepId: sub.stepId, title: sub.title } : null);
   }
 
-  /* Sekme kartı — kabartma, açıkken gömük */
-  function FeatureTab({ emoji, label, color, active, onClick, href }: {
-    emoji: string; label: string; color: string; active?: boolean; onClick?: () => void; href?: string;
+  /* Sekme kartı — kabartma, açıkken gömük. Arkasında seçiliyken turkuaz
+     yanan bir LED var (madde 2, 2026-08-19): sadece seçili sekmenin LED'i
+     yanık kalır, diğerleri söner. */
+  function FeatureTab({ icon, label, color, active, onClick, href }: {
+    icon: React.ReactNode; label: string; color: string; active?: boolean; onClick?: () => void; href?: string;
   }) {
     const style: React.CSSProperties = {
       ...(active ? pressed(16) : raised(16)),
@@ -320,10 +298,12 @@ export default function ChildHomePage() {
       gap: '0.4rem',
       cursor: 'pointer',
       textDecoration: 'none',
+      position: 'relative',
     };
     const inner = (
       <>
-        <span className="text-3xl leading-none">{emoji}</span>
+        <span aria-hidden="true" className="qa-led" data-active={active ? 'true' : 'false'} />
+        <span className="leading-none" style={{ color }}>{icon}</span>
         <span className="text-xs font-bold leading-tight text-center" style={{ color }}>{label}</span>
       </>
     );
@@ -354,28 +334,33 @@ export default function ChildHomePage() {
           {orderedTabs.map((key) => {
             if (key === 'analiz') {
               return (
-                <FeatureTab key={key} emoji="🔍" label={L.features.analiz}
+                <FeatureTab key={key} icon={<IconAnalyst s={30} />} label={L.features.analiz}
                   color={FEATURE_COLORS.analiz} href="/analiz" />
               );
             }
             const meta = {
-              play:    { emoji: '🎮', label: L.features.play,    color: FEATURE_COLORS.play },
-              lessons: { emoji: '📚', label: L.features.lessons, color: FEATURE_COLORS.lessons },
-              eglence: { emoji: '🎉', label: L.features.eglence, color: FEATURE_COLORS.eglence },
+              play:    { icon: <IconSwords s={30} />, label: L.features.play,    color: FEATURE_COLORS.play },
+              lessons: { icon: <IconBook s={30} />,    label: L.features.lessons, color: FEATURE_COLORS.lessons },
+              eglence: { icon: <IconPuzzle s={30} />,  label: L.features.eglence, color: FEATURE_COLORS.eglence },
             }[key];
             return (
               <FeatureTab
-                key={key} emoji={meta.emoji} label={meta.label} color={meta.color}
+                key={key} icon={meta.icon} label={meta.label} color={meta.color}
                 active={openTab === key} onClick={() => toggleTab(key)}
               />
             );
           })}
 
           {/* Zafer hocanın eklediği ek sekmeler — ayrı sayfaya GİTMEZ, yerleşik
-              sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09). */}
+              sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).
+              "Pratik Yap" özel bir ikon alır (satranç oynayan adam,
+              2026-08-19); diğer özel sekmeler admin'in kendi emoji'sini
+              kullanmaya devam eder. */}
           {customTabs.map((ct, i) => (
             <FeatureTab
-              key={ct.id} emoji={ct.emoji} label={ct.label}
+              key={ct.id}
+              icon={ct.label === 'Pratik Yap' ? <IconChessPlayer s={30} /> : ct.emoji}
+              label={ct.label}
               color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]}
               active={openTab === ct.id} onClick={() => toggleCustomTab(ct.id)}
             />
@@ -414,7 +399,7 @@ export default function ChildHomePage() {
               </span>
             </Link>
 
-            <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
+            <VerticalDivider />
 
             {/* Bota Karşı — açılır seçim tablosu */}
             <button
@@ -450,7 +435,7 @@ export default function ChildHomePage() {
               </div>
             )}
 
-            <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
+            <VerticalDivider />
 
             {/* Turnuvaya Katıl */}
             <Link href="/play?mode=tournament" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
@@ -479,10 +464,10 @@ export default function ChildHomePage() {
               return (
                 <div key={lv.id}>
                   {li > 0 && (
-                    <div style={{ width: 2, height: 14, background: SH_LIGHT, marginLeft: 21, borderRadius: 9, opacity: 0.7 }} />
+                    <VerticalDivider />
                   )}
                   <PathNode
-                    emoji={LEVEL_EMOJIS[li % LEVEL_EMOJIS.length]}
+                    icon={LEVEL_EMOJIS[li % LEVEL_EMOJIS.length]}
                     label={`${li + 1}. ${lv.name}`}
                     active={levelOpen}
                     size={44}
@@ -520,18 +505,12 @@ export default function ChildHomePage() {
                         return (
                           <div key={les.id}>
                             <PathNode
-                              emoji="📘"
+                              icon="📘"
                               label={lessonLocked ? `🔒 ${les.title}` : les.title}
                               active={lessonOpen}
                               size={36}
                               onClick={() => { if (!lessonLocked) toggleLesson(les.id); }}
                             />
-                            {lessonLocked && (
-                              <p className="text-xs t-muted py-1">
-                                Bir önceki dersi tamamlaman gerekiyor.
-                              </p>
-                            )}
-
                             {lessonOpen && (
                               <Branch offset={17}>
                                 {subs === undefined && <p className="text-xs t-muted py-1">Yükleniyor...</p>}
@@ -541,7 +520,7 @@ export default function ChildHomePage() {
                                   return (
                                     <div key={sub.stepId}>
                                       <PathNode
-                                        emoji={SUBTOPIC_EMOJIS[si % SUBTOPIC_EMOJIS.length]}
+                                        icon={SUBTOPIC_EMOJIS[si % SUBTOPIC_EMOJIS.length]}
                                         label={subLocked(sub.stepId) ? `🔒 ${sub.title}` : sub.title}
                                         active={subOpen}
                                         size={32}

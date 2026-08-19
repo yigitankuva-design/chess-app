@@ -158,6 +158,25 @@ body {
   border-radius: 6px;
 }
 
+/* Hızlı Erişim sekme LED'i — seçili sekmede turkuaz yanar, diğerlerinde
+   söner (2026-08-19). */
+.qa-led {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--t-border);
+  opacity: 0.5;
+  transition: background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.qa-led[data-active='true'] {
+  background: #2dd4bf;
+  box-shadow: 0 0 8px 2px rgba(45, 212, 191, 0.65);
+  opacity: 1;
+}
+
 /* Text helpers */
 .t-text  { color: var(--t-text-1); }
 .t-muted { color: var(--t-text-2); }
