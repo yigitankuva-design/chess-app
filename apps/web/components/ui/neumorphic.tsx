@@ -33,12 +33,16 @@ export function pressed(radius: number | string = 14, depth = 4): CSSProperties 
 /** Patika düğümü: yuvarlak kabartma buton + yanında etiket.
  *  `locked` verilirse soluklaşır ve tıklama devre dışı kalır (StepCard'ın
  *  kilit davranışının PathNode karşılığı, 2026-08-19). `trailing` verilirse
- *  sağ kenarda ek bir öğe gösterilir (örn. konum sayısı rozeti). */
+ *  sağ kenarda ek bir öğe gösterilir (örn. konum sayısı rozeti). `tint`
+ *  verilirse etiket AÇIK/KAPALI farketmeksizin HER ZAMAN o renkte kalır —
+ *  bir sekmenin alt öğeleri, o sekmenin kendi rengiyle eşleşsin diye
+ *  (2026-08-19). Verilmezse eski davranış (kapalıyken beyaz, açıkken
+ *  accent) aynen sürer — Dersler bu prop'u KULLANMAZ, bilerek beyaz kalır. */
 export function PathNode({
-  icon, label, active, size, onClick, labelColor, locked = false, trailing,
+  icon, label, active, size, onClick, labelColor, locked = false, trailing, tint,
 }: {
   icon: ReactNode; label: string; active: boolean; size: number; onClick: () => void;
-  labelColor?: string; locked?: boolean; trailing?: ReactNode;
+  labelColor?: string; locked?: boolean; trailing?: ReactNode; tint?: string;
 }) {
   return (
     <button
@@ -62,7 +66,7 @@ export function PathNode({
         className="font-bold leading-tight flex-1"
         style={{
           fontSize: size >= 40 ? '0.86rem' : size >= 34 ? '0.8rem' : '0.75rem',
-          color: active ? (labelColor ?? 'var(--t-accent)') : 'var(--t-text-1)',
+          color: tint ?? (active ? (labelColor ?? 'var(--t-accent)') : 'var(--t-text-1)'),
         }}
       >
         {label}

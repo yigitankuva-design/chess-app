@@ -78,11 +78,17 @@ const IconTrophy = ({ s = 20 }: { s?: number }) => (
 /* Hızlı Erişim sekme ikonları — kullanıcının 2026-08-19 tarif ettiği
    şekiller (çapraz kılıç, kitap, büyüteçli adam, yapboz parçası,
    satranç oynayan adam). Emoji değil — mevcut çizgi-ikon üslubunda. */
+/* Daha belirgin çapraz kılıç: uzun bilezikler + çapraz muhafaza (guard)
+   çentiği + kabza (pommel) noktası — sadece X değil, kılıç OKUNSUN diye
+   (2026-08-19 güncellemesi). */
 const IconSwords = ({ s = 20 }: { s?: number }) => (
   <svg width={s} height={s} {...svgBase}>
-    <line x1="4" y1="20" x2="20" y2="4" />
-    <line x1="20" y1="20" x2="4" y2="4" />
-    <path d="M3 21l2-2M21 21l-2-2M3 3l2 2M21 3l-2 2" />
+    <line x1="5" y1="19" x2="19" y2="5" />
+    <line x1="7" y1="17" x2="11" y2="13" />
+    <circle cx="4" cy="20" r="1.1" fill="currentColor" stroke="none" />
+    <line x1="19" y1="19" x2="5" y2="5" />
+    <line x1="17" y1="17" x2="13" y2="13" />
+    <circle cx="20" cy="20" r="1.1" fill="currentColor" stroke="none" />
   </svg>
 );
 const IconBook = ({ s = 20 }: { s?: number }) => (
@@ -300,11 +306,16 @@ export default function ChildHomePage() {
       textDecoration: 'none',
       position: 'relative',
     };
+    /* LED yanan (seçili) kartta ikon+yazı parlar; diğer kartlarda matlaşır
+       (madde 1, 2026-08-19) — tab'ın kendi rengiyle ışıldar. */
+    const contentStyle: React.CSSProperties = active
+      ? { color, opacity: 1, filter: `drop-shadow(0 0 5px ${color})` }
+      : { color, opacity: 0.4 };
     const inner = (
       <>
         <span aria-hidden="true" className="qa-led" data-active={active ? 'true' : 'false'} />
-        <span className="leading-none" style={{ color }}>{icon}</span>
-        <span className="text-xs font-bold leading-tight text-center" style={{ color }}>{label}</span>
+        <span className="leading-none" style={contentStyle}>{icon}</span>
+        <span className="text-xs font-bold leading-tight text-center" style={contentStyle}>{label}</span>
       </>
     );
     return href
@@ -367,14 +378,21 @@ export default function ChildHomePage() {
           ))}
         </div>
 
-        {/* Açık özel sekmenin alt sekmeleri — aynı ekranda */}
-        {typeof openTab === 'number' && (
-          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
-            {customTabDetails[openTab]
-              ? <CustomTabPanel tab={customTabDetails[openTab]} />
-              : <p className="text-sm t-muted">Yükleniyor...</p>}
-          </div>
-        )}
+        {/* Açık özel sekmenin alt sekmeleri — aynı ekranda. accentColor:
+            alt sekme cümleleri sekmenin kendi rengiyle aynı olsun diye
+            (madde 2, 2026-08-19) — kartın ÜSTÜNDEKİ renkle BİREBİR aynı
+            hesap kullanılır. */}
+        {typeof openTab === 'number' && (() => {
+          const ctIdx = customTabs.findIndex((ct) => ct.id === openTab);
+          const accentColor = ctIdx >= 0 ? CUSTOM_TAB_COLORS[ctIdx % CUSTOM_TAB_COLORS.length] : undefined;
+          return (
+            <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
+              {customTabDetails[openTab]
+                ? <CustomTabPanel tab={customTabDetails[openTab]} accentColor={accentColor} />
+                : <p className="text-sm t-muted">Yükleniyor...</p>}
+            </div>
+          );
+        })()}
 
         {/* Maç Yap patikası — Oyun türü › Zorluk › Tempo › Süre */}
         {showPlay && (
@@ -393,7 +411,7 @@ export default function ChildHomePage() {
                 }}>
                 <IconFriends s={20} />
               </span>
-              <span className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--t-text-1)' }}>
+              <span className="font-bold text-sm flex items-center gap-2" style={{ color: FEATURE_COLORS.play }}>
                 Arkadaşla Oyna
                 {activeCount !== null && <ActivePlayersBadge count={activeCount} />}
               </span>
@@ -411,7 +429,7 @@ export default function ChildHomePage() {
                 style={{ ...(openBot ? pressed(999, 3) : raised(999, 4)), width: 44, height: 44, color: 'var(--t-text-1)' }}>
                 <IconBot s={20} />
               </span>
-              <span className="font-bold text-sm" style={{ color: openBot ? 'var(--t-accent)' : 'var(--t-text-1)' }}>
+              <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.play }}>
                 Bota Karşı Oyna
               </span>
             </button>
@@ -443,7 +461,7 @@ export default function ChildHomePage() {
                 style={{ ...raised(999, 4), width: 44, height: 44, color: 'var(--t-text-1)' }}>
                 <IconTrophy s={20} />
               </span>
-              <span className="font-bold text-sm" style={{ color: 'var(--t-text-1)' }}>Turnuvaya Katıl</span>
+              <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.play }}>Turnuvaya Katıl</span>
             </Link>
           </div>
         )}
@@ -601,7 +619,7 @@ export default function ChildHomePage() {
                   >
                     {g.emoji}
                   </span>
-                  <span className="font-bold text-sm" style={{ color: 'var(--t-text-1)' }}>{g.label}</span>
+                  <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.eglence }}>{g.label}</span>
                 </Link>
               ))}
             </div>

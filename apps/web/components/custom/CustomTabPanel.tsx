@@ -11,6 +11,10 @@ import { PathNode, Branch } from '@/components/ui/neumorphic';
 
 interface Props {
   tab: CustomTabDetail;
+  /** Sekmenin ana ekrandaki kartının rengiyle AYNI — alt sekme cümleleri
+   *  bu renkte gösterilir (madde 2, 2026-08-19). Verilmezse (örn.
+   *  /custom/[id] sayfasından erişilirse) etiketler varsayılan renkte kalır. */
+  accentColor?: string;
 }
 
 /**
@@ -31,7 +35,7 @@ interface Props {
  * "Oyunsonu Pratiği Yap" ayrıca özeldir: kriter ekranından önce sporcu 5
  * kategoriden birini seçer — kategorisiz (eski) konumlar sporcuya gösterilmez.
  */
-export function CustomTabPanel({ tab }: Props) {
+export function CustomTabPanel({ tab, accentColor }: Props) {
   const router = useRouter();
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
   /** Açılış Pratiği Yap satırı diğer alt sekmelerle AYNI akordiyona katılır
@@ -84,11 +88,13 @@ export function CustomTabPanel({ tab }: Props) {
           label="Açılış Pratiği Yap"
           active={openOpening}
           size={40}
+          tint={accentColor}
           onClick={() => { setOpenOpening((p) => !p); setOpenSectionId(null); setOpenCategory(null); }}
         />
         {openOpening && (
           <Branch offset={20}>
             <OpeningPractice
+              tint={accentColor}
               onReadyToStart={(opening, v) => {
                 router.push(
                   `/play?mode=opening&opening=${opening.id}`
@@ -112,6 +118,7 @@ export function CustomTabPanel({ tab }: Props) {
               label={s.title}
               active={open}
               size={40}
+              tint={accentColor}
               onClick={() => {
                 setOpenSectionId((p) => (p === s.id ? null : s.id));
                 setOpenCategory(null);
@@ -132,6 +139,7 @@ export function CustomTabPanel({ tab }: Props) {
                             label={cat}
                             active={false}
                             size={34}
+                            tint={accentColor}
                             onClick={() => setOpenCategory(cat)}
                             trailing={<span className="t-muted text-xs">{count}</span>}
                           />

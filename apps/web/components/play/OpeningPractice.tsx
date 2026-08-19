@@ -36,11 +36,14 @@ interface Props {
    * sayfasının kendisi) maç eskisi gibi burada açılır.
    */
   onReadyToStart?: (opening: Opening, criteria: MatchCriteriaValue) => void;
+  /** Pratik Yap kartının rengiyle AYNI — bkz. CustomTabPanel'in accentColor'ı
+   *  (madde 2, 2026-08-19). Verilmezse etiketler varsayılan renkte kalır. */
+  tint?: string;
 }
 
 /** Acilis pratigi: sirali ve kilitli acilir kartlar (akordiyon).
  *  Dis katman: bot / arkadas. Ic katman (bot): tur -> acilis -> kriterler. */
-export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToStart }: Props = {}) {
+export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToStart, tint }: Props = {}) {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
   // tum acilislari gormemeli.
@@ -185,6 +188,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
           label="Bota Karşı Pratik Yap"
           active={openOuter === 'bot'}
           size={40}
+          tint={tint}
           onClick={() => setOpenOuter((p) => (p === 'bot' ? null : 'bot'))}
         />
         {openOuter === 'bot' && (
@@ -198,6 +202,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 ) : undefined}
                 active={openInner === 'type'}
                 size={34}
+                tint={tint}
                 onClick={() => setOpenInner((p) => (p === 'type' ? null : 'type'))}
               />
               {openInner === 'type' && (
@@ -215,6 +220,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 active={openInner === 'opening'}
                 locked={!isOpeningUnlocked(category)}
                 size={34}
+                tint={tint}
                 onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
               />
               {openInner === 'opening' && (
@@ -229,6 +235,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 active={openInner === 'criteria'}
                 locked={!isCriteriaUnlocked(chosen?.name ?? null)}
                 size={34}
+                tint={tint}
                 onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
               />
               {openInner === 'criteria' && (
@@ -257,6 +264,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
           label="Arkadaşına Karşı Pratik Yap"
           active={openOuter === 'friend'}
           size={40}
+          tint={tint}
           onClick={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
         />
         {openOuter === 'friend' && (
