@@ -11,10 +11,11 @@ vi.mock('@/lib/hooks/use-websocket', () => ({
   wsBase: () => 'ws://test',
 }));
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'tok' }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 import { LiveGame } from '@/components/LiveGame';
 
-describe('LiveGame — game_info avatar bilgisi MatchLayout\'a gider', () => {
+describe('LiveGame — game_info avatar bilgisi PracticeMatchLayout\'a gider', () => {
   it('white_avatar/black_avatar geldiğinde doğru emoji gösterilir', () => {
     render(<LiveGame gameId={1} myColor="white" />);
     act(() => handler!({
@@ -28,8 +29,8 @@ describe('LiveGame — game_info avatar bilgisi MatchLayout\'a gider', () => {
     expect(screen.getByText('🤖')).toBeInTheDocument(); // robot
   });
 
-  it('LiveGame\'de onRematch VERİLMEDİĞİ için "Yeniden Oyna" hiç görünmez', () => {
+  it('madde 3 (2026-08-20): "Tekrar Oyna" kartı artık VAR (Açılış Pratiği tasarımına geçişle birlikte)', () => {
     render(<LiveGame gameId={1} myColor="white" />);
-    expect(screen.queryByRole('button', { name: 'Yeniden Oyna' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tekrar Oyna' })).toBeInTheDocument();
   });
 });

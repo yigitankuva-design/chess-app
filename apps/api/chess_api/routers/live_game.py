@@ -40,6 +40,11 @@ FIRST_MOVE_TIMEOUT_SECONDS = 15
 # ornegin ayni sporcu iki cihazdan baglanirsa join iki kez tetiklenebilir).
 _first_move_timer_started: set[int] = set()
 
+# Madde 3 (2026-08-20): bitmis bir insan-insan macinda "Tekrar Oyna" teklifi
+# — game_id -> teklifi yapanin child_id'si. Draw offer ile ayni bellek-ici
+# desen (bkz. Game.white_draw_offers): tek surecli sunucu varsayimiyla yeter.
+_rematch_pending: dict[int, int] = {}
+
 
 def _child_id_from_token(token: str) -> int | None:
     try:
@@ -290,9 +295,16 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
                 await _handle_draw(game_id, room)
             elif mtype == "flag":
                 await _handle_flag(game_id, room)
+            elif mtype == "rematch_offer":
+                await _handle_rematch_offer(game_id, child_id, room)
+            elif mtype == "rematch_accept":
+                await _handle_rematch_accept(game_id, child_id, white_id, black_id, room)
+            elif mtype == "rematch_decline":
+                await _handle_rematch_decline(game_id, child_id, room)
     except WebSocketDisconnect:
         room.leave(child_id, conn_id)
         await room.broadcast({"type": "opponent_disconnected", "child_id": child_id})
+        _rematch_pending.pop(game_id, None)
     except Exception:
         logger.exception("game_ws error")
         room.leave(child_id, conn_id)
@@ -586,6 +598,48 @@ async def _handle_decline_draw(game_id, child_id, room):
         if not game or game.status != GameStatus.active:
             return
     await room.broadcast({"type": "draw_declined", "by_child_id": child_id}, exclude=child_id)
+
+
+async def _handle_rematch_offer(game_id: int, child_id: int, room) -> None:
+    """Madde 3 (2026-08-20): bitmis insan-insan macinda 'Tekrar Oyna' teklifi.
+    Yalnizca mac BITMISSE gecerlidir; aktif macta anlamsizdir."""
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game or game.status == GameStatus.active or game.type != GameType.human:
+            return
+    _rematch_pending[game_id] = child_id
+    await room.broadcast({"type": "rematch_offered", "by_child_id": child_id}, exclude=child_id)
+
+
+async def _handle_rematch_accept(game_id: int, child_id: int, white_id, black_id, room) -> None:
+    """Teklifi kabul et: RENKLER TAKAS edilerek yeni bir mac acilir (adil
+    olsun diye — onceki beyaz simdi siyah oynar). Ayni sure ayarlari
+    (base_ms/increment_ms) ve baslangic konumu (start_fen, acilis pratigi
+    davetlerinde onemli) AYNEN tasinir."""
+    offerer = _rematch_pending.get(game_id)
+    if offerer is None or offerer == child_id:
+        return  # teklif yok veya kisi kendi teklifini kabul etmeye calisiyor
+    _rematch_pending.pop(game_id, None)
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game:
+            return
+        new_white = black_id
+        new_black = white_id
+        new_id = await _create_human_game(
+            new_white, new_black,
+            base_ms=game.base_ms, increment_ms=game.increment_ms,
+            start_fen=game.start_fen,
+        )
+    await room.broadcast({
+        "type": "rematch_ready", "game_id": new_id,
+        "white_id": new_white, "black_id": new_black,
+    })
+
+
+async def _handle_rematch_decline(game_id: int, child_id: int, room) -> None:
+    _rematch_pending.pop(game_id, None)
+    await room.broadcast({"type": "rematch_declined", "by_child_id": child_id}, exclude=child_id)
 
 
 @router.get("/lobby/online")

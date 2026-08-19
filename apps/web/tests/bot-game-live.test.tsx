@@ -6,6 +6,7 @@ vi.mock('@/lib/hooks/use-websocket', () => ({
   wsBase: () => 'ws://test',
 }));
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'tok', getAthleteName: () => 'Sporcu' }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 import { BotGameLive } from '@/components/BotGameLive';
 

@@ -22,13 +22,20 @@ interface Props {
   moveList: ReactNode;
   /** Pratik hâlâ sürüyorsa null — geri bildirim kartı o zaman hiç render edilmez. */
   outcome: PracticeOutcome | null;
-  /** Tam olarak 4 eylem, sırasıyla: tekrar et, beraberlik teklif et, terk et, farklı konum. */
-  actions: [PracticeAction, PracticeAction, PracticeAction, PracticeAction];
+  /** Bota karşı pratikte 4 eylem (tekrar et, beraberlik, terk et, farklı
+   *  konum); arkadaş maçında (LiveGame) 3 eylem (beraberlik, terk et,
+   *  tekrar oyna) — sayı sabit değil, `.pm-actions-row` flex olduğu için
+   *  otomatik ortalanır. */
+  actions: PracticeAction[];
   /** Terfi seçici, reddedilen beraberlik notu gibi serbest alan (board/eylemler arası). */
   extra?: ReactNode;
+  /** Geri bildirim kartı metni — verilmezse bota karşı pratiğin varsayılan
+   *  metinleri kullanılır. Arkadaş maçında (LiveGame) "Bot Kazandı" gibi
+   *  bota özel ifadeler anlamsız olduğu için override edilir. */
+  outcomeText?: Partial<Record<PracticeOutcome, string>>;
 }
 
-const OUTCOME_TEXT: Record<PracticeOutcome, string> = {
+const DEFAULT_OUTCOME_TEXT: Record<PracticeOutcome, string> = {
   win: 'Tebrikler Kazandın',
   draw: 'Berabere Bitti',
   loss: 'Bot Kazandı',
@@ -46,7 +53,7 @@ const OUTCOME_CLASS: Record<PracticeOutcome, string> = {
  * `practiceActions` verildiği dallarda kullanılır.
  */
 export function PracticeMatchLayout({
-  top, bottom, board, moveList, outcome, actions, extra,
+  top, bottom, board, moveList, outcome, actions, extra, outcomeText,
 }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 space-y-2">
@@ -79,7 +86,7 @@ export function PracticeMatchLayout({
 
         {outcome && (
           <div className={`pm-feedback ${OUTCOME_CLASS[outcome]} p-4 text-center text-lg font-bold`}>
-            {OUTCOME_TEXT[outcome]}
+            {outcomeText?.[outcome] ?? DEFAULT_OUTCOME_TEXT[outcome]}
           </div>
         )}
 

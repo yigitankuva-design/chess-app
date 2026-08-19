@@ -1,14 +1,15 @@
 'use client';
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { ChessBoard } from './ChessBoard';
 import { useBoardNotation } from '@/lib/board-notation-context';
 import { getToken } from '@/lib/auth-storage';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
-import { formatGameResult } from '@/lib/play/resultText';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
-import { MatchLayout } from '@/components/play/MatchLayout';
+import { PracticeMatchLayout } from '@/components/play/PracticeMatchLayout';
+import type { PracticeAction, PracticeOutcome } from '@/components/play/PracticeMatchLayout';
 import type { PlayerInfo } from '@/components/play/MatchLayout';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
@@ -27,13 +28,28 @@ interface Props { gameId: number; myColor: 'white' | 'black'; }
  *  görsel geri sayım için; gerçek iptal kararı sunucuda verilir. */
 const FIRST_MOVE_TIMEOUT_SECONDS = 15;
 
+/** Sunucudan gelen '1-0'/'0-1'/'1/2-1/2' sonucunu BENİM açımdan kazandım/
+ *  berabere/kaybettim'e çevirir (madde 3, 2026-08-20) — geri bildirim
+ *  kartının rengini/metnini belirler. Sonuç yoksa (mac hâlâ sürüyor) null. */
+function outcomeFor(result: string | undefined, myColor: 'white' | 'black'): PracticeOutcome | null {
+  if (result === '1/2-1/2') return 'draw';
+  if (result === '1-0') return myColor === 'white' ? 'win' : 'loss';
+  if (result === '0-1') return myColor === 'black' ? 'win' : 'loss';
+  return null;
+}
+
 export function LiveGame({ gameId, myColor }: Props) {
+  const router = useRouter();
   const { hideNotation } = useBoardNotation();
   const chessRef = useRef(new Chess());
   const [fen, setFen] = useState(chessRef.current.fen());
   const [status, setStatus] = useState<'active' | 'over'>('active');
   const [info, setInfo] = useState<string>('');
-  const [resultLine, setResultLine] = useState<string>('');
+  const [rawResult, setRawResult] = useState<string | undefined>(undefined);
+  /** Madde 3 (2026-08-20): "Tekrar Oyna" — ben teklif ettim, rakip bekleniyor. */
+  const [rematchOffered, setRematchOffered] = useState(false);
+  /** Rakip teklif etti, benim Kabul/Reddet cevabım bekleniyor. */
+  const [rematchIncoming, setRematchIncoming] = useState(false);
   const [drawOffered, setDrawOffered] = useState(false);
   const [myOffersUsed, setMyOffersUsed] = useState(0);
   const [whiteName, setWhiteName] = useState('Sporcu');
@@ -100,6 +116,10 @@ export function LiveGame({ gameId, myColor }: Props) {
       message?: string;
       status?: string;
       reason?: string;
+      by_child_id?: number;
+      game_id?: number;
+      white_id?: number;
+      black_id?: number;
     };
     const t = msg?.type;
     if (t === 'move_made') {
@@ -151,7 +171,7 @@ export function LiveGame({ gameId, myColor }: Props) {
       // hamle yapmaya calisip "olmuyor" der.
       if (msg.status && msg.status !== 'active') {
         setStatus('over');
-        setResultLine(formatGameResult(msg.result));
+        setRawResult(msg.result);
         // Madde 4: iptal edilmis maca SONRADAN baglanan sporcu da (game_aborted
         // yayinini kacirmis olsa bile) nedeni gorsun — bos ekranla kalmasin.
         if (msg.status === 'aborted') {
@@ -170,7 +190,7 @@ export function LiveGame({ gameId, myColor }: Props) {
       flagSentRef.current = false;   // yeni hamle: bayrak hakki tazelenir
     } else if (t === 'game_over') {
       setStatus('over');
-      setResultLine(formatGameResult(msg.result));
+      setRawResult(msg.result);
       setInfo(msg.by_resign ? 'Maç terk edildi.' : '');
     } else if (t === 'game_aborted') {
       // Madde 4: sunucu 10sn'de ilk hamle gelmediğine karar verdi, mac iptal.
@@ -197,6 +217,17 @@ export function LiveGame({ gameId, myColor }: Props) {
     } else if (t === 'draw_offer_rejected') {
       setMyOffersUsed(msg.max_offers ?? 3);
       setInfo('Beraberlik teklif hakkın kalmadı.');
+    } else if (t === 'rematch_offered') {
+      // Madde 3 (2026-08-20): rakip "Tekrar Oyna" teklif etti, cevabım bekleniyor.
+      setRematchIncoming(true);
+    } else if (t === 'rematch_declined') {
+      setRematchOffered(false);
+      setInfo('Rakip yeniden oynamak istemedi.');
+    } else if (t === 'rematch_ready' && typeof msg.game_id === 'number') {
+      // Renkler yeni maçta TAKAS edilir (sunucu tarafında) — bu yüzden
+      // yönlendirme de rengimi çevirerek yapılır, child_id bilmeye gerek yok.
+      const newColor = myColor === 'white' ? 'black' : 'white';
+      router.push(`/play/online/${msg.game_id}?color=${newColor}`);
     }
   });
 
@@ -296,10 +327,38 @@ export function LiveGame({ gameId, myColor }: Props) {
     active: status === 'active' && (iAmWhite ? whiteToMove : !whiteToMove),
   };
 
+  // Madde 3 (2026-08-20): Açılış Pratiği'yle AYNI tasarım — 3 dairesel eylem
+  // kartı (Beraberlik/Terk Et/Tekrar Oyna) + renkli geri bildirim kartı.
+  const actions: PracticeAction[] = [
+    {
+      icon: '🤝',
+      label: `Beraberlik Teklif Et (${offersLeft(myOffersUsed)})`,
+      onClick: () => send({ type: 'offer_draw' }),
+      enabled: status === 'active' && canOffer,
+    },
+    {
+      icon: '🏳️',
+      label: 'Terk Et',
+      onClick: () => {
+        if (confirm('Maçı terk etmek istiyor musun? Maçı kaybedeceksin.')) send({ type: 'resign' });
+      },
+      enabled: status === 'active',
+    },
+    {
+      icon: '🔁',
+      label: 'Tekrar Oyna',
+      onClick: () => { send({ type: 'rematch_offer' }); setRematchOffered(true); },
+      enabled: status === 'over' && !rematchOffered && !rematchIncoming,
+    },
+  ];
+
   return (
-    <MatchLayout
+    <PracticeMatchLayout
       top={top}
       bottom={bottom}
+      outcome={status === 'over' ? outcomeFor(rawResult, myColor) : null}
+      outcomeText={{ win: 'Kazandın', loss: 'Rakip Kazandı' }}
+      actions={actions}
       board={
         <div style={{ position: 'relative' }}>
           <ChessBoard
@@ -387,19 +446,34 @@ export function LiveGame({ gameId, myColor }: Props) {
             </div>
           )}
 
+          {rematchIncoming && (
+            <div className="t-ok p-3 space-y-2">
+              <p className="text-sm font-semibold">Rakip yeniden oynamak istiyor</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { send({ type: 'rematch_accept' }); setRematchIncoming(false); }}
+                  className="t-btn px-4 py-2 text-sm"
+                >
+                  Kabul Et
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { send({ type: 'rematch_decline' }); setRematchIncoming(false); }}
+                  className="t-btn-ghost px-4 py-2 text-sm"
+                >
+                  Kabul Etme
+                </button>
+              </div>
+            </div>
+          )}
+          {rematchOffered && !rematchIncoming && (
+            <p className="text-center text-sm t-muted">Rakip bekleniyor…</p>
+          )}
+
           {info && <p className="text-center text-sm t-muted">{info}</p>}
         </>
       }
-      over={status === 'over'}
-      resultSlot={
-        <div className="t-ok p-4 text-center space-y-1">
-          {resultLine && <p className="text-lg font-bold">{resultLine}</p>}
-        </div>
-      }
-      drawLabel={`Beraberlik Teklif Et (${offersLeft(myOffersUsed)})`}
-      drawDisabled={!canOffer}
-      onOfferDraw={() => send({ type: 'offer_draw' })}
-      onResign={() => send({ type: 'resign' })}
     />
   );
 }

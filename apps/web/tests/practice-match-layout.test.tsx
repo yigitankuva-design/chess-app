@@ -12,7 +12,7 @@ function action(overrides: Partial<PracticeAction> = {}): PracticeAction {
 }
 
 function renderLayout(overrides: Partial<Parameters<typeof PracticeMatchLayout>[0]> = {}) {
-  const actions: [PracticeAction, PracticeAction, PracticeAction, PracticeAction] = overrides.actions ?? [
+  const actions: PracticeAction[] = overrides.actions ?? [
     action({ icon: '🔁', label: 'Aynı konumu tekrar pratik yap' }),
     action({ icon: '🤝', label: 'Beraberlik teklif et', enabled: true }),
     action({ icon: '🏳️', label: 'Pratiği terk et', enabled: true }),

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 
 const sent: object[] = [];
 let handler: ((d: unknown) => void) | null = null;
+const push = vi.fn();
 
 vi.mock('@/lib/hooks/use-websocket', () => ({
   useWebSocket: (_url: string | null, onMessage: (d: unknown) => void) => {
@@ -13,20 +14,21 @@ vi.mock('@/lib/hooks/use-websocket', () => ({
 }));
 
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'tok' }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 
 import { LiveGame } from '@/components/LiveGame';
 
-function setup() {
+function setup(myColor: 'white' | 'black' = 'white') {
   sent.length = 0;
   handler = null;
-  return render(<LiveGame gameId={1} myColor="white" />);
+  push.mockReset();
+  return render(<LiveGame gameId={1} myColor={myColor} />);
 }
 
-describe('LiveGame — Terk Et', () => {
-  it('buton metni "Terk Et"tir (kullanıcının kelimesi)', () => {
+describe('LiveGame — Terk Et (madde 3, 2026-08-20: Açılış Pratiği tasarımı)', () => {
+  it('dairesel "Terk Et" kartı aria-label ile erişilir', () => {
     setup();
     expect(screen.getByRole('button', { name: 'Terk Et' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Teslim ol/ })).not.toBeInTheDocument();
   });
 
   it('onaylanınca resign mesajı gönderir', () => {
@@ -37,23 +39,36 @@ describe('LiveGame — Terk Et', () => {
   });
 });
 
-describe('LiveGame — sonuç bildirimi formatı (madde c)', () => {
-  it('beyaz kazandığında "1 – 0 (Beyaz Kazandı)" gösterir', () => {
-    setup();
+describe('LiveGame — geri bildirim kartı (madde 3)', () => {
+  it('beyaz kazandığında (myColor=white) "Kazandın" gösterir', () => {
+    setup('white');
     act(() => handler!({ type: 'game_over', result: '1-0' }));
-    expect(screen.getByText('1 – 0 (Beyaz Kazandı)')).toBeInTheDocument();
+    expect(screen.getByText('Kazandın')).toBeInTheDocument();
   });
 
-  it('siyah kazandığında "0 – 1 (Siyah Kazandı)" gösterir', () => {
-    setup();
+  it('siyah kazandığında (myColor=white) "Rakip Kazandı" gösterir', () => {
+    setup('white');
     act(() => handler!({ type: 'game_over', result: '0-1' }));
-    expect(screen.getByText('0 – 1 (Siyah Kazandı)')).toBeInTheDocument();
+    expect(screen.getByText('Rakip Kazandı')).toBeInTheDocument();
   });
 
-  it('beraberlikte "1/2 – 1/2 (Beraberlik)" gösterir', () => {
-    setup();
+  it('beraberlikte "Berabere Bitti" gösterir', () => {
+    setup('white');
     act(() => handler!({ type: 'game_over', result: '1/2-1/2' }));
-    expect(screen.getByText('1/2 – 1/2 (Beraberlik)')).toBeInTheDocument();
+    expect(screen.getByText('Berabere Bitti')).toBeInTheDocument();
+  });
+
+  it('siyah oynayan sporcu için 0-1 "Kazandın" gösterir (renk göreli)', () => {
+    setup('black');
+    act(() => handler!({ type: 'game_over', result: '0-1' }));
+    expect(screen.getByText('Kazandın')).toBeInTheDocument();
+  });
+
+  it('mac surerken geri bildirim karti yok', () => {
+    setup();
+    expect(screen.queryByText('Kazandın')).not.toBeInTheDocument();
+    expect(screen.queryByText('Rakip Kazandı')).not.toBeInTheDocument();
+    expect(screen.queryByText('Berabere Bitti')).not.toBeInTheDocument();
   });
 });
 
@@ -80,7 +95,7 @@ describe('LiveGame — beraberlik teklifi (madde d)', () => {
     expect(screen.queryByRole('button', { name: 'Kabul Et' })).not.toBeInTheDocument();
   });
 
-  it('kalan hak sayısını gösterir ve 3 teklif sonrası buton devre dışı kalır', () => {
+  it('kalan hak sayısı aria-label\'da görünür ve 3 teklif sonrası kart devre dışı kalır', () => {
     setup();
     const btn = () => screen.getByRole('button', { name: /Beraberlik Teklif Et/ });
     expect(btn()).not.toBeDisabled();
@@ -92,7 +107,61 @@ describe('LiveGame — beraberlik teklifi (madde d)', () => {
     setup();
     act(() => handler!({ type: 'draw_declined', by_child_id: 2 }));
     expect(screen.getByText(/reddetti/i)).toBeInTheDocument();
-    // Oyun bitmedi: Terk Et butonu hâlâ duruyor
-    expect(screen.getByRole('button', { name: 'Terk Et' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Terk Et' })).not.toBeDisabled();
+  });
+});
+
+describe('LiveGame — Tekrar Oyna (madde 3, 2026-08-20)', () => {
+  it('mac surerken "Tekrar Oyna" kartı devre dışıdır', () => {
+    setup();
+    expect(screen.getByRole('button', { name: 'Tekrar Oyna' })).toBeDisabled();
+  });
+
+  it('mac bitince "Tekrar Oyna" tıklanabilir ve rematch_offer gönderir', () => {
+    setup();
+    act(() => handler!({ type: 'game_over', result: '1-0' }));
+    const btn = screen.getByRole('button', { name: 'Tekrar Oyna' });
+    expect(btn).not.toBeDisabled();
+    fireEvent.click(btn);
+    expect(sent).toContainEqual({ type: 'rematch_offer' });
+  });
+
+  it('teklif gönderildikten sonra "Rakip bekleniyor" gösterilir ve kart tekrar devre dışı kalır', () => {
+    setup();
+    act(() => handler!({ type: 'game_over', result: '1-0' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tekrar Oyna' }));
+    expect(screen.getByText(/Rakip bekleniyor/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tekrar Oyna' })).toBeDisabled();
+  });
+
+  it('rakip teklif edince Kabul Et/Kabul Etme kartı görünür', () => {
+    setup();
+    act(() => handler!({ type: 'game_over', result: '1-0' }));
+    act(() => handler!({ type: 'rematch_offered', by_child_id: 2 }));
+    expect(screen.getByText('Rakip yeniden oynamak istiyor')).toBeInTheDocument();
+  });
+
+  it('Kabul Et rematch_accept gönderir', () => {
+    setup();
+    act(() => handler!({ type: 'game_over', result: '1-0' }));
+    act(() => handler!({ type: 'rematch_offered', by_child_id: 2 }));
+    const buttons = screen.getAllByRole('button', { name: 'Kabul Et' });
+    fireEvent.click(buttons[buttons.length - 1]);
+    expect(sent).toContainEqual({ type: 'rematch_accept' });
+  });
+
+  it('rematch_ready gelince renk TAKAS edilerek yeni maça yönlendirir', () => {
+    setup('white');
+    act(() => handler!({ type: 'game_over', result: '1-0' }));
+    act(() => handler!({ type: 'rematch_ready', game_id: 42 }));
+    expect(push).toHaveBeenCalledWith('/play/online/42?color=black');
+  });
+
+  it('teklif reddedilirse bilgi mesajı gösterilir', () => {
+    setup();
+    act(() => handler!({ type: 'game_over', result: '1-0' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tekrar Oyna' }));
+    act(() => handler!({ type: 'rematch_declined', by_child_id: 2 }));
+    expect(screen.getByText(/istemedi/)).toBeInTheDocument();
   });
 });
