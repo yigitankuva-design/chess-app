@@ -659,9 +659,11 @@ body {
   margin: 0 auto;
   /* Madde 3 (2026-08-19): oto-esnek-oto — ikon/saat sabit kare, isim kartı
      aradaki tüm boşluğu doldurur; satır tahtanın tam genişliğine (başı-sonu)
-     denk gelir. Eskiden 1fr 1fr 1fr idi (üç eşit sütun). */
+     denk gelir. Eskiden 1fr 1fr 1fr idi (üç eşit sütun).
+     align-items STRETCH kalır (varsayılan) — isim kartı satırın tam
+     yüksekliğini doldursun diye (height:100%, bkz. NameBox), böylece
+     içerik hem yatay hem dikey tam ortalanır (madde 1, 2026-08-19). */
   grid-template-columns: auto 1fr auto;
-  align-items: center;
   grid-template-areas:
     "avatar-top    name-top    time-top"
     "board         board       board"
@@ -677,7 +679,12 @@ body {
 .pm-grid > .pm-avatar-bottom { grid-area: avatar-bottom; }
 .pm-grid > .pm-name-bottom   { grid-area: name-bottom; }
 .pm-grid > .pm-time-bottom   { grid-area: time-bottom; }
-.pm-grid > .pm-actions       { grid-area: actions; }
+/* Oyuncu satırı ile 4 dairesel kart arasını ayıran çizgi (madde: 2026-08-19). */
+.pm-grid > .pm-actions {
+  grid-area: actions;
+  border-top: 1px solid var(--t-border);
+  padding-top: 0.75rem;
+}
 .pm-grid > .pm-feedback      { grid-area: feedback; }
 .pm-grid > .pm-moves         { grid-area: moves; min-height: 0; }
 
@@ -696,7 +703,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  /* İkon boyutu %50 büyütüldü (madde 2, 2026-08-19) — büyümüş daire
+     içinde ikon daha net görünsün diye. */
+  font-size: clamp(1.65rem, 6vw, 2.25rem);
   transition: opacity 0.2s ease, box-shadow 0.2s ease;
 }
 .pm-circle[data-enabled='true'] {

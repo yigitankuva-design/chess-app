@@ -63,7 +63,7 @@ export function NameBox({ name, active }: { name: string; active: boolean }) {
     <div
       data-active={active ? 'true' : 'false'}
       className="mc-rect t-card-i flex items-center justify-center text-center px-2"
-      style={cardBorder(active)}
+      style={{ ...cardBorder(active), height: '100%' }}
     >
       <span className="font-semibold text-sm truncate">{name}</span>
     </div>
