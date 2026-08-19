@@ -1,3 +1,5 @@
+import { Chess } from 'chess.js';
+
 export interface PoolPosition {
   id: string;
   fen: string;
@@ -5,6 +7,21 @@ export interface PoolPosition {
   category?: string | null;
   /** Hoca'nın verdiği kalıcı numara ("001"). Eski konumlarda yok. */
   code?: string;
+}
+
+/**
+ * Konumun FEN'inden hamle sırasını okur (madde 2, 2026-08-19): Kazanç
+ * Konumu/Oyunsonu pratiğinde sporcu HER ZAMAN hamle sırası kendisindeymiş
+ * gibi devam eder — hoca konumu admin'de kaydederken sırayı zaten
+ * belirliyor (PositionPoolFields.tsx), burada sadece OKUNUR. skipValidation:
+ * bu konumlar bilerek şahsız olabilir (ŞAHSIZ POZİSYON DESTEĞİ).
+ */
+export function turnFromFen(fen: string): 'w' | 'b' {
+  try {
+    return new Chess(fen, { skipValidation: true }).turn();
+  } catch {
+    return 'w';
+  }
 }
 
 /** Havuzdan tamamen rastgele bir öğe seçer. Havuz boş olamaz (çağıran kontrol eder).

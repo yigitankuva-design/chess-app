@@ -3,10 +3,8 @@ import { useState } from 'react';
 import { BotGame } from '@/components/BotGame';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
-import { pickRandomPosition, pickDifferentPosition } from '@/lib/play/positionPool';
+import { pickRandomPosition, pickDifferentPosition, turnFromFen } from '@/lib/play/positionPool';
 import type { PoolPosition } from '@/lib/play/positionPool';
-import { resolveColor } from '@/lib/play/color';
-import type { PieceColor } from '@/lib/play/color';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 
 interface Props {
@@ -25,13 +23,13 @@ interface Props {
  */
 export function PositionPoolPractice({ positions, initialCriteria, title }: Props) {
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(initialCriteria ?? null);
-  const [color, setColor] = useState<PieceColor>(
-    initialCriteria ? resolveColor(initialCriteria.colorChoice) : 'w',
-  );
   const [current, setCurrent] = useState<PoolPosition | null>(
     initialCriteria && positions.length > 0 ? pickRandomPosition(positions) : null,
   );
   const [matchKey, setMatchKey] = useState(0);
+  // Madde 2 (2026-08-19): renk seçilmez — sporcu her zaman konumun FEN'inde
+  // hamle sırası kimdeyse o renkle devam eder.
+  const color = current ? turnFromFen(current.fen) : 'w';
 
   if (positions.length === 0) {
     return <p className="t-muted text-sm">Henüz konum eklenmedi.</p>;
@@ -42,10 +40,10 @@ export function PositionPoolPractice({ positions, initialCriteria, title }: Prop
       <MatchCriteria
         startLabel="Pratiğe Başla"
         simplifiedLevels
+        showColor={false}
         onStart={(v) => {
           setCurrent(pickRandomPosition(positions));
           setCriteria(v);
-          setColor(resolveColor(v.colorChoice));
         }}
       />
     );
@@ -80,7 +78,6 @@ export function PositionPoolPractice({ positions, initialCriteria, title }: Prop
         onPlayDifferent: () => {
           const next = pickDifferentPosition(positions, current.id);
           setCurrent(next);
-          setColor(resolveColor(criteria.colorChoice));
           setMatchKey((k) => k + 1);
         },
       }}

@@ -240,10 +240,11 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
               />
               {openInner === 'criteria' && (
                 <Branch offset={17}>
+                  {/* Madde 1 (2026-08-19): Açılış Pratiği'nde Renk Seç GERİ
+                      geldi — sporcu açılışı istediği renkle pratik yapabilsin. */}
                   <MatchCriteria
                     startLabel="Pratiğe Başla"
                     simplifiedLevels
-                    showColor={false}
                     onStart={(v) => {
                       // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
                       if (!chosen) return;
