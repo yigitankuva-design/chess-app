@@ -63,26 +63,22 @@ export function NameBox({ name, active }: { name: string; active: boolean }) {
     <div
       data-active={active ? 'true' : 'false'}
       className="mc-rect t-card-i flex items-center justify-center text-center px-2"
-      style={{ ...cardBorder(active), height: '100%' }}
+      style={cardBorder(active)}
     >
       <span className="font-semibold text-sm truncate">{name}</span>
     </div>
   );
 }
 
-/** Kare kart — kalan süre. Sıra bu oyuncudaysa köşede yanan bir LED ışığı
- *  vardır (madde 4, 2026-08-19). */
+/** Kare kart — kalan süre. */
 export function TimeBox({ ms, active }: { ms: number | null; active: boolean }) {
   const low = ms !== null && isLowTime(ms);
   return (
     <div
       data-active={active ? 'true' : 'false'}
       className="mc-square t-card-i flex items-center justify-center"
-      style={{ ...cardBorder(active), position: 'relative' }}
+      style={cardBorder(active)}
     >
-      {active && (
-        <span aria-hidden="true" className="mc-led" />
-      )}
       <span
         className="font-mono font-bold tabular-nums text-sm"
         style={{ color: low ? '#f87171' : 'var(--t-text)' }}

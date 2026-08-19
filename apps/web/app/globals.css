@@ -609,26 +609,6 @@ body {
   min-height: var(--mc-h);
 }
 
-/* Sırası gelen oyuncunun saatinde yanan LED (madde 4, 2026-08-19). */
-.mc-led {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--t-accent);
-  box-shadow: 0 0 8px 2px var(--t-glow, var(--t-accent));
-  animation: mc-led-pulse 1.4s ease-in-out infinite;
-}
-@keyframes mc-led-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mc-led { animation: none; }
-}
-
 @media (orientation: landscape) {
   .match-grid {
     grid-template-columns: minmax(5.5rem, 6.5rem) minmax(0, 1fr) minmax(7rem, 9rem);
@@ -651,19 +631,17 @@ body {
    ekranından (.match-grid) BAĞIMSIZDIR: 4 dairesel eylem kartı, altında
    renkli geri bildirim, EN ALTTA notasyon. */
 .pm-grid {
-  --mc-h: clamp(2.75rem, 9vw, 3.75rem);
-  --pm-circle: clamp(4.5rem, 16.5vw, 6rem);
+  /* Madde 5 (2026-08-19): temel boyutlar büyütüldü — ekranı daha iyi doldursun. */
+  --mc-h: clamp(3.25rem, 11vw, 4.75rem);
+  --pm-circle: clamp(5rem, 18vw, 6.75rem);
   display: grid;
   gap: 0.5rem;
-  max-width: 32rem;
+  max-width: 38rem;
   margin: 0 auto;
-  /* Madde 3 (2026-08-19): oto-esnek-oto — ikon/saat sabit kare, isim kartı
-     aradaki tüm boşluğu doldurur; satır tahtanın tam genişliğine (başı-sonu)
-     denk gelir. Eskiden 1fr 1fr 1fr idi (üç eşit sütun).
-     align-items STRETCH kalır (varsayılan) — isim kartı satırın tam
-     yüksekliğini doldursun diye (height:100%, bkz. NameBox), böylece
-     içerik hem yatay hem dikey tam ortalanır (madde 1, 2026-08-19). */
-  grid-template-columns: auto 1fr auto;
+  /* Oto-esnek-SABİT: ikon sabit kare solda, isim ortada esner, saat
+     sağda SABİT genişlik — saat kartı isme doğru %30 uzatıldığı için
+     artık kare değil (madde 4, 2026-08-19); isim kartı bu yüzden daralır. */
+  grid-template-columns: auto 1fr calc(var(--mc-h) * 1.3);
   grid-template-areas:
     "avatar-top    name-top    time-top"
     "board         board       board"
@@ -672,6 +650,20 @@ body {
     "feedback      feedback    feedback"
     "moves         moves       moves";
 }
+/* İkon/isim/saat kartları: hem yatay hem dikey TAM ortalama, satır
+   yüksekliği ne olursa olsun (madde 1-2-3, 2026-08-19). Sarmalayıcı
+   div'in kendisi flex kutusu olur; içindeki sabit boyutlu kutu (kare)
+   veya esnek kutu (isim) bu sayede satırın ortasına oturur. */
+.pm-grid > .pm-avatar-top,
+.pm-grid > .pm-name-top,
+.pm-grid > .pm-time-top,
+.pm-grid > .pm-avatar-bottom,
+.pm-grid > .pm-name-bottom,
+.pm-grid > .pm-time-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .pm-grid > .pm-avatar-top    { grid-area: avatar-top; }
 .pm-grid > .pm-name-top      { grid-area: name-top; }
 .pm-grid > .pm-time-top      { grid-area: time-top; }
@@ -679,6 +671,12 @@ body {
 .pm-grid > .pm-avatar-bottom { grid-area: avatar-bottom; }
 .pm-grid > .pm-name-bottom   { grid-area: name-bottom; }
 .pm-grid > .pm-time-bottom   { grid-area: time-bottom; }
+/* Saat kutusu artık kare değil — sarmalayıcının tam genişliğini doldurur
+   (madde 4, 2026-08-19). Yükseklik .mc-square'den (var(--mc-h)) değişmez. */
+.pm-grid > .pm-time-top .mc-square,
+.pm-grid > .pm-time-bottom .mc-square {
+  width: 100%;
+}
 /* Oyuncu satırı ile 4 dairesel kart arasını ayıran çizgi (madde: 2026-08-19). */
 .pm-grid > .pm-actions {
   grid-area: actions;
