@@ -1,5 +1,5 @@
 'use client';
-import type { ReactNode } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import { formatClock, isLowTime } from '@/lib/play/clockFormat';
 import { avatarEmoji } from '@/lib/avatars';
 
@@ -44,13 +44,28 @@ export function cardBorder(active: boolean) {
   };
 }
 
+/**
+ * İçeriği kartın TAM ortasına (hem yatay hem dikey) oturtur. Satır-içi
+ * (inline) stil olarak verilir çünkü `.t-card-i` sınıfı `display: block`
+ * içeriyor ve derlenen CSS'te Tailwind'in `flex` sınıfından SONRA geldiği
+ * için onu eziyor — Tailwind'in `flex items-center justify-center`
+ * sınıflarını kart kutularında kullanmak GÖRÜNÜŞTE çalışsa da içerik hiç
+ * ortalanmıyordu (2026-08-19 bulgusu). Inline stil hiçbir sınıfla
+ * çakışmaz, her zaman kazanır.
+ */
+const CENTER_CONTENT: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
 /** Kare kart — Avatar. */
 export function AvatarBox({ avatarId, active }: { avatarId: string; active: boolean }) {
   return (
     <div
       data-active={active ? 'true' : 'false'}
-      className="mc-square t-card-i flex items-center justify-center"
-      style={cardBorder(active)}
+      className="mc-square t-card-i"
+      style={{ ...cardBorder(active), ...CENTER_CONTENT }}
     >
       <span className="text-2xl" aria-hidden="true">{avatarEmoji(avatarId)}</span>
     </div>
@@ -62,8 +77,8 @@ export function NameBox({ name, active }: { name: string; active: boolean }) {
   return (
     <div
       data-active={active ? 'true' : 'false'}
-      className="mc-rect t-card-i flex items-center justify-center text-center px-2"
-      style={cardBorder(active)}
+      className="mc-rect t-card-i text-center px-2"
+      style={{ ...cardBorder(active), ...CENTER_CONTENT }}
     >
       <span className="font-semibold text-sm truncate">{name}</span>
     </div>
@@ -76,8 +91,8 @@ export function TimeBox({ ms, active }: { ms: number | null; active: boolean }) 
   return (
     <div
       data-active={active ? 'true' : 'false'}
-      className="mc-square t-card-i flex items-center justify-center"
-      style={cardBorder(active)}
+      className="mc-square t-card-i"
+      style={{ ...cardBorder(active), ...CENTER_CONTENT }}
     >
       <span
         className="font-mono font-bold tabular-nums text-sm"
