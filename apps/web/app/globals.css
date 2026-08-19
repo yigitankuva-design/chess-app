@@ -680,7 +680,7 @@ body {
 .pm-grid {
   /* Madde 5 (2026-08-19): temel boyutlar büyütüldü — ekranı daha iyi doldursun. */
   --mc-h: clamp(3.25rem, 11vw, 4.75rem);
-  --pm-circle: clamp(5rem, 18vw, 6.75rem);
+  --pm-circle: clamp(3.75rem, 13.5vw, 5.0625rem);
   display: grid;
   gap: 0.5rem;
   max-width: 38rem;
