@@ -330,6 +330,11 @@ export function LiveGame({ gameId, myColor }: Props) {
 
   const canOffer = canOfferDraw(myOffersUsed);
   const iAmWhite = myColor === 'white';
+  // Madde 5: `interactive` sira RAKIPTEYKEN de yanlislikla true kalirsa
+  // ChessBoard normal hamle akisina girer, ÖN-HAMLE dalina hic ugramaz —
+  // sporcu rakip sirasindayken tasini hic secemez. Sira kontrolu burada.
+  const myTurn = (fen.split(' ')[1] === 'w' && myColor === 'white')
+    || (fen.split(' ')[1] === 'b' && myColor === 'black');
   const top: PlayerInfo = {
     avatarId: iAmWhite ? blackAvatar : whiteAvatar,
     name: formatPlayerLabel(
@@ -387,7 +392,7 @@ export function LiveGame({ gameId, myColor }: Props) {
         <div style={{ position: 'relative' }}>
           <ChessBoard
             fen={nav.isLive ? fen : nav.viewFen}
-            interactive={status === 'active' && nav.isLive}
+            interactive={status === 'active' && nav.isLive && myTurn}
             onPieceDrop={handleDrop}
             boardOrientation={myColor}
             onWheelStep={nav.step}

@@ -387,11 +387,18 @@ export function BotGame({
     active: status === 'playing' && chessRef.current.turn() === studentColor,
   };
 
+  // Madde 5: `thinking` tek basina yeterli degil — persistMove await'i
+  // sirasinda thinking henuz true olmadan kisa bir pencere var; o an tur
+  // kontrolu olmadan interactive=true kalirsa ChessBoard ÖN-HAMLE dalina
+  // hic girmez, sporcu rakip sirasindayken tasini secemez.
+  const boardInteractive = status === 'playing' && !thinking && nav.isLive
+    && chessRef.current.turn() === studentColor;
+
   const board = (
     <>
       <ChessBoard
         fen={nav.viewFen}
-        interactive={status === 'playing' && !thinking && nav.isLive}
+        interactive={boardInteractive}
         onPieceDrop={handleDrop}
         boardOrientation={studentColor === 'w' ? 'white' : 'black'}
         onWheelStep={nav.step}
