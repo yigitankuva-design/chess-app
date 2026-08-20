@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { PathNode, Branch } from '@/components/ui/neumorphic';
 
 export interface OpeningVariant { id: number; name: string; start_fen: string }
 export interface Opening { id: number; name: string; variants: OpeningVariant[] }
@@ -13,9 +14,10 @@ interface Props {
 
 /**
  * Sporcu tarafinda açılış seçimi: Tür → Açılış İsmi → Varyant TEK bir iç
- * içe akordiyonda (madde: 2026-08-20, güncelleme — admin'in
- * OpeningCategoryCards'ıyla AYNI drill-down deseni, salt-okunur/seçim
- * amaçlı). Önceki "3 ayrı numaralı adım" yapısının yerini alır.
+ * içe patika (Dersler ekranındaki Düzey → Ders → Alt Konu ile AYNI
+ * PathNode+Branch — dairesel ikon + kesikli dal çizgisi — görsel dili,
+ * madde: 2026-08-20, güncelleme). Önceki kutulu/çerçeveli liste tasarımının
+ * yerini alır — salt-okunur/seçim amaçlı.
  */
 export function OpeningPicker({ types, onPicked }: Props) {
   const [openTypeId, setOpenTypeId] = useState<number | null>(null);
@@ -25,62 +27,55 @@ export function OpeningPicker({ types, onPicked }: Props) {
   if (types.length === 0) return <p className="text-sm t-muted">Henüz açılış türü yok.</p>;
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
-      {types.map((t, i) => {
+    <div className="grid gap-2.5">
+      {types.map((t) => {
         const typeOpen = openTypeId === t.id;
         return (
-          <div key={t.id} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--t-border)' }}>
-            <button type="button"
+          <div key={t.id}>
+            <PathNode
+              icon="📖"
+              label={t.name}
+              active={typeOpen}
+              size={30}
               onClick={() => { setOpenTypeId((p) => (p === t.id ? null : t.id)); setOpenOpeningId(null); }}
-              aria-expanded={typeOpen}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left"
-              style={{ background: 'var(--t-surface)' }}>
-              <span className="font-medium text-sm flex-1">{t.name}</span>
-              <span className="text-xs t-muted" aria-hidden="true">{typeOpen ? '▴' : '▾'}</span>
-            </button>
-
+            />
             {typeOpen && (
-              <div style={{ borderTop: '1px solid var(--t-border)' }}>
+              <Branch offset={15}>
                 {t.openings.length === 0 && (
-                  <p className="text-sm t-muted px-4 py-3">Bu türde henüz açılış yok.</p>
+                  <p className="text-xs t-muted py-1">Bu türde henüz açılış yok.</p>
                 )}
-                {t.openings.map((o, j) => {
+                {t.openings.map((o) => {
                   const openingOpen = openOpeningId === o.id;
                   return (
-                    <div key={o.id} style={{ borderTop: j === 0 ? 'none' : '1px solid var(--t-border)' }}>
-                      <button type="button"
+                    <div key={o.id}>
+                      <PathNode
+                        icon="📖"
+                        label={o.name}
+                        active={openingOpen}
+                        size={26}
                         onClick={() => setOpenOpeningId((p) => (p === o.id ? null : o.id))}
-                        aria-expanded={openingOpen}
-                        className="w-full flex items-center gap-3 pl-8 pr-4 py-3 text-left"
-                        style={{ background: 'var(--t-surface-2)' }}>
-                        <span className="text-xl">📖</span>
-                        <span className="font-medium text-sm flex-1">{o.name}</span>
-                        <span className="text-xs t-muted" aria-hidden="true">{openingOpen ? '▴' : '▾'}</span>
-                      </button>
-
+                      />
                       {openingOpen && (
-                        <div style={{ borderTop: '1px solid var(--t-border)' }}>
+                        <Branch offset={13}>
                           {o.variants.length === 0 && (
-                            <p className="text-sm t-muted pl-12 py-3">Bu açılışta henüz varyant yok.</p>
+                            <p className="text-xs t-muted py-1">Bu açılışta henüz varyant yok.</p>
                           )}
-                          {o.variants.map((v, k) => (
-                            <button key={v.id} type="button"
+                          {o.variants.map((v) => (
+                            <PathNode
+                              key={v.id}
+                              icon="♟️"
+                              label={v.name}
+                              active={false}
+                              size={24}
                               onClick={() => onPicked({ type: t, opening: o, variant: v })}
-                              className="w-full flex items-center gap-3 pl-12 pr-4 py-3 text-left"
-                              style={{
-                                background: 'var(--t-surface)',
-                                borderTop: k === 0 ? 'none' : '1px solid var(--t-border)',
-                              }}>
-                              <span className="text-xl">♟️</span>
-                              <span className="font-medium text-sm flex-1">{v.name}</span>
-                            </button>
+                            />
                           ))}
-                        </div>
+                        </Branch>
                       )}
                     </div>
                   );
                 })}
-              </div>
+              </Branch>
             )}
           </div>
         );
