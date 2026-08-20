@@ -42,11 +42,23 @@ def upgrade() -> None:
         "opening_types", sa.column("id", sa.Integer),
         sa.column("name", sa.String), sa.column("sort_order", sa.Integer),
     )
-    # Tek tek insert edilir (BIRER cagri) — bulk insert'te inserted_primary_key
-    # her iki backend'de (SQLite/Postgres) guvenilir donmeyebilir (mimari inceleme).
-    e4_id = conn.execute(types_tbl.insert().values(name=_SEED_TYPES[0], sort_order=1)).inserted_primary_key[0]
-    d4_id = conn.execute(types_tbl.insert().values(name=_SEED_TYPES[1], sort_order=2)).inserted_primary_key[0]
-    other_id = conn.execute(types_tbl.insert().values(name=_SEED_TYPES[2], sort_order=3)).inserted_primary_key[0]
+
+    def _insert_type(name: str, sort_order: int) -> int:
+        """Turu ekler ve id'sini geri okur.
+
+        DIKKAT: inserted_primary_key KULLANILMAZ — sa.table() hafif bir yapidir,
+        birincil anahtar bilgisi tasimaz; o alan bos demet () doner ve [0] patlar
+        (2026-08-20 canli deploy bu yuzden coktu). Ad benzersiz oldugu icin
+        INSERT sonrasi SELECT her iki backend'de de (SQLite/Postgres) calisir.
+        """
+        conn.execute(types_tbl.insert().values(name=name, sort_order=sort_order))
+        return conn.execute(
+            sa.select(types_tbl.c.id).where(types_tbl.c.name == name)
+        ).scalar_one()
+
+    e4_id = _insert_type(_SEED_TYPES[0], 1)
+    d4_id = _insert_type(_SEED_TYPES[1], 2)
+    other_id = _insert_type(_SEED_TYPES[2], 3)
 
     op.add_column("openings", sa.Column("opening_type_id", sa.Integer(), nullable=True))
     openings_tbl = sa.table(
