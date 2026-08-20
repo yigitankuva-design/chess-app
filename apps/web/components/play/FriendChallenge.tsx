@@ -9,6 +9,7 @@ import type { Athlete, AthleteRow } from '@/lib/play/athleteFilter';
 import { resolveColor } from '@/lib/play/color';
 import { getToken } from '@/lib/auth-storage';
 import { tempoCategoryOfLabel } from '@/lib/play/levels';
+import { formatPlayerLabel } from '@/lib/play/titles';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -30,6 +31,8 @@ function criteriaPayload(v: MatchCriteriaValue, startFen?: string | null) {
     tc_increment: v.timeControl.increment,
     // Acilis pratiginden gelindiyse tahta o konumdan baslar.
     start_fen: startFen ?? null,
+    // Madde 6 (2026-08-20): "Oyun Modu" — Puanli/Puansiz.
+    rated: v.rated,
   };
 }
 
@@ -64,17 +67,21 @@ export function FriendChallenge({ openingStep }: Props = {}) {
   const [selected, setSelected] = useState<AthleteRow | null>(null);
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
 
-  // Sporcu listesi bir kez yuklenir; aktiflik lobi soketinden ayrica gelir.
+  // Sporcu listesi yuklenir; aktiflik lobi soketinden ayrica gelir. Kriter
+  // adimi (tempo) belirlenince YENIDEN cekilir — madde 6 (2026-08-20):
+  // o tempodaki Performans Puani/Unvani da gelsin diye.
+  const tempo = criteria ? tempoCategoryOfLabel(criteria.timeControl.label) : null;
   useEffect(() => {
     const token = getToken();
     if (!token) { setAll([]); return; }
     let alive = true;
-    fetch(`${API_BASE}/athletes`, { headers: { Authorization: `Bearer ${token}` } })
+    const qs = tempo ? `?tempo=${encodeURIComponent(tempo)}` : '';
+    fetch(`${API_BASE}/athletes${qs}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('yuklenemedi'))))
       .then((d) => { if (alive) setAll(Array.isArray(d) ? d : []); })
       .catch(() => { if (alive) { setAll([]); setLoadError(true); } });
     return () => { alive = false; };
-  }, []);
+  }, [tempo]);
 
   const rows = mergeOnline(all ?? [], players.map((p) => p.child_id));
   const shown = filterAthletes(rows, query);
@@ -141,6 +148,7 @@ export function FriendChallenge({ openingStep }: Props = {}) {
         {/* Madde 7: insana karsi DUZEY anlamsiz — sadece Tempo-Sure-Renk. */}
         <MatchCriteria
           showLevel={false}
+          showRatedMode
           startLabel="Kriterleri Onayla"
           onStart={(v) => { setCriteria(v); setOpen('friend'); }}
         />
@@ -194,7 +202,9 @@ export function FriendChallenge({ openingStep }: Props = {}) {
                   }}
                 >
                   <span className="text-sm">{r.online ? '🟢' : '⚪'}</span>
-                  <span className="font-medium text-sm flex-1">{r.display_name}</span>
+                  <span className="font-medium text-sm flex-1">
+                    {formatPlayerLabel(r.display_name, r.rating, r.title)}
+                  </span>
                   {!r.online && <span className="text-xs t-muted">çevrimdışı</span>}
                   {isSel && (
                     <span className="text-xs" style={{ color: 'var(--t-accent)' }}>seçili</span>

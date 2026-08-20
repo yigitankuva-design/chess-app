@@ -11,12 +11,19 @@ export interface TournamentSummary {
   status: 'upcoming' | 'active' | 'finished';
   current_round: number | null;
   joined: boolean;
+  /** Madde 6 (2026-08-20): "Oyun Modu" — Puanlı turnuvada maçlar Performans
+   *  Puanını etkiler. tempo=null ise (tempo 9 sabitten birine eşleşmiyorsa)
+   *  rated=true olsa da hiçbir maç puanlanmaz. */
+  rated: boolean;
+  tempo: string | null;
 }
 
 export interface TournamentStandingRow {
   child_id: number;
   display_name: string;
   score: number;
+  rating: number | null;
+  title: string | null;
 }
 
 export interface MyPairing {
@@ -37,6 +44,8 @@ export interface TournamentDetail {
   increment_ms: number | null;
   status: 'upcoming' | 'active' | 'finished';
   current_round: number | null;
+  rated: boolean;
+  tempo: string | null;
   standings: TournamentStandingRow[];
   my_pairing: MyPairing | null;
 }

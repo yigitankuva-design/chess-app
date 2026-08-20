@@ -16,7 +16,9 @@ _offers: dict[int, dict[str, Any]] = {}
 
 
 def create_offer(child_id: int, display_name: str, tempo: str, tc_label: str,
-                 tc_base: int, tc_increment: int, color: str) -> dict[str, Any]:
+                 tc_base: int, tc_increment: int, color: str,
+                 rated: bool = False, rating: int | None = None,
+                 title: str | None = None) -> dict[str, Any]:
     """Yeni teklif. Ayni cocugun eski teklifi USTUNE YAZILIR (tek teklif kurali)."""
     if color not in VALID_COLORS:
         raise ValueError(f"gecersiz renk: {color}")
@@ -28,6 +30,9 @@ def create_offer(child_id: int, display_name: str, tempo: str, tc_label: str,
         "tc_base": tc_base,
         "tc_increment": tc_increment,
         "color": color,
+        "rated": rated,
+        "rating": rating,
+        "title": title,
     }
     _offers[child_id] = offer
     return offer

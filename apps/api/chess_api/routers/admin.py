@@ -32,6 +32,8 @@ from chess_api.models.tournament import (
 )
 from chess_api.schemas.tournament import TournamentCreateRequest
 from chess_api.services.tournaments import generate_pairings
+from chess_api.services.tempo import tempo_category
+from chess_api.services.rating import get_rating_or_default, title_for_rating
 from chess_api.pool_categories import POOL_CATEGORIES
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -1497,6 +1499,7 @@ def _tournament_out(t: Tournament) -> dict:
         "id": t.id, "name": t.name, "rounds_total": t.rounds_total,
         "base_ms": t.base_ms, "increment_ms": t.increment_ms,
         "status": t.status.value, "current_round": t.current_round,
+        "rated": t.rated, "tempo": tempo_category(t.base_ms, t.increment_ms),
     }
 
 
@@ -1511,6 +1514,7 @@ async def create_tournament(
         name=payload.name, created_by_user_id=current.id,
         rounds_total=payload.rounds_total,
         base_ms=payload.base_ms, increment_ms=payload.increment_ms,
+        rated=payload.rated,
     )
     db.add(t)
     await db.commit()
@@ -1538,17 +1542,22 @@ async def _tournament_or_404(db: AsyncSession, tournament_id: int, current: User
     return t
 
 
-async def _standings(db: AsyncSession, tournament_id: int) -> list[dict]:
+async def _standings(db: AsyncSession, tournament_id: int, tempo: str | None = None) -> list[dict]:
     rows = (await db.execute(
         select(TournamentParticipant, ChildProfile.display_name)
         .join(ChildProfile, ChildProfile.id == TournamentParticipant.child_id)
         .where(TournamentParticipant.tournament_id == tournament_id)
         .order_by(TournamentParticipant.score.desc(), TournamentParticipant.id)
     )).all()
-    return [
-        {"child_id": p.child_id, "display_name": name, "score": p.score}
-        for p, name in rows
-    ]
+    out = []
+    for p, name in rows:
+        rating = title = None
+        if tempo:
+            rating = await get_rating_or_default(db, p.child_id, tempo)
+            title = title_for_rating(rating)
+        out.append({"child_id": p.child_id, "display_name": name, "score": p.score,
+                    "rating": rating, "title": title})
+    return out
 
 
 async def _pairings_by_round(db: AsyncSession, tournament_id: int) -> dict[int, list[dict]]:
@@ -1589,7 +1598,7 @@ async def get_tournament_admin(
     t = await _tournament_or_404(db, tournament_id, current)
     return {
         **_tournament_out(t),
-        "standings": await _standings(db, tournament_id),
+        "standings": await _standings(db, tournament_id, tempo_category(t.base_ms, t.increment_ms) if t.rated else None),
         "pairings_by_round": await _pairings_by_round(db, tournament_id),
     }
 
@@ -1617,7 +1626,7 @@ async def start_tournament(
     await db.refresh(t)
     return {
         **_tournament_out(t),
-        "standings": await _standings(db, tournament_id),
+        "standings": await _standings(db, tournament_id, tempo_category(t.base_ms, t.increment_ms) if t.rated else None),
         "pairings_by_round": await _pairings_by_round(db, tournament_id),
     }
 
@@ -1673,7 +1682,7 @@ async def advance_tournament_round(
     await db.refresh(t)
     return {
         **_tournament_out(t),
-        "standings": await _standings(db, tournament_id),
+        "standings": await _standings(db, tournament_id, tempo_category(t.base_ms, t.increment_ms) if t.rated else None),
         "pairings_by_round": await _pairings_by_round(db, tournament_id),
     }
 

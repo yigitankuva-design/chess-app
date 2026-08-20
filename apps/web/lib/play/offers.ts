@@ -11,6 +11,10 @@ export interface LobbyOffer {
   tc_base: number;
   tc_increment: number;
   color: ColorChoice;
+  /** Madde 6 (2026-08-20): "Oyun Modu" — Puanlıysa rating/title de gelir. */
+  rated?: boolean;
+  rating?: number | null;
+  title?: string | null;
 }
 
 /** Tempo adinin emojisi. Bilinmeyen tempo icin BOS dizge — uydurulmaz. */

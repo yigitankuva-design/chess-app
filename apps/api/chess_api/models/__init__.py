@@ -22,9 +22,11 @@ from chess_api.models.custom_tab import CustomTab, CustomTabSection
 from chess_api.models.tournament import (
     Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
 )
+from chess_api.models.rating import ChildTempoRating
 
 __all__ = [
     "Tournament", "TournamentStatus", "TournamentParticipant", "TournamentPairing",
+    "ChildTempoRating",
     "AppSettings",
     "ChildPracticeResult",
     "Opening",

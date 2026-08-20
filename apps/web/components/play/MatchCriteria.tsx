@@ -10,6 +10,9 @@ export interface MatchCriteriaValue {
   level: PlayLevel;
   timeControl: TimeControl;
   colorChoice: ColorChoice;
+  /** Madde 6 (2026-08-20): "Oyun Modu" — yalnızca showRatedMode=true iken
+   *  gerçek bir seçim; aksi halde her zaman false (bota karşı anlamsız). */
+  rated: boolean;
 }
 
 interface Props {
@@ -36,12 +39,20 @@ interface Props {
    * varsayılan 'random' ile MatchCriteriaValue'da döner (çağıranlar kırılmaz).
    */
   showColor?: boolean;
+  /**
+   * Madde 6 (2026-08-20): "Oyun Modu: Puanlı/Puansız" satırı gösterilsin mi?
+   * Yalnızca Arkadaşınla Oyna/Turnuvaya Katıl akışlarında true — bota karşı
+   * maçta Performans Puanı hiç değişmediği için (madde 5) anlamsız.
+   */
+  showRatedMode?: boolean;
 }
 
-/** Üç yatay sıra (madde 5): 1) Düzey  2) Tempo/Süre + Renk  3) Maça Başla.
- *  Adımlar SIRAYLA açılır: düzey seçilmeden tempo, tempo seçilmeden başlat. */
+/** Üç/dört yatay sıra (madde 5): 1) Düzey  2) Tempo/Süre + Renk  3) Oyun
+ *  Modu (varsa)  4) Maça Başla. Adımlar SIRAYLA açılır: düzey seçilmeden
+ *  tempo, tempo seçilmeden başlat. */
 export function MatchCriteria({
   onStart, startLabel, showLevel = true, simplifiedLevels = false, showColor = true,
+  showRatedMode = false,
 }: Props) {
   /**
    * null = HENÜZ SEÇİLMEDİ. Varsayılan LEVELS[0] verilseydi 1. adım daha
@@ -50,6 +61,7 @@ export function MatchCriteria({
   const [level, setLevel] = useState<PlayLevel | null>(null);
   const [tc, setTc] = useState<TimeControl | null>(null);
   const [colorChoice, setColorChoice] = useState<ColorChoice>('random');
+  const [rated, setRated] = useState(true);
 
   // Düzey gösterilmiyorsa o adım kendiliğinden tamam sayılır.
   const levelDone = !showLevel || level !== null;
@@ -155,6 +167,24 @@ export function MatchCriteria({
             </div>
           </div>
         )}
+
+        {showRatedMode && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold t-muted uppercase tracking-wide">Oyun Modu</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setRated(true)}
+                className="py-3 rounded-xl text-sm font-bold transition-all"
+                style={pill(rated)}>
+                🏆 Puanlı
+              </button>
+              <button type="button" onClick={() => setRated(false)}
+                className="py-3 rounded-xl text-sm font-bold transition-all"
+                style={pill(!rated)}>
+                Puansız
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── 3. YATAY SIRA: Başlat ── */}
@@ -163,7 +193,7 @@ export function MatchCriteria({
         disabled={!tc || !levelDone}
         onClick={() => {
           if (tc && levelDone) {
-            onStart({ level: effectiveLevel, timeControl: tc, colorChoice });
+            onStart({ level: effectiveLevel, timeControl: tc, colorChoice, rated: showRatedMode ? rated : false });
           }
         }}
         className="w-full py-3.5 rounded-xl text-base font-bold transition-all shadow-sm disabled:opacity-40"

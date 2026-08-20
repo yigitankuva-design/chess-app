@@ -45,7 +45,7 @@ describe('PositionPoolPractice', () => {
     render(
       <PositionPoolPractice
         positions={POOL}
-        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white' }}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white', rated: false }}
       />,
     );
     expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('PositionPoolPractice — başlıkta kod', () => {
       <PositionPoolPractice
         title="Kale Finalleri"
         positions={[{ id: 'p1', fen: POOL[0].fen, code: '003' }]}
-        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white' }}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white', rated: false }}
       />,
     );
     expect(await screen.findByText(/Kale Finalleri/)).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('PositionPoolPractice — başlıkta kod', () => {
       <PositionPoolPractice
         title="Piyon Finalleri"
         positions={[{ id: 'p1', fen: POOL[0].fen }]}
-        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white' }}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white', rated: false }}
       />,
     );
     expect(await screen.findByText(/001/)).toBeInTheDocument();

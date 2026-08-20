@@ -14,6 +14,8 @@ from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
 from chess_api.services.tournaments import finalize_tournament_pairing
+from chess_api.services.rating import apply_rating_update, get_rating_or_default, title_for_rating
+from chess_api.services.tempo import tempo_category
 from chess_api.services.lobby import (
     join_lobby, leave_lobby, online_players, send_to_player, connected_ids,
 )
@@ -58,11 +60,14 @@ def _child_id_from_token(token: str) -> int | None:
 async def _create_human_game(white_child_id: int, black_child_id: int,
                              base_ms: int | None = None,
                              increment_ms: int | None = None,
-                             start_fen: str | None = None) -> int:
+                             start_fen: str | None = None,
+                             rated: bool = False) -> int:
     """Insan-insan mac kaydi.
 
     base_ms verilirse saat de kurulur. Varsayilanlar None oldugu icin mevcut
-    cagiranlar (kuyruk akisi) aynen calisir — saatsiz mac acilir.
+    cagiranlar (kuyruk akisi) aynen calisir — saatsiz mac acilir. rated=True
+    ise mac bitince Performans Puani degisir (bkz. services/rating.py) —
+    yalnizca 9 sabit tempodan birine tam eslesirse (services/tempo.py).
     """
     async with get_session_factory()() as db:
         game = Game(
@@ -76,11 +81,21 @@ async def _create_human_game(white_child_id: int, black_child_id: int,
             black_ms=base_ms,
             last_clock_at=datetime.utcnow() if base_ms is not None else None,
             start_fen=start_fen,
+            rated=rated,
         )
         db.add(game)
         await db.commit()
         await db.refresh(game)
         return game.id
+
+
+async def _on_human_game_finished(db, game: Game) -> None:
+    """Insan-insan bir mac bitince (5 farkli 'mac bitti' noktasinin HEPSINDEN
+    cagrilan TEK ortak nokta) — turnuva puanlamasi VE Performans Puani AYNI
+    DB session/commit icinde guncellenir (madde: mimari inceleme, 2026-08-20
+    — ikisi ayri commit'lere bolunurse yari-tutarli durum olusabilir)."""
+    await finalize_tournament_pairing(db, game)
+    await apply_rating_update(db, game)
 
 
 def _epoch(dt: datetime) -> float:
@@ -261,6 +276,16 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             select(GameMove).where(GameMove.game_id == game_id)
             .order_by(GameMove.ply.asc())
         )).scalars().all()
+        # Madde 6 (2026-08-20): Performans Puani/Unvan yalnizca "Puanli" mac,
+        # tempo 9 sabitten birine eslesiyorsa ve iki taraf da belliyse gosterilir
+        # — aksi halde None (frontend bos gecer, KIRILMAZ).
+        tempo = tempo_category(g.base_ms, g.increment_ms) if g.rated else None
+        white_rating = black_rating = white_title = black_title = None
+        if tempo and g.white_child_id and g.black_child_id:
+            white_rating = await get_rating_or_default(db, g.white_child_id, tempo)
+            black_rating = await get_rating_or_default(db, g.black_child_id, tempo)
+            white_title = title_for_rating(white_rating)
+            black_title = title_for_rating(black_rating)
         await websocket.send_json({
             "type": "game_info",
             "white_name": w.display_name if w else default_name,
@@ -278,6 +303,8 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             # canli mac gibi durur ve hamle denemesi sessizce bosa gider.
             "status": g.status.value,
             "result": g.result.value if g.result else None,
+            "white_rating": white_rating, "black_rating": black_rating,
+            "white_title": white_title, "black_title": black_title,
         })
 
     try:
@@ -348,7 +375,7 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
             game.status = GameStatus.finished
             game.result = GameResult.black_wins if whites_turn else GameResult.white_wins
             game.finished_at = datetime.utcnow()
-            await finalize_tournament_pairing(db, game)
+            await _on_human_game_finished(db, game)
             await db.commit()
             await room.broadcast({
                 "type": "game_over",
@@ -382,7 +409,7 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
             game.result = GameResult.draw
 
         if game.result is not None:
-            await finalize_tournament_pairing(db, game)
+            await _on_human_game_finished(db, game)
 
         await db.commit()
 
@@ -515,7 +542,7 @@ async def _handle_flag(game_id: int, room) -> None:
         game.status = GameStatus.finished
         game.result = GameResult.black_wins if white_to_move else GameResult.white_wins
         game.finished_at = datetime.utcnow()
-        await finalize_tournament_pairing(db, game)
+        await _on_human_game_finished(db, game)
         await db.commit()
         final = game.result.value
     await room.broadcast({
@@ -530,7 +557,7 @@ async def _handle_resign(game_id, child_id, white_id, black_id, room):
             return
         game.status = GameStatus.finished
         game.result = GameResult.black_wins if child_id == white_id else GameResult.white_wins
-        await finalize_tournament_pairing(db, game)
+        await _on_human_game_finished(db, game)
         await db.commit()
     await room.broadcast({"type": "game_over", "result": game.result.value, "by_resign": True})
 
@@ -542,7 +569,7 @@ async def _handle_draw(game_id, room):
             return
         game.status = GameStatus.finished
         game.result = GameResult.draw
-        await finalize_tournament_pairing(db, game)
+        await _on_human_game_finished(db, game)
         await db.commit()
     await room.broadcast({"type": "game_over", "result": "1/2-1/2"})
 
@@ -637,7 +664,7 @@ async def _handle_rematch_accept(game_id: int, child_id: int, white_id, black_id
         new_id = await _create_human_game(
             new_white, new_black,
             base_ms=game.base_ms, increment_ms=game.increment_ms,
-            start_fen=game.start_fen,
+            start_fen=game.start_fen, rated=game.rated,
         )
     await room.broadcast({
         "type": "rematch_ready", "game_id": new_id,
@@ -668,11 +695,21 @@ async def _handle_challenge(child_id: int, msg: dict) -> None:
     if not isinstance(target, int):
         return
     name = await _resolve_display_name(child_id)
+    criteria = msg.get("criteria") or {}
+    # Madde 6 (2026-08-20): teklif "Puanli" ve tempo belliyse, davet eden
+    # sporcunun O TEMPODAKI unvani/puani da bildirim kartinda gorunsun.
+    from_rating = from_title = None
+    tempo = criteria.get("tempo") if criteria.get("rated") else None
+    if isinstance(tempo, str) and tempo:
+        async with get_session_factory()() as db:
+            from_rating = await get_rating_or_default(db, child_id, tempo)
+        from_title = title_for_rating(from_rating)
     await send_to_player(target, {
         "type": "challenge_received",
         "from_child_id": child_id,
         "from_name": name,
-        "criteria": msg.get("criteria") or {},
+        "from_rating": from_rating, "from_title": from_title,
+        "criteria": criteria,
     })
 
 
@@ -699,6 +736,7 @@ async def _handle_challenge_accept(child_id: int, msg: dict) -> None:
         base_ms=int(base_s) * 1000 if isinstance(base_s, int) and base_s > 0 else None,
         increment_ms=int(inc_s) * 1000 if isinstance(inc_s, int) else 0,
         start_fen=start_fen if isinstance(start_fen, str) and start_fen else None,
+        rated=bool(criteria.get("rated", False)),
     )
 
     await send_to_player(challenger, {
@@ -740,15 +778,26 @@ async def _broadcast_offers() -> None:
 
 async def _handle_offer_create(child_id: int, msg: dict) -> None:
     name = await _resolve_display_name(child_id)
+    rated = bool(msg.get("rated", False))
+    tempo = str(msg.get("tempo") or "")
+    # Madde 6 (2026-08-20): panoda teklif sahibinin O TEMPODAKI unvani/puani
+    # gorunsun ki rakip secerken bunu goz onune alabilsin.
+    rating = title = None
+    if rated and tempo:
+        async with get_session_factory()() as db:
+            rating = await get_rating_or_default(db, child_id, tempo)
+        title = title_for_rating(rating)
     try:
         create_offer(
             child_id=child_id,
             display_name=name,
-            tempo=str(msg.get("tempo") or ""),
+            tempo=tempo,
             tc_label=str(msg.get("tc_label") or ""),
             tc_base=int(msg.get("tc_base") or 0),
             tc_increment=int(msg.get("tc_increment") or 0),
             color=str(msg.get("color") or "random"),
+            rated=rated,
+            rating=rating, title=title,
         )
     except (ValueError, TypeError):
         return  # gecersiz teklif sessizce yok sayilir; pano degismez
@@ -787,6 +836,7 @@ async def _handle_offer_take(child_id: int, msg: dict) -> None:
         white_id, black_id,
         base_ms=_base * 1000 if _base > 0 else None,
         increment_ms=int(offer.get("tc_increment") or 0) * 1000,
+        rated=bool(offer.get("rated", False)),
     )
 
     await send_to_player(owner, {

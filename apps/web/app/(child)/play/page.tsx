@@ -63,7 +63,7 @@ function PlayInner() {
       ? colorParam
       : 'white';
   const quickStart: MatchCriteriaValue | null = quickLevel && quickTc
-    ? { level: quickLevel, timeControl: quickTc, colorChoice: quickColor }
+    ? { level: quickLevel, timeControl: quickTc, colorChoice: quickColor, rated: false }
     : null;
 
   // Ana sayfadaki maç türü kartından gelinmişse o akışı doğrudan aç.

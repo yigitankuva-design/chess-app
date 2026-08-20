@@ -71,8 +71,24 @@ describe('OfferBoard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Siyah' }));
     fireEvent.click(screen.getByRole('button', { name: /Teklifi Yayınla/ }));
     expect(createOffer).toHaveBeenCalledWith({
-      tempo: 'Hızlı', tc_label: '10+5', tc_base: 600, tc_increment: 5, color: 'black',
+      tempo: 'Hızlı', tc_label: '10+5', tc_base: 600, tc_increment: 5, color: 'black', rated: true,
     });
+  });
+
+  it('madde 6 (2026-08-20): Puansız seçilince createOffer rated:false ile çağrılır', () => {
+    render(<OfferBoard />);
+    fireEvent.click(screen.getByRole('button', { name: /Maç Teklif Et/ }));
+    fireEvent.click(screen.getByRole('button', { name: '5+0' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Puansız' }));
+    fireEvent.click(screen.getByRole('button', { name: /Teklifi Yayınla/ }));
+    expect(createOffer).toHaveBeenCalledWith(expect.objectContaining({ rated: false }));
+  });
+
+  it('madde 6: Puanlı teklif "🏆 Puanlı" etiketiyle ve unvan/puanla listelenir', () => {
+    offers = [{ ...AYSE, rated: true, rating: 555, title: 'BD-2' }];
+    render(<OfferBoard />);
+    expect(screen.getByText(/BD-2 - Ayşe \(555\)/)).toBeInTheDocument();
+    expect(screen.getByText(/🏆 Puanlı/)).toBeInTheDocument();
   });
 
   it('süre seçilmeden Teklifi Yayınla basılamaz', () => {

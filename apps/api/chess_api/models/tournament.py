@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Integer, Float, Enum, ForeignKey, DateTime
+from sqlalchemy import String, Integer, Float, Boolean, Enum, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -20,6 +20,9 @@ class Tournament(Base):
     rounds_total: Mapped[int] = mapped_column(Integer)
     base_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     increment_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Madde 6 (2026-08-20): Puanli turnuvada maclar Performans Puanini
+    # etkiler. Varsayilan False — mevcut turnuvalar etkilenmez.
+    rated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
     status: Mapped[TournamentStatus] = mapped_column(
         Enum(TournamentStatus), default=TournamentStatus.upcoming,
     )

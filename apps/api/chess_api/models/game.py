@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Integer, Enum, ForeignKey, DateTime, Text
+from sqlalchemy import String, Integer, Boolean, Enum, ForeignKey, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -47,6 +47,10 @@ class Game(Base):
     black_draw_offers: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
     # Acilis pratigi icin baslangic pozisyonu. None => standart baslangic (geriye uyumlu).
     start_fen: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Madde 6 (2026-08-20): "Oyun Modu" — Puanli macta Performans Puani
+    # degisir (bkz. services/rating.py), Puansizda hic dokunulmaz. Varsayilan
+    # False: eski maclar ve bot maclari (rated hic ayarlanmaz) etkilenmez.
+    rated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
     # ── Mac saati (insan-insan maclar). HEPSI NULL OLABILIR: eski maclarda
     # bos kalir ve saat mantigi HIC calismaz (geriye donuk uyum, KURAL #3).
     # Milisaniye kullanilir; saniyeyle tutulursa her hamlede yuvarlama kaybi olur.

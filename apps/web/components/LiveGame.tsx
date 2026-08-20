@@ -8,6 +8,7 @@ import { useBoardNotation } from '@/lib/board-notation-context';
 import { getToken } from '@/lib/auth-storage';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
 import { canOfferDraw, offersLeft } from '@/lib/play/drawOffers';
+import { formatPlayerLabel } from '@/lib/play/titles';
 import { PracticeMatchLayout } from '@/components/play/PracticeMatchLayout';
 import type { PracticeAction, PracticeOutcome } from '@/components/play/PracticeMatchLayout';
 import type { PlayerInfo } from '@/components/play/MatchLayout';
@@ -54,6 +55,13 @@ export function LiveGame({ gameId, myColor }: Props) {
   const [myOffersUsed, setMyOffersUsed] = useState(0);
   const [whiteName, setWhiteName] = useState('Sporcu');
   const [blackName, setBlackName] = useState('Sporcu');
+  /** Madde 6/7 (2026-08-20): "Puanlı" maçta, tempo bilindiği için (bu maçın
+   *  KENDİ tempo'su) her iki tarafın da o tempodaki Performans Puanı/Ünvanı
+   *  gösterilir — null ise (puansız maç) isim sade kalır. */
+  const [whiteRating, setWhiteRating] = useState<number | null>(null);
+  const [blackRating, setBlackRating] = useState<number | null>(null);
+  const [whiteTitle, setWhiteTitle] = useState<string | null>(null);
+  const [blackTitle, setBlackTitle] = useState<string | null>(null);
   const [whiteAvatar, setWhiteAvatar] = useState('default');
   const [blackAvatar, setBlackAvatar] = useState('default');
   const [whiteMs, setWhiteMs] = useState<number | null>(null);
@@ -104,6 +112,10 @@ export function LiveGame({ gameId, myColor }: Props) {
       black_name?: string;
       white_avatar?: string;
       black_avatar?: string;
+      white_rating?: number | null;
+      black_rating?: number | null;
+      white_title?: string | null;
+      black_title?: string | null;
       white_ms?: number;
       black_ms?: number;
       increment_ms?: number;
@@ -153,6 +165,10 @@ export function LiveGame({ gameId, myColor }: Props) {
       setBlackName(String(msg.black_name ?? 'Sporcu'));
       setWhiteAvatar(typeof msg.white_avatar === 'string' ? msg.white_avatar : 'default');
       setBlackAvatar(typeof msg.black_avatar === 'string' ? msg.black_avatar : 'default');
+      setWhiteRating(typeof msg.white_rating === 'number' ? msg.white_rating : null);
+      setBlackRating(typeof msg.black_rating === 'number' ? msg.black_rating : null);
+      setWhiteTitle(typeof msg.white_title === 'string' ? msg.white_title : null);
+      setBlackTitle(typeof msg.black_title === 'string' ? msg.black_title : null);
       setWhiteMs(typeof msg.white_ms === 'number' ? msg.white_ms : null);
       setBlackMs(typeof msg.black_ms === 'number' ? msg.black_ms : null);
       setWhiteToMove(msg.white_to_move !== false);
@@ -316,13 +332,21 @@ export function LiveGame({ gameId, myColor }: Props) {
   const iAmWhite = myColor === 'white';
   const top: PlayerInfo = {
     avatarId: iAmWhite ? blackAvatar : whiteAvatar,
-    name: iAmWhite ? blackName : whiteName,
+    name: formatPlayerLabel(
+      iAmWhite ? blackName : whiteName,
+      iAmWhite ? blackRating : whiteRating,
+      iAmWhite ? blackTitle : whiteTitle,
+    ),
     ms: iAmWhite ? blackMs : whiteMs,
     active: status === 'active' && (iAmWhite ? !whiteToMove : whiteToMove),
   };
   const bottom: PlayerInfo = {
     avatarId: iAmWhite ? whiteAvatar : blackAvatar,
-    name: iAmWhite ? whiteName : blackName,
+    name: formatPlayerLabel(
+      iAmWhite ? whiteName : blackName,
+      iAmWhite ? whiteRating : blackRating,
+      iAmWhite ? whiteTitle : blackTitle,
+    ),
     ms: iAmWhite ? whiteMs : blackMs,
     active: status === 'active' && (iAmWhite ? whiteToMove : !whiteToMove),
   };

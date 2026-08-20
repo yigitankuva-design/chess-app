@@ -5,6 +5,7 @@ import {
   listTournaments, getTournament, joinTournament, startPairingGame,
 } from '@/lib/tournamentsApi';
 import type { TournamentSummary, TournamentDetail } from '@/lib/tournamentsApi';
+import { formatPlayerLabel } from '@/lib/play/titles';
 
 const STATUS_LABEL: Record<TournamentSummary['status'], string> = {
   upcoming: 'Başlamadı',
@@ -80,6 +81,7 @@ export function TournamentPlay() {
               <p className="text-xs t-muted">
                 {STATUS_LABEL[detail.status]} · {detail.rounds_total} tur ·{' '}
                 {tempoLabel(detail.base_ms, detail.increment_ms)}
+                {detail.rated && <> · 🏆 Puanlı</>}
                 {detail.status === 'active' && detail.current_round !== null && (
                   <> · {detail.current_round}. tur</>
                 )}
@@ -125,7 +127,7 @@ export function TournamentPlay() {
                   {detail.standings.map((row, i) => (
                     <div key={row.child_id} className="flex items-center gap-3 text-sm">
                       <span className="t-muted w-5 text-right">{i + 1}.</span>
-                      <span className="flex-1">{row.display_name}</span>
+                      <span className="flex-1">{formatPlayerLabel(row.display_name, row.rating, row.title)}</span>
                       <span className="font-semibold">{row.score}</span>
                     </div>
                   ))}
@@ -155,6 +157,7 @@ export function TournamentPlay() {
               <p className="font-semibold text-sm">{t.name}</p>
               <p className="text-xs t-muted mt-0.5">
                 {STATUS_LABEL[t.status]} · {t.rounds_total} tur · {tempoLabel(t.base_ms, t.increment_ms)}
+                {t.rated && <> · 🏆 Puanlı</>}
               </p>
             </div>
             {t.joined ? (

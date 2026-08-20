@@ -1,5 +1,11 @@
-/** /athletes ucundan gelen sporcu. */
-export interface Athlete { child_id: number; display_name: string }
+/** /athletes ucundan gelen sporcu. rating/title yalnizca ?tempo= verilince
+ *  dolar (madde 6, 2026-08-20) — aksi halde null. */
+export interface Athlete {
+  child_id: number;
+  display_name: string;
+  rating?: number | null;
+  title?: string | null;
+}
 
 /** Listede gosterilen satir: sporcu + o an lobide mi. */
 export interface AthleteRow extends Athlete { online: boolean }

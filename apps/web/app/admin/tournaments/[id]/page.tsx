@@ -2,10 +2,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
+import { formatPlayerLabel } from '@/lib/play/titles';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface Standing { child_id: number; display_name: string; score: number }
+interface Standing { child_id: number; display_name: string; score: number; rating: number | null; title: string | null }
 interface Pairing {
   id: number; white_child_id: number; white_name: string;
   black_child_id: number | null; black_name: string | null;
@@ -15,6 +16,7 @@ interface TournamentDetail {
   id: number; name: string; rounds_total: number;
   base_ms: number | null; increment_ms: number | null;
   status: 'upcoming' | 'active' | 'finished'; current_round: number | null;
+  rated: boolean; tempo: string | null;
   standings: Standing[];
   pairings_by_round: Record<string, Pairing[]>;
 }
@@ -69,7 +71,8 @@ export default function AdminTournamentDetailPage() {
       <button onClick={() => router.back()} className="text-sm text-cyan-400 hover:text-cyan-300 mb-4">← Geri</button>
       <h1 className="text-2xl font-bold mb-1 n-text">{t.name}</h1>
       <p className="text-sm n-muted mb-6">
-        {t.rounds_total} tur · {t.base_ms ? `${Math.round(t.base_ms / 60000)}+${Math.round((t.increment_ms ?? 0) / 1000)}` : 'Süresiz'} ·{' '}
+        {t.rounds_total} tur · {t.base_ms ? `${Math.round(t.base_ms / 60000)}+${Math.round((t.increment_ms ?? 0) / 1000)}` : 'Süresiz'}
+        {t.rated && ' · 🏆 Puanlı'} ·{' '}
         {t.status === 'upcoming' && 'Katılım bekleniyor'}
         {t.status === 'active' && `${t.current_round}. tur devam ediyor`}
         {t.status === 'finished' && 'Turnuva bitti'}
@@ -109,7 +112,7 @@ export default function AdminTournamentDetailPage() {
             {t.standings.map((s, i) => (
               <div key={s.child_id} className="flex items-center gap-3 text-sm">
                 <span className="n-muted w-6 text-right">{i + 1}.</span>
-                <span className="flex-1 n-text">{s.display_name}</span>
+                <span className="flex-1 n-text">{formatPlayerLabel(s.display_name, s.rating, s.title)}</span>
                 <span className="font-semibold n-text">{s.score}</span>
               </div>
             ))}

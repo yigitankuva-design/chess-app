@@ -6,6 +6,7 @@ import { TIME_GROUPS } from '@/lib/play/levels';
 import type { TimeControl } from '@/components/BotGame';
 import { COLOR_CHOICES } from '@/lib/play/color';
 import type { ColorChoice } from '@/lib/play/color';
+import { formatPlayerLabel } from '@/lib/play/titles';
 
 /** Teklif panosu: acik teklifleri listeler, tek dokunusla mac baslatir,
  *  uygun teklif yoksa sporcunun kendi teklifini birakmasini saglar.
@@ -16,6 +17,7 @@ export function OfferBoard() {
   const [formOpen, setFormOpen] = useState(false);
   const [tc, setTc] = useState<{ tempo: string; item: TimeControl } | null>(null);
   const [color, setColor] = useState<ColorChoice>('random');
+  const [rated, setRated] = useState(true);
 
   const pill = (active: boolean) => ({
     border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
@@ -31,6 +33,7 @@ export function OfferBoard() {
       tc_base: tc.item.base,
       tc_increment: tc.item.increment,
       color,
+      rated,
     });
     setFormOpen(false);
     setTc(null);
@@ -49,6 +52,7 @@ export function OfferBoard() {
             <p className="text-sm mt-0.5">
               {tempoEmoji(myOffer.tempo)} {myOffer.tempo} · {myOffer.tc_label} ·{' '}
               {COLOR_CHOICES.find((c) => c.value === myOffer.color)?.label ?? ''}
+              {myOffer.rated ? ' · 🏆 Puanlı' : ''}
             </p>
           </div>
           <button type="button" onClick={cancelOffer}
@@ -75,8 +79,10 @@ export function OfferBoard() {
               style={i > 0 ? { borderTop: '1px solid var(--t-border)' } : undefined}>
             <div className="t-card-i flex items-center gap-3 px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{o.display_name}</p>
-                <p className="text-xs t-muted mt-0.5">{offerSummary(o)}</p>
+                <p className="font-semibold text-sm">{formatPlayerLabel(o.display_name, o.rating, o.title)}</p>
+                <p className="text-xs t-muted mt-0.5">
+                  {offerSummary(o)}{o.rated ? ' · 🏆 Puanlı' : ''}
+                </p>
               </div>
               <button
                 type="button"
@@ -132,6 +138,22 @@ export function OfferBoard() {
                   {c.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold t-muted uppercase tracking-wide">Oyun Modu</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setRated(true)}
+                className="py-3 rounded-xl text-sm font-bold transition-all"
+                style={pill(rated)}>
+                🏆 Puanlı
+              </button>
+              <button type="button" onClick={() => setRated(false)}
+                className="py-3 rounded-xl text-sm font-bold transition-all"
+                style={pill(!rated)}>
+                Puansız
+              </button>
             </div>
           </div>
 

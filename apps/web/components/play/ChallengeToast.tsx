@@ -1,6 +1,7 @@
 'use client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLobbyContext } from '@/lib/lobby/LobbyContext';
+import { formatPlayerLabel } from '@/lib/play/titles';
 
 /** Gelen maç teklifi — ekranın SAĞ ÜST köşesinde beliren 3 satırlı kart
  *  (madde 2, 2026-08-20). Layout'ta durur, bu yüzden sporcu HANGİ sayfada
@@ -31,7 +32,9 @@ export function ChallengeToast() {
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--t-accent)' }}>
             ⚔️ Meydan Okuma
           </p>
-          <p className="text-lg font-extrabold t-text truncate">{incoming.from_name}</p>
+          <p className="text-lg font-extrabold t-text truncate">
+            {formatPlayerLabel(incoming.from_name, incoming.from_rating, incoming.from_title)}
+          </p>
           {tempoLine && <p className="text-sm t-muted">{tempoLine}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" className="t-btn flex-1 py-2 text-sm"

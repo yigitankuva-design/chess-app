@@ -11,6 +11,10 @@ export interface IncomingChallenge {
   from_child_id: number;
   from_name: string;
   criteria: Record<string, unknown>;
+  /** Madde 6 (2026-08-20): davet "Puanlı"ysa davet edenin o tempodaki
+   *  ünvanı/puanı — bildirim kartında gösterilir. */
+  from_rating?: number | null;
+  from_title?: string | null;
 }
 
 export interface MatchedInfo { gameId: number; color: 'white' | 'black' }
@@ -22,6 +26,8 @@ export interface NewOffer {
   tc_base: number;
   tc_increment: number;
   color: ColorChoice;
+  /** Madde 6 (2026-08-20): "Oyun Modu" — Puanlı/Puansız. */
+  rated: boolean;
 }
 
 interface Options {
@@ -48,6 +54,8 @@ export function useLobby({ onMatched }: Options) {
       my_offer?: LobbyOffer | null;
       from_child_id?: number;
       from_name?: string;
+      from_rating?: number | null;
+      from_title?: string | null;
       criteria?: Record<string, unknown>;
       game_id?: number;
       color?: string;
@@ -66,6 +74,8 @@ export function useLobby({ onMatched }: Options) {
       setIncoming({
         from_child_id: msg.from_child_id ?? 0,
         from_name: msg.from_name ?? 'Sporcu',
+        from_rating: msg.from_rating ?? null,
+        from_title: msg.from_title ?? null,
         criteria: msg.criteria ?? {},
       });
     } else if (t === 'challenge_declined') {

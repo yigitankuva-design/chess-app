@@ -52,4 +52,34 @@ describe('MatchCriteria', () => {
     fireEvent.click(screen.getByRole('button', { name: /Oyuna Başla/ }));
     expect(onStart.mock.calls[0][0].colorChoice).toBe('random');
   });
+
+  it('madde 6 (2026-08-20): showRatedMode verilmezse "Oyun Modu" hiç görünmez, rated hep false', () => {
+    const onStart = vi.fn();
+    render(<MatchCriteria onStart={onStart} startLabel="Oyuna Başla" />);
+    expect(screen.queryByText('Oyun Modu')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Düzey 1' }));
+    fireEvent.click(screen.getByRole('button', { name: '3+2' }));
+    fireEvent.click(screen.getByRole('button', { name: /Oyuna Başla/ }));
+    expect(onStart.mock.calls[0][0].rated).toBe(false);
+  });
+
+  it('madde 6: showRatedMode=true iken "Oyun Modu" gösterilir, varsayılan Puanlı', () => {
+    const onStart = vi.fn();
+    render(<MatchCriteria onStart={onStart} startLabel="Oyuna Başla" showRatedMode />);
+    expect(screen.getByText('Oyun Modu')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Düzey 1' }));
+    fireEvent.click(screen.getByRole('button', { name: '3+2' }));
+    fireEvent.click(screen.getByRole('button', { name: /Oyuna Başla/ }));
+    expect(onStart.mock.calls[0][0].rated).toBe(true);
+  });
+
+  it('madde 6: Puansız seçilince rated:false döner', () => {
+    const onStart = vi.fn();
+    render(<MatchCriteria onStart={onStart} startLabel="Oyuna Başla" showRatedMode />);
+    fireEvent.click(screen.getByRole('button', { name: 'Düzey 1' }));
+    fireEvent.click(screen.getByRole('button', { name: '3+2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Puansız' }));
+    fireEvent.click(screen.getByRole('button', { name: /Oyuna Başla/ }));
+    expect(onStart.mock.calls[0][0].rated).toBe(false);
+  });
 });

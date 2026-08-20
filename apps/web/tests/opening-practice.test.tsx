@@ -28,6 +28,7 @@ const CRITERIA: MatchCriteriaValue = {
   level: { level: 7, skill: 13, depth: 9, blunderChance: 0 },
   timeControl: { label: '5+0', base: 300, increment: 0 },
   colorChoice: 'white',
+  rated: false,
 };
 
 const FEN = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1';
