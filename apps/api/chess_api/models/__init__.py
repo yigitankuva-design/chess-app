@@ -19,8 +19,12 @@ from chess_api.models.practice import ChildPracticeResult
 from chess_api.models.opening import Opening
 from chess_api.models.pool_image import PoolImage
 from chess_api.models.custom_tab import CustomTab, CustomTabSection
+from chess_api.models.tournament import (
+    Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
+)
 
 __all__ = [
+    "Tournament", "TournamentStatus", "TournamentParticipant", "TournamentPairing",
     "AppSettings",
     "ChildPracticeResult",
     "Opening",

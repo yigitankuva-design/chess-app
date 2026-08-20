@@ -18,6 +18,7 @@ const NAV_GROUPS: { title: string; items: { href: string; label: string }[] }[] 
     items: [
       // 'Ders' artık Sekmeler > Dersler kartının içinde yönetiliyor
       { href: '/admin/settings/tabs', label: 'Sekmeler' },
+      { href: '/admin/tournaments', label: 'Turnuvalar' },
       { href: '/admin/settings/labels', label: 'Yazılar & Etiketler' },
       { href: '/admin/settings/board', label: 'Görünüm — Tahta & Taş' },
       { href: '/admin/pool-images', label: 'Görsel Havuzu' },

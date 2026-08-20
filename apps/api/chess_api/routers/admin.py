@@ -2,7 +2,7 @@ from datetime import datetime
 import chess
 from fastapi import APIRouter, Depends, HTTPException, Body, Response
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
 import re
@@ -27,6 +27,11 @@ from chess_api.models.practice import ChildPracticeResult
 from chess_api.models.opening import Opening
 from chess_api.models.pool_image import PoolImage
 from chess_api.models.custom_tab import CustomTab, CustomTabSection
+from chess_api.models.tournament import (
+    Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
+)
+from chess_api.schemas.tournament import TournamentCreateRequest
+from chess_api.services.tournaments import generate_pairings
 from chess_api.pool_categories import POOL_CATEGORIES
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -1480,3 +1485,209 @@ async def reorder_custom_tab_sections(
         by_id[sid].order_index = i + 1
     await db.commit()
     return {"reordered": len(payload.ordered_ids)}
+
+
+# ── Turnuvalar (madde: "Turnuvaya Katıl" — Admin/hoca oluşturur, İsviçre
+# usulü basitleştirilmiş eşleştirme, uçtan uca temel akış). Erişim: yalnızca
+# oluşturan hoca kendi turnuvalarını yönetir (athletes.py'deki "aynı hoca"
+# gizlilik deseniyle AYNI mantık).
+
+def _tournament_out(t: Tournament) -> dict:
+    return {
+        "id": t.id, "name": t.name, "rounds_total": t.rounds_total,
+        "base_ms": t.base_ms, "increment_ms": t.increment_ms,
+        "status": t.status.value, "current_round": t.current_round,
+    }
+
+
+@router.post("/tournaments", status_code=201)
+async def create_tournament(
+    payload: TournamentCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    t = Tournament(
+        name=payload.name, created_by_user_id=current.id,
+        rounds_total=payload.rounds_total,
+        base_ms=payload.base_ms, increment_ms=payload.increment_ms,
+    )
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    return _tournament_out(t)
+
+
+@router.get("/tournaments")
+async def list_tournaments_admin(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    rows = (await db.execute(
+        select(Tournament).where(Tournament.created_by_user_id == current.id)
+        .order_by(Tournament.created_at.desc())
+    )).scalars().all()
+    return [_tournament_out(t) for t in rows]
+
+
+async def _tournament_or_404(db: AsyncSession, tournament_id: int, current: User) -> Tournament:
+    t = await db.get(Tournament, tournament_id)
+    if not t or t.created_by_user_id != current.id:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    return t
+
+
+async def _standings(db: AsyncSession, tournament_id: int) -> list[dict]:
+    rows = (await db.execute(
+        select(TournamentParticipant, ChildProfile.display_name)
+        .join(ChildProfile, ChildProfile.id == TournamentParticipant.child_id)
+        .where(TournamentParticipant.tournament_id == tournament_id)
+        .order_by(TournamentParticipant.score.desc(), TournamentParticipant.id)
+    )).all()
+    return [
+        {"child_id": p.child_id, "display_name": name, "score": p.score}
+        for p, name in rows
+    ]
+
+
+async def _pairings_by_round(db: AsyncSession, tournament_id: int) -> dict[int, list[dict]]:
+    rows = (await db.execute(
+        select(TournamentPairing, ChildProfile.display_name)
+        .join(ChildProfile, ChildProfile.id == TournamentPairing.white_child_id)
+        .where(TournamentPairing.tournament_id == tournament_id)
+        .order_by(TournamentPairing.round_number, TournamentPairing.id)
+    )).all()
+    # Siyah isimlerini ayrı çekmek gerekiyor (LEFT JOIN yerine iki sorgu —
+    # bay geçmede black_child_id NULL olabilir).
+    black_ids = [p.black_child_id for p, _ in rows if p.black_child_id is not None]
+    black_names: dict[int, str] = {}
+    if black_ids:
+        black_rows = (await db.execute(
+            select(ChildProfile.id, ChildProfile.display_name).where(ChildProfile.id.in_(black_ids))
+        )).all()
+        black_names = {cid: name for cid, name in black_rows}
+    out: dict[int, list[dict]] = {}
+    for p, white_name in rows:
+        out.setdefault(p.round_number, []).append({
+            "id": p.id,
+            "white_child_id": p.white_child_id, "white_name": white_name,
+            "black_child_id": p.black_child_id,
+            "black_name": black_names.get(p.black_child_id) if p.black_child_id else None,
+            "game_id": p.game_id, "result": p.result,
+        })
+    return out
+
+
+@router.get("/tournaments/{tournament_id}")
+async def get_tournament_admin(
+    tournament_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    t = await _tournament_or_404(db, tournament_id, current)
+    return {
+        **_tournament_out(t),
+        "standings": await _standings(db, tournament_id),
+        "pairings_by_round": await _pairings_by_round(db, tournament_id),
+    }
+
+
+@router.post("/tournaments/{tournament_id}/start")
+async def start_tournament(
+    tournament_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    t = await _tournament_or_404(db, tournament_id, current)
+    if t.status != TournamentStatus.upcoming:
+        raise HTTPException(status_code=400, detail="Turnuva zaten başladı")
+    count = (await db.execute(
+        select(func.count(TournamentParticipant.id)).where(TournamentParticipant.tournament_id == tournament_id)
+    )).scalar_one()
+    if count < 2:
+        raise HTTPException(status_code=400, detail="En az 2 katılımcı gerekli")
+    t.status = TournamentStatus.active
+    t.current_round = 1
+    t.started_at = datetime.utcnow()
+    await generate_pairings(db, tournament_id, 1)
+    await db.commit()
+    await db.refresh(t)
+    return {
+        **_tournament_out(t),
+        "standings": await _standings(db, tournament_id),
+        "pairings_by_round": await _pairings_by_round(db, tournament_id),
+    }
+
+
+@router.post("/tournaments/{tournament_id}/next-round")
+async def advance_tournament_round(
+    tournament_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mevcut turun TÜM eşleşmeleri sonuçlanınca çağrılır. Son turdaysa
+    turnuvayı bitirir; değilse bir sonraki turun eşleşmelerini üretir.
+
+    Eşzamanlı çift-tıklamaya karşı: current_round üzerinde KOŞULLU UPDATE
+    ile "hakkı" önce kazanılır (etkilenen satır 0 ise 409) — iki istek
+    aynı anda gelirse yalnızca biri turu ilerletebilir.
+    """
+    _ensure_admin(current)
+    t = await _tournament_or_404(db, tournament_id, current)
+    if t.status != TournamentStatus.active or t.current_round is None:
+        raise HTTPException(status_code=400, detail="Turnuva aktif değil")
+    unresolved = (await db.execute(
+        select(func.count(TournamentPairing.id)).where(
+            TournamentPairing.tournament_id == tournament_id,
+            TournamentPairing.round_number == t.current_round,
+            TournamentPairing.result.is_(None),
+        )
+    )).scalar_one()
+    if unresolved > 0:
+        raise HTTPException(status_code=400, detail=f"Bu turda {unresolved} eşleşme henüz sonuçlanmadı")
+
+    this_round = t.current_round
+    if this_round >= t.rounds_total:
+        claim = await db.execute(
+            update(Tournament)
+            .where(Tournament.id == tournament_id, Tournament.current_round == this_round,
+                   Tournament.status == TournamentStatus.active)
+            .values(status=TournamentStatus.finished, finished_at=datetime.utcnow())
+        )
+        if claim.rowcount == 0:
+            raise HTTPException(status_code=409, detail="Turnuva zaten güncellendi, sayfayı yenile")
+    else:
+        claim = await db.execute(
+            update(Tournament)
+            .where(Tournament.id == tournament_id, Tournament.current_round == this_round,
+                   Tournament.status == TournamentStatus.active)
+            .values(current_round=this_round + 1)
+        )
+        if claim.rowcount == 0:
+            raise HTTPException(status_code=409, detail="Turnuva zaten güncellendi, sayfayı yenile")
+        await generate_pairings(db, tournament_id, this_round + 1)
+    await db.commit()
+    await db.refresh(t)
+    return {
+        **_tournament_out(t),
+        "standings": await _standings(db, tournament_id),
+        "pairings_by_round": await _pairings_by_round(db, tournament_id),
+    }
+
+
+@router.delete("/tournaments/{tournament_id}")
+async def delete_tournament(
+    tournament_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    t = await _tournament_or_404(db, tournament_id, current)
+    await db.execute(delete(TournamentPairing).where(TournamentPairing.tournament_id == tournament_id))
+    await db.execute(delete(TournamentParticipant).where(TournamentParticipant.tournament_id == tournament_id))
+    await db.delete(t)
+    await db.commit()
+    return {"deleted": True}

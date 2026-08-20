@@ -16,6 +16,7 @@ import { ActivePlayersBadge } from '@/components/play/ActivePlayersBadge';
 import { getCustomTab } from '@/lib/customTabsApi';
 import { PositionPoolPractice } from '@/components/play/PositionPoolPractice';
 import type { PoolPosition } from '@/lib/play/positionPool';
+import { TournamentPlay } from '@/components/play/TournamentPlay';
 
 /** "pool" ana ekrandaki özel sekme alt sekmesinden gelir — kart listesinde YOKTUR. */
 type Mode = 'friend' | 'bot' | 'opening' | 'tournament' | 'pool';
@@ -201,7 +202,7 @@ function PlayInner() {
     );
   }
 
-  // ── Turnuva: henüz özellikleri belirlenmedi ────────────────────────────────
+  // ── Turnuvaya Katıl ─────────────────────────────────────────────────────────
   if (mode === 'tournament') {
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
@@ -209,11 +210,7 @@ function PlayInner() {
           <p className="font-semibold text-sm">🏆 Turnuvaya Katıl</p>
           {backBtn}
         </div>
-        <div className="t-card-i p-5 text-center space-y-2">
-          <p className="text-3xl">🚧</p>
-          <p className="font-bold text-sm">Yakında</p>
-          <p className="text-xs t-muted">Turnuva özellikleri hazırlanıyor.</p>
-        </div>
+        <TournamentPlay />
       </main>
     );
   }

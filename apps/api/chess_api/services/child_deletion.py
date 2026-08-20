@@ -10,12 +10,24 @@ from chess_api.models import (
     ChildPuzzleAttempt, SRSCard, ChildBadge, ChildRank,
     ParentTimeLimit, ChildActivityLog, ParentSurveyResponse,
     Game, GameMove, Device,
+    TournamentParticipant, TournamentPairing,
 )
 
 
 async def delete_child_cascade(db: AsyncSession, child: ChildProfile) -> None:
     """child'a bağlı tüm satırları siler ve child'ı siler. commit ETMEZ — çağıran commit eder."""
     child_id = child.id
+
+    # Turnuva baglantilari — Game silinmeden ONCE temizlenir. Uygulama
+    # katmaninda ACIKCA yapilir (DB'nin ON DELETE SET NULL'una guvenmek
+    # SQLite testlerinde FK zorlamasi kapali oldugu icin sessizce
+    # dogrulanmadan gecebilirdi). Bu cocugun taraf oldugu eslesmeler
+    # tamamen silinir — turnuvadaki izi de gitmis olur (nadir, hesap
+    # silme ani icin kabul edilebilir bir basitlestirme).
+    await db.execute(delete(TournamentPairing).where(
+        (TournamentPairing.white_child_id == child_id) | (TournamentPairing.black_child_id == child_id)
+    ))
+    await db.execute(delete(TournamentParticipant).where(TournamentParticipant.child_id == child_id))
 
     game_ids = (await db.execute(
         select(Game.id).where(

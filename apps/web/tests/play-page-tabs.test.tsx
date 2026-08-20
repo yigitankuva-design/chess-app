@@ -22,6 +22,10 @@ vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: () => <div>Bota Karşı Pratik Yap</div>,
 }));
 
+vi.mock('@/components/play/TournamentPlay', () => ({
+  TournamentPlay: () => <div data-testid="tournament-play" />,
+}));
+
 import PlayPage from '@/app/(child)/play/page';
 
 describe('/play — 4 sekme (madde a)', () => {
@@ -46,10 +50,10 @@ describe('/play — 4 sekme (madde a)', () => {
     expect(screen.getByTestId('offer-board')).toBeInTheDocument();
   });
 
-  it('Turnuvaya Katıl seçilince Yakında mesajı gösterilir', () => {
+  it('Turnuvaya Katıl seçilince turnuva ekranı açılır', () => {
     render(<PlayPage />);
     fireEvent.click(screen.getByText('Turnuvaya Katıl'));
-    expect(screen.getByText(/yakında/i)).toBeInTheDocument();
+    expect(screen.getByTestId('tournament-play')).toBeInTheDocument();
   });
 
   it('Açılışı Pratiği Yap seçilince rakip türü sorulur', () => {

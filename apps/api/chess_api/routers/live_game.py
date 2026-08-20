@@ -13,6 +13,7 @@ from chess_api.services.bot_draw import bot_accepts_draw
 from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
+from chess_api.services.tournaments import finalize_tournament_pairing
 from chess_api.services.lobby import (
     join_lobby, leave_lobby, online_players, send_to_player, connected_ids,
 )
@@ -347,6 +348,7 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
             game.status = GameStatus.finished
             game.result = GameResult.black_wins if whites_turn else GameResult.white_wins
             game.finished_at = datetime.utcnow()
+            await finalize_tournament_pairing(db, game)
             await db.commit()
             await room.broadcast({
                 "type": "game_over",
@@ -378,6 +380,9 @@ async def _handle_move(game_id, child_id, white_id, black_id, msg, room):
         elif result["is_stalemate"]:
             game.status = GameStatus.finished
             game.result = GameResult.draw
+
+        if game.result is not None:
+            await finalize_tournament_pairing(db, game)
 
         await db.commit()
 
@@ -510,6 +515,7 @@ async def _handle_flag(game_id: int, room) -> None:
         game.status = GameStatus.finished
         game.result = GameResult.black_wins if white_to_move else GameResult.white_wins
         game.finished_at = datetime.utcnow()
+        await finalize_tournament_pairing(db, game)
         await db.commit()
         final = game.result.value
     await room.broadcast({
@@ -524,6 +530,7 @@ async def _handle_resign(game_id, child_id, white_id, black_id, room):
             return
         game.status = GameStatus.finished
         game.result = GameResult.black_wins if child_id == white_id else GameResult.white_wins
+        await finalize_tournament_pairing(db, game)
         await db.commit()
     await room.broadcast({"type": "game_over", "result": game.result.value, "by_resign": True})
 
@@ -535,6 +542,7 @@ async def _handle_draw(game_id, room):
             return
         game.status = GameStatus.finished
         game.result = GameResult.draw
+        await finalize_tournament_pairing(db, game)
         await db.commit()
     await room.broadcast({"type": "game_over", "result": "1/2-1/2"})
 
