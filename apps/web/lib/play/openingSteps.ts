@@ -1,6 +1,3 @@
-import type { OpeningCategory } from '@/lib/play/openingCategories';
-import { categoryTitle } from '@/lib/play/openingCategories';
-
 /** Bot dalindaki DORT acilir kartin anahtarlari (madde: 2026-08-20 —
  *  "opening" (acilis ISMI) ile "variant" ARASINA yeni bir kart girdi). */
 export type BotStepKey = 'type' | 'opening' | 'variant' | 'criteria';
@@ -11,9 +8,11 @@ function picked(value: string | null): string | null {
   return t ? t : null;
 }
 
-/** 2. kart (Acilis Ismini Sec) acilabilir mi? Tur secilmeden acilmaz. */
-export function isOpeningUnlocked(category: OpeningCategory | null): boolean {
-  return category !== null;
+/** 2. kart (Acilis Ismini Sec) acilabilir mi? Tur secilmeden acilmaz.
+ *  Madde 2026-08-20: Acilis Turu artik admin'in yonettigi bir veri seviyesi
+ *  (OpeningType) — burada yalnizca secili turun ADI tasinir. */
+export function isOpeningUnlocked(typeName: string | null): boolean {
+  return picked(typeName) !== null;
 }
 
 /** 3. kart (Varyant Sec) acilabilir mi? Acilis ismi secilmeden acilmaz. */
@@ -27,8 +26,9 @@ export function isCriteriaUnlocked(variantName: string | null): boolean {
 }
 
 /** 1. kartin basliginda gorunecek ozet; tur secilmediyse null. */
-export function categorySummary(category: OpeningCategory | null): string | null {
-  return category === null ? null : `✓ ${categoryTitle(category)}`;
+export function categorySummary(typeName: string | null): string | null {
+  const name = picked(typeName);
+  return name === null ? null : `✓ ${name}`;
 }
 
 /** 2. kartin basliginda gorunecek ozet; acilis ismi secilmediyse null. */

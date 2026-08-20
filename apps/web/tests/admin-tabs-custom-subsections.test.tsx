@@ -83,6 +83,19 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 9, label: 'Pratik Yap', emoji: '🧩', sections: [],
     });
+    global.fetch = vi.fn((url: string) => {
+      if (String(url).endsWith('/openings')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { id: 1, name: "e4'lü Açılışlar", openings: [] },
+            { id: 2, name: "d4'lü Açılışlar", openings: [] },
+            { id: 3, name: 'Diğer Açılışlar', openings: [] },
+          ],
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    }) as never;
     render(<AdminTabsPage />);
     await waitFor(() => screen.getByText(/Pratik Yap/));
     fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
@@ -90,8 +103,8 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     // Üç tür kartı "Açılış Pratiği Yap" tıklanmadan görünmez (kapalı akordiyon).
     expect(screen.queryByText("e4'lü Açılışlar")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Açılış Pratiği Yap kartını aç'));
-    // Ayrı sayfa yerine yerinde açılan üç tür kartı.
-    expect(screen.getByText("e4'lü Açılışlar")).toBeInTheDocument();
+    // Ayrı sayfa yerine yerinde açılan, admin'in eklediği tür kartları.
+    await waitFor(() => expect(screen.getByText("e4'lü Açılışlar")).toBeInTheDocument());
     expect(screen.getByText("d4'lü Açılışlar")).toBeInTheDocument();
     expect(screen.getByText('Diğer Açılışlar')).toBeInTheDocument();
   });

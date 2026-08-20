@@ -13,8 +13,15 @@ vi.mock('@/components/BotGame', () => ({ BotGame: () => <div data-testid="bot-ga
 
 const ITALYAN_FEN = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1';
 const OPENINGS = [
-  { id: 1, name: 'İtalyan Açılışı', category: 'e4', variants: [{ id: 11, name: 'Ana Hat', start_fen: ITALYAN_FEN }] },
-  { id: 2, name: 'Slav Savunması', category: 'd4', variants: [{ id: 21, name: 'Ana Hat', start_fen: ITALYAN_FEN }] },
+  {
+    id: 1, name: "e4'lü Açılışlar",
+    openings: [{ id: 1, name: 'İtalyan Açılışı', variants: [{ id: 11, name: 'Ana Hat', start_fen: ITALYAN_FEN }] }],
+  },
+  {
+    id: 2, name: "d4'lü Açılışlar",
+    openings: [{ id: 2, name: 'Slav Savunması', variants: [{ id: 21, name: 'Ana Hat', start_fen: ITALYAN_FEN }] }],
+  },
+  { id: 3, name: 'Diğer Açılışlar', openings: [] },
 ];
 const ATHLETES = [{ child_id: 7, display_name: 'Hasan Yiğit' }];
 

@@ -10,8 +10,6 @@ import {
   openingSummary, categorySummary, variantSummary,
 } from '@/lib/play/openingSteps';
 import type { BotStepKey } from '@/lib/play/openingSteps';
-import { OPENING_CATEGORIES, groupOpenings, normalizeCategory } from '@/lib/play/openingCategories';
-import type { OpeningCategory } from '@/lib/play/openingCategories';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
 import { pickDifferentPosition } from '@/lib/play/positionPool';
@@ -19,7 +17,10 @@ import { pickDifferentPosition } from '@/lib/play/positionPool';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface OpeningVariant { id: number; name: string; start_fen: string }
-export interface Opening { id: number; name: string; category?: string | null; variants: OpeningVariant[] }
+export interface Opening { id: number; name: string; variants: OpeningVariant[] }
+/** Acilis TURU (madde: 2026-08-20) — admin'in yonettigi veri seviyesi,
+ *  eskiden sabit e4/d4/diger idi. */
+export interface OpeningTypeDef { id: number; name: string; openings: Opening[] }
 
 interface Props {
   /**
@@ -51,8 +52,8 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
   // tum acilislari gormemeli.
   const [openInner, setOpenInner] = useState<BotStepKey | null>(null);
-  const [openings, setOpenings] = useState<Opening[] | null>(null);
-  const [category, setCategory] = useState<OpeningCategory | null>(null);
+  const [types, setTypes] = useState<OpeningTypeDef[] | null>(null);
+  const [chosenType, setChosenType] = useState<OpeningTypeDef | null>(null);
   const [chosen, setChosen] = useState<Opening | null>(null);
   const [chosenVariant, setChosenVariant] = useState<OpeningVariant | null>(null);
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
@@ -66,42 +67,44 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
     try {
       const r = await fetch(`${API_BASE}/openings`);
       const data = r.ok ? await r.json() : null;
-      setOpenings(Array.isArray(data) ? data : []);
+      setTypes(Array.isArray(data) ? data : []);
     } catch {
-      setOpenings([]);
+      setTypes([]);
     }
   }, []);
 
-  // Acilislar YALNIZCA bir dal acildiginda yuklenir — gereksiz istek atilmaz.
+  // Turler YALNIZCA bir dal acildiginda yuklenir — gereksiz istek atilmaz.
   useEffect(() => {
-    if (openOuter !== null && openings === null) void loadOpenings();
-  }, [openOuter, openings, loadOpenings]);
+    if (openOuter !== null && types === null) void loadOpenings();
+  }, [openOuter, types, loadOpenings]);
 
   // Dogrudan-baslat: dal acilmasi beklenmez, liste hemen cekilir.
   useEffect(() => {
-    if (directStart && openings === null) void loadOpenings();
-  }, [directStart, openings, loadOpenings]);
+    if (directStart && types === null) void loadOpenings();
+  }, [directStart, types, loadOpenings]);
 
-  // Dogrudan-baslat: liste gelince eslesen VARYANTI (ve onu tasiyan acilisi) bul.
+  // Dogrudan-baslat: liste gelince eslesen VARYANTI (ve onu tasiyan tur+acilisi) bul.
   useEffect(() => {
-    if (!directStart || !openings || chosenVariant) return;
-    for (const o of openings) {
-      const v = o.variants.find((vv) => vv.id === initialVariantId);
-      if (v && initialCriteria) {
-        setChosen(o);
-        setChosenVariant(v);
-        setCategory(normalizeCategory(o.category));
-        setCriteria(initialCriteria);
-        setColor(resolveColor(initialCriteria.colorChoice));
-        break;
+    if (!directStart || !types || chosenVariant) return;
+    for (const t of types) {
+      for (const o of t.openings) {
+        const v = o.variants.find((vv) => vv.id === initialVariantId);
+        if (v && initialCriteria) {
+          setChosenType(t);
+          setChosen(o);
+          setChosenVariant(v);
+          setCriteria(initialCriteria);
+          setColor(resolveColor(initialCriteria.colorChoice));
+          return;
+        }
       }
     }
-  }, [directStart, openings, initialVariantId, initialCriteria, chosenVariant]);
+  }, [directStart, types, initialVariantId, initialCriteria, chosenVariant]);
 
   /** Tur degisince secili acilis/varyant SIFIRLANIR — yanlis turden kalan
    *  bir secimle mac baslamasin. */
-  function pickCategory(key: OpeningCategory) {
-    setCategory(key);
+  function pickType(t: OpeningTypeDef) {
+    setChosenType(t);
     setChosen(null);
     setChosenVariant(null);
   }
@@ -112,35 +115,45 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
     setChosenVariant(null);
   }
 
-  const groups = groupOpenings(openings ?? []);
-
   /** Tur listesi iki dalda da AYNI — tek yerde durur, kopyalanmaz.
    *  Akordiyon gorunumu: TEK cerceve, satirlar arasinda ince ayirici cizgi —
-   *  her secenek kendi basina isiltili/kenarlikli bir "kart" DEGIL (madde 1). */
-  const typeList = (onPicked: () => void) => (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
-      {OPENING_CATEGORIES.map((c, i) => (
-        <button key={c.key} type="button"
-          onClick={() => { pickCategory(c.key); onPicked(); }}
-          className="w-full flex items-center px-4 py-3 text-left"
-          style={{
-            background: 'var(--t-surface)',
-            borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
-          }}>
-          <span className="font-medium text-sm flex-1">{c.title}</span>
-        </button>
-      ))}
-    </div>
-  );
+   *  her secenek kendi basina isiltili/kenarlikli bir "kart" DEGIL (madde 1).
+   *  Madde 2026-08-20: turler artik admin'in ekledigi DINAMIK liste. */
+  const typeList = (onPicked: () => void) => {
+    const rows = types ?? [];
+    return (
+      <div>
+        {types === null && <p className="text-sm t-muted">Yükleniyor…</p>}
+        {types !== null && rows.length === 0 && (
+          <p className="text-sm t-muted">Henüz açılış türü yok.</p>
+        )}
+        {rows.length > 0 && (
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
+            {rows.map((t, i) => (
+              <button key={t.id} type="button"
+                onClick={() => { pickType(t); onPicked(); }}
+                className="w-full flex items-center px-4 py-3 text-left"
+                style={{
+                  background: 'var(--t-surface)',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
+                }}>
+                <span className="font-medium text-sm flex-1">{t.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   /** Secili turdeki acilis İSİMLERİ (FEN yok — o varyantta). Ayni akordiyon
    *  gorunumu (madde 3) — ikon KALIR. */
   const openingList = (onPicked: () => void) => {
-    const rows = category === null ? [] : groups[category];
+    const rows = chosenType?.openings ?? [];
     return (
       <div>
-        {openings === null && <p className="text-sm t-muted">Yükleniyor…</p>}
-        {openings !== null && rows.length === 0 && (
+        {types === null && <p className="text-sm t-muted">Yükleniyor…</p>}
+        {types !== null && rows.length === 0 && (
           <p className="text-sm t-muted">Bu türde henüz açılış yok.</p>
         )}
         {rows.length > 0 && (
@@ -193,8 +206,8 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
 
   // Dogrudan-baslat: varyant bulununcaya kadar bilgilendirme goster.
   if (directStart && !(criteria && chosen && chosenVariant)) {
-    if (openings === null) return <p className="text-sm t-muted">Yükleniyor…</p>;
-    const found = openings.some((o) => o.variants.some((v) => v.id === initialVariantId));
+    if (types === null) return <p className="text-sm t-muted">Yükleniyor…</p>;
+    const found = types.some((t) => t.openings.some((o) => o.variants.some((v) => v.id === initialVariantId)));
     if (!found) return <p className="text-sm t-muted">Açılış bulunamadı.</p>;
     return <p className="text-sm t-muted">Yükleniyor…</p>;
   }
@@ -214,8 +227,8 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
         practiceActions={{
           onPlaySame: () => setMatchKey((k) => k + 1),
           onPlayDifferent: () => {
-            if (category === null) return;
-            const pool = groups[category].flatMap(
+            if (chosenType === null) return;
+            const pool = chosenType.openings.flatMap(
               (o) => o.variants.map((v) => ({ id: v.id, opening: o, variant: v })),
             );
             if (pool.length === 0) return;
@@ -249,8 +262,8 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
               <PathNode
                 icon="📖"
                 label="1. Açılış Türünü Seç"
-                trailing={categorySummary(category) ? (
-                  <span className="text-xs t-muted">{categorySummary(category)}</span>
+                trailing={categorySummary(chosenType?.name ?? null) ? (
+                  <span className="text-xs t-muted">{categorySummary(chosenType?.name ?? null)}</span>
                 ) : undefined}
                 active={openInner === 'type'}
                 size={34}
@@ -269,7 +282,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
                   <span className="text-xs t-muted">{openingSummary(chosen?.name ?? null)}</span>
                 ) : undefined}
                 active={openInner === 'opening'}
-                locked={!isOpeningUnlocked(category)}
+                locked={!isOpeningUnlocked(chosenType?.name ?? null)}
                 size={34}
                 onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
               />
@@ -344,8 +357,8 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
             <FriendChallenge
               openingStep={{
                 renderTypes: typeList,
-                typeSummary: categorySummary(category),
-                typePicked: category !== null,
+                typeSummary: categorySummary(chosenType?.name ?? null),
+                typePicked: chosenType !== null,
                 renderOpenings: openingList,
                 openingSummary: openingSummary(chosen?.name ?? null),
                 openingPicked: chosen !== null,

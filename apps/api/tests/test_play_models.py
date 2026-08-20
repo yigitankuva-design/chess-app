@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 from chess_api.models import Game, GameType, GameStatus
-from chess_api.models.opening import Opening
+from chess_api.models.opening import Opening, OpeningType
 
 
 @pytest.mark.asyncio
@@ -59,9 +59,13 @@ async def test_student_color_kaydedilebilir(db):
 
 @pytest.mark.asyncio
 async def test_opening_kaydedilir(db):
-    """Madde (2026-08-20): Opening artik yalnizca isim/kategori tasir —
+    """Madde (2026-08-20): Opening artik bir OpeningType'a baglidir —
     FEN OpeningVariant'ta (bkz. test_openings.py)."""
-    op = Opening(name="İtalyan Açılışı")
+    otype = OpeningType(name="e4'lü Açılışlar")
+    db.add(otype)
+    await db.commit()
+    await db.refresh(otype)
+    op = Opening(name="İtalyan Açılışı", opening_type_id=otype.id)
     db.add(op)
     await db.commit()
     found = (await db.execute(select(Opening))).scalars().all()

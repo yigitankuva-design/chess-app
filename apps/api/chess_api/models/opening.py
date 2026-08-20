@@ -3,6 +3,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
 
+class OpeningType(Base):
+    """Acilis TURU (madde: 2026-08-20) — orn. "e4'lü Açılışlar". Eskiden
+    kod icinde sabit 3 deger (e4/d4/diger) idi; artik admin'in serbestce
+    ekleyip/duzenleyip/sildigi TAM BIR VERI SEVIYESI (Opening ve
+    OpeningVariant ile AYNI desen)."""
+
+    __tablename__ = "opening_types"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
 class Opening(Base):
     """Acilis pratigi icin bir acilis ADI (madde: 2026-08-20 — FEN artik
     burada degil, OpeningVariant'ta). Icerik Zafer Hoca tarafindan admin
@@ -15,10 +27,9 @@ class Opening(Base):
     # Sporcuya gosterilen sira (madde 8). Varsayilan 0 -> id sirasina duser,
     # mevcut kayitlarda migration id'yi kopyalar.
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    # Acilis turu: 'e4' | 'd4' | 'diger'. Eski kayitlar 'diger' olur.
-    category: Mapped[str] = mapped_column(
-        String(20), default="diger", server_default="diger"
-    )
+    # Madde 2026-08-20: eskiden sabit string ('e4'/'d4'/'diger'), artik
+    # OpeningType'a FK. Her acilis MUTLAKA bir turun altindadir.
+    opening_type_id: Mapped[int] = mapped_column(ForeignKey("opening_types.id"), index=True)
 
 
 class OpeningVariant(Base):

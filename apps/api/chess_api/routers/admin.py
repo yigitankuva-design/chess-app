@@ -24,7 +24,7 @@ from chess_api.schemas.auth import (
 )
 from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult
-from chess_api.models.opening import Opening, OpeningVariant
+from chess_api.models.opening import Opening, OpeningVariant, OpeningType
 from chess_api.models.pool_image import PoolImage
 from chess_api.models.custom_tab import CustomTab, CustomTabSection
 from chess_api.models.tournament import (
@@ -1061,22 +1061,27 @@ async def admin_patch_settings(
 
 
 # ---------------------------------------------------------------------------
-# Acilis pratigi: acilis listesi (Zafer Hoca girer)
+# Acilis pratigi: tur / acilis / varyant listesi (Zafer Hoca girer)
 # ---------------------------------------------------------------------------
 
-OPENING_CATEGORIES = ("e4", "d4", "diger")
+
+class OpeningTypeCreateRequest(BaseModel):
+    name: str
+
+
+class OpeningTypeUpdateRequest(BaseModel):
+    name: str
 
 
 class OpeningCreateRequest(BaseModel):
     name: str
-    # Eski istemciler gondermez -> "Diğerleri" grubuna duser.
-    category: str = "diger"
+    opening_type_id: int
 
 
 class OpeningUpdateRequest(BaseModel):
     name: str
-    # None = "dokunma": eski istemci gondermezse mevcut kategori korunur.
-    category: str | None = None
+    # None = "dokunma": gondermezse mevcut turu korunur.
+    opening_type_id: int | None = None
 
 
 class OpeningMoveRequest(BaseModel):
@@ -1093,18 +1098,79 @@ class OpeningVariantUpdateRequest(BaseModel):
     start_fen: str
 
 
-def _validate_category(value: str) -> str:
-    if value not in OPENING_CATEGORIES:
-        raise HTTPException(status_code=400, detail="Geçersiz açılış türü")
-    return value
-
-
 def _validate_fen(fen: str) -> None:
     """FEN'i python-chess ile dogrular; bozuk pozisyon kaydedilmez."""
     try:
         chess.Board(fen)
     except ValueError:
         raise HTTPException(status_code=400, detail="Geçersiz FEN")
+
+
+# ── Açılış Türleri (madde: 2026-08-20) — Opening/OpeningVariant ile AYNI
+# desen. Siralama (yukari/asagi tasima) BILINCLI OLARAK yok — istenmedi.
+
+async def _opening_type_or_404(db: AsyncSession, opening_type_id: int) -> OpeningType:
+    row = await db.get(OpeningType, opening_type_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Opening type not found")
+    return row
+
+
+@router.post("/opening-types", status_code=201)
+async def create_opening_type(
+    payload: OpeningTypeCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Açılış türü adı gerekli")
+    max_order = (await db.execute(select(func.max(OpeningType.sort_order)))).scalar() or 0
+    row = OpeningType(name=name, sort_order=max_order + 1)
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "name": row.name}
+
+
+@router.patch("/opening-types/{opening_type_id}")
+async def update_opening_type(
+    opening_type_id: int,
+    payload: OpeningTypeUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = await _opening_type_or_404(db, opening_type_id)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Açılış türü adı gerekli")
+    row.name = name
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "name": row.name}
+
+
+@router.delete("/opening-types/{opening_type_id}")
+async def delete_opening_type(
+    opening_type_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = await _opening_type_or_404(db, opening_type_id)
+    # Cocuktan-ebeveyne dogru sirayla silinir (madde: mimari inceleme,
+    # delete_opening ile AYNI desen): varyantlar -> acilislar -> tur.
+    opening_ids = (await db.execute(
+        select(Opening.id).where(Opening.opening_type_id == opening_type_id)
+    )).scalars().all()
+    if opening_ids:
+        await db.execute(delete(OpeningVariant).where(OpeningVariant.opening_id.in_(opening_ids)))
+        await db.execute(delete(Opening).where(Opening.opening_type_id == opening_type_id))
+    await db.delete(row)
+    await db.commit()
+    return {"deleted": True}
 
 
 @router.post("/openings", status_code=201)
@@ -1117,14 +1183,14 @@ async def create_opening(
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Açılış adı gerekli")
+    await _opening_type_or_404(db, payload.opening_type_id)
     # Yeni acilis listenin SONUNA eklenir (madde 8 siralamasi bozulmasin).
-    category = _validate_category(payload.category)
     max_order = (await db.execute(select(func.max(Opening.sort_order)))).scalar() or 0
-    op_row = Opening(name=name, sort_order=max_order + 1, category=category)
+    op_row = Opening(name=name, sort_order=max_order + 1, opening_type_id=payload.opening_type_id)
     db.add(op_row)
     await db.commit()
     await db.refresh(op_row)
-    return {"id": op_row.id, "name": op_row.name, "category": op_row.category}
+    return {"id": op_row.id, "name": op_row.name, "opening_type_id": op_row.opening_type_id}
 
 
 @router.patch("/openings/{opening_id}")
@@ -1144,11 +1210,12 @@ async def update_opening(
     if not name:
         raise HTTPException(status_code=400, detail="Açılış adı gerekli")
     row.name = name
-    if payload.category is not None:
-        row.category = _validate_category(payload.category)
+    if payload.opening_type_id is not None:
+        await _opening_type_or_404(db, payload.opening_type_id)
+        row.opening_type_id = payload.opening_type_id
     await db.commit()
     await db.refresh(row)
-    return {"id": row.id, "name": row.name, "category": row.category}
+    return {"id": row.id, "name": row.name, "opening_type_id": row.opening_type_id}
 
 
 @router.post("/openings/{opening_id}/move")

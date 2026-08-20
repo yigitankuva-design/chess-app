@@ -35,8 +35,11 @@ const FEN = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1';
 
 function openingsFixture() {
   return [{
-    id: 1, name: 'İtalyan Açılışı', category: 'e4',
-    variants: [{ id: 11, name: 'Klasik Varyant', start_fen: FEN }],
+    id: 1, name: "e4'lü Açılışlar",
+    openings: [{
+      id: 1, name: 'İtalyan Açılışı',
+      variants: [{ id: 11, name: 'Klasik Varyant', start_fen: FEN }],
+    }],
   }];
 }
 
@@ -144,11 +147,14 @@ describe('OpeningPractice — akordiyon (madde: 2026-08-20, 4 adım)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       json: async () => [{
-        id: 1, name: 'İtalyan Açılışı', category: 'e4',
-        variants: [
-          { id: 11, name: 'Klasik Varyant', start_fen: FEN },
-          { id: 12, name: 'Giuoco Piano', start_fen: FEN2 },
-        ],
+        id: 1, name: "e4'lü Açılışlar",
+        openings: [{
+          id: 1, name: 'İtalyan Açılışı',
+          variants: [
+            { id: 11, name: 'Klasik Varyant', start_fen: FEN },
+            { id: 12, name: 'Giuoco Piano', start_fen: FEN2 },
+          ],
+        }],
       }],
     })));
     // Math.random() 0 döner → pickDifferentPosition ilk uygun adayı seçer (deterministik).
@@ -179,21 +185,23 @@ describe('OpeningPractice — akordiyon (madde: 2026-08-20, 4 adım)', () => {
     expect(screen.getByTestId('friend-challenge')).toBeInTheDocument();
   });
 
-  it('REGRESYON: açılış listesi boşsa bilgi mesajı gösterilir', async () => {
+  it('REGRESYON: açılış türü listesi boşsa bilgi mesajı gösterilir', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [] })));
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Türünü Seç/ }));
-    fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
     await waitFor(() =>
-      expect(screen.getByText(/Bu türde henüz açılış yok/i)).toBeInTheDocument(),
+      expect(screen.getByText(/Henüz açılış türü yok/i)).toBeInTheDocument(),
     );
   });
 
   it('açılışın hiç varyantı yoksa bilgi mesajı gösterilir', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
-      json: async () => [{ id: 1, name: 'Varyantsız', category: 'e4', variants: [] }],
+      json: async () => [{
+        id: 1, name: "e4'lü Açılışlar",
+        openings: [{ id: 1, name: 'Varyantsız', variants: [] }],
+      }],
     })));
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));

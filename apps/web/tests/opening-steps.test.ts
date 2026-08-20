@@ -10,18 +10,27 @@ describe('isOpeningUnlocked', () => {
   });
 
   it('tür seçildiyse açılabilir', () => {
-    expect(isOpeningUnlocked('e4')).toBe(true);
-    expect(isOpeningUnlocked('diger')).toBe(true);
+    expect(isOpeningUnlocked("e4'lü Açılışlar")).toBe(true);
+    expect(isOpeningUnlocked('Diğer Açılışlar')).toBe(true);
+  });
+
+  it('boş ad seçim sayılmaz', () => {
+    expect(isOpeningUnlocked('')).toBe(false);
+    expect(isOpeningUnlocked('   ')).toBe(false);
   });
 });
 
-describe('categorySummary', () => {
+describe('categorySummary (madde: 2026-08-20 — açılış türü artık admin verisi)', () => {
   it('seçim yoksa null döner', () => {
     expect(categorySummary(null)).toBeNull();
   });
 
   it('seçim varsa tik işaretli tür adı döner', () => {
-    expect(categorySummary('d4')).toBe("✓ d4'lü Açılışlar");
+    expect(categorySummary("d4'lü Açılışlar")).toBe("✓ d4'lü Açılışlar");
+  });
+
+  it('baştaki/sondaki boşlukları kırpar', () => {
+    expect(categorySummary('  Diğer Açılışlar  ')).toBe('✓ Diğer Açılışlar');
   });
 });
 
