@@ -1,53 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  isCriteriaUnlocked, isOpeningUnlocked, isVariantUnlocked,
-  openingSummary, categorySummary, variantSummary,
-} from '@/lib/play/openingSteps';
-
-describe('isOpeningUnlocked', () => {
-  it('tür seçilmediyse kilitlidir', () => {
-    expect(isOpeningUnlocked(null)).toBe(false);
-  });
-
-  it('tür seçildiyse açılabilir', () => {
-    expect(isOpeningUnlocked("e4'lü Açılışlar")).toBe(true);
-    expect(isOpeningUnlocked('Diğer Açılışlar')).toBe(true);
-  });
-
-  it('boş ad seçim sayılmaz', () => {
-    expect(isOpeningUnlocked('')).toBe(false);
-    expect(isOpeningUnlocked('   ')).toBe(false);
-  });
-});
-
-describe('categorySummary (madde: 2026-08-20 — açılış türü artık admin verisi)', () => {
-  it('seçim yoksa null döner', () => {
-    expect(categorySummary(null)).toBeNull();
-  });
-
-  it('seçim varsa tik işaretli tür adı döner', () => {
-    expect(categorySummary("d4'lü Açılışlar")).toBe("✓ d4'lü Açılışlar");
-  });
-
-  it('baştaki/sondaki boşlukları kırpar', () => {
-    expect(categorySummary('  Diğer Açılışlar  ')).toBe('✓ Diğer Açılışlar');
-  });
-});
-
-describe('isVariantUnlocked (madde: 2026-08-20)', () => {
-  it('açılış ismi seçilmediyse kilitlidir', () => {
-    expect(isVariantUnlocked(null)).toBe(false);
-  });
-
-  it('açılış ismi seçildiyse açılabilir', () => {
-    expect(isVariantUnlocked('İtalyan Açılışı')).toBe(true);
-  });
-
-  it('boş ad seçim sayılmaz', () => {
-    expect(isVariantUnlocked('')).toBe(false);
-    expect(isVariantUnlocked('   ')).toBe(false);
-  });
-});
+import { isCriteriaUnlocked, variantSummary } from '@/lib/play/openingSteps';
 
 describe('isCriteriaUnlocked', () => {
   it('varyant seçilmediyse kilitlidir', () => {
@@ -64,21 +16,6 @@ describe('isCriteriaUnlocked', () => {
   });
 });
 
-describe('openingSummary', () => {
-  it('seçim yoksa null döner', () => {
-    expect(openingSummary(null)).toBeNull();
-    expect(openingSummary('  ')).toBeNull();
-  });
-
-  it('seçim varsa tik işaretli özet döner', () => {
-    expect(openingSummary('İtalyan Açılışı')).toBe('✓ İtalyan Açılışı');
-  });
-
-  it('baştaki/sondaki boşlukları kırpar', () => {
-    expect(openingSummary('  Sicilya Savunması  ')).toBe('✓ Sicilya Savunması');
-  });
-});
-
 describe('variantSummary (madde: 2026-08-20)', () => {
   it('seçim yoksa null döner', () => {
     expect(variantSummary(null)).toBeNull();
@@ -87,5 +24,9 @@ describe('variantSummary (madde: 2026-08-20)', () => {
 
   it('seçim varsa tik işaretli özet döner', () => {
     expect(variantSummary('Klasik Varyant')).toBe('✓ Klasik Varyant');
+  });
+
+  it('baştaki/sondaki boşlukları kırpar', () => {
+    expect(variantSummary('  Sicilya Savunması  ')).toBe('✓ Sicilya Savunması');
   });
 });

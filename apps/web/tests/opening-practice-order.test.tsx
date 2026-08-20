@@ -37,46 +37,29 @@ beforeEach(() => {
 
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 
-describe('Açılış Pratiği — arkadaşa karşı 5 adım (madde: 2026-08-20, varyant seviyesi eklendi)', () => {
-  it('adımlar 1) Tür 2) Açılış İsmi 3) Varyant 4) Kriterler 5) Arkadaş sırasındadır', () => {
+describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, güncelleme — iç içe akordiyon)', () => {
+  it('adımlar 1) Açılış Seç 2) Maç Kriterlerini Belirle 3) Arkadaşını Seç sırasındadır', () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
 
-    // StepCard basligi "N. Baslik" olarak tek parca cizilir.
-    expect(screen.getByText('1. Açılış Türünü Seç')).toBeInTheDocument();
-    expect(screen.getByText('2. Açılış İsmini Seç')).toBeInTheDocument();
-    expect(screen.getByText('3. Varyant Seç')).toBeInTheDocument();
-    expect(screen.getByText('4. Maç Kriterlerini Belirle')).toBeInTheDocument();
-    expect(screen.getByText('5. Arkadaşını Seç')).toBeInTheDocument();
+    expect(screen.getByText('1. Açılış Seç')).toBeInTheDocument();
+    expect(screen.getByText('2. Maç Kriterlerini Belirle')).toBeInTheDocument();
+    expect(screen.getByText('3. Arkadaşını Seç')).toBeInTheDocument();
   });
 
-  it('TUZAK: tür seçilmeden açılış ismi adımı KİLİTLİDİR', () => {
+  it('TUZAK: açılış seçilmeden kriter adımı KİLİTLİDİR', () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
-    expect(screen.getByText('2. Açılış İsmini Seç').closest('button'))
+    expect(screen.getByText('2. Maç Kriterlerini Belirle').closest('button'))
       .toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('TUZAK: açılış ismi seçilmeden varyant adımı KİLİTLİDİR', () => {
-    render(<OpeningPractice />);
-    fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
-    expect(screen.getByText('3. Varyant Seç').closest('button'))
-      .toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('TUZAK: varyant seçilmeden kriter adımı KİLİTLİDİR', () => {
-    render(<OpeningPractice />);
-    fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
-    expect(screen.getByText('4. Maç Kriterlerini Belirle').closest('button'))
-      .toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('liste başta gizlidir; tür seçilince o türün açılış İSİMLERİ görünür', async () => {
+  it('liste başta gizlidir; tür seçilince o türün açılış İSİMLERİ İÇİNDE görünür', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
     expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('1. Açılış Türünü Seç'));
+    fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
 
     await waitFor(() => screen.getByText('İtalyan Açılışı'));
@@ -84,10 +67,10 @@ describe('Açılış Pratiği — arkadaşa karşı 5 adım (madde: 2026-08-20, 
     expect(screen.queryByText('Slav Savunması')).not.toBeInTheDocument();
   });
 
-  it('açılış ismi seçilince o açılışın VARYANTLARI görünür', async () => {
+  it('açılış ismi seçilince o açılışın VARYANTLARI İÇİNDE görünür', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
-    fireEvent.click(screen.getByText('1. Açılış Türünü Seç'));
+    fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
     fireEvent.click(await screen.findByText('İtalyan Açılışı'));
     await waitFor(() => expect(screen.getByText('Ana Hat')).toBeInTheDocument());
@@ -96,7 +79,7 @@ describe('Açılış Pratiği — arkadaşa karşı 5 adım (madde: 2026-08-20, 
   it('seçilen VARYANTIN start_fen değeri teklifle birlikte gider', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
-    fireEvent.click(screen.getByText('1. Açılış Türünü Seç'));
+    fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
     fireEvent.click(await screen.findByText('İtalyan Açılışı'));
     fireEvent.click(await screen.findByText('Ana Hat'));
@@ -113,14 +96,12 @@ describe('Açılış Pratiği — arkadaşa karşı 5 adım (madde: 2026-08-20, 
   });
 });
 
-describe('Açılış Pratiği — bota karşı 4 adım (madde: 2026-08-20)', () => {
-  it('adımlar 1) Tür 2) Açılış İsmi 3) Varyant 4) Kriter sırasındadır', () => {
+describe('Açılış Pratiği — bota karşı 2 adım (madde: 2026-08-20, güncelleme)', () => {
+  it('adımlar 1) Açılış Seç 2) Maç Kriterlerini Seç sırasındadır', () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
-    expect(screen.getByText('1. Açılış Türünü Seç')).toBeInTheDocument();
-    expect(screen.getByText('2. Açılış İsmini Seç')).toBeInTheDocument();
-    expect(screen.getByText('3. Varyant Seç')).toBeInTheDocument();
-    expect(screen.getByText('4. Maç Kriterlerini Seç')).toBeInTheDocument();
+    expect(screen.getByText('1. Açılış Seç')).toBeInTheDocument();
+    expect(screen.getByText('2. Maç Kriterlerini Seç')).toBeInTheDocument();
   });
 
   it('liste başta gizlidir', () => {
@@ -129,42 +110,21 @@ describe('Açılış Pratiği — bota karşı 4 adım (madde: 2026-08-20)', () 
     expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
   });
 
-  it('TUZAK: tür değişince seçili açılış/varyant sıfırlanır, kriter yeniden kilitlenir', async () => {
+  it('TUZAK: farklı bir varyant seçilince önceki seçim değişir, kriter kilidi güncel varyanta göre kalır', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
-    fireEvent.click(screen.getByText('1. Açılış Türünü Seç'));
+    fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
     fireEvent.click(await screen.findByText('İtalyan Açılışı'));
     fireEvent.click(await screen.findByText('Ana Hat'));
-    expect(screen.getByText('4. Maç Kriterlerini Seç').closest('button'))
+    expect(screen.getByText('2. Maç Kriterlerini Seç').closest('button'))
       .toHaveAttribute('aria-disabled', 'false');
-
-    fireEvent.click(screen.getByText('1. Açılış Türünü Seç'));
-    fireEvent.click(await screen.findByText("d4'lü Açılışlar"));
-    expect(screen.getByText('4. Maç Kriterlerini Seç').closest('button'))
-      .toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('TUZAK: açılış ismi değişince seçili varyant sıfırlanır, kriter yeniden kilitlenir', async () => {
-    render(<OpeningPractice />);
-    fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
-    fireEvent.click(screen.getByText('1. Açılış Türünü Seç'));
-    fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
-    fireEvent.click(await screen.findByText('İtalyan Açılışı'));
-    fireEvent.click(await screen.findByText('Ana Hat'));
-    expect(screen.getByText('4. Maç Kriterlerini Seç').closest('button'))
-      .toHaveAttribute('aria-disabled', 'false');
-
-    fireEvent.click(screen.getByText('2. Açılış İsmini Seç'));
-    fireEvent.click(await screen.findByText('İtalyan Açılışı'));
-    expect(screen.getByText('4. Maç Kriterlerini Seç').closest('button'))
-      .toHaveAttribute('aria-disabled', 'true');
   });
 
   it('boş türde bilgi mesajı gösterir', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
-    fireEvent.click(screen.getByText('1. Açılış Türünü Seç'));
+    fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText('Diğer Açılışlar'));
     await waitFor(() => screen.getByText('Bu türde henüz açılış yok.'));
   });
@@ -174,7 +134,7 @@ describe('FriendChallenge — açılış adımı VERİLMEZSE çizilmez', () => {
   it('Arkadaşla Oyna akışında açılış adımı yoktur, kriter kilitli değildir', async () => {
     const { FriendChallenge } = await import('@/components/play/FriendChallenge');
     render(<FriendChallenge />);
-    expect(screen.queryByText(/Açılış İsmini Seç/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Açılış Seç/)).not.toBeInTheDocument();
     expect(screen.getByText('1. Maç Kriterlerini Belirle').closest('button'))
       .toHaveAttribute('aria-disabled', 'false');
   });

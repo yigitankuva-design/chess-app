@@ -4,11 +4,10 @@ import { BotGame } from '@/components/BotGame';
 import { FriendChallenge } from '@/components/play/FriendChallenge';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
+import { OpeningPicker } from '@/components/play/OpeningPicker';
+import type { OpeningTypeDef, Opening, OpeningVariant } from '@/components/play/OpeningPicker';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
-import {
-  isCriteriaUnlocked, isOpeningUnlocked, isVariantUnlocked,
-  openingSummary, categorySummary, variantSummary,
-} from '@/lib/play/openingSteps';
+import { isCriteriaUnlocked, variantSummary } from '@/lib/play/openingSteps';
 import type { BotStepKey } from '@/lib/play/openingSteps';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
@@ -16,18 +15,14 @@ import { pickDifferentPosition } from '@/lib/play/positionPool';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export interface OpeningVariant { id: number; name: string; start_fen: string }
-export interface Opening { id: number; name: string; variants: OpeningVariant[] }
-/** Acilis TURU (madde: 2026-08-20) — admin'in yonettigi veri seviyesi,
- *  eskiden sabit e4/d4/diger idi. */
-export interface OpeningTypeDef { id: number; name: string; openings: Opening[] }
+export type { OpeningVariant, Opening, OpeningTypeDef };
 
 interface Props {
   /**
    * Doğrudan-başlat: /play sayfası, CustomTabPanel'den yönlendirilince bunu
-   * verir — seçim adımları (tür/açılış/varyant/kriter) ATLANIR, doğrudan bu
-   * VARYANT id'si ve kriterle maça girilir. İkisi de dolu değilse normal
-   * akordiyon akışı çalışır (madde: 2026-08-19, güncelleme 2026-08-20).
+   * verir — seçim adımları (açılış/kriter) ATLANIR, doğrudan bu VARYANT
+   * id'si ve kriterle maça girilir. İkisi de dolu değilse normal akordiyon
+   * akışı çalışır (madde: 2026-08-19, güncelleme 2026-08-20).
    */
   initialVariantId?: number;
   initialCriteria?: MatchCriteriaValue;
@@ -45,8 +40,10 @@ interface Props {
 }
 
 /** Acilis pratigi: sirali ve kilitli acilir kartlar (akordiyon).
- *  Dis katman: bot / arkadas. Ic katman (bot): tur -> acilis ismi -> varyant
- *  -> kriterler (madde: 2026-08-20 — "varyant" katmani yeni eklendi). */
+ *  Dis katman: bot / arkadas. Ic katman (bot): Acilis Sec (tur -> isim ->
+ *  varyant TEK ic ice akordiyonda, bkz. OpeningPicker) -> kriterler
+ *  (madde: 2026-08-20, guncelleme — admin'deki drill-down akordiyonla
+ *  AYNI desen; ayri numarali "tur/isim/varyant" adimlari kaldirildi). */
 export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToStart, tint }: Props = {}) {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
@@ -101,108 +98,12 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
     }
   }, [directStart, types, initialVariantId, initialCriteria, chosenVariant]);
 
-  /** Tur degisince secili acilis/varyant SIFIRLANIR — yanlis turden kalan
-   *  bir secimle mac baslamasin. */
-  function pickType(t: OpeningTypeDef) {
-    setChosenType(t);
-    setChosen(null);
-    setChosenVariant(null);
+  /** OpeningPicker'da varyant secilince cagirilir. */
+  function handlePicked(args: { type: OpeningTypeDef; opening: Opening; variant: OpeningVariant }) {
+    setChosenType(args.type);
+    setChosen(args.opening);
+    setChosenVariant(args.variant);
   }
-
-  /** Acilis ismi degisince secili varyant SIFIRLANIR. */
-  function pickOpening(o: Opening) {
-    setChosen(o);
-    setChosenVariant(null);
-  }
-
-  /** Tur listesi iki dalda da AYNI — tek yerde durur, kopyalanmaz.
-   *  Akordiyon gorunumu: TEK cerceve, satirlar arasinda ince ayirici cizgi —
-   *  her secenek kendi basina isiltili/kenarlikli bir "kart" DEGIL (madde 1).
-   *  Madde 2026-08-20: turler artik admin'in ekledigi DINAMIK liste. */
-  const typeList = (onPicked: () => void) => {
-    const rows = types ?? [];
-    return (
-      <div>
-        {types === null && <p className="text-sm t-muted">Yükleniyor…</p>}
-        {types !== null && rows.length === 0 && (
-          <p className="text-sm t-muted">Henüz açılış türü yok.</p>
-        )}
-        {rows.length > 0 && (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
-            {rows.map((t, i) => (
-              <button key={t.id} type="button"
-                onClick={() => { pickType(t); onPicked(); }}
-                className="w-full flex items-center px-4 py-3 text-left"
-                style={{
-                  background: 'var(--t-surface)',
-                  borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
-                }}>
-                <span className="font-medium text-sm flex-1">{t.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  /** Secili turdeki acilis İSİMLERİ (FEN yok — o varyantta). Ayni akordiyon
-   *  gorunumu (madde 3) — ikon KALIR. */
-  const openingList = (onPicked: () => void) => {
-    const rows = chosenType?.openings ?? [];
-    return (
-      <div>
-        {types === null && <p className="text-sm t-muted">Yükleniyor…</p>}
-        {types !== null && rows.length === 0 && (
-          <p className="text-sm t-muted">Bu türde henüz açılış yok.</p>
-        )}
-        {rows.length > 0 && (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
-            {rows.map((o, i) => (
-              <button key={o.id} type="button"
-                onClick={() => { pickOpening(o); onPicked(); }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left"
-                style={{
-                  background: 'var(--t-surface)',
-                  borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
-                }}>
-                <span className="text-xl">📖</span>
-                <span className="font-medium text-sm flex-1">{o.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  /** Secili acilisin varyantlari (madde: 2026-08-20 — YENİ kart). */
-  const variantList = (onPicked: () => void) => {
-    const rows = chosen?.variants ?? [];
-    return (
-      <div>
-        {rows.length === 0 && (
-          <p className="text-sm t-muted">Bu açılışta henüz varyant yok.</p>
-        )}
-        {rows.length > 0 && (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
-            {rows.map((v, i) => (
-              <button key={v.id} type="button"
-                onClick={() => { setChosenVariant(v); onPicked(); }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left"
-                style={{
-                  background: 'var(--t-surface)',
-                  borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
-                }}>
-                <span className="text-xl">♟️</span>
-                <span className="font-medium text-sm flex-1">{v.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // Dogrudan-baslat: varyant bulununcaya kadar bilgilendirme goster.
   if (directStart && !(criteria && chosen && chosenVariant)) {
@@ -261,57 +162,28 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
             <div>
               <PathNode
                 icon="📖"
-                label="1. Açılış Türünü Seç"
-                trailing={categorySummary(chosenType?.name ?? null) ? (
-                  <span className="text-xs t-muted">{categorySummary(chosenType?.name ?? null)}</span>
-                ) : undefined}
-                active={openInner === 'type'}
-                size={34}
-                onClick={() => setOpenInner((p) => (p === 'type' ? null : 'type'))}
-              />
-              {openInner === 'type' && (
-                <Branch offset={17}>{typeList(() => setOpenInner('opening'))}</Branch>
-              )}
-            </div>
-
-            <div>
-              <PathNode
-                icon="📍"
-                label="2. Açılış İsmini Seç"
-                trailing={openingSummary(chosen?.name ?? null) ? (
-                  <span className="text-xs t-muted">{openingSummary(chosen?.name ?? null)}</span>
+                label="1. Açılış Seç"
+                trailing={variantSummary(chosenVariant?.name ?? null) ? (
+                  <span className="text-xs t-muted">{variantSummary(chosenVariant?.name ?? null)}</span>
                 ) : undefined}
                 active={openInner === 'opening'}
-                locked={!isOpeningUnlocked(chosenType?.name ?? null)}
                 size={34}
                 onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
               />
               {openInner === 'opening' && (
-                <Branch offset={17}>{openingList(() => setOpenInner('variant'))}</Branch>
-              )}
-            </div>
-
-            <div>
-              <PathNode
-                icon="♟️"
-                label="3. Varyant Seç"
-                trailing={variantSummary(chosenVariant?.name ?? null) ? (
-                  <span className="text-xs t-muted">{variantSummary(chosenVariant?.name ?? null)}</span>
-                ) : undefined}
-                active={openInner === 'variant'}
-                locked={!isVariantUnlocked(chosen?.name ?? null)}
-                size={34}
-                onClick={() => setOpenInner((p) => (p === 'variant' ? null : 'variant'))}
-              />
-              {openInner === 'variant' && (
-                <Branch offset={17}>{variantList(() => setOpenInner('criteria'))}</Branch>
+                <Branch offset={17}>
+                  <OpeningPicker types={types} onPicked={(args) => {
+                    handlePicked(args);
+                    setOpenInner('criteria');
+                  }} />
+                </Branch>
               )}
             </div>
 
             <div>
               <PathNode
                 icon="🎯"
-                label="4. Maç Kriterlerini Seç"
+                label="2. Maç Kriterlerini Seç"
                 active={openInner === 'criteria'}
                 locked={!isCriteriaUnlocked(chosenVariant?.name ?? null)}
                 size={34}
@@ -349,21 +221,21 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
           onClick={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
         />
         {openOuter === 'friend' && (
-          /* Sira: 1) Tur 2) Acilis ismi 3) Varyant 4) Kriterler 5) Arkadas.
-             FriendChallenge kendi ic adimlarini HALA StepCard ile cizer — o
-             bilesen ayrica "Arkadasla Oyna" (Pratik Yap'la ilgisiz) akisinda
-             da kullanildigi icin degistirilmedi (2026-08-19 kapsam karari). */
+          /* Sira: 1) Acilis Sec (tur->isim->varyant ic ice) 2) Kriterler
+             3) Arkadas. FriendChallenge kendi ic adimlarini HALA StepCard ile
+             cizer — o bilesen ayrica "Arkadasla Oyna" (Pratik Yap'la ilgisiz)
+             akisinda da kullanildigi icin degistirilmedi (2026-08-19 kapsam
+             karari), yalnizca acilis secim adimi tekile indirgendi (2026-08-20). */
           <Branch offset={20}>
             <FriendChallenge
               openingStep={{
-                renderTypes: typeList,
-                typeSummary: categorySummary(chosenType?.name ?? null),
-                typePicked: chosenType !== null,
-                renderOpenings: openingList,
-                openingSummary: openingSummary(chosen?.name ?? null),
-                openingPicked: chosen !== null,
-                renderVariants: variantList,
-                variantSummary: variantSummary(chosenVariant?.name ?? null),
+                renderPicker: (onPicked) => (
+                  <OpeningPicker types={types} onPicked={(args) => {
+                    handlePicked(args);
+                    onPicked();
+                  }} />
+                ),
+                summary: variantSummary(chosenVariant?.name ?? null),
                 picked: chosenVariant !== null,
                 startFen: chosenVariant?.start_fen ?? null,
               }}

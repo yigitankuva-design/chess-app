@@ -50,79 +50,63 @@ beforeEach(() => {
   })));
 });
 
-/** Bot kartini acar, tur secer, acilis ismini secer ve varyant listesinin
- *  gorunmesini bekler (madde: 2026-08-20 — 4 adimli akis). */
-async function openToVariantList() {
+/** Bot kartini acar, "1. Açılış Seç" akordiyonunda Tür -> Açılış -> Varyant
+ *  ic ice acip son varyanti secer (madde: 2026-08-20, guncelleme). */
+async function pickVariant() {
   fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
-  fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Türünü Seç/ }));
+  fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
   fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
   await waitFor(() => expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument());
   fireEvent.click(screen.getByText('İtalyan Açılışı'));
   await waitFor(() => expect(screen.getByText('Klasik Varyant')).toBeInTheDocument());
+  fireEvent.click(screen.getByText('Klasik Varyant'));
 }
 
 async function pickVariantAndStartCriteria() {
-  await openToVariantList();
-  fireEvent.click(screen.getByText('Klasik Varyant'));
+  await pickVariant();
   fireEvent.click(screen.getByRole('button', { name: 'Orta' }));
   fireEvent.click(screen.getByRole('button', { name: '5+0' }));
 }
 
-describe('OpeningPractice — akordiyon (madde: 2026-08-20, 4 adım)', () => {
+describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme)', () => {
   it('başlangıçta iki dış kart kapalıdır', () => {
     render(<OpeningPractice />);
     expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ })).toBeInTheDocument();
     // Govdeler kapali: ic kartlarin basliklari DOM'da yok
-    expect(screen.queryByText('1. Açılış Türünü Seç')).not.toBeInTheDocument();
+    expect(screen.queryByText('1. Açılış Seç')).not.toBeInTheDocument();
     expect(screen.queryByTestId('friend-challenge')).not.toBeInTheDocument();
   });
 
-  it('bot kartı açılınca DÖRT kart görünür, açılış listesi yüklenir', async () => {
+  it('bot kartı açılınca İKİ kart görünür (Açılış Seç, Maç Kriterlerini Seç)', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
-    expect(screen.getByText('1. Açılış Türünü Seç')).toBeInTheDocument();
-    expect(screen.getByText('2. Açılış İsmini Seç')).toBeInTheDocument();
-    expect(screen.getByText('3. Varyant Seç')).toBeInTheDocument();
-    expect(screen.getByText('4. Maç Kriterlerini Seç')).toBeInTheDocument();
+    expect(screen.getByText('1. Açılış Seç')).toBeInTheDocument();
+    expect(screen.getByText('2. Maç Kriterlerini Seç')).toBeInTheDocument();
   });
 
   it('KİLİT: varyant seçilmeden kriter kartı açılmaz', async () => {
     render(<OpeningPractice />);
-    await openToVariantList();
-    const criteriaBtn = screen.getByRole('button', { name: /4\. Maç Kriterlerini Seç/ });
+    fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
+    const criteriaBtn = screen.getByRole('button', { name: /2\. Maç Kriterlerini Seç/ });
     expect(criteriaBtn).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(criteriaBtn);
     expect(screen.queryByRole('button', { name: 'Kolay' })).not.toBeInTheDocument();
   });
 
-  it('KİLİT: açılış ismi seçilmeden varyant kartı açılmaz', async () => {
+  it('tür seçilince açılış isimleri İÇİNDE genişler (sayfa değişmez, akordiyon kapanmaz)', async () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
-    const variantBtn = screen.getByRole('button', { name: /3\. Varyant Seç/ });
-    expect(variantBtn).toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('açılış ismi seçilince 2. kart kapanır, ✓ özet çıkar, 3. kart (varyant) kendiliğinden açılır', async () => {
-    render(<OpeningPractice />);
-    fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
-    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Türünü Seç/ }));
+    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
+    // Tür satırı hala DOM'da (kapanmadı) — açılış onun İÇİNDE göründü.
+    expect(screen.getByText("e4'lü Açılışlar")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('İtalyan Açılışı'));
-    // 2. kart kapandi: listedeki secenek artik DOM'da degil
-    expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
-    // Ozet basliga tasindi
-    expect(screen.getByText('✓ İtalyan Açılışı')).toBeInTheDocument();
-    // 3. kart (varyant) acildi
-    expect(screen.getByText('Klasik Varyant')).toBeInTheDocument();
   });
 
-  it('varyant seçilince 3. kart kapanır, ✓ özet çıkar, 4. kart kendiliğinden açılır', async () => {
+  it('varyant seçilince "1. Açılış Seç" özeti çıkar, 2. kart kendiliğinden açılır', async () => {
     render(<OpeningPractice />);
-    await openToVariantList();
-    fireEvent.click(screen.getByText('Klasik Varyant'));
-    expect(screen.queryByText('Klasik Varyant')).not.toBeInTheDocument();
+    await pickVariant();
     expect(screen.getByText('✓ Klasik Varyant')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Kolay' })).toBeInTheDocument();
   });
@@ -142,7 +126,7 @@ describe('OpeningPractice — akordiyon (madde: 2026-08-20, 4 adım)', () => {
     expect(screen.getByTestId('bot-game').getAttribute('data-start-fen')).toBe(FEN);
   });
 
-  it('practiceActions "farklı konum": AYNI kategorideki BAŞKA bir varyantı seçer', async () => {
+  it('practiceActions "farklı konum": AYNI türdeki BAŞKA bir varyantı seçer', async () => {
     const FEN2 = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
@@ -181,7 +165,7 @@ describe('OpeningPractice — akordiyon (madde: 2026-08-20, 4 adım)', () => {
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     fireEvent.click(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ }));
-    expect(screen.queryByText('1. Açılış Türünü Seç')).not.toBeInTheDocument();
+    expect(screen.queryByText('1. Açılış Seç')).not.toBeInTheDocument();
     expect(screen.getByTestId('friend-challenge')).toBeInTheDocument();
   });
 
@@ -189,7 +173,7 @@ describe('OpeningPractice — akordiyon (madde: 2026-08-20, 4 adım)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [] })));
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
-    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Türünü Seç/ }));
+    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
     await waitFor(() =>
       expect(screen.getByText(/Henüz açılış türü yok/i)).toBeInTheDocument(),
     );
@@ -205,7 +189,7 @@ describe('OpeningPractice — akordiyon (madde: 2026-08-20, 4 adım)', () => {
     })));
     render(<OpeningPractice />);
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
-    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Türünü Seç/ }));
+    fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
     await waitFor(() => expect(screen.getByText('Varyantsız')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Varyantsız'));
