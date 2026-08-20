@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 
-describe('MatchCriteria — üç yatay sıra (madde 5)', () => {
+describe('MatchCriteria — üç AYRI kart: Düzey / Tempo ve Süre / Renk (madde 5, güncelleme 2026-08-20)', () => {
   it('1. sırada 10 dairesel düzey kartı vardır, üzerlerinde sadece rakam', () => {
     render(<MatchCriteria startLabel="Maça Başla" onStart={vi.fn()} />);
     for (let n = 1; n <= 10; n++) {
@@ -43,6 +43,24 @@ describe('MatchCriteria — üç yatay sıra (madde 5)', () => {
     expect(v.level.level).toBe(5);
     expect(v.timeControl.label).toBe('5+0');
     expect(v.colorChoice).toBe('black');
+  });
+
+  it('Renk KENDİ AYRI kartındadır (Tempo ve Süre kartıyla birlikte DEĞİL) ve "3." numarasını taşır', () => {
+    render(<MatchCriteria startLabel="Maça Başla" onStart={vi.fn()} />);
+    const tempoCard = screen.getByText('Tempo ve Süre Seç', { exact: false }).closest('.t-card-i');
+    const colorCard = screen.getByText(/^3\.\s*Renk Seç/, { exact: false }).closest('.t-card-i');
+    expect(colorCard).not.toBe(tempoCard);
+    expect(colorCard?.contains(screen.getByRole('button', { name: 'Beyaz' }))).toBe(true);
+    expect(tempoCard?.contains(screen.getByRole('button', { name: 'Beyaz' }))).toBe(false);
+  });
+
+  it('Renk kartı tempo seçilmeden kilitlidir, düzey seçilir seçilmez DEĞİL', () => {
+    render(<MatchCriteria startLabel="Maça Başla" onStart={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Düzey 3' }));
+    const colorCard = screen.getByText(/Renk Seç/).closest('div');
+    expect(colorCard).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(screen.getByRole('button', { name: '5+0' }));
+    expect(colorCard).toHaveAttribute('aria-disabled', 'false');
   });
 });
 

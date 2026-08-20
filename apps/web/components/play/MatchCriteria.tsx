@@ -34,9 +34,9 @@ interface Props {
   simplifiedLevels?: boolean;
   /**
    * Renk (Beyaz/Rastgele/Siyah) satırı gösterilsin mi? Pratik Yap
-   * akışlarında (Kazanç Konumu, Oyunsonu, Açılış Pratiği) false geçilir
-   * (madde 5, 2026-08-19) — renk seçimi kaldırılır ama colorChoice hâlâ
-   * varsayılan 'random' ile MatchCriteriaValue'da döner (çağıranlar kırılmaz).
+   * akışlarında (Kazanç Konumu, Oyunsonu) false geçilir (madde 5,
+   * 2026-08-19) — renk seçimi kaldırılır ama colorChoice hâlâ varsayılan
+   * 'random' ile MatchCriteriaValue'da döner (çağıranlar kırılmaz).
    */
   showColor?: boolean;
   /**
@@ -47,9 +47,11 @@ interface Props {
   showRatedMode?: boolean;
 }
 
-/** Üç/dört yatay sıra (madde 5): 1) Düzey  2) Tempo/Süre + Renk  3) Oyun
- *  Modu (varsa)  4) Maça Başla. Adımlar SIRAYLA açılır: düzey seçilmeden
- *  tempo, tempo seçilmeden başlat. */
+/** AYRI kartlar (madde: 2026-08-20) — Düzey, Tempo ve Süre, Renk (ve varsa
+ *  Oyun Modu) her biri KENDİ kartında, sırayla açılır: bir önceki adım
+ *  tamamlanmadan sonraki kart kilitlidir (opacity+pointer-events). Numaralar
+ *  hangi kartların gösterildiğine göre DİNAMİK hesaplanır (showLevel/
+ *  showColor/showRatedMode false ise o kart hiç yer kaplamaz, sıra kayar). */
 export function MatchCriteria({
   onStart, startLabel, showLevel = true, simplifiedLevels = false, showColor = true,
   showRatedMode = false,
@@ -65,7 +67,14 @@ export function MatchCriteria({
 
   // Düzey gösterilmiyorsa o adım kendiliğinden tamam sayılır.
   const levelDone = !showLevel || level !== null;
+  const tempoDone = levelDone && tc !== null;
   const effectiveLevel = level ?? LEVELS[0];
+
+  let step = 1;
+  const levelStep = showLevel ? step++ : null;
+  const tempoStep = step++;
+  const colorStep = showColor ? step++ : null;
+  const ratedStep = showRatedMode ? step++ : null;
 
   const pill = (active: boolean) => ({
     border: active ? '2px solid var(--t-accent)' : '1px solid var(--t-border)',
@@ -73,13 +82,18 @@ export function MatchCriteria({
     color: active ? 'var(--t-accent)' : 'var(--t-text)',
   });
 
+  const cardStyle = (unlocked: boolean): React.CSSProperties => ({
+    opacity: unlocked ? 1 : 0.45,
+    pointerEvents: unlocked ? 'auto' : 'none',
+  });
+
   return (
     <div className="space-y-4">
-      {/* ── 1. YATAY SIRA: Düzey ── */}
+      {/* ── Kart: Düzey Seç ── */}
       {showLevel && simplifiedLevels && (
         <div className="t-card-i p-4 space-y-3">
           <p className="text-xs font-semibold t-muted uppercase tracking-wide">
-            1. Düzey Seç
+            {levelStep}. Düzey Seç
           </p>
           <div className="grid grid-cols-3 gap-2">
             {LEVEL_GROUPS.map((g) => {
@@ -104,7 +118,7 @@ export function MatchCriteria({
       {showLevel && !simplifiedLevels && (
         <div className="t-card-i p-4 space-y-3">
           <p className="text-xs font-semibold t-muted uppercase tracking-wide">
-            1. Düzey Seç <span className="normal-case">(1 en kolay · 10 en zor)</span>
+            {levelStep}. Düzey Seç <span className="normal-case">(1 en kolay · 10 en zor)</span>
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {LEVELS.map((l) => {
@@ -129,12 +143,10 @@ export function MatchCriteria({
         </div>
       )}
 
-      {/* ── 2. YATAY SIRA: Tempo/Süre + Renk (düzey seçilmeden kilitli) ── */}
-      <div className="t-card-i p-4 space-y-4"
-        style={{ opacity: levelDone ? 1 : 0.45, pointerEvents: levelDone ? 'auto' : 'none' }}
-        aria-disabled={!levelDone}>
+      {/* ── Kart: Tempo ve Süre Seç (düzey seçilmeden kilitli) ── */}
+      <div className="t-card-i p-4 space-y-4" style={cardStyle(levelDone)} aria-disabled={!levelDone}>
         <p className="text-xs font-semibold t-muted uppercase tracking-wide">
-          {showLevel ? '2. ' : ''}Tempo ve Süre Seç
+          {tempoStep}. Tempo ve Süre Seç
         </p>
         {TIME_GROUPS.map((g) => (
           <div key={g.cat} className="space-y-2">
@@ -152,42 +164,48 @@ export function MatchCriteria({
             </div>
           </div>
         ))}
-
-        {showColor && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold t-muted uppercase tracking-wide">Renk</p>
-            <div className="grid grid-cols-3 gap-2">
-              {COLOR_CHOICES.map((c) => (
-                <button key={c.value} type="button" onClick={() => setColorChoice(c.value)}
-                  className="py-3 rounded-xl text-sm font-bold transition-all"
-                  style={pill(colorChoice === c.value)}>
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {showRatedMode && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold t-muted uppercase tracking-wide">Oyun Modu</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setRated(true)}
-                className="py-3 rounded-xl text-sm font-bold transition-all"
-                style={pill(rated)}>
-                🏆 Puanlı
-              </button>
-              <button type="button" onClick={() => setRated(false)}
-                className="py-3 rounded-xl text-sm font-bold transition-all"
-                style={pill(!rated)}>
-                Puansız
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── 3. YATAY SIRA: Başlat ── */}
+      {/* ── Kart: Renk Seç (tempo seçilmeden kilitli) ── */}
+      {showColor && (
+        <div className="t-card-i p-4 space-y-3" style={cardStyle(tempoDone)} aria-disabled={!tempoDone}>
+          <p className="text-xs font-semibold t-muted uppercase tracking-wide">
+            {colorStep}. Renk Seç
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {COLOR_CHOICES.map((c) => (
+              <button key={c.value} type="button" onClick={() => setColorChoice(c.value)}
+                className="py-3 rounded-xl text-sm font-bold transition-all"
+                style={pill(colorChoice === c.value)}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Kart: Oyun Modu (tempo seçilmeden kilitli) ── */}
+      {showRatedMode && (
+        <div className="t-card-i p-4 space-y-3" style={cardStyle(tempoDone)} aria-disabled={!tempoDone}>
+          <p className="text-xs font-semibold t-muted uppercase tracking-wide">
+            {ratedStep}. Oyun Modu
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setRated(true)}
+              className="py-3 rounded-xl text-sm font-bold transition-all"
+              style={pill(rated)}>
+              🏆 Puanlı
+            </button>
+            <button type="button" onClick={() => setRated(false)}
+              className="py-3 rounded-xl text-sm font-bold transition-all"
+              style={pill(!rated)}>
+              Puansız
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Başlat ── */}
       <button
         type="button"
         disabled={!tc || !levelDone}
