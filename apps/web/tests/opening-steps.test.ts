@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isCriteriaUnlocked, isOpeningUnlocked, openingSummary, categorySummary,
+  isCriteriaUnlocked, isOpeningUnlocked, isVariantUnlocked,
+  openingSummary, categorySummary, variantSummary,
 } from '@/lib/play/openingSteps';
 
 describe('isOpeningUnlocked', () => {
@@ -20,17 +21,32 @@ describe('categorySummary', () => {
   });
 
   it('seçim varsa tik işaretli tür adı döner', () => {
-    expect(categorySummary('d4')).toBe('✓ d4 ile Başlayanlar');
+    expect(categorySummary('d4')).toBe("✓ d4'lü Açılışlar");
+  });
+});
+
+describe('isVariantUnlocked (madde: 2026-08-20)', () => {
+  it('açılış ismi seçilmediyse kilitlidir', () => {
+    expect(isVariantUnlocked(null)).toBe(false);
+  });
+
+  it('açılış ismi seçildiyse açılabilir', () => {
+    expect(isVariantUnlocked('İtalyan Açılışı')).toBe(true);
+  });
+
+  it('boş ad seçim sayılmaz', () => {
+    expect(isVariantUnlocked('')).toBe(false);
+    expect(isVariantUnlocked('   ')).toBe(false);
   });
 });
 
 describe('isCriteriaUnlocked', () => {
-  it('açılış seçilmediyse kilitlidir', () => {
+  it('varyant seçilmediyse kilitlidir', () => {
     expect(isCriteriaUnlocked(null)).toBe(false);
   });
 
-  it('açılış seçildiyse açılabilir', () => {
-    expect(isCriteriaUnlocked('İtalyan Açılışı')).toBe(true);
+  it('varyant seçildiyse açılabilir', () => {
+    expect(isCriteriaUnlocked('Klasik Varyant')).toBe(true);
   });
 
   it('boş ad seçim sayılmaz', () => {
@@ -51,5 +67,16 @@ describe('openingSummary', () => {
 
   it('baştaki/sondaki boşlukları kırpar', () => {
     expect(openingSummary('  Sicilya Savunması  ')).toBe('✓ Sicilya Savunması');
+  });
+});
+
+describe('variantSummary (madde: 2026-08-20)', () => {
+  it('seçim yoksa null döner', () => {
+    expect(variantSummary(null)).toBeNull();
+    expect(variantSummary('  ')).toBeNull();
+  });
+
+  it('seçim varsa tik işaretli özet döner', () => {
+    expect(variantSummary('Klasik Varyant')).toBe('✓ Klasik Varyant');
   });
 });

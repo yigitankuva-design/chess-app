@@ -13,7 +13,7 @@ import { formatPlayerLabel } from '@/lib/play/titles';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-type StepKey = 'type' | 'opening' | 'criteria' | 'friend';
+type StepKey = 'type' | 'opening' | 'variant' | 'criteria' | 'friend';
 
 /** Kriterleri WS'e gonderilecek sade nesneye cevirir (renk burada cozulur).
  *  ChallengeScreen'den TASINDI — alan adlari sunucudaki
@@ -37,21 +37,27 @@ function criteriaPayload(v: MatchCriteriaValue, startFen?: string | null) {
 }
 
 interface Props {
-  /** Acilis pratiginden gelindiyse 1. ve 2. adim olarak tur + acilis secimi
-   *  gosterilir. Verilmezse (Arkadasla Oyna gibi duz akislar) HIC cizilmez. */
+  /** Acilis pratiginden gelindiyse ilk 3 adim olarak tur + acilis ismi +
+   *  varyant secimi gosterilir. Verilmezse (Arkadasla Oyna gibi duz akislar)
+   *  HIC cizilmez (madde: 2026-08-20 — "varyant" adimi yeni eklendi). */
   openingStep?: {
     renderTypes: (onPicked: () => void) => React.ReactNode;
     typeSummary: string | null;
     typePicked: boolean;
     renderOpenings: (onPicked: () => void) => React.ReactNode;
     openingSummary: string | null;
+    openingPicked: boolean;
+    renderVariants: (onPicked: () => void) => React.ReactNode;
+    variantSummary: string | null;
+    /** Varyant secildi mi — son kilit, kriter adimi bununla acilir. */
     picked: boolean;
     startFen: string | null;
   };
 }
 
 /** Arkadasa karsi pratik. Acilis pratiginden gelindiginde sira:
- *  1) Acilis Turunu Sec 2) Acilis Konumunu Sec 3) Mac Kriterleri 4) Arkadas */
+ *  1) Acilis Turunu Sec 2) Acilis Ismini Sec 3) Varyant Sec 4) Mac
+ *  Kriterleri 5) Arkadas */
 export function FriendChallenge({ openingStep }: Props = {}) {
   const { players, challenge } = useLobbyContext();
   // Madde 4: acilis adimi varsa BASTAN KAPALI — sporcu basliga tiklamadan
@@ -92,8 +98,8 @@ export function FriendChallenge({ openingStep }: Props = {}) {
     setWaitingFor(selected.display_name);
   }
 
-  /** Adim numaralari acilis adimlari (tur + konum) varsa 2 kayar. */
-  const n = (base: 1 | 2) => (openingStep ? base + 2 : base);
+  /** Adim numaralari acilis adimlari (tur + isim + varyant) varsa 3 kayar. */
+  const n = (base: 1 | 2) => (openingStep ? base + 3 : base);
   const criteriaLocked = openingStep ? !openingStep.picked : false;
 
   if (waitingFor) {
@@ -125,13 +131,24 @@ export function FriendChallenge({ openingStep }: Props = {}) {
 
           <StepCard
             stepNumber={2}
-            title="Açılış Konumunu Seç"
+            title="Açılış İsmini Seç"
             summary={openingStep.openingSummary}
             open={open === 'opening'}
             locked={!openingStep.typePicked}
             onToggle={() => setOpen((p) => (p === 'opening' ? null : 'opening'))}
           >
-            {openingStep.renderOpenings(() => setOpen('criteria'))}
+            {openingStep.renderOpenings(() => setOpen('variant'))}
+          </StepCard>
+
+          <StepCard
+            stepNumber={3}
+            title="Varyant Seç"
+            summary={openingStep.variantSummary}
+            open={open === 'variant'}
+            locked={!openingStep.openingPicked}
+            onToggle={() => setOpen((p) => (p === 'variant' ? null : 'variant'))}
+          >
+            {openingStep.renderVariants(() => setOpen('criteria'))}
           </StepCard>
         </>
       )}

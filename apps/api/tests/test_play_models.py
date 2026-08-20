@@ -59,8 +59,9 @@ async def test_student_color_kaydedilebilir(db):
 
 @pytest.mark.asyncio
 async def test_opening_kaydedilir(db):
-    op = Opening(name="İtalyan Açılışı",
-                 start_fen="r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1")
+    """Madde (2026-08-20): Opening artik yalnizca isim/kategori tasir —
+    FEN OpeningVariant'ta (bkz. test_openings.py)."""
+    op = Opening(name="İtalyan Açılışı")
     db.add(op)
     await db.commit()
     found = (await db.execute(select(Opening))).scalars().all()

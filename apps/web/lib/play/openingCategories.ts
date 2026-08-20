@@ -5,9 +5,9 @@ export type OpeningCategory = 'e4' | 'd4' | 'diger';
 export const OPENING_CATEGORIES: {
   key: OpeningCategory; title: string; emoji: string;
 }[] = [
-  { key: 'e4', title: 'e4 ile Başlayanlar', emoji: '♙' },
-  { key: 'd4', title: 'd4 ile Başlayanlar', emoji: '♟️' },
-  { key: 'diger', title: 'Diğerleri', emoji: '♞' },
+  { key: 'e4', title: "e4'lü Açılışlar", emoji: '♙' },
+  { key: 'd4', title: "d4'lü Açılışlar", emoji: '♟️' },
+  { key: 'diger', title: 'Diğer Açılışlar', emoji: '♞' },
 ];
 
 /** Bilinmeyen/boş değer "diger" sayılır — hiçbir açılış listeden düşmez. */

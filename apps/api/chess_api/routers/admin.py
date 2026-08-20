@@ -24,7 +24,7 @@ from chess_api.schemas.auth import (
 )
 from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult
-from chess_api.models.opening import Opening
+from chess_api.models.opening import Opening, OpeningVariant
 from chess_api.models.pool_image import PoolImage
 from chess_api.models.custom_tab import CustomTab, CustomTabSection
 from chess_api.models.tournament import (
@@ -1069,20 +1069,28 @@ OPENING_CATEGORIES = ("e4", "d4", "diger")
 
 class OpeningCreateRequest(BaseModel):
     name: str
-    start_fen: str
     # Eski istemciler gondermez -> "Diğerleri" grubuna duser.
     category: str = "diger"
 
 
 class OpeningUpdateRequest(BaseModel):
     name: str
-    start_fen: str
     # None = "dokunma": eski istemci gondermezse mevcut kategori korunur.
     category: str | None = None
 
 
 class OpeningMoveRequest(BaseModel):
     direction: str  # 'up' | 'down'
+
+
+class OpeningVariantCreateRequest(BaseModel):
+    name: str
+    start_fen: str
+
+
+class OpeningVariantUpdateRequest(BaseModel):
+    name: str
+    start_fen: str
 
 
 def _validate_category(value: str) -> str:
@@ -1109,21 +1117,14 @@ async def create_opening(
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Açılış adı gerekli")
-    _validate_fen(payload.start_fen)
     # Yeni acilis listenin SONUNA eklenir (madde 8 siralamasi bozulmasin).
     category = _validate_category(payload.category)
     max_order = (await db.execute(select(func.max(Opening.sort_order)))).scalar() or 0
-    op_row = Opening(
-        name=name, start_fen=payload.start_fen,
-        sort_order=max_order + 1, category=category,
-    )
+    op_row = Opening(name=name, sort_order=max_order + 1, category=category)
     db.add(op_row)
     await db.commit()
     await db.refresh(op_row)
-    return {
-        "id": op_row.id, "name": op_row.name,
-        "start_fen": op_row.start_fen, "category": op_row.category,
-    }
+    return {"id": op_row.id, "name": op_row.name, "category": op_row.category}
 
 
 @router.patch("/openings/{opening_id}")
@@ -1133,9 +1134,8 @@ async def update_opening(
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Zafer Hoca'nin daha once eklenmis bir acilisin adini/FEN'ini duzeltmesi
-    icin (madde 7). Var olan maclarin start_fen'ini ETKILEMEZ — o deger her
-    macta ayrica kopyalanip saklanir."""
+    """Zafer Hoca'nin daha once eklenmis bir acilisin adini duzeltmesi
+    icin (madde 7). FEN artik varyantta — bkz. opening-variants endpoint'leri."""
     _ensure_admin(current)
     row = await db.get(Opening, opening_id)
     if not row:
@@ -1143,17 +1143,12 @@ async def update_opening(
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Açılış adı gerekli")
-    _validate_fen(payload.start_fen)
     row.name = name
-    row.start_fen = payload.start_fen
     if payload.category is not None:
         row.category = _validate_category(payload.category)
     await db.commit()
     await db.refresh(row)
-    return {
-        "id": row.id, "name": row.name,
-        "start_fen": row.start_fen, "category": row.category,
-    }
+    return {"id": row.id, "name": row.name, "category": row.category}
 
 
 @router.post("/openings/{opening_id}/move")
@@ -1200,6 +1195,81 @@ async def delete_opening(
     row = await db.get(Opening, opening_id)
     if not row:
         raise HTTPException(status_code=404, detail="Opening not found")
+    # Varyantlar ONCE silinir — FK constraint hatasi olmasin (madde: mimari
+    # inceleme, projenin diger yerlerindeki (delete_module vb.) desenle AYNI).
+    await db.execute(delete(OpeningVariant).where(OpeningVariant.opening_id == opening_id))
+    await db.delete(row)
+    await db.commit()
+    return {"deleted": True}
+
+
+# ── Varyantlar (madde: 2026-08-20) — bir acilisin altindaki isim+FEN
+# satirlari. Siralama (yukari/asagi tasima) BILINCLI OLARAK yok — istenmedi.
+
+async def _opening_or_404(db: AsyncSession, opening_id: int) -> Opening:
+    row = await db.get(Opening, opening_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Opening not found")
+    return row
+
+
+@router.post("/openings/{opening_id}/variants", status_code=201)
+async def create_opening_variant(
+    opening_id: int,
+    payload: OpeningVariantCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    await _opening_or_404(db, opening_id)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Varyant adı gerekli")
+    _validate_fen(payload.start_fen)
+    max_order = (await db.execute(
+        select(func.max(OpeningVariant.sort_order)).where(OpeningVariant.opening_id == opening_id)
+    )).scalar() or 0
+    row = OpeningVariant(
+        opening_id=opening_id, name=name, start_fen=payload.start_fen, sort_order=max_order + 1,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "opening_id": row.opening_id, "name": row.name, "start_fen": row.start_fen}
+
+
+@router.patch("/opening-variants/{variant_id}")
+async def update_opening_variant(
+    variant_id: int,
+    payload: OpeningVariantUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = await db.get(OpeningVariant, variant_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Varyant adı gerekli")
+    _validate_fen(payload.start_fen)
+    row.name = name
+    row.start_fen = payload.start_fen
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "opening_id": row.opening_id, "name": row.name, "start_fen": row.start_fen}
+
+
+@router.delete("/opening-variants/{variant_id}")
+async def delete_opening_variant(
+    variant_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = await db.get(OpeningVariant, variant_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Variant not found")
     await db.delete(row)
     await db.commit()
     return {"deleted": True}

@@ -6,7 +6,8 @@ import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
 import {
-  isCriteriaUnlocked, isOpeningUnlocked, openingSummary, categorySummary,
+  isCriteriaUnlocked, isOpeningUnlocked, isVariantUnlocked,
+  openingSummary, categorySummary, variantSummary,
 } from '@/lib/play/openingSteps';
 import type { BotStepKey } from '@/lib/play/openingSteps';
 import { OPENING_CATEGORIES, groupOpenings, normalizeCategory } from '@/lib/play/openingCategories';
@@ -17,16 +18,17 @@ import { pickDifferentPosition } from '@/lib/play/positionPool';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export interface Opening { id: number; name: string; start_fen: string; category?: string | null }
+export interface OpeningVariant { id: number; name: string; start_fen: string }
+export interface Opening { id: number; name: string; category?: string | null; variants: OpeningVariant[] }
 
 interface Props {
   /**
    * Doğrudan-başlat: /play sayfası, CustomTabPanel'den yönlendirilince bunu
-   * verir — seçim adımları (tür/açılış/kriter) ATLANIR, doğrudan bu açılış
-   * id'si ve kriterle maça girilir. İkisi de dolu değilse normal akordiyon
-   * akışı çalışır (madde: 2026-08-19).
+   * verir — seçim adımları (tür/açılış/varyant/kriter) ATLANIR, doğrudan bu
+   * VARYANT id'si ve kriterle maça girilir. İkisi de dolu değilse normal
+   * akordiyon akışı çalışır (madde: 2026-08-19, güncelleme 2026-08-20).
    */
-  initialOpeningId?: number;
+  initialVariantId?: number;
   initialCriteria?: MatchCriteriaValue;
   /**
    * Verilirse, kriter seçilip "Pratiğe Başla"ya tıklanınca BotGame BURADA
@@ -35,15 +37,16 @@ interface Props {
    * yönlendirir (pratik ayrı sayfada oynanır). Verilmezse (örn. /play
    * sayfasının kendisi) maç eskisi gibi burada açılır.
    */
-  onReadyToStart?: (opening: Opening, criteria: MatchCriteriaValue) => void;
+  onReadyToStart?: (variant: OpeningVariant, criteria: MatchCriteriaValue) => void;
   /** Pratik Yap kartının rengiyle AYNI — bkz. CustomTabPanel'in accentColor'ı
    *  (madde 2, 2026-08-19). Verilmezse etiketler varsayılan renkte kalır. */
   tint?: string;
 }
 
 /** Acilis pratigi: sirali ve kilitli acilir kartlar (akordiyon).
- *  Dis katman: bot / arkadas. Ic katman (bot): tur -> acilis -> kriterler. */
-export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToStart, tint }: Props = {}) {
+ *  Dis katman: bot / arkadas. Ic katman (bot): tur -> acilis ismi -> varyant
+ *  -> kriterler (madde: 2026-08-20 — "varyant" katmani yeni eklendi). */
+export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToStart, tint }: Props = {}) {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
   // tum acilislari gormemeli.
@@ -51,12 +54,13 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
   const [openings, setOpenings] = useState<Opening[] | null>(null);
   const [category, setCategory] = useState<OpeningCategory | null>(null);
   const [chosen, setChosen] = useState<Opening | null>(null);
+  const [chosenVariant, setChosenVariant] = useState<OpeningVariant | null>(null);
   const [criteria, setCriteria] = useState<MatchCriteriaValue | null>(null);
   const [color, setColor] = useState<PieceColor>('w');
   const [matchKey, setMatchKey] = useState(0);
 
-  /** initialOpeningId+initialCriteria ikisi de doluysa doğrudan-başlat modu. */
-  const directStart = initialOpeningId !== undefined && !!initialCriteria;
+  /** initialVariantId+initialCriteria ikisi de doluysa doğrudan-başlat modu. */
+  const directStart = initialVariantId !== undefined && !!initialCriteria;
 
   const loadOpenings = useCallback(async () => {
     try {
@@ -78,23 +82,34 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
     if (directStart && openings === null) void loadOpenings();
   }, [directStart, openings, loadOpenings]);
 
-  // Dogrudan-baslat: liste gelince eslesen acilisi bul, kategori+kriterleri uygula.
+  // Dogrudan-baslat: liste gelince eslesen VARYANTI (ve onu tasiyan acilisi) bul.
   useEffect(() => {
-    if (!directStart || !openings || chosen) return;
-    const found = openings.find((o) => o.id === initialOpeningId);
-    if (found && initialCriteria) {
-      setChosen(found);
-      setCategory(normalizeCategory(found.category));
-      setCriteria(initialCriteria);
-      setColor(resolveColor(initialCriteria.colorChoice));
+    if (!directStart || !openings || chosenVariant) return;
+    for (const o of openings) {
+      const v = o.variants.find((vv) => vv.id === initialVariantId);
+      if (v && initialCriteria) {
+        setChosen(o);
+        setChosenVariant(v);
+        setCategory(normalizeCategory(o.category));
+        setCriteria(initialCriteria);
+        setColor(resolveColor(initialCriteria.colorChoice));
+        break;
+      }
     }
-  }, [directStart, openings, initialOpeningId, initialCriteria, chosen]);
+  }, [directStart, openings, initialVariantId, initialCriteria, chosenVariant]);
 
-  /** Tur degisince secili acilis SIFIRLANIR — yanlis turden kalan bir
-   *  acilisla mac baslamasin. */
+  /** Tur degisince secili acilis/varyant SIFIRLANIR — yanlis turden kalan
+   *  bir secimle mac baslamasin. */
   function pickCategory(key: OpeningCategory) {
     setCategory(key);
     setChosen(null);
+    setChosenVariant(null);
+  }
+
+  /** Acilis ismi degisince secili varyant SIFIRLANIR. */
+  function pickOpening(o: Opening) {
+    setChosen(o);
+    setChosenVariant(null);
   }
 
   const groups = groupOpenings(openings ?? []);
@@ -118,7 +133,8 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
     </div>
   );
 
-  /** Secili turdeki acilislar. Ayni akordiyon gorunumu (madde 3) — ikon KALIR. */
+  /** Secili turdeki acilis İSİMLERİ (FEN yok — o varyantta). Ayni akordiyon
+   *  gorunumu (madde 3) — ikon KALIR. */
   const openingList = (onPicked: () => void) => {
     const rows = category === null ? [] : groups[category];
     return (
@@ -131,7 +147,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
             {rows.map((o, i) => (
               <button key={o.id} type="button"
-                onClick={() => { setChosen(o); onPicked(); }}
+                onClick={() => { pickOpening(o); onPicked(); }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left"
                 style={{
                   background: 'var(--t-surface)',
@@ -147,16 +163,44 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
     );
   };
 
-  // Dogrudan-baslat: acilis bulununcaya kadar bilgilendirme goster.
-  if (directStart && !(criteria && chosen)) {
+  /** Secili acilisin varyantlari (madde: 2026-08-20 — YENİ kart). */
+  const variantList = (onPicked: () => void) => {
+    const rows = chosen?.variants ?? [];
+    return (
+      <div>
+        {rows.length === 0 && (
+          <p className="text-sm t-muted">Bu açılışta henüz varyant yok.</p>
+        )}
+        {rows.length > 0 && (
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--t-border)' }}>
+            {rows.map((v, i) => (
+              <button key={v.id} type="button"
+                onClick={() => { setChosenVariant(v); onPicked(); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                style={{
+                  background: 'var(--t-surface)',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
+                }}>
+                <span className="text-xl">♟️</span>
+                <span className="font-medium text-sm flex-1">{v.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Dogrudan-baslat: varyant bulununcaya kadar bilgilendirme goster.
+  if (directStart && !(criteria && chosen && chosenVariant)) {
     if (openings === null) return <p className="text-sm t-muted">Yükleniyor…</p>;
-    const found = openings.find((o) => o.id === initialOpeningId);
+    const found = openings.some((o) => o.variants.some((v) => v.id === initialVariantId));
     if (!found) return <p className="text-sm t-muted">Açılış bulunamadı.</p>;
     return <p className="text-sm t-muted">Yükleniyor…</p>;
   }
 
   // Kriterler secildi -> mac basladi; akordiyon yerini tahtaya birakir.
-  if (criteria && chosen) {
+  if (criteria && chosen && chosenVariant) {
     return (
       <BotGame
         key={matchKey}
@@ -165,14 +209,19 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
         blunderChance={criteria.level.blunderChance}
         timeControl={criteria.timeControl}
         studentColor={color}
-        startFen={chosen.start_fen}
+        startFen={chosenVariant.start_fen}
         onGameEnd={() => {}}
         practiceActions={{
           onPlaySame: () => setMatchKey((k) => k + 1),
           onPlayDifferent: () => {
             if (category === null) return;
-            const next = pickDifferentPosition(groups[category], chosen.id);
-            setChosen(next);
+            const pool = groups[category].flatMap(
+              (o) => o.variants.map((v) => ({ id: v.id, opening: o, variant: v })),
+            );
+            if (pool.length === 0) return;
+            const next = pickDifferentPosition(pool, chosenVariant.id);
+            setChosen(next.opening);
+            setChosenVariant(next.variant);
             setMatchKey((k) => k + 1);
           },
         }}
@@ -191,9 +240,9 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
           tint={tint}
           onClick={() => setOpenOuter((p) => (p === 'bot' ? null : 'bot'))}
         />
-        {/* Madde 3 (2026-08-19): "Bota Karşı Pratik Yap" açılınca gelen 3
-            adımın (Tür/Konum/Kriter) cümleleri BEYAZ kalsın diye tint
-            BİLEREK geçilmez — sadece dış başlık tab rengini alır. */}
+        {/* Madde 3 (2026-08-19): "Bota Karşı Pratik Yap" açılınca gelen
+            adımların cümleleri BEYAZ kalsın diye tint BİLEREK geçilmez —
+            sadece dış başlık tab rengini alır. */}
         {openOuter === 'bot' && (
           <Branch offset={20}>
             <div>
@@ -215,7 +264,7 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
             <div>
               <PathNode
                 icon="📍"
-                label="2. Açılış Konumunu Seç"
+                label="2. Açılış İsmini Seç"
                 trailing={openingSummary(chosen?.name ?? null) ? (
                   <span className="text-xs t-muted">{openingSummary(chosen?.name ?? null)}</span>
                 ) : undefined}
@@ -225,16 +274,33 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
               />
               {openInner === 'opening' && (
-                <Branch offset={17}>{openingList(() => setOpenInner('criteria'))}</Branch>
+                <Branch offset={17}>{openingList(() => setOpenInner('variant'))}</Branch>
+              )}
+            </div>
+
+            <div>
+              <PathNode
+                icon="♟️"
+                label="3. Varyant Seç"
+                trailing={variantSummary(chosenVariant?.name ?? null) ? (
+                  <span className="text-xs t-muted">{variantSummary(chosenVariant?.name ?? null)}</span>
+                ) : undefined}
+                active={openInner === 'variant'}
+                locked={!isVariantUnlocked(chosen?.name ?? null)}
+                size={34}
+                onClick={() => setOpenInner((p) => (p === 'variant' ? null : 'variant'))}
+              />
+              {openInner === 'variant' && (
+                <Branch offset={17}>{variantList(() => setOpenInner('criteria'))}</Branch>
               )}
             </div>
 
             <div>
               <PathNode
                 icon="🎯"
-                label="3. Maç Kriterlerini Seç"
+                label="4. Maç Kriterlerini Seç"
                 active={openInner === 'criteria'}
-                locked={!isCriteriaUnlocked(chosen?.name ?? null)}
+                locked={!isCriteriaUnlocked(chosenVariant?.name ?? null)}
                 size={34}
                 onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
               />
@@ -246,9 +312,9 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                     startLabel="Pratiğe Başla"
                     simplifiedLevels
                     onStart={(v) => {
-                      // Kilit yalnizca gorsel degil: acilis yoksa mac hic baslamaz.
-                      if (!chosen) return;
-                      if (onReadyToStart) { onReadyToStart(chosen, v); return; }
+                      // Kilit yalnizca gorsel degil: varyant yoksa mac hic baslamaz.
+                      if (!chosenVariant) return;
+                      if (onReadyToStart) { onReadyToStart(chosenVariant, v); return; }
                       setCriteria(v);
                       setColor(resolveColor(v.colorChoice));
                     }}
@@ -270,10 +336,10 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
           onClick={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
         />
         {openOuter === 'friend' && (
-          /* Sira: 1) Tur 2) Acilis 3) Kriterler 4) Arkadas. FriendChallenge
-             kendi ic adimlarini HALA StepCard ile cizer — o bilesen ayrica
-             "Arkadasla Oyna" (Pratik Yap'la ilgisiz) akisinda da kullanildigi
-             icin degistirilmedi (2026-08-19 kapsam karari). */
+          /* Sira: 1) Tur 2) Acilis ismi 3) Varyant 4) Kriterler 5) Arkadas.
+             FriendChallenge kendi ic adimlarini HALA StepCard ile cizer — o
+             bilesen ayrica "Arkadasla Oyna" (Pratik Yap'la ilgisiz) akisinda
+             da kullanildigi icin degistirilmedi (2026-08-19 kapsam karari). */
           <Branch offset={20}>
             <FriendChallenge
               openingStep={{
@@ -282,8 +348,11 @@ export function OpeningPractice({ initialOpeningId, initialCriteria, onReadyToSt
                 typePicked: category !== null,
                 renderOpenings: openingList,
                 openingSummary: openingSummary(chosen?.name ?? null),
-                picked: chosen !== null,
-                startFen: chosen?.start_fen ?? null,
+                openingPicked: chosen !== null,
+                renderVariants: variantList,
+                variantSummary: variantSummary(chosenVariant?.name ?? null),
+                picked: chosenVariant !== null,
+                startFen: chosenVariant?.start_fen ?? null,
               }}
             />
           </Branch>

@@ -5,7 +5,7 @@ const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: ({ onReadyToStart }: {
-    onReadyToStart?: (opening: { id: number }, criteria: {
+    onReadyToStart?: (variant: { id: number }, criteria: {
       level: { level: number }; timeControl: { label: string }; colorChoice: string;
     }) => void;
   }) => (
@@ -60,7 +60,7 @@ describe('CustomTabPanel', () => {
     expect(push).toHaveBeenCalledTimes(1);
     const url = push.mock.calls[0][0] as string;
     expect(url).toContain('mode=opening');
-    expect(url).toContain('opening=7');
+    expect(url).toContain('variant=7');
     expect(url).toContain('skill=5');
     expect(url).toContain('tc=5%2B0');
     expect(url).toContain('color=white');

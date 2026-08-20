@@ -88,12 +88,12 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
     await waitFor(() => screen.getByText('Açılış Pratiği Yap'));
     // Üç tür kartı "Açılış Pratiği Yap" tıklanmadan görünmez (kapalı akordiyon).
-    expect(screen.queryByText('e4 ile Başlayanlar')).not.toBeInTheDocument();
+    expect(screen.queryByText("e4'lü Açılışlar")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Açılış Pratiği Yap kartını aç'));
     // Ayrı sayfa yerine yerinde açılan üç tür kartı.
-    expect(screen.getByText('e4 ile Başlayanlar')).toBeInTheDocument();
-    expect(screen.getByText('d4 ile Başlayanlar')).toBeInTheDocument();
-    expect(screen.getByText('Diğerleri')).toBeInTheDocument();
+    expect(screen.getByText("e4'lü Açılışlar")).toBeInTheDocument();
+    expect(screen.getByText("d4'lü Açılışlar")).toBeInTheDocument();
+    expect(screen.getByText('Diğer Açılışlar')).toBeInTheDocument();
   });
 });
 

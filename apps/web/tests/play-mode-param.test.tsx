@@ -19,12 +19,12 @@ vi.mock('@/components/play/TournamentPlay', () => ({
   TournamentPlay: () => <div data-testid="tournament-play" />,
 }));
 vi.mock('@/components/play/OpeningPractice', () => ({
-  OpeningPractice: ({ initialOpeningId, initialCriteria }: {
-    initialOpeningId?: number;
+  OpeningPractice: ({ initialVariantId, initialCriteria }: {
+    initialVariantId?: number;
     initialCriteria?: { level: { level: number }; timeControl: { label: string }; colorChoice: string };
   }) => (
     <div data-testid="opening-practice"
-      data-opening-id={initialOpeningId ?? ''}
+      data-variant-id={initialVariantId ?? ''}
       data-skill={initialCriteria?.level.level ?? ''}
       data-tc={initialCriteria?.timeControl.label ?? ''}
       data-color={initialCriteria?.colorChoice ?? ''}
@@ -51,17 +51,17 @@ describe('/play — ?mode= ile doğrudan akış açılır', () => {
     expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
   });
 
-  it('mode=opening&opening=<id>&skill&tc&color CustomTabPanel\'den gelen doğrudan-başlat bilgisini OpeningPractice\'e taşır (madde: 2026-08-19)', () => {
-    renderWith('mode=opening&opening=7&skill=5&tc=5%2B0&color=white');
+  it('mode=opening&variant=<id>&skill&tc&color CustomTabPanel\'den gelen doğrudan-başlat bilgisini OpeningPractice\'e taşır (madde: 2026-08-19, güncelleme 2026-08-20)', () => {
+    renderWith('mode=opening&variant=7&skill=5&tc=5%2B0&color=white');
     const el = screen.getByTestId('opening-practice');
-    expect(el).toHaveAttribute('data-opening-id', '7');
+    expect(el).toHaveAttribute('data-variant-id', '7');
     expect(el).toHaveAttribute('data-skill', '5');
     expect(el).toHaveAttribute('data-tc', '5+0');
     expect(el).toHaveAttribute('data-color', 'white');
   });
 
-  it('mode=opening&opening=<id> varken skill+tc bot maçına DÜŞÜRMEZ — açılış pratiği önceliklidir', () => {
-    renderWith('mode=opening&opening=7&skill=5&tc=5%2B0&color=white');
+  it('mode=opening&variant=<id> varken skill+tc bot maçına DÜŞÜRMEZ — açılış pratiği önceliklidir', () => {
+    renderWith('mode=opening&variant=7&skill=5&tc=5%2B0&color=white');
     expect(screen.queryByTestId('bot-game')).not.toBeInTheDocument();
     expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
   });

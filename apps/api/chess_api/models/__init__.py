@@ -16,7 +16,7 @@ from chess_api.models.parent import (
 )
 from chess_api.models.app_settings import AppSettings
 from chess_api.models.practice import ChildPracticeResult
-from chess_api.models.opening import Opening
+from chess_api.models.opening import Opening, OpeningVariant
 from chess_api.models.pool_image import PoolImage
 from chess_api.models.custom_tab import CustomTab, CustomTabSection
 from chess_api.models.tournament import (
@@ -29,7 +29,7 @@ __all__ = [
     "ChildTempoRating",
     "AppSettings",
     "ChildPracticeResult",
-    "Opening",
+    "Opening", "OpeningVariant",
     "PoolImage",
     "CustomTab", "CustomTabSection",
     "User", "UserRole", "ChildProfile", "Device",

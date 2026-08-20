@@ -7,7 +7,7 @@ describe('açılış kategorileri', () => {
   it('üç tür sırayla tanımlıdır', () => {
     expect(OPENING_CATEGORIES.map((c) => c.key)).toEqual(['e4', 'd4', 'diger']);
     expect(OPENING_CATEGORIES.map((c) => c.title)).toEqual([
-      'e4 ile Başlayanlar', 'd4 ile Başlayanlar', 'Diğerleri',
+      "e4'lü Açılışlar", "d4'lü Açılışlar", 'Diğer Açılışlar',
     ]);
   });
 
@@ -25,7 +25,7 @@ describe('açılış kategorileri', () => {
   });
 
   it('categoryTitle başlığı verir', () => {
-    expect(categoryTitle('d4')).toBe('d4 ile Başlayanlar');
+    expect(categoryTitle('d4')).toBe("d4'lü Açılışlar");
   });
 
   it('groupOpenings üç anahtarı her zaman döndürür', () => {

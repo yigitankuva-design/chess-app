@@ -76,12 +76,14 @@ function PlayInner() {
   const tabParam = searchParams.get('tab');
   /** Oyunsonu Pratiği Yap'ta sporcunun seçtiği kategori — yoksa havuz filtrelenmez. */
   const categoryParam = searchParams.get('category');
-  /** Açılış Pratiği'nde CustomTabPanel'de seçilen açılışın id'si. */
-  const openingIdParam = searchParams.get('opening');
+  /** Açılış Pratiği'nde CustomTabPanel'de seçilen VARYANTIN id'si
+   *  (madde: 2026-08-20 — eskiden doğrudan açılışın id'siydi, artık FEN
+   *  varyantta yaşadığı için parametre de varyant id'si taşır). */
+  const variantIdParam = searchParams.get('variant');
   const initialMode: Mode | null =
     modeParam === 'pool' && sectionParam && tabParam
       ? 'pool'
-      : modeParam === 'opening' && openingIdParam
+      : modeParam === 'opening' && variantIdParam
         ? 'opening'
         : quickStart
           ? 'bot'
@@ -223,7 +225,7 @@ function PlayInner() {
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
         <p className="font-semibold text-sm">📖 Açılışı Pratiği Yap</p>
         <OpeningPractice
-          initialOpeningId={openingIdParam ? Number(openingIdParam) : undefined}
+          initialVariantId={variantIdParam ? Number(variantIdParam) : undefined}
           initialCriteria={quickStart ?? undefined}
         />
       </main>
