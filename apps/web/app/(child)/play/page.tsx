@@ -208,10 +208,7 @@ function PlayInner() {
   if (mode === 'tournament') {
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="font-semibold text-sm">🏆 Turnuvaya Katıl</p>
-          {backBtn}
-        </div>
+        <p className="font-semibold text-sm">🏆 Turnuvaya Katıl</p>
         <TournamentPlay />
       </main>
     );
@@ -257,8 +254,8 @@ function PlayInner() {
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
         <p className="font-semibold text-sm">🤝 Arkadaşla Oyna</p>
         <div className="flex gap-2">
-          {tab('board', '📋 İlan Panosu')}
-          {tab('search', '🔍 Sporcu Ara')}
+          {tab('board', '📋 Lobideki Maç Teklifleri')}
+          {tab('search', '🔍 Arkadaşına Maç Teklif Et')}
         </div>
         {friendSubMode === 'board' ? <OfferBoard /> : <FriendChallenge />}
       </main>
@@ -279,19 +276,11 @@ function PlayInner() {
   }
 
   // ── Bota Karşı Oyna: maç ───────────────────────────────────────────────────
+  // Madde: 2026-08-21 — Açılış Pratiği'ndeki BotGame ile AYNI tasarım: üstte
+  // ekstra düz-yazı başlık/"Ayarları değiştir" barı YOK, BotGame kendi
+  // kabartılmış oyuncu kartlarıyla tek başına çizilir.
   return (
     <main className="pb-12">
-      <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
-        <p className="font-semibold text-sm">
-          🤖 Bot — Düzey {botCriteria.level.level} · {botCriteria.timeControl.label} ·{' '}
-          {botColor === 'w' ? 'Beyaz' : 'Siyah'}
-        </p>
-        <button onClick={() => { setBotCriteria(null); writeUrl({ mode: 'bot', criteria: null }); }}
-          className="t-btn-ghost text-xs px-3 py-1.5 ml-settings-btn">
-          Ayarları değiştir
-        </button>
-      </div>
-
       <BotGame
         key={gameKey}
         skillLevel={botCriteria.level.skill}

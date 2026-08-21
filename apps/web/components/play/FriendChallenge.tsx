@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { StepCard } from '@/components/play/StepCard';
+import { PathNode, Branch } from '@/components/ui/neumorphic';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
 import { useLobbyContext } from '@/lib/lobby/LobbyContext';
@@ -109,20 +110,152 @@ export function FriendChallenge({ openingStep }: Props = {}) {
     );
   }
 
-  return (
+  /** "Arkadaşını Seç" adımının içeriği — hem PathNode/Branch (Açılış
+   *  Pratiği) hem StepCard (Arkadaşla Oyna) sürümünde AYNI, sadece dış
+   *  sarmalayıcı farklı (madde 2026-08-21). */
+  const friendSearchBody = (
     <div className="space-y-3">
-      {openingStep && (
-        <StepCard
-          stepNumber={1}
-          title="Açılış Seç"
-          summary={openingStep.summary}
-          open={open === 'opening'}
-          onToggle={() => setOpen((p) => (p === 'opening' ? null : 'opening'))}
-        >
-          {openingStep.renderPicker(() => setOpen('criteria'))}
-        </StepCard>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="🔍 ARA — arkadaşının adını yaz"
+        className="w-full px-4 py-3 rounded-xl text-sm"
+        style={{
+          border: '1px solid var(--t-border)',
+          background: 'var(--t-surface)',
+          color: 'var(--t-text)',
+        }}
+      />
+
+      {loadError && (
+        <p className="text-sm t-muted">Sporcu listesi yüklenemedi.</p>
+      )}
+      {!loadError && all !== null && rows.length === 0 && (
+        <p className="text-sm t-muted">Listede sporcu yok.</p>
+      )}
+      {!loadError && all !== null && rows.length > 0 && shown.length === 0 && (
+        <p className="text-sm t-muted">Bu ada uyan arkadaş yok.</p>
       )}
 
+      <div className="space-y-2">
+        {shown.map((r) => {
+          const isSel = selected?.child_id === r.child_id;
+          return (
+            <button
+              key={r.child_id}
+              type="button"
+              aria-disabled={!r.online}
+              onClick={() => { if (r.online) setSelected(r); }}
+              className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left"
+              style={{
+                opacity: r.online ? 1 : 0.5,
+                border: isSel ? '2px solid var(--t-accent)' : undefined,
+              }}
+            >
+              <span className="text-sm">{r.online ? '🟢' : '⚪'}</span>
+              <span className="font-medium text-sm flex-1">
+                {formatPlayerLabel(r.display_name, r.rating, r.title)}
+              </span>
+              {!r.online && <span className="text-xs t-muted">çevrimdışı</span>}
+              {isSel && (
+                <span className="text-xs" style={{ color: 'var(--t-accent)' }}>seçili</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={sendChallenge}
+        disabled={!selected || !selected.online}
+        className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-40"
+        style={{ background: 'var(--t-accent)', color: '#fff' }}
+      >
+        ▶️ Teklif Et
+      </button>
+    </div>
+  );
+
+  // Madde 2026-08-21: Açılış Pratiği'ndeki "Arkadaşına Karşı Pratik Yap" alt
+  // sekmeleri artık Bota Karşı ile AYNI görsel dili (PathNode + Branch —
+  // dairesel ikon + kesikli dal çizgisi) kullanır, StepCard'lı açılır kart
+  // DEĞİL. "Arkadaşla Oyna" (openingStep verilmez) eski StepCard tasarımını
+  // KORUR — o akış bu değişiklikle ilgisiz (kapsam kararı, 2026-08-19).
+  if (openingStep) {
+    return (
+      <div className="space-y-3">
+        <div>
+          <PathNode
+            icon="📖"
+            label="1. Açılış Seç"
+            trailing={openingStep.summary ? (
+              <span className="text-xs t-muted">{openingStep.summary}</span>
+            ) : undefined}
+            active={open === 'opening'}
+            size={34}
+            tint="#fff"
+            onClick={() => setOpen((p) => (p === 'opening' ? null : 'opening'))}
+          />
+          {open === 'opening' && (
+            <Branch offset={17}>
+              {openingStep.renderPicker(() => setOpen('criteria'))}
+            </Branch>
+          )}
+        </div>
+
+        <div>
+          <PathNode
+            icon="🎯"
+            label={`${n(1)}. Maç Kriterlerini Belirle`}
+            trailing={criteria ? (
+              <span className="text-xs t-muted">✓ {criteria.timeControl.label}</span>
+            ) : undefined}
+            active={open === 'criteria'}
+            locked={criteriaLocked}
+            size={34}
+            tint="#fff"
+            onClick={() => setOpen((p) => (p === 'criteria' ? null : 'criteria'))}
+          />
+          {open === 'criteria' && (
+            <Branch offset={17}>
+              {/* Madde 7: insana karsi DUZEY anlamsiz — sadece Tempo-Sure-Renk. */}
+              <MatchCriteria
+                showLevel={false}
+                showRatedMode
+                startLabel="Kriterleri Onayla"
+                onStart={(v) => { setCriteria(v); setOpen('friend'); }}
+              />
+            </Branch>
+          )}
+        </div>
+
+        <div>
+          <PathNode
+            icon="🔍"
+            label={`${n(2)}. Arkadaşını Seç`}
+            trailing={selected ? (
+              <span className="text-xs t-muted">✓ {selected.display_name}</span>
+            ) : undefined}
+            active={open === 'friend'}
+            locked={criteria === null}
+            size={34}
+            tint="#fff"
+            onClick={() => setOpen((p) => (p === 'friend' ? null : 'friend'))}
+          />
+          {open === 'friend' && (
+            <Branch offset={17}>
+              {friendSearchBody}
+            </Branch>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
       <StepCard
         stepNumber={n(1)}
         title="Maç Kriterlerini Belirle"
@@ -149,68 +282,7 @@ export function FriendChallenge({ openingStep }: Props = {}) {
         locked={criteria === null}
         onToggle={() => setOpen((p) => (p === 'friend' ? null : 'friend'))}
       >
-        <div className="space-y-3">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="🔍 ARA — arkadaşının adını yaz"
-            className="w-full px-4 py-3 rounded-xl text-sm"
-            style={{
-              border: '1px solid var(--t-border)',
-              background: 'var(--t-surface)',
-              color: 'var(--t-text)',
-            }}
-          />
-
-          {loadError && (
-            <p className="text-sm t-muted">Sporcu listesi yüklenemedi.</p>
-          )}
-          {!loadError && all !== null && rows.length === 0 && (
-            <p className="text-sm t-muted">Listede sporcu yok.</p>
-          )}
-          {!loadError && all !== null && rows.length > 0 && shown.length === 0 && (
-            <p className="text-sm t-muted">Bu ada uyan arkadaş yok.</p>
-          )}
-
-          <div className="space-y-2">
-            {shown.map((r) => {
-              const isSel = selected?.child_id === r.child_id;
-              return (
-                <button
-                  key={r.child_id}
-                  type="button"
-                  aria-disabled={!r.online}
-                  onClick={() => { if (r.online) setSelected(r); }}
-                  className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left"
-                  style={{
-                    opacity: r.online ? 1 : 0.5,
-                    border: isSel ? '2px solid var(--t-accent)' : undefined,
-                  }}
-                >
-                  <span className="text-sm">{r.online ? '🟢' : '⚪'}</span>
-                  <span className="font-medium text-sm flex-1">
-                    {formatPlayerLabel(r.display_name, r.rating, r.title)}
-                  </span>
-                  {!r.online && <span className="text-xs t-muted">çevrimdışı</span>}
-                  {isSel && (
-                    <span className="text-xs" style={{ color: 'var(--t-accent)' }}>seçili</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={sendChallenge}
-            disabled={!selected || !selected.online}
-            className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-40"
-            style={{ background: 'var(--t-accent)', color: '#fff' }}
-          >
-            ▶️ Teklif Et
-          </button>
-        </div>
+        {friendSearchBody}
       </StepCard>
     </div>
   );

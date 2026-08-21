@@ -98,6 +98,23 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
     }
   }, [directStart, types, initialVariantId, initialCriteria, chosenVariant]);
 
+  /** Dış kart (Bota Karşı / Arkadaşına Karşı) açılıp kapatılırken çağrılır.
+   *  Madde 2026-08-21: "Pratiğe Başla"ya basılmadan dışarı çıkılırsa (kart
+   *  kapatılırsa ya da diğer dala geçilirse) "Açılış Türü Seç" akışındaki
+   *  seçimler İPTAL edilir, kayıtlı kalmaz — sporcu tekrar açtığında sıfırdan
+   *  başlar. Maç zaten başladıysa (criteria dolu) bu koddan geçilmez, bu
+   *  fonksiyon yalnızca seçim ekranındayken PathNode'lardan çağrılır. */
+  function toggleOuter(key: 'bot' | 'friend') {
+    setOpenOuter((prev) => {
+      const next = prev === key ? null : key;
+      setOpenInner(null);
+      setChosenType(null);
+      setChosen(null);
+      setChosenVariant(null);
+      return next;
+    });
+  }
+
   /** OpeningPicker'da varyant secilince cagirilir. */
   function handlePicked(args: { type: OpeningTypeDef; opening: Opening; variant: OpeningVariant }) {
     setChosenType(args.type);
@@ -152,11 +169,11 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
           active={openOuter === 'bot'}
           size={40}
           tint={tint}
-          onClick={() => setOpenOuter((p) => (p === 'bot' ? null : 'bot'))}
+          onClick={() => toggleOuter('bot')}
         />
-        {/* Madde 3 (2026-08-19): "Bota Karşı Pratik Yap" açılınca gelen
-            adımların cümleleri BEYAZ kalsın diye tint BİLEREK geçilmez —
-            sadece dış başlık tab rengini alır. */}
+        {/* Madde 2026-08-21: "Bota Karşı Pratik Yap" açılınca gelen adımların
+            cümleleri her durumda (açık/kapalı) BEYAZ kalsın diye tint sabit
+            "#fff" verilir — önceden açıkken accent rengine dönüyordu. */}
         {openOuter === 'bot' && (
           <Branch offset={20}>
             <div>
@@ -168,6 +185,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
                 ) : undefined}
                 active={openInner === 'opening'}
                 size={34}
+                tint="#fff"
                 onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
               />
               {openInner === 'opening' && (
@@ -187,6 +205,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
                 active={openInner === 'criteria'}
                 locked={!isCriteriaUnlocked(chosenVariant?.name ?? null)}
                 size={34}
+                tint="#fff"
                 onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
               />
               {openInner === 'criteria' && (
@@ -218,7 +237,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
           active={openOuter === 'friend'}
           size={40}
           tint={tint}
-          onClick={() => setOpenOuter((p) => (p === 'friend' ? null : 'friend'))}
+          onClick={() => toggleOuter('friend')}
         />
         {openOuter === 'friend' && (
           /* Sira: 1) Acilis Sec (tur->isim->varyant ic ice) 2) Kriterler
