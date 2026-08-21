@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { ComingSoon } from '@/components/ComingSoon';
@@ -82,6 +82,37 @@ function PratikInner() {
   const [startAnswer, setStartAnswer] = useState<'correct' | 'wrong' | null>(null);
   /** Yenilemeden sonra restore edilecek doğru-sayısı (madde 6). */
   const [startDoneCount, setStartDoneCount] = useState(0);
+  /** Son çekilen havuz — "Tekrar Dene" ağa gitmeden YENİ bir set çekebilsin
+   *  diye saklanır (madde: 2026-08-21, "Tekrar Dene" de artık farklı sorular
+   *  getirir — önceden aynı `exercises` state'ini tekrar kullanıyordu). */
+  const poolRef = useRef<{ pool: BoardExerciseConfig[]; resolvedPick: number } | null>(null);
+
+  /** Havuzdan zorluk dağılımına göre YENİ bir set seçer: mümkünse bir önceki
+   *  turda gösterilen sorulardan farklı (madde 4/5/6). Hem ilk yüklemede hem
+   *  "Tekrar Dene"de kullanılır — iki yerde iki farklı mantık olmasın diye. */
+  function pickFreshSet() {
+    const cached = poolRef.current;
+    if (!cached || !mode) return;
+    const { pool, resolvedPick } = cached;
+    const previousCodes = loadPreviousCodes(stepId, slug);
+    const picked = resolvedPick > 0
+      ? pickWeighted(
+          pool, scaleMix(mode.mix, resolvedPick),
+          (ex) => (ex as { difficulty?: number }).difficulty,
+          (ex) => ex.code ?? '',
+          previousCodes,
+        )
+      : pool;
+    setExercises(picked);
+    setStartIndex(0);
+    setStartAnswer(null);
+    setStartDoneCount(0);
+    setSolved(0);
+    saveSession(sessionKey(stepId, slug), { items: picked, index: 0, currentAnswer: null, doneCount: 0 });
+    if (resolvedPick > 0) {
+      saveShownCodes(stepId, slug, picked.map((ex) => ex.code ?? '').filter(Boolean));
+    }
+  }
 
   // Admin'de bu alt konu + mod için yazılan soruları çek
   useEffect(() => {
@@ -122,6 +153,7 @@ function PratikInner() {
         // öğrenciye gösterilen kod, admin panelindeki dairesel kartla eşleşmez.
         const codes = assignExerciseCodes(rawPool);
         const pool = rawPool.map((ex, i) => ({ ...ex, code: ex.code ?? codes[i] }));
+        poolRef.current = { pool, resolvedPick };
         // Sayfa YENILENDIYSE ayni soru setiyle ve ayni sirada devam edilir
         // (madde 4 ve 9); yeni oturumda havuzdan yeniden secilir.
         const key = sessionKey(stepId, slug);
@@ -137,28 +169,11 @@ function PratikInner() {
           setLoading(false);
           return;
         }
-        // Havuzdan zorluk dagilimina gore secim (madde 4/5/6): mumkunse
-        // bir onceki turda gosterilen sorulardan farkli.
-        const previousCodes = loadPreviousCodes(stepId, slug);
-        const picked = resolvedPick > 0
-          ? pickWeighted(
-              pool, scaleMix(mode.mix, resolvedPick),
-              (ex) => (ex as { difficulty?: number }).difficulty,
-              (ex) => ex.code ?? '',
-              previousCodes,
-            )
-          : pool;
-        setExercises(picked);
-        setStartIndex(0);
-        setStartAnswer(null);
-        setStartDoneCount(0);
-        saveSession(key, { items: picked, index: 0, currentAnswer: null, doneCount: 0 });
-        if (resolvedPick > 0) {
-          saveShownCodes(stepId, slug, picked.map((ex) => ex.code ?? '').filter(Boolean));
-        }
+        pickFreshSet();
         setLoading(false);
       })
       .catch(() => { setExercises([]); setLoading(false); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, lessonId, stepId]);
 
   // Kilit durumu (token yoksa null döner → kilit uygulanmaz)
@@ -223,18 +238,18 @@ function PratikInner() {
     router.push('/home');
   }
 
+  /** "Tekrar Dene": madde 2026-08-21 — artık AYNI seti değil, havuzdan
+   *  mümkünse bir önceki setten FARKLI bir set çeker (pickFreshSet ile
+   *  ilk yüklemeyle AYNI mantık). Önceden `exercises` state'i hiç
+   *  değişmiyordu, bu yüzden "tekrar pratik yap" hep aynı sorularla
+   *  karşılaşılıyordu. */
   function handleRetry() {
     setFinished(null);
     setUnlockedNow(null);
-    setSolved(0);
     setLeft(TIMED_SECONDS);
     setTimeUp(false);
     setRunId((n) => n + 1);
-    // Yeni tur: saklanan oturum silinir, sporcu 1. sorudan baslar.
-    clearSession(sessionKey(stepId, slug));
-    setStartIndex(0);
-    setStartAnswer(null);
-    setStartDoneCount(0);
+    pickFreshSet();
   }
 
   /** Kilit yalnızca skor haritası GERÇEKTEN alındıysa uygulanır. */
