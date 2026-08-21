@@ -34,17 +34,17 @@ interface Props {
    * sayfasının kendisi) maç eskisi gibi burada açılır.
    */
   onReadyToStart?: (variant: OpeningVariant, criteria: MatchCriteriaValue) => void;
-  /** Pratik Yap kartının rengiyle AYNI — bkz. CustomTabPanel'in accentColor'ı
-   *  (madde 2, 2026-08-19). Verilmezse etiketler varsayılan renkte kalır. */
-  tint?: string;
 }
 
 /** Acilis pratigi: sirali ve kilitli acilir kartlar (akordiyon).
  *  Dis katman: bot / arkadas. Ic katman (bot): Acilis Sec (tur -> isim ->
  *  varyant TEK ic ice akordiyonda, bkz. OpeningPicker) -> kriterler
  *  (madde: 2026-08-20, guncelleme — admin'deki drill-down akordiyonla
- *  AYNI desen; ayri numarali "tur/isim/varyant" adimlari kaldirildi). */
-export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToStart, tint }: Props = {}) {
+ *  AYNI desen; ayri numarali "tur/isim/varyant" adimlari kaldirildi).
+ *  Madde 2026-08-21: etiketler artik HER ZAMAN beyaz (#fff) — eskiden
+ *  disaridan gelen `tint` (Pratik Yap kartinin rengi) kullaniliyordu,
+ *  o prop kaldirildi. */
+export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToStart }: Props = {}) {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
   // tum acilislari gormemeli.
@@ -168,7 +168,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
           label="Bota Karşı Pratik Yap"
           active={openOuter === 'bot'}
           size={40}
-          tint={tint}
+          tint="#fff"
           onClick={() => toggleOuter('bot')}
         />
         {/* Madde 2026-08-21: "Bota Karşı Pratik Yap" açılınca gelen adımların
@@ -236,7 +236,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
           label="Arkadaşına Karşı Pratik Yap"
           active={openOuter === 'friend'}
           size={40}
-          tint={tint}
+          tint="#fff"
           onClick={() => toggleOuter('friend')}
         />
         {openOuter === 'friend' && (

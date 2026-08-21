@@ -94,7 +94,6 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
         {openOpening && (
           <Branch offset={20}>
             <OpeningPractice
-              tint={accentColor}
               onReadyToStart={(variant, v) => {
                 router.push(
                   `/play?mode=opening&variant=${variant.id}`
