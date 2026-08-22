@@ -24,12 +24,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 /** Düzey ikonları sırayla kullanılır — düzeylerin kendisi admin'den (DB) gelir. */
 const LEVEL_EMOJIS = ['🌱', '😊', '😎', '🔥', '⭐', '👑', '🚀', '🏆'];
 
-const EGLENCE_GAMES = [
-  { slug: 'bulmaca-duellosu', emoji: '⚔️', label: 'Bulmaca Düellosu' },
-  { slug: 'bulmaca-firtinasi', emoji: '🌪️', label: 'Bulmaca Fırtınası' },
-  { slug: 'koordinat-yarisi', emoji: '🏁', label: 'Koordinat Yarışı' },
-  { slug: 'acilisi-tahmin-et', emoji: '🎯', label: 'Açılışı Tahmin Et' },
-];
+interface FunActivity { id: number; name: string; description: string; emoji: string }
 
 const FEATURE_COLORS = {
   play: '#34d399',
@@ -143,6 +138,16 @@ export default function ChildHomePage() {
   const [openTab, setOpenTab] = useState<TabKey | number | null>(null);
   const showLevels = openTab === 'lessons';
   const showEglence = openTab === 'eglence';
+  /** Eğlence sekmesindeki oyun/yarışma kartları — admin'den gelir (madde:
+   *  2026-08-21). null = henüz yüklenmedi; sekme açılmadan istek atılmaz. */
+  const [funActivities, setFunActivities] = useState<FunActivity[] | null>(null);
+  useEffect(() => {
+    if (!showEglence || funActivities !== null) return;
+    fetch(`${API_BASE}/fun-activities`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setFunActivities(Array.isArray(d) ? d : []))
+      .catch(() => setFunActivities([]));
+  }, [showEglence, funActivities]);
   const [athleteName, setAthleteName] = useState<string | null>(null);
   const [customTabs, setCustomTabs] = useState<CustomTabSummary[]>([]);
   /** Açılan özel sekmenin alt sekmeleri — açılınca yüklenir, tekrar açılınca
@@ -606,25 +611,38 @@ export default function ChildHomePage() {
           </div>
         )}
 
-        {/* Eğlence — aynı patika dili */}
+        {/* Eğlence — madde 2026-08-21: alt sekmeler kaldırıldı, admin'in
+            eklediği oyun/yarışma türleri artık dairesel kartlar olarak
+            İKİ SÜTUNLU bir ızgarada gösterilir (Düzey seçim ekranındaki
+            dairesel rozetlerle AYNI ruh, ama yazı da kartın İÇİNDE). */}
         {showEglence && (
           <div style={{ ...pressed(18), padding: '1.1rem 1rem' }}>
             <p className="text-xs font-bold t-muted uppercase tracking-widest mb-4">
               {L.features.eglence}
             </p>
-            <div className="grid gap-3">
-              {EGLENCE_GAMES.map((g) => (
-                <Link key={g.slug} href={`/eglence/${g.slug}`} className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
-                  <span
-                    className="flex items-center justify-center flex-shrink-0"
-                    style={{ ...raised(999, 4), width: 40, height: 40, fontSize: 18 }}
+            {funActivities === null && (
+              <p className="text-xs t-muted py-1">Yükleniyor...</p>
+            )}
+            {funActivities?.length === 0 && (
+              <p className="text-xs t-muted py-1">Henüz oyun/yarışma eklenmedi.</p>
+            )}
+            {funActivities && funActivities.length > 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                {funActivities.map((a) => (
+                  <Link
+                    key={a.id}
+                    href={`/eglence/${a.id}`}
+                    className="aspect-square rounded-full flex flex-col items-center justify-center text-center gap-1 p-3"
+                    style={{ ...raised(999, 4), textDecoration: 'none' }}
                   >
-                    {g.emoji}
-                  </span>
-                  <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.eglence }}>{g.label}</span>
-                </Link>
-              ))}
-            </div>
+                    <span className="text-3xl leading-none">{a.emoji}</span>
+                    <span className="font-bold text-xs leading-tight" style={{ color: FEATURE_COLORS.eglence }}>
+                      {a.name}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>

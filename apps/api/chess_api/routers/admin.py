@@ -25,6 +25,7 @@ from chess_api.schemas.auth import (
 from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult
 from chess_api.models.opening import Opening, OpeningVariant, OpeningType
+from chess_api.models.fun_activity import FunActivity
 from chess_api.models.pool_image import PoolImage
 from chess_api.models.custom_tab import CustomTab, CustomTabSection
 from chess_api.models.tournament import (
@@ -1337,6 +1338,122 @@ async def delete_opening_variant(
     row = await db.get(OpeningVariant, variant_id)
     if not row:
         raise HTTPException(status_code=404, detail="Variant not found")
+    await db.delete(row)
+    await db.commit()
+    return {"deleted": True}
+
+
+# ---------------------------------------------------------------------------
+# Eglence sekmesi: oyun/yarisma turleri (madde: 2026-08-21) — admin serbestce
+# ekler/duzenler/siler, sporcu tarafinda dairesel kart olarak listelenir.
+# ---------------------------------------------------------------------------
+
+class FunActivityCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    emoji: str
+
+
+class FunActivityUpdateRequest(BaseModel):
+    name: str
+    description: str = ""
+    emoji: str
+
+
+class FunActivityMoveRequest(BaseModel):
+    direction: str  # 'up' | 'down'
+
+
+@router.post("/fun-activities", status_code=201)
+async def create_fun_activity(
+    payload: FunActivityCreateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Ad gerekli")
+    emoji = payload.emoji.strip()
+    if not emoji:
+        raise HTTPException(status_code=400, detail="İkon gerekli")
+    max_order = (await db.execute(select(func.max(FunActivity.sort_order)))).scalar() or 0
+    row = FunActivity(
+        name=name, description=payload.description.strip(), emoji=emoji, sort_order=max_order + 1,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "name": row.name, "description": row.description, "emoji": row.emoji}
+
+
+@router.patch("/fun-activities/{activity_id}")
+async def update_fun_activity(
+    activity_id: int,
+    payload: FunActivityUpdateRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = await db.get(FunActivity, activity_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Ad gerekli")
+    emoji = payload.emoji.strip()
+    if not emoji:
+        raise HTTPException(status_code=400, detail="İkon gerekli")
+    row.name = name
+    row.description = payload.description.strip()
+    row.emoji = emoji
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "name": row.name, "description": row.description, "emoji": row.emoji}
+
+
+@router.post("/fun-activities/{activity_id}/move")
+async def move_fun_activity(
+    activity_id: int,
+    payload: FunActivityMoveRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kartı bir komşusuyla YER DEĞİŞTİRİR (Opening.move ile AYNI desen)."""
+    _ensure_admin(current)
+    if payload.direction not in ("up", "down"):
+        raise HTTPException(status_code=400, detail="direction 'up' veya 'down' olmalı")
+    row = await db.get(FunActivity, activity_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    all_rows = (await db.execute(
+        select(FunActivity).order_by(FunActivity.sort_order, FunActivity.id)
+    )).scalars().all()
+    idx = next((i for i, r in enumerate(all_rows) if r.id == activity_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    neighbor_idx = idx - 1 if payload.direction == "up" else idx + 1
+    if neighbor_idx < 0 or neighbor_idx >= len(all_rows):
+        return {"moved": False}
+
+    neighbor = all_rows[neighbor_idx]
+    row.sort_order, neighbor.sort_order = neighbor.sort_order, row.sort_order
+    await db.commit()
+    return {"moved": True}
+
+
+@router.delete("/fun-activities/{activity_id}")
+async def delete_fun_activity(
+    activity_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    row = await db.get(FunActivity, activity_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity not found")
     await db.delete(row)
     await db.commit()
     return {"deleted": True}

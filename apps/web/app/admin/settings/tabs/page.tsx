@@ -14,6 +14,7 @@ import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
 import { OpeningCategoryCards } from '@/components/admin/OpeningCategoryCards';
+import { FunActivityFields } from '@/components/admin/FunActivityFields';
 import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
@@ -449,7 +450,9 @@ export default function AdminTabsPage() {
               {/* Sekmenin yönetim ekranı — yalnızca açıkken */}
               {open && (
                 <div className="mt-3 pt-3 border-t border-white/10">
-                  {key === 'play' ? (
+                  {key === 'eglence' ? (
+                    <FunActivityFields />
+                  ) : key === 'play' ? (
                     <div className="space-y-2">
                       {PLAY_SUBSECTIONS.map((sub) => {
                         const subOpen = openPlaySub === sub.key;

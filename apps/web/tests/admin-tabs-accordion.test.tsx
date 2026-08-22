@@ -89,10 +89,11 @@ describe('Admin Sekmeler — akordiyon', () => {
     expect(screen.getByText(/yakında/i)).toBeInTheDocument();
   });
 
-  it('Eğlence kartı açılınca yakında notu görünür', async () => {
+  it('Eğlence kartı açılınca oyun/yarışma ekleme alanı görünür (madde: 2026-08-21)', async () => {
     await renderPage();
     fireEvent.click(screen.getByLabelText('Eğlence sekmesini aç'));
-    expect(screen.getByText(/yakında/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(/Oyun\/yarışma adı/)).toBeInTheDocument();
+    expect(screen.getByText('Henüz oyun/yarışma eklenmedi.')).toBeInTheDocument();
   });
 
   it('açık kartın düğmesi KAPAT olur ve aria-expanded true döner', async () => {
