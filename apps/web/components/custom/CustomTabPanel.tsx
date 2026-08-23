@@ -8,6 +8,7 @@ import {
   sectionEmoji, sortPratikSections, OYUNSONU_SECTION, OYUNSONU_CATEGORIES, groupByCategory,
 } from '@/lib/customTabs/pratikYap';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
+import { NestedSectionAccordion } from './NestedSectionAccordion';
 
 interface Props {
   tab: CustomTabDetail;
@@ -49,33 +50,12 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
     return (
       <div className="space-y-2">
         {tab.sections.length === 0 && <p className="t-muted">Henüz içerik eklenmedi</p>}
-        {tab.sections.map((s) => {
-          const open = openSectionId === s.id;
-          return (
-            <div key={s.id} className="rounded-2xl overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
-              <button type="button"
-                onClick={() => setOpenSectionId((p) => (p === s.id ? null : s.id))}
-                aria-expanded={open}
-                className="w-full flex items-center justify-between px-4 py-3 text-left">
-                <span className="text-lg font-bold t-premium flex items-center gap-2">{s.title}</span>
-                <span className="t-muted">{open ? '▴' : '▾'}</span>
-              </button>
-              {open && (
-                <div className="px-4 pb-4 space-y-3">
-                  {s.body && <p className="t-muted whitespace-pre-wrap">{s.body}</p>}
-                  {s.images.length > 0 && (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {s.images.map((uri, i) => (
-                        <img key={i} src={uri} alt={`${s.title} görseli ${i + 1}`}
-                          className="rounded-lg w-full" style={{ objectFit: 'contain' }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* Madde 2026-08-22: Açılış Pratiği'ndeki PathNode+Branch akordiyonuyla
+            AYNI görsel dil — bölümlerin kendi alt bölümleri olabilir (iç içe,
+            sınırsız derinlik). Eski köşeli düz-liste tasarımı kaldırıldı. */}
+        <NestedSectionAccordion
+          sections={tab.sections} parentId={null} depth={0} accentColor={accentColor}
+        />
       </div>
     );
   }

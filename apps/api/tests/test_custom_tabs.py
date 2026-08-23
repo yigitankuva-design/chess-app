@@ -11,8 +11,9 @@ def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():
 
     assert CustomTabSection.__tablename__ == "custom_tab_sections"
     cols = set(CustomTabSection.__table__.columns.keys())
+    # Madde 2026-08-22: parent_id — ic ice (nested) alt sekmeler.
     assert cols == {
-        "id", "custom_tab_id", "order_index", "title", "body", "images",
+        "id", "custom_tab_id", "parent_id", "order_index", "title", "body", "images",
         "practice_positions", "emoji",
     }
 
@@ -250,3 +251,96 @@ async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client):
 
     detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
     assert detail["sections"][0]["practice_positions"] == [{"id": "p1", "fen": fen, "category": None, "code": None}]
+
+
+# ── Iç içe (nested) alt sekmeler — madde: 2026-08-22, "Antrenör"/"Sınıflar" ihtiyacı ──
+
+@pytest.mark.asyncio
+async def test_parent_id_ile_cocuk_bolum_eklenir(client):
+    tok = await _teacher_token(client, "ctn1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    parent = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                json={"title": "Sınıflar", "body": "", "images": []})).json()
+
+    r = await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                          json={"title": "9-A Sınıfı", "body": "", "images": [], "parent_id": parent["id"]})
+    assert r.status_code == 201
+    assert r.json()["parent_id"] == parent["id"]
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    ids_and_parents = {s["id"]: s["parent_id"] for s in detail["sections"]}
+    assert ids_and_parents[parent["id"]] is None
+    assert ids_and_parents[r.json()["id"]] == parent["id"]
+
+
+@pytest.mark.asyncio
+async def test_ic_ice_2_seviye_calisir(client):
+    tok = await _teacher_token(client, "ctn2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    a = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "Sınıflar", "body": "", "images": []})).json()
+    b = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "9-A Sınıfı", "body": "", "images": [], "parent_id": a["id"]})).json()
+    c = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "Öğrenci Listesi", "body": "", "images": [], "parent_id": b["id"]})).json()
+    assert c["parent_id"] == b["id"]
+
+
+@pytest.mark.asyncio
+async def test_baska_sekmenin_bolumune_parent_verilirse_404(client):
+    tok = await _teacher_token(client, "ctn3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab1 = (await client.post("/admin/custom-tabs", headers=h, json={"label": "A"})).json()
+    tab2 = (await client.post("/admin/custom-tabs", headers=h, json={"label": "B"})).json()
+    section_in_tab1 = (await client.post(f"/admin/custom-tabs/{tab1['id']}/sections", headers=h,
+                                         json={"title": "X", "body": "", "images": []})).json()
+
+    r = await client.post(f"/admin/custom-tabs/{tab2['id']}/sections", headers=h,
+                          json={"title": "Y", "body": "", "images": [], "parent_id": section_in_tab1["id"]})
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_bolum_silinince_torunlari_da_silinir(client):
+    tok = await _teacher_token(client, "ctn4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    a = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "Sınıflar", "body": "", "images": []})).json()
+    b = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "9-A Sınıfı", "body": "", "images": [], "parent_id": a["id"]})).json()
+    c = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "Öğrenci Listesi", "body": "", "images": [], "parent_id": b["id"]})).json()
+
+    r = await client.delete(f"/admin/custom-tab-sections/{a['id']}", headers=h)
+    assert r.status_code == 200
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    remaining_ids = {s["id"] for s in detail["sections"]}
+    assert a["id"] not in remaining_ids
+    assert b["id"] not in remaining_ids
+    assert c["id"] not in remaining_ids
+
+
+@pytest.mark.asyncio
+async def test_kardes_siralamasi_parent_bazinda_ayri_tutulur(client):
+    tok = await _teacher_token(client, "ctn5@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    a = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "Sınıflar", "body": "", "images": []})).json()
+    child1 = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                json={"title": "9-A", "body": "", "images": [], "parent_id": a["id"]})).json()
+    child2 = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                json={"title": "9-B", "body": "", "images": [], "parent_id": a["id"]})).json()
+    # Kök seviyede AYRICA bir bölüm — sıra numarası çocuklarla KARIŞMAMALI.
+    root2 = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                               json={"title": "Diğer", "body": "", "images": []})).json()
+
+    assert child1["order_index"] == 1
+    assert child2["order_index"] == 2
+    # root2, a'dan sonra kök seviyede 2. sıradadır (a=1, root2=2) — child'ların
+    # sırasından etkilenmemiştir.
+    assert root2["order_index"] == 2

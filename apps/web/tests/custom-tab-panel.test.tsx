@@ -89,6 +89,23 @@ describe('CustomTabPanel', () => {
     expect(screen.queryByText('Açılış Pratiği Yap')).not.toBeInTheDocument();
   });
 
+  it('iç içe alt sekme sporcu tarafında da açılıp kapanır (madde: 2026-08-22, Antrenör/Sınıflar ihtiyacı)', () => {
+    const tab: CustomTabDetail = {
+      id: 3, label: 'Antrenör', emoji: '🎓',
+      sections: [
+        { id: 100, order_index: 1, title: 'Sınıflar', body: '', images: [], practice_positions: [], parent_id: null },
+        { id: 101, order_index: 1, title: '9-A Sınıfı', body: 'Öğrenci listesi burada', images: [], practice_positions: [], parent_id: 100 },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    expect(screen.queryByText('9-A Sınıfı')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Sınıflar'));
+    expect(screen.getByText('9-A Sınıfı')).toBeInTheDocument();
+    expect(screen.queryByText('Öğrenci listesi burada')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('9-A Sınıfı'));
+    expect(screen.getByText('Öğrenci listesi burada')).toBeInTheDocument();
+  });
+
   it('alt sekme kapalıyken içerik görünmez, tıklayınca açılır', () => {
     render(<CustomTabPanel tab={BULMACA} />);
     expect(screen.queryByText('normal metin')).not.toBeInTheDocument();

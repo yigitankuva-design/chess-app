@@ -19,6 +19,9 @@ export interface CustomTabSection {
   /** İkon havuzundan seçilmiş bölüm ikonu — yoksa sporcu tarafı eski
    *  varsayılana (Kazanç/Oyunsonu için 🏆/🏁, diğerleri için 🎯) düşer. */
   emoji?: string | null;
+  /** Madde 2026-08-22: bu bölümün İÇİNDE bulunduğu üst bölümün id'si — iç içe
+   *  alt sekmeler. null/undefined = en üst seviye (doğrudan sekmenin altında). */
+  parent_id?: number | null;
 }
 
 export interface CustomTabDetail {
@@ -95,13 +98,19 @@ export async function deleteCustomTab(id: number): Promise<boolean> {
 
 export async function createCustomTabSection(
   tabId: number, title: string, body: string, images: string[], emoji?: string,
+  /** Verilirse bu bölüm o bölümün ÇOCUĞU olarak eklenir (madde 2026-08-22). */
+  parentId?: number,
 ): Promise<CustomTabSection | null> {
   const token = getToken();
   try {
     const r = await fetch(`${API_BASE}/admin/custom-tabs/${tabId}/sections`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ title, body, images, ...(emoji ? { emoji } : {}) }),
+      body: JSON.stringify({
+        title, body, images,
+        ...(emoji ? { emoji } : {}),
+        ...(parentId !== undefined ? { parent_id: parentId } : {}),
+      }),
     });
     if (!r.ok) return null;
     return await r.json();

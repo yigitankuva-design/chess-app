@@ -71,6 +71,51 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     await waitFor(() => screen.getByText('Ödüller'));
   });
 
+  it('bir alt sekme açılınca İÇİNDE de kendi "+ Alt Sekme Ekle" formu görünür (madde: 2026-08-22, iç içe alt sekme)', async () => {
+    (createCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 12, order_index: 1, title: 'Yaş Grubu 8-10', body: '', images: [], parent_id: 10,
+    });
+    await openTurnuvalar();
+    fireEvent.click(screen.getByText('Kayıt Şartları'));
+    // "Kayıt Şartları" açık — kendi alt sekmesini eklemek için İKİNCİ bir form var.
+    const formlar = screen.getAllByText('+ Alt Sekme Ekle');
+    expect(formlar.length).toBeGreaterThanOrEqual(2);
+    // Sıra: NESTED form (Kayıt Şartları'nın İÇİNDE) DOM'da KÖK formdan ÖNCE
+    // gelir — çünkü açık bölümün içeriği, harita bitip kök form eklenmeden
+    // ÖNCE çizilir. Bu yüzden [0] iç içe olanı seçer.
+    const baslikKutulari = screen.getAllByPlaceholderText('Alt sekme başlığı');
+    fireEvent.change(baslikKutulari[0], { target: { value: 'Yaş Grubu 8-10' } });
+    fireEvent.click(screen.getAllByText('Alt sekme ekle')[0]);
+    await waitFor(() => expect(createCustomTabSection).toHaveBeenCalledWith(7, 'Yaş Grubu 8-10', '', [], undefined, 10));
+    await waitFor(() => screen.getByText('Yaş Grubu 8-10'));
+  });
+
+  it('iç içe eklenen alt sekmenin de kendi alt sekmesi olabilir (2. seviye)', async () => {
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 7, label: 'Turnuvalar', emoji: '📌',
+      sections: [
+        { id: 10, order_index: 1, title: 'Kayıt Şartları', body: 'En az 8 yaş', images: [], parent_id: null },
+        { id: 12, order_index: 1, title: 'Yaş Grubu 8-10', body: '', images: [], parent_id: 10 },
+      ],
+    });
+    (createCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 13, order_index: 1, title: 'Erkekler', body: '', images: [], parent_id: 12,
+    });
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Turnuvalar/));
+    fireEvent.click(screen.getByLabelText('Turnuvalar sekmesini aç'));
+    await waitFor(() => screen.getByText('Kayıt Şartları'));
+    fireEvent.click(screen.getByText('Kayıt Şartları'));
+    await waitFor(() => screen.getByText('Yaş Grubu 8-10'));
+    fireEvent.click(screen.getByText('Yaş Grubu 8-10'));
+    // En derin (Yaş Grubu 8-10'un KENDİ) formu DOM'da İLK sırada — [0].
+    const baslikKutulari = await waitFor(() => screen.getAllByPlaceholderText('Alt sekme başlığı'));
+    fireEvent.change(baslikKutulari[0], { target: { value: 'Erkekler' } });
+    fireEvent.click(screen.getAllByText('Alt sekme ekle')[0]);
+    await waitFor(() => expect(createCustomTabSection).toHaveBeenCalledWith(7, 'Erkekler', '', [], undefined, 12));
+    await waitFor(() => screen.getByText('Erkekler'));
+  });
+
   it('etiketi "Pratik Yap" OLMAYAN sekmede "Açılış Pratiği Yap" görünmez', async () => {
     await openTurnuvalar();
     expect(screen.queryByText('Açılış Pratiği Yap')).not.toBeInTheDocument();

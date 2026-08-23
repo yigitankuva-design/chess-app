@@ -1547,6 +1547,10 @@ class CustomTabSectionCreateRequest(BaseModel):
     body: str = ""
     images: list[str] = []
     emoji: str | None = Field(default=None, max_length=10)
+    # Madde 2026-08-22: verilirse bu bölüm başka bir bölümün ALTINA (çocuğu
+    # olarak) eklenir — iç içe alt sekmeler. Verilmezse (None) sekmenin en üst
+    # seviyesine eklenir (eski davranış, geriye dönük uyumlu).
+    parent_id: int | None = None
 
 
 class PracticePosition(BaseModel):
@@ -1657,13 +1661,24 @@ async def create_custom_tab_section(
     tab = await db.get(CustomTab, tab_id)
     if not tab:
         raise HTTPException(status_code=404, detail="Custom tab not found")
+    # Madde 2026-08-22: parent_id verildiyse AYNI sekmeye ait, gerçekten
+    # var olan bir bölüm olmalı — başka bir sekmenin bölümüne çocuk eklenemez.
+    if payload.parent_id is not None:
+        parent = await db.get(CustomTabSection, payload.parent_id)
+        if not parent or parent.custom_tab_id != tab_id:
+            raise HTTPException(status_code=404, detail="Parent section not found")
     for i, img in enumerate(payload.images):
         _check_data_uri_size(img, f"{i + 1}. görsel")
+    # Sıra numarası KARDEŞLER arasında tutulur — kök bölümler kendi aralarında,
+    # bir bölümün çocukları kendi aralarında sıralanır.
     max_order = (await db.execute(
-        select(func.max(CustomTabSection.order_index)).where(CustomTabSection.custom_tab_id == tab_id)
+        select(func.max(CustomTabSection.order_index)).where(
+            CustomTabSection.custom_tab_id == tab_id,
+            CustomTabSection.parent_id == payload.parent_id,
+        )
     )).scalar_one_or_none() or 0
     section = CustomTabSection(
-        custom_tab_id=tab_id, order_index=max_order + 1,
+        custom_tab_id=tab_id, parent_id=payload.parent_id, order_index=max_order + 1,
         title=payload.title, body=payload.body, images=payload.images,
         emoji=payload.emoji,
     )
@@ -1672,7 +1687,8 @@ async def create_custom_tab_section(
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
-            "practice_positions": section.practice_positions, "emoji": section.emoji}
+            "practice_positions": section.practice_positions, "emoji": section.emoji,
+            "parent_id": section.parent_id}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1715,7 +1731,25 @@ async def delete_custom_tab_section(
     section = await db.get(CustomTabSection, section_id)
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
-    await db.delete(section)
+    # Madde 2026-08-22: bölümün ÇOCUKLARI da (varsa torunları da) silinir —
+    # aksi halde parent_id yetim (var olmayan bir bölümü gösteren) kalır.
+    # Uygulama katmanında, çocuktan-ebeveyne doğru (projedeki diğer cascade
+    # silmelerle AYNI desen — bkz. delete_opening_type).
+    to_delete = [section_id]
+    frontier = [section_id]
+    while frontier:
+        children = (await db.execute(
+            select(CustomTabSection.id).where(CustomTabSection.parent_id.in_(frontier))
+        )).scalars().all()
+        if not children:
+            break
+        to_delete.extend(children)
+        frontier = list(children)
+    # En derin seviyeden köke doğru silinir ki FK constraint hatası olmasın.
+    for sid in reversed(to_delete):
+        row = await db.get(CustomTabSection, sid)
+        if row:
+            await db.delete(row)
     await db.commit()
     return {"deleted": True}
 

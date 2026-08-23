@@ -15,6 +15,7 @@ import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
 import { OpeningCategoryCards } from '@/components/admin/OpeningCategoryCards';
 import { FunActivityFields } from '@/components/admin/FunActivityFields';
+import { NestedSectionTree } from '@/components/admin/NestedSectionTree';
 import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
@@ -170,6 +171,16 @@ export default function AdminTabsPage() {
     if (!ok) { setMsg('Silinemedi'); return; }
     setCustomTabs((prev) => prev.filter((c) => c.id !== id));
     setMsg('Kaydedildi ✓');
+  }
+
+  /** Madde 2026-08-22: iç içe alt sekme ekle/düzenle/sil sonrası — yerel
+   *  ağacı elle güncellemek yerine sunucudan taze (düz) listeyi çeker.
+   *  Derinlik sınırsız olduğu için tekil patch'lemek yerine bu çok daha
+   *  basit ve hatasız. */
+  async function reloadCustomTabDetail(tabId: number) {
+    const loaded = await getCustomTab(tabId);
+    if (!loaded) return;
+    setCustomTabDetails((prev) => ({ ...prev, [tabId]: loaded }));
   }
 
   function toggleCustomTab(id: number) {
@@ -573,6 +584,31 @@ export default function AdminTabsPage() {
 
                   {!detail ? (
                     <p className="text-sm n-muted">Yükleniyor...</p>
+                  ) : !isPratikYap ? (
+                    /* Madde 2026-08-22: Pratik Yap DIŞINDAKİ özel sekmeler artık İÇ İÇE
+                       (sınırsız derinlikte) alt sekme ağacı kullanır — "Antrenör" sekmesi/
+                       "Sınıflar" ihtiyacı. Pratik Yap kendi sabit-bölüm mantığını (Kazanç/
+                       Oyunsonu, konum havuzları) AŞAĞIDA DEĞİŞMEDEN korur. */
+                    <NestedSectionTree
+                      tabId={c.id} parentId={null} allSections={detail.sections} depth={0}
+                      onSectionCreated={(section) => setCustomTabDetails((prev) => {
+                        const existing = prev[c.id];
+                        if (!existing) return prev;
+                        return { ...prev, [c.id]: { ...existing, sections: [...existing.sections, section] } };
+                      })}
+                      onSectionUpdated={(id, patch) => setCustomTabDetails((prev) => {
+                        const existing = prev[c.id];
+                        if (!existing) return prev;
+                        return {
+                          ...prev,
+                          [c.id]: {
+                            ...existing,
+                            sections: existing.sections.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+                          },
+                        };
+                      })}
+                      onReloadAfterDelete={() => reloadCustomTabDetail(c.id)}
+                    />
                   ) : (
                     <>
                       {detail.sections.length === 0 && !isPratikYap && (

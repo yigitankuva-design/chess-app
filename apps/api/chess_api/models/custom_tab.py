@@ -17,11 +17,21 @@ class CustomTab(Base):
 class CustomTabSection(Base):
     """Bir ozel sekmenin sayfasindaki tek bir bolum — baslik + yazi + gorseller.
     Pratik Yap sekmesi icin ayrica bir bot-pratigi konum havuzu tutar
-    (practice_positions) — {id, fen} sozlukleri; turn FEN icinde zaten var."""
+    (practice_positions) — {id, fen} sozlukleri; turn FEN icinde zaten var.
+
+    Madde 2026-08-22: `parent_id` ile KENDINE REFERANS veren bir agac yapisi —
+    bir alt sekmenin kendi alt sekmeleri, onlarin da kendi alt sekmeleri
+    olabilir (sinirsiz derinlik). `custom_tab_id` her seviyede AYNI kok
+    sekmeyi gosterir (sorgular basitlesin diye) — parent_id iceride hangi
+    dugumun altinda oldugunu belirler. parent_id NULL ise en ust seviye
+    (dogrudan sekmenin altindaki) bolumdur."""
 
     __tablename__ = "custom_tab_sections"
     id: Mapped[int] = mapped_column(primary_key=True)
     custom_tab_id: Mapped[int] = mapped_column(ForeignKey("custom_tabs.id"), index=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("custom_tab_sections.id"), nullable=True, index=True,
+    )
     order_index: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(160))
     body: Mapped[str] = mapped_column(Text)
