@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { BoardEditor } from '@/components/BoardEditor';
+import { PositionAnalysisPanel } from './PositionAnalysisPanel';
 import { SavedPositionBoard } from './SavedPositionBoard';
 import { parseFenInput, withTurn } from '@/lib/chess/fenInput';
 import { PositionPoolView } from './PositionPoolView';
@@ -100,6 +101,8 @@ export function PositionPoolFields({
             Sporcunun bota karşı pratik yapacağı konumu diz, sırayı belirle, kaydet.
           </p>
           <BoardEditor fen={fen} turn={turn} onChange={onFenChange} onTurnChange={onTurnChange} />
+          {/* Madde 2026-08-22: kaydetmeden önce hoca konumu motora analiz ettirebilir. */}
+          <PositionAnalysisPanel fen={fen} />
           <button type="button" onClick={() => onSavePosition()}
             className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-sm transition-colors">
             Konumu Kaydet

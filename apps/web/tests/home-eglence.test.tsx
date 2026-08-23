@@ -29,7 +29,7 @@ const ACTIVITIES = [
 
 describe('Ana sayfa — Eğlence sekmesi (madde: 2026-08-21, admin verisi)', () => {
   it('sekme kapalıyken oyun/yarışma kartları görünmez, /fun-activities isteği atılmaz', () => {
-    const fetchSpy = vi.fn(() => Promise.resolve({ ok: true, json: async () => [] }));
+    const fetchSpy = vi.fn((url: string) => Promise.resolve({ ok: true, json: async () => [] }));
     global.fetch = fetchSpy as never;
     render(<ChildHomePage />);
     expect(screen.queryByText('Koordinat Yarışı')).not.toBeInTheDocument();

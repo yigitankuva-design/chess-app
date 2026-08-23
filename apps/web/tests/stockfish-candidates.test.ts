@@ -18,6 +18,22 @@ class FakeWorker {
   terminate() {}
 }
 
+/** "Konumu Analiz Et" (madde: 2026-08-22) — mat skoru veren sahte motor. */
+class FakeMateWorker {
+  onmessage: ((e: MessageEvent) => void) | null = null;
+  postMessage(cmd: string) {
+    if (cmd === 'uci' || cmd === 'isready') return;
+    if (cmd.startsWith('go depth')) {
+      const lines = [
+        'info depth 20 score mate 2 pv f7f8q',
+        'bestmove f7f8q',
+      ];
+      for (const line of lines) this.onmessage?.({ data: line } as MessageEvent);
+    }
+  }
+  terminate() {}
+}
+
 beforeEach(() => {
   vi.stubGlobal('Worker', FakeWorker);
 });
@@ -28,5 +44,23 @@ describe('StockfishEngine.bestMoveCandidates', () => {
     await eng.init();
     const candidates = await eng.bestMoveCandidates('startpos', 8, 3);
     expect(candidates).toEqual(['e2e4', 'd2d4', 'g1f3']);
+  });
+});
+
+describe('StockfishEngine.analyze (madde: 2026-08-22, "Konumu Analiz Et")', () => {
+  it('cp skorunu ve en iyi hamleyi doğru parse eder', async () => {
+    vi.stubGlobal('Worker', FakeWorker);
+    const eng = new StockfishEngine();
+    await eng.init();
+    const result = await eng.analyze('startpos', 20);
+    expect(result).toEqual({ bestMove: 'e2e4', scoreCp: -10, mate: null });
+  });
+
+  it('mat skorunu doğru parse eder (cp ile karışmaz)', async () => {
+    vi.stubGlobal('Worker', FakeMateWorker);
+    const eng = new StockfishEngine();
+    await eng.init();
+    const result = await eng.analyze('startpos', 20);
+    expect(result).toEqual({ bestMove: 'f7f8q', scoreCp: null, mate: 2 });
   });
 });

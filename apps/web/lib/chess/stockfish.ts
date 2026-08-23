@@ -81,6 +81,34 @@ export class StockfishEngine {
     });
   }
 
+  /**
+   * Admin'in dizdiği bir konumu tam güçte inceler (madde: 2026-08-22 —
+   * "Konumu Analiz Et"). `bestMove`den farkı: skill kısıtlaması UYGULANMAZ
+   * (çağıran taraf setSkill(20) ile en güçlü seviyeyi ayarlamalı) ve
+   * değerlendirme puanı (cp/mat) da döner — sadece hamle değil.
+   */
+  async analyze(fen: string, depth = 20): Promise<{ bestMove: string | null; scoreCp: number | null; mate: number | null }> {
+    return new Promise((resolve) => {
+      let scoreCp: number | null = null;
+      let mate: number | null = null;
+      const listener = (line: string) => {
+        if (line.startsWith('info') && line.includes(' score ')) {
+          const cpMatch = line.match(/score cp (-?\d+)/);
+          const mateMatch = line.match(/score mate (-?\d+)/);
+          if (mateMatch) { mate = Number(mateMatch[1]); scoreCp = null; }
+          else if (cpMatch) { scoreCp = Number(cpMatch[1]); mate = null; }
+        } else if (line.startsWith('bestmove')) {
+          this.listeners = this.listeners.filter((l) => l !== listener);
+          const mv = line.split(' ')[1];
+          resolve({ bestMove: mv && mv !== '(none)' ? mv : null, scoreCp, mate });
+        }
+      };
+      this.listeners.push(listener);
+      this.send(`position fen ${fen}`);
+      this.send(`go depth ${depth}`);
+    });
+  }
+
   destroy(): void {
     try { this.worker?.terminate(); } catch { /* ignore */ }
     this.worker = null;
