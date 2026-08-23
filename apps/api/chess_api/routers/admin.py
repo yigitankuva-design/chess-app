@@ -1754,6 +1754,75 @@ async def delete_custom_tab_section(
     return {"deleted": True}
 
 
+class DuplicateSectionRequest(BaseModel):
+    new_title: str = Field(min_length=1, max_length=160)
+
+
+@router.post("/custom-tab-sections/{section_id}/duplicate", status_code=201)
+async def duplicate_custom_tab_section(
+    section_id: int,
+    payload: DuplicateSectionRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-08-22: bir bölümün İÇ İÇE YAPISINI (başlık + ikon,
+    sınırsız derinlik) YENİ bir KARDEŞ bölüme kopyalar — "Sınıflarım" gibi
+    tekrar eden içerik akışlarını her seferinde elle kurmamak için. Sadece
+    YAPI kopyalanır: yazı/görsel/konum havuzu BOŞ başlar, kaynak ile
+    KOPYA sonrasında BAĞIMSIZDIR (birini düzenlemek ötekini etkilemez)."""
+    _ensure_admin(current)
+    source = await db.get(CustomTabSection, section_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Section not found")
+    new_title = payload.new_title.strip()
+    if not new_title:
+        raise HTTPException(status_code=400, detail="Ad gerekli")
+
+    max_order = (await db.execute(
+        select(func.max(CustomTabSection.order_index)).where(
+            CustomTabSection.custom_tab_id == source.custom_tab_id,
+            CustomTabSection.parent_id == source.parent_id,
+        )
+    )).scalar_one_or_none() or 0
+    new_root = CustomTabSection(
+        custom_tab_id=source.custom_tab_id, parent_id=source.parent_id,
+        order_index=max_order + 1, title=new_title, body="", images=[], emoji=source.emoji,
+    )
+    db.add(new_root)
+    await db.flush()
+
+    # Kaynağın ALTINDAKİ TÜM ağacı (varsa) YAPI olarak kopyalamak için —
+    # sekmenin tüm bölümlerini tek seferde çekip bellekte parent_id'ye
+    # göre grupluyoruz (her seviye için ayrı sorgu atmak yerine).
+    all_sections = (await db.execute(
+        select(CustomTabSection).where(CustomTabSection.custom_tab_id == source.custom_tab_id)
+    )).scalars().all()
+    children_by_parent: dict[int | None, list[CustomTabSection]] = {}
+    for s in all_sections:
+        children_by_parent.setdefault(s.parent_id, []).append(s)
+    for lst in children_by_parent.values():
+        lst.sort(key=lambda s: s.order_index)
+
+    async def copy_children(old_parent_id: int, new_parent_id: int) -> None:
+        for child in children_by_parent.get(old_parent_id, []):
+            new_child = CustomTabSection(
+                custom_tab_id=source.custom_tab_id, parent_id=new_parent_id,
+                order_index=child.order_index, title=child.title, body="", images=[],
+                emoji=child.emoji,
+            )
+            db.add(new_child)
+            await db.flush()
+            await copy_children(child.id, new_child.id)
+
+    await copy_children(source.id, new_root.id)
+    await db.commit()
+    await db.refresh(new_root)
+    return {"id": new_root.id, "order_index": new_root.order_index, "title": new_root.title,
+            "body": new_root.body, "images": new_root.images,
+            "practice_positions": new_root.practice_positions, "emoji": new_root.emoji,
+            "parent_id": new_root.parent_id}
+
+
 @router.post("/custom-tabs/{tab_id}/sections/reorder")
 async def reorder_custom_tab_sections(
     tab_id: int,

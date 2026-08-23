@@ -344,3 +344,114 @@ async def test_kardes_siralamasi_parent_bazinda_ayri_tutulur(client):
     # root2, a'dan sonra kök seviyede 2. sıradadır (a=1, root2=2) — child'ların
     # sırasından etkilenmemiştir.
     assert root2["order_index"] == 2
+
+
+# ── Bölüm YAPISINI kopyalama — madde: 2026-08-24, "Sınıf 1"→"Sınıf 2" ihtiyacı ──
+
+@pytest.mark.asyncio
+async def test_yapraksiz_bolum_kopyalanir(client):
+    tok = await _teacher_token(client, "ctd1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                             json={"title": "Sınıf 1", "body": "orijinal metin",
+                                   "images": ["data:image/png;base64,AAAA"]})).json()
+
+    r = await client.post(f"/admin/custom-tab-sections/{src['id']}/duplicate", headers=h,
+                          json={"new_title": "Sınıf 2"})
+    assert r.status_code == 201
+    copy = r.json()
+    assert copy["title"] == "Sınıf 2"
+    assert copy["body"] == ""
+    assert copy["images"] == []
+    assert copy["parent_id"] is None
+    assert copy["id"] != src["id"]
+
+
+@pytest.mark.asyncio
+async def test_bos_yeni_ad_reddedilir(client):
+    tok = await _teacher_token(client, "ctd2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                             json={"title": "Sınıf 1", "body": "", "images": []})).json()
+
+    r = await client.post(f"/admin/custom-tab-sections/{src['id']}/duplicate", headers=h,
+                          json={"new_title": "  "})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_ic_ice_yapi_kopyalanir_yazi_ve_gorsel_bos_kalir(client):
+    tok = await _teacher_token(client, "ctd3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    root = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                              json={"title": "Sınıf 1", "body": "", "images": [], "emoji": "📘"})).json()
+    child = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                               json={"title": "Konu Anlatımı", "body": "metin",
+                                     "images": ["data:image/png;base64,AAAA"],
+                                     "parent_id": root["id"]})).json()
+    grandchild = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                    json={"title": "Video", "body": "y", "images": [],
+                                          "parent_id": child["id"]})).json()
+
+    r = await client.post(f"/admin/custom-tab-sections/{root['id']}/duplicate", headers=h,
+                          json={"new_title": "Sınıf 2"})
+    assert r.status_code == 201
+    new_root = r.json()
+    assert new_root["title"] == "Sınıf 2"
+    assert new_root["emoji"] == "📘"
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    by_parent: dict = {}
+    for s in detail["sections"]:
+        by_parent.setdefault(s["parent_id"], []).append(s)
+
+    new_children = by_parent.get(new_root["id"], [])
+    assert len(new_children) == 1
+    assert new_children[0]["title"] == "Konu Anlatımı"
+    assert new_children[0]["body"] == ""
+    assert new_children[0]["images"] == []
+
+    new_grandchildren = by_parent.get(new_children[0]["id"], [])
+    assert len(new_grandchildren) == 1
+    assert new_grandchildren[0]["title"] == "Video"
+    assert new_grandchildren[0]["body"] == ""
+
+    # Orijinal yapı (yazı/görseliyle) DOKUNULMAMIŞ olmalı.
+    original_child = next(s for s in detail["sections"] if s["id"] == child["id"])
+    assert original_child["body"] == "metin"
+    assert original_child["images"] == ["data:image/png;base64,AAAA"]
+
+
+@pytest.mark.asyncio
+async def test_kopya_kardestir_ve_bagimsizdir(client):
+    tok = await _teacher_token(client, "ctd4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    parent = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                json={"title": "Sınıflar", "body": "", "images": []})).json()
+    src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                             json={"title": "Sınıf 1", "body": "", "images": [],
+                                   "parent_id": parent["id"]})).json()
+
+    copy = (await client.post(f"/admin/custom-tab-sections/{src['id']}/duplicate", headers=h,
+                              json={"new_title": "Sınıf 2"})).json()
+    assert copy["parent_id"] == parent["id"]
+
+    # Sonradan orijinali düzenlemek kopyayı ETKİLEMEMELİ.
+    await client.patch(f"/admin/custom-tab-sections/{src['id']}", headers=h,
+                       json={"body": "sınıf 1'e özel yeni metin"})
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    copy_after = next(s for s in detail["sections"] if s["id"] == copy["id"])
+    assert copy_after["body"] == ""
+
+
+@pytest.mark.asyncio
+async def test_olmayan_bolum_kopyalanamaz(client):
+    tok = await _teacher_token(client, "ctd5@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    r = await client.post("/admin/custom-tab-sections/999999/duplicate", headers=h,
+                          json={"new_title": "Yeni"})
+    assert r.status_code == 404

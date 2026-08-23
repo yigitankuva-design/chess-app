@@ -140,6 +140,27 @@ export async function updateCustomTabSection(
   }
 }
 
+/** Madde 2026-08-22: bir bölümün İÇ İÇE YAPISINI (başlık+ikon, sınırsız
+ *  derinlik) yeni bir KARDEŞ bölüme kopyalar — "Sınıflarım" gibi tekrar eden
+ *  içerik akışlarını her seferinde elle kurmamak için. Yazı/görsel BOŞ
+ *  başlar; kopya sonrasında kaynaktan BAĞIMSIZDIR. */
+export async function duplicateCustomTabSection(
+  sectionId: number, newTitle: string,
+): Promise<CustomTabSection | null> {
+  const token = getToken();
+  try {
+    const r = await fetch(`${API_BASE}/admin/custom-tab-sections/${sectionId}/duplicate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ new_title: newTitle }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteCustomTabSection(sectionId: number): Promise<boolean> {
   const token = getToken();
   try {

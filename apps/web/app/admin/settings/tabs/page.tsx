@@ -607,7 +607,7 @@ export default function AdminTabsPage() {
                           },
                         };
                       })}
-                      onReloadAfterDelete={() => reloadCustomTabDetail(c.id)}
+                      onReloadTree={() => reloadCustomTabDetail(c.id)}
                     />
                   ) : (
                     <>

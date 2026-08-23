@@ -14,11 +14,13 @@ vi.mock('@/lib/customTabsApi', () => ({
   createCustomTabSection: vi.fn(),
   deleteCustomTabSection: vi.fn(() => Promise.resolve(true)),
   updateCustomTabSection: vi.fn(() => Promise.resolve(true)),
+  duplicateCustomTabSection: vi.fn(),
 }));
 
 import AdminTabsPage from '@/app/admin/settings/tabs/page';
 import {
   listCustomTabs, getCustomTab, createCustomTabSection, updateCustomTabSection,
+  duplicateCustomTabSection,
 } from '@/lib/customTabsApi';
 
 beforeEach(() => {
@@ -292,5 +294,49 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     expect(screen.queryByLabelText('Kazanç Konumunu Pratik Yap alt sekmesini düzenle')).toBeNull();
     expect(screen.getByLabelText('Hocanın Sekmesi alt sekmesini sil')).toBeInTheDocument();
     expect(screen.getByLabelText('Hocanın Sekmesi alt sekmesini düzenle')).toBeInTheDocument();
+  });
+});
+
+describe('Admin özel sekme — alt sekme yapısını kopyala (madde: 2026-08-24, "Sınıf 1"→"Sınıf 2")', () => {
+  it('Kopyala basınca ad giren form açılır, onaylayınca duplicateCustomTabSection çağrılır ve ağaç yenilenir', async () => {
+    (duplicateCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 20, order_index: 2, title: 'Sınıf 2', body: '', images: [], parent_id: null,
+    });
+    await openTurnuvalar();
+    fireEvent.click(screen.getByLabelText('Kayıt Şartları yapısını kopyala'));
+    fireEvent.change(screen.getByPlaceholderText('Yeni bölümün adı (örn. Sınıf 2)'), {
+      target: { value: 'Sınıf 2' },
+    });
+
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 7, label: 'Turnuvalar', emoji: '📌',
+      sections: [
+        { id: 10, order_index: 1, title: 'Kayıt Şartları', body: 'En az 8 yaş', images: [] },
+        { id: 20, order_index: 2, title: 'Sınıf 2', body: '', images: [] },
+      ],
+    });
+    fireEvent.click(screen.getByText('Kopyala', { selector: 'button.bg-amber-400\\/15' }));
+
+    await waitFor(() => expect(duplicateCustomTabSection).toHaveBeenCalledWith(10, 'Sınıf 2'));
+    await waitFor(() => screen.getByText('Sınıf 2'));
+  });
+
+  it('yeni ad boşken Kopyala butonu devre dışıdır', async () => {
+    await openTurnuvalar();
+    fireEvent.click(screen.getByLabelText('Kayıt Şartları yapısını kopyala'));
+    const confirmButton = screen.getByText('Kopyala', { selector: 'button.bg-amber-400\\/15' });
+    expect(confirmButton).toBeDisabled();
+    expect(duplicateCustomTabSection).not.toHaveBeenCalled();
+  });
+
+  it('Vazgeç basınca kopyalama formu kapanır, çağrı yapılmaz', async () => {
+    await openTurnuvalar();
+    fireEvent.click(screen.getByLabelText('Kayıt Şartları yapısını kopyala'));
+    fireEvent.change(screen.getByPlaceholderText('Yeni bölümün adı (örn. Sınıf 2)'), {
+      target: { value: 'Sınıf 2' },
+    });
+    fireEvent.click(screen.getByText('Vazgeç'));
+    expect(screen.queryByPlaceholderText('Yeni bölümün adı (örn. Sınıf 2)')).not.toBeInTheDocument();
+    expect(duplicateCustomTabSection).not.toHaveBeenCalled();
   });
 });

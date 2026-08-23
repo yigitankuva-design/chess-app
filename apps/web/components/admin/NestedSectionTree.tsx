@@ -4,6 +4,7 @@ import { IconPicker } from './IconPicker';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import {
   createCustomTabSection, updateCustomTabSection, deleteCustomTabSection,
+  duplicateCustomTabSection,
 } from '@/lib/customTabsApi';
 import type { CustomTabSection } from '@/lib/customTabsApi';
 
@@ -21,10 +22,11 @@ interface Props {
   onSectionCreated: (section: CustomTabSection) => void;
   /** Bir bölüm düzenlenince çağrılır — üst bileşen yerel listede günceller. */
   onSectionUpdated: (id: number, patch: Partial<CustomTabSection>) => void;
-  /** Bir bölüm silinince çağrılır. Silme İÇ İÇE torunları da kapsayabildiği
-   *  (cascade) için, hangi id'lerin gittiğini yerel olarak bilemeyiz —
-   *  bu yüzden silme sonrası sunucudan TAZE liste çekilir. */
-  onReloadAfterDelete: () => Promise<void>;
+  /** Bir bölüm silinince ya da KOPYALANINCA çağrılır. Silme İÇ İÇE torunları
+   *  da kapsayabildiği (cascade), kopyalama da sunucuda YENİ birden çok satır
+   *  oluşturduğu (torunlarıyla) için, hangi id'lerin geldiğini/gittiğini
+   *  yerel olarak bilemeyiz — bu yüzden sonrasında sunucudan TAZE liste çekilir. */
+  onReloadTree: () => Promise<void>;
 }
 
 /**
@@ -36,7 +38,7 @@ interface Props {
  * (neon-card, cyan/rose butonlar) çizilir.
  */
 export function NestedSectionTree({
-  tabId, parentId, allSections, depth, onSectionCreated, onSectionUpdated, onReloadAfterDelete,
+  tabId, parentId, allSections, depth, onSectionCreated, onSectionUpdated, onReloadTree,
 }: Props) {
   const children = allSections
     .filter((s) => (s.parent_id ?? null) === parentId)
@@ -54,6 +56,8 @@ export function NestedSectionTree({
   const [newEmoji, setNewEmoji] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
+  const [duplicateTitle, setDuplicateTitle] = useState('');
 
   function startEdit(s: CustomTabSection) {
     setEditingId(s.id);
@@ -88,7 +92,33 @@ export function NestedSectionTree({
     setBusy(false);
     if (!ok) { setErr('Silinemedi'); return; }
     if (openId === id) setOpenId(null);
-    await onReloadAfterDelete();
+    await onReloadTree();
+  }
+
+  function startDuplicate(s: CustomTabSection) {
+    setDuplicatingId(s.id);
+    setDuplicateTitle('');
+    setErr(null);
+  }
+
+  function cancelDuplicate() {
+    setDuplicatingId(null);
+    setDuplicateTitle('');
+  }
+
+  /** Madde 2026-08-22: bir bölümün İÇ İÇE YAPISINI (başlık+ikon, sınırsız
+   *  derinlik) yeni bir KARDEŞ bölüme kopyalar — "Sınıf 1"i "Sınıf 2"ye
+   *  uygulamak gibi tekrar eden içerik akışları için. Yazı/görsel BOŞ
+   *  başlar, kopya sonrasında kaynaktan BAĞIMSIZDIR. */
+  async function confirmDuplicate(id: number) {
+    const title = duplicateTitle.trim();
+    if (!title) { setErr('Yeni ad gerekli'); return; }
+    setBusy(true); setErr(null);
+    const created = await duplicateCustomTabSection(id, title);
+    setBusy(false);
+    if (!created) { setErr('Kopyalanamadı'); return; }
+    cancelDuplicate();
+    await onReloadTree();
   }
 
   async function addChild() {
@@ -156,12 +186,40 @@ export function NestedSectionTree({
                 className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">
                 Düzenle
               </button>
+              <button type="button" onClick={() => startDuplicate(s)}
+                aria-label={`${s.title} yapısını kopyala`}
+                className="px-2 py-1 rounded-md text-amber-300 hover:bg-amber-400/10 text-xs">
+                Kopyala
+              </button>
               <button type="button" onClick={() => remove(s.id)} disabled={busy}
                 aria-label={`${s.title} alt sekmesini sil`}
                 className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs disabled:opacity-40">
                 Sil
               </button>
             </div>
+
+            {duplicatingId === s.id && (
+              <div className="px-3 pb-3 space-y-2">
+                <p className="text-xs n-muted">
+                  &quot;{s.title}&quot; bölümünün İÇ İÇE YAPISI (başlıklar) yeni bir bölüme kopyalanır —
+                  yazı/görsel boş başlar, kopyadan sonra bağımsızdır.
+                </p>
+                <input value={duplicateTitle} onChange={(e) => setDuplicateTitle(e.target.value)}
+                  placeholder="Yeni bölümün adı (örn. Sınıf 2)" className="neon-input text-sm" />
+                {err && <p className="text-rose-400 text-xs">{err}</p>}
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => confirmDuplicate(s.id)}
+                    disabled={busy || !duplicateTitle.trim()}
+                    className="px-4 py-2 rounded-lg bg-amber-400/15 text-amber-200 border border-amber-400/50 hover:bg-amber-400/25 disabled:opacity-40 text-sm transition-colors">
+                    Kopyala
+                  </button>
+                  <button type="button" onClick={cancelDuplicate}
+                    className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+                    Vazgeç
+                  </button>
+                </div>
+              </div>
+            )}
 
             {editing ? (
               <div className="px-3 pb-3 space-y-2">
@@ -217,7 +275,7 @@ export function NestedSectionTree({
                     depth={depth + 1}
                     onSectionCreated={onSectionCreated}
                     onSectionUpdated={onSectionUpdated}
-                    onReloadAfterDelete={onReloadAfterDelete}
+                    onReloadTree={onReloadTree}
                   />
                 </div>
               </div>
