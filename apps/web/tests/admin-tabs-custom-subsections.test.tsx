@@ -340,3 +340,101 @@ describe('Admin özel sekme — alt sekme yapısını kopyala (madde: 2026-08-24
     expect(duplicateCustomTabSection).not.toHaveBeenCalled();
   });
 });
+
+describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey→Konu→Alt Konu)', () => {
+  function mockAntrenorWithDersler() {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 5, order_index: 1, label: 'Antrenör', emoji: '🧑‍🏫' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 5, label: 'Antrenör', emoji: '🧑‍🏫',
+      sections: [
+        { id: 100, order_index: 1, title: 'Sınıflarım', body: '', images: [], parent_id: null },
+        { id: 200, order_index: 2, title: 'Dersler', body: '', images: [], parent_id: null },
+        { id: 201, order_index: 1, title: 'Temel Düzey', body: '', images: [], parent_id: 200 },
+        { id: 202, order_index: 1, title: 'Tahta ve Taşlar', body: '', images: [], parent_id: 201 },
+        {
+          id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [],
+          parent_id: 202, practice_positions: [],
+        },
+      ],
+    });
+  }
+
+  async function openAntrenor() {
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Antrenör/));
+    fireEvent.click(screen.getByLabelText('Antrenör sekmesini aç'));
+    await waitFor(() => screen.getByText('Sınıflarım'));
+  }
+
+  it('Dersler ve altındaki TÜM düğümlerde Kopyala yok; Sınıflarım\'da hâlâ var', async () => {
+    mockAntrenorWithDersler();
+    await openAntrenor();
+    expect(screen.getByLabelText('Sınıflarım yapısını kopyala')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Dersler yapısını kopyala')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    expect(screen.queryByLabelText('Temel Düzey yapısını kopyala')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    await waitFor(() => screen.getByText('Tahta ve Taşlar'));
+    expect(screen.queryByLabelText('Tahta ve Taşlar yapısını kopyala')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(screen.queryByLabelText('Tahtanın Genel Özellikleri yapısını kopyala')).not.toBeInTheDocument();
+  });
+
+  it('Konu seviyesinde (Tahta ve Taşlar) hâlâ "+ Alt Sekme Ekle" var', async () => {
+    mockAntrenorWithDersler();
+    await openAntrenor();
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    await waitFor(() => screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    // "+ Alt Sekme Ekle" formu hâlâ görünür (Alt Konu eklemeye devam edebilmeli).
+    expect(screen.getAllByText('+ Alt Sekme Ekle').length).toBeGreaterThan(0);
+  });
+
+  it('Alt Konu (Tahtanın Genel Özellikleri) açılınca "+ Alt Sekme Ekle" yerine konum havuzu (Süresiz Pratik ile AYNI) gösterilir', async () => {
+    mockAntrenorWithDersler();
+    await openAntrenor();
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    await waitFor(() => screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+
+    await waitFor(() => screen.getByText('Konum Dizerek Ekle'));
+    expect(screen.getByText('FEN Ekle')).toBeInTheDocument();
+  });
+
+  it('Alt Konu\'da Konumu Kaydet ile doğru bölüme (id 203) konum eklenir', async () => {
+    mockAntrenorWithDersler();
+    (updateCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    await openAntrenor();
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    await waitFor(() => screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    await waitFor(() => screen.getByText('Konum Dizerek Ekle'));
+
+    fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
+    fireEvent.click(screen.getByText('Konumu Kaydet'));
+
+    await waitFor(() => {
+      expect(updateCustomTabSection).toHaveBeenCalledWith(
+        203, expect.objectContaining({ practice_positions: expect.any(Array) }),
+      );
+    });
+  });
+});

@@ -7,6 +7,15 @@ import {
   duplicateCustomTabSection,
 } from '@/lib/customTabsApi';
 import type { CustomTabSection } from '@/lib/customTabsApi';
+import { PositionPoolFields } from './PositionPoolFields';
+import type { PoolPosition } from './PositionPoolView';
+
+/** Madde 2026-08-24: "Antrenör" sekmesindeki "Dersler" alt sekmesi ve TÜM
+ *  altındaki Düzey/Konu/Alt Konu düğümleri özel bir moda girer — Kopyala
+ *  YOKTUR, ve en derin seviye (Alt Konu, 3. derinlik) "+ Alt Sekme Ekle"
+ *  yerine "Süresiz Pratik Yap" ile AYNI konum havuzu arayüzünü gösterir. */
+const DERSLER_TITLE = 'Dersler';
+const ALT_KONU_DEPTH = 3;
 
 interface Props {
   tabId: number;
@@ -27,6 +36,19 @@ interface Props {
    *  oluşturduğu (torunlarıyla) için, hangi id'lerin geldiğini/gittiğini
    *  yerel olarak bilemeyiz — bu yüzden sonrasında sunucudan TAZE liste çekilir. */
   onReloadTree: () => Promise<void>;
+  /** Madde 2026-08-24: bu çağrı "Dersler" alt sekmesinin İÇİNDE mi? — bkz. yukarıdaki
+   *  DERSLER_TITLE açıklaması. Kök seviyede (sekmenin ilk çağrısı) verilmez/false'tur;
+   *  "Dersler" düğümünün kendisinden başlayarak TÜM alt düğümlere miras kalır. */
+  inDersler?: boolean;
+  /** Alt Konu (3. derinlik) düğümlerinde "+ Alt Sekme Ekle" yerine gösterilen
+   *  konum havuzu — Süresiz Pratik Yap'taki PositionPoolFields ile AYNI. */
+  poolFen: string;
+  poolTurn: 'w' | 'b';
+  onPoolFenChange: (fen: string) => void;
+  onPoolTurnChange: (turn: 'w' | 'b') => void;
+  onSavePosition: (sectionId: number, fen?: string) => void;
+  onDeletePosition: (sectionId: number, positionId: string) => void;
+  onUpdatePosition: (sectionId: number, positionId: string, next: PoolPosition) => void;
 }
 
 /**
@@ -39,6 +61,8 @@ interface Props {
  */
 export function NestedSectionTree({
   tabId, parentId, allSections, depth, onSectionCreated, onSectionUpdated, onReloadTree,
+  inDersler = false, poolFen, poolTurn, onPoolFenChange, onPoolTurnChange,
+  onSavePosition, onDeletePosition, onUpdatePosition,
 }: Props) {
   const children = allSections
     .filter((s) => (s.parent_id ?? null) === parentId)
@@ -162,6 +186,11 @@ export function NestedSectionTree({
       {children.map((s) => {
         const open = openId === s.id;
         const editing = editingId === s.id;
+        // Madde 2026-08-24: "Dersler" ve TÜM altındaki düğümlerde Kopyala yok.
+        const noDup = inDersler || s.title === DERSLER_TITLE;
+        // Bu düğüm bir Alt Konu mu (Dersler altında 3. derinlik)? — evetse
+        // kendi altına yeni alt sekme eklenemez, bunun yerine konum havuzu gösterilir.
+        const isAltKonu = inDersler && depth === ALT_KONU_DEPTH;
         return (
           <div key={s.id} className="rounded-lg border border-white/10 bg-white/[0.03]">
             <div className="flex items-center gap-2 px-3 py-2.5">
@@ -186,11 +215,13 @@ export function NestedSectionTree({
                 className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">
                 Düzenle
               </button>
-              <button type="button" onClick={() => startDuplicate(s)}
-                aria-label={`${s.title} yapısını kopyala`}
-                className="px-2 py-1 rounded-md text-amber-300 hover:bg-amber-400/10 text-xs">
-                Kopyala
-              </button>
+              {!noDup && (
+                <button type="button" onClick={() => startDuplicate(s)}
+                  aria-label={`${s.title} yapısını kopyala`}
+                  className="px-2 py-1 rounded-md text-amber-300 hover:bg-amber-400/10 text-xs">
+                  Kopyala
+                </button>
+              )}
               <button type="button" onClick={() => remove(s.id)} disabled={busy}
                 aria-label={`${s.title} alt sekmesini sil`}
                 className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs disabled:opacity-40">
@@ -198,7 +229,7 @@ export function NestedSectionTree({
               </button>
             </div>
 
-            {duplicatingId === s.id && (
+            {!noDup && duplicatingId === s.id && (
               <div className="px-3 pb-3 space-y-2">
                 <p className="text-xs n-muted">
                   &quot;{s.title}&quot; bölümünün İÇ İÇE YAPISI (başlıklar) yeni bir bölüme kopyalanır —
@@ -265,19 +296,41 @@ export function NestedSectionTree({
                   </div>
                 )}
 
-                {/* Bu bölümün KENDİ alt sekmeleri — iç içe (sınırsız derinlik).
-                    Bu ic-ice cagri KENDI "+ Alt Sekme Ekle" formunu da (s'nin
-                    cocuklari icin) HER ZAMAN gorunur sekilde cizer — bkz. asagida
-                    bu bilesenin KENDI seviyesi icin aynı deseni tekrarlaması. */}
-                <div className="pt-2 border-t border-white/10">
-                  <NestedSectionTree
-                    tabId={tabId} parentId={s.id} allSections={allSections}
-                    depth={depth + 1}
-                    onSectionCreated={onSectionCreated}
-                    onSectionUpdated={onSectionUpdated}
-                    onReloadTree={onReloadTree}
-                  />
-                </div>
+                {isAltKonu ? (
+                  /* Madde 2026-08-24: Alt Konu'nun altına yeni alt sekme
+                     eklenmez — bunun yerine Süresiz Pratik Yap'taki ile AYNI
+                     konum havuzu arayüzü gösterilir (soru/konum ekleme). */
+                  <div className="pt-2 border-t border-white/10">
+                    <PositionPoolFields
+                      fen={poolFen} turn={poolTurn}
+                      onFenChange={onPoolFenChange} onTurnChange={onPoolTurnChange}
+                      onSavePosition={(fen) => onSavePosition(s.id, fen)}
+                      pool={s.practice_positions}
+                      onDeletePosition={(posId) => onDeletePosition(s.id, posId)}
+                      onUpdatePosition={(posId, next) => onUpdatePosition(s.id, posId, next)}
+                    />
+                  </div>
+                ) : (
+                  /* Bu bölümün KENDİ alt sekmeleri — iç içe (sınırsız derinlik).
+                      Bu ic-ice cagri KENDI "+ Alt Sekme Ekle" formunu da (s'nin
+                      cocuklari icin) HER ZAMAN gorunur sekilde cizer — bkz. asagida
+                      bu bilesenin KENDI seviyesi icin aynı deseni tekrarlaması. */
+                  <div className="pt-2 border-t border-white/10">
+                    <NestedSectionTree
+                      tabId={tabId} parentId={s.id} allSections={allSections}
+                      depth={depth + 1}
+                      onSectionCreated={onSectionCreated}
+                      onSectionUpdated={onSectionUpdated}
+                      onReloadTree={onReloadTree}
+                      inDersler={noDup}
+                      poolFen={poolFen} poolTurn={poolTurn}
+                      onPoolFenChange={onPoolFenChange} onPoolTurnChange={onPoolTurnChange}
+                      onSavePosition={onSavePosition}
+                      onDeletePosition={onDeletePosition}
+                      onUpdatePosition={onUpdatePosition}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
