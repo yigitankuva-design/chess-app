@@ -11,6 +11,8 @@ import { PositionPoolFields } from './PositionPoolFields';
 import type { PoolPosition } from './PositionPoolView';
 import { AltKonuExercisesFields } from './AltKonuExercisesFields';
 import type { BoardExercise } from './ExerciseForm';
+import { AltKonuExplanationCardsFields } from './AltKonuExplanationCardsFields';
+import type { ExplanationCard } from '@/lib/customTabsApi';
 
 /** Madde 2026-08-24: "Antrenör" sekmesindeki "Dersler" alt sekmesi ve TÜM
  *  altındaki Düzey/Konu/Alt Konu düğümleri özel bir moda girer — Kopyala
@@ -167,6 +169,20 @@ export function NestedSectionTree({
     const next = (s.board_exercises ?? []).filter((_, i) => i !== idx);
     const ok = await updateCustomTabSection(s.id, { board_exercises: next });
     if (ok) onSectionUpdated(s.id, { board_exercises: next });
+  }
+
+  /** Madde 2026-08-25: Alt Konu'nun Hızlı Erişim sayfasında tahtanın solunda
+   *  numaralı gösterilen açıklama kartları — AYNI TÜM-DİZİ-PATCH deseni. */
+  async function addExplanationCard(s: CustomTabSection, card: ExplanationCard) {
+    const next = [...(s.explanation_cards ?? []), card];
+    const ok = await updateCustomTabSection(s.id, { explanation_cards: next });
+    if (ok) onSectionUpdated(s.id, { explanation_cards: next });
+  }
+
+  async function deleteExplanationCard(s: CustomTabSection, cardId: string) {
+    const next = (s.explanation_cards ?? []).filter((c) => c.id !== cardId);
+    const ok = await updateCustomTabSection(s.id, { explanation_cards: next });
+    if (ok) onSectionUpdated(s.id, { explanation_cards: next });
   }
 
   async function addChild() {
@@ -344,6 +360,16 @@ export function NestedSectionTree({
                         onAdd={(ex) => addExercise(s, ex)}
                         onUpdate={(idx, ex) => updateExerciseAt(s, idx, ex)}
                         onDelete={(idx) => deleteExerciseAt(s, idx)}
+                      />
+                    </div>
+                    <div className="pt-2 border-t border-white/10">
+                      <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
+                        Açıklama Kartları (Hızlı Erişim&apos;de tahtanın solunda numaralı gösterilir)
+                      </p>
+                      <AltKonuExplanationCardsFields
+                        cards={s.explanation_cards ?? []}
+                        onAdd={(card) => addExplanationCard(s, card)}
+                        onDelete={(cardId) => deleteExplanationCard(s, cardId)}
                       />
                     </div>
                   </div>

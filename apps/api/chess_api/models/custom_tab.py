@@ -43,3 +43,7 @@ class CustomTabSection(Base):
     # AYNI JSON şekli, ama sporcu CEVAPLAMAZ, sadece Antrenör Hızlı Erişim'de
     # sırayla gösterilir.
     board_exercises: Mapped[list] = mapped_column(JSON, default=list)
+    # Madde 2026-08-25: Alt Konu'nun Hızlı Erişim sayfasında tahtanın solundaki
+    # numaralı dairesel kartlar — her biri {id, fen, sentence}. Bir karta
+    # tıklanınca o konum tahtada açılır, cümlesi altta gösterilir.
+    explanation_cards: Mapped[list] = mapped_column(JSON, default=list)

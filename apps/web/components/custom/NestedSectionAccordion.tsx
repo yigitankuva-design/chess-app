@@ -28,6 +28,10 @@ interface Props {
   /** Bu çağrı "Dersler" alt sekmesinin İÇİNDE mi? — admin tarafındaki
    *  NestedSectionTree'deki inDersler ile AYNI mantık. */
   inDersler?: boolean;
+  /** Madde 2026-08-25: Alt Konu sayfasından "Geri" ile dönülünce bu seviyede
+   *  hangi bölümün AÇIK başlayacağı — ilk eleman bu seviyeye, kalanı alt
+   *  seviyeye (slice(1) ile) aktarılır. Yalnızca İLK mount'ta kullanılır. */
+  initialOpenPath?: number[];
 }
 
 /**
@@ -38,10 +42,10 @@ interface Props {
  * + görsel).
  */
 export function NestedSectionAccordion({
-  tabId, sections, parentId, depth, accentColor, inDersler = false,
+  tabId, sections, parentId, depth, accentColor, inDersler = false, initialOpenPath,
 }: Props) {
   const router = useRouter();
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<number | null>(() => initialOpenPath?.[0] ?? null);
   const children = sections
     .filter((s) => (s.parent_id ?? null) === parentId)
     .sort((a, b) => a.order_index - b.order_index);
@@ -86,6 +90,7 @@ export function NestedSectionAccordion({
                   <NestedSectionAccordion
                     tabId={tabId} sections={sections} parentId={s.id} depth={depth + 1}
                     accentColor={accentColor} inDersler={childInDersler}
+                    initialOpenPath={initialOpenPath?.slice(1)}
                   />
                 </div>
               </Branch>

@@ -14,7 +14,7 @@ def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():
     # Madde 2026-08-22: parent_id — ic ice (nested) alt sekmeler.
     assert cols == {
         "id", "custom_tab_id", "parent_id", "order_index", "title", "body", "images",
-        "practice_positions", "emoji", "board_exercises",
+        "practice_positions", "emoji", "board_exercises", "explanation_cards",
     }
 
 
@@ -546,3 +546,67 @@ async def test_kopyalanan_bolumde_soru_havuzu_bos_baslar(client):
     copy = (await client.post(f"/admin/custom-tab-sections/{src['id']}/duplicate", headers=h,
                               json={"new_title": "Sınıf 2"})).json()
     assert copy["board_exercises"] == []
+
+
+# ── Alt Konu: açıklama kartları (tahtanın solundaki numaralı daireler) — madde: 2026-08-25 ──
+
+@pytest.mark.asyncio
+async def test_aciklama_kartlari_kaydedilir(client):
+    tok = await _teacher_token(client, "ctx1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Tahtanın Genel Özellikleri", "body": "", "images": []})).json()
+    assert section["explanation_cards"] == []
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"explanation_cards": [
+                               {"id": "c1", "fen": FEN, "sentence": "Tahta 8x8 karelerden oluşur."},
+                               {"id": "c2", "fen": FEN, "sentence": "Işıklı ve koyu kareler sırayla dizilir."},
+                           ]})
+    assert r.status_code == 200
+    assert r.json()["explanation_cards"] == [
+        {"id": "c1", "fen": FEN, "sentence": "Tahta 8x8 karelerden oluşur."},
+        {"id": "c2", "fen": FEN, "sentence": "Işıklı ve koyu kareler sırayla dizilir."},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_gecersiz_fenli_kart_reddedilir(client):
+    tok = await _teacher_token(client, "ctx2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Alt Konu", "body": "", "images": []})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"explanation_cards": [{"id": "c1", "fen": "gecersiz-fen", "sentence": "x"}]})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_bos_cumleli_kart_reddedilir(client):
+    tok = await _teacher_token(client, "ctx3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Alt Konu", "body": "", "images": []})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"explanation_cards": [{"id": "c1", "fen": FEN, "sentence": ""}]})
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_kopyalanan_bolumde_aciklama_kartlari_bos_baslar(client):
+    tok = await _teacher_token(client, "ctx4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                             json={"title": "Sınıf 1", "body": "", "images": []})).json()
+    await client.patch(f"/admin/custom-tab-sections/{src['id']}", headers=h,
+                       json={"explanation_cards": [{"id": "c1", "fen": FEN, "sentence": "x"}]})
+
+    copy = (await client.post(f"/admin/custom-tab-sections/{src['id']}/duplicate", headers=h,
+                              json={"new_title": "Sınıf 2"})).json()
+    assert copy["explanation_cards"] == []

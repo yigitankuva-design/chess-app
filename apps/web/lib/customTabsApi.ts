@@ -28,7 +28,12 @@ export interface CustomTabSection {
    *  Erişim'de sırayla gösterir. Yalnızca bu 3 tür kabul edilir. Eski
    *  bölümlerde/testlerde yoksa boş kabul edilir (KURAL #3). */
   board_exercises?: BoardExercise[];
+  /** Madde 2026-08-25: Alt Konu'nun Hızlı Erişim sayfasındaki tahtanın
+   *  solundaki numaralı dairesel açıklama kartları — konum + cümle. */
+  explanation_cards?: { id: string; fen: string; sentence: string }[];
 }
+
+export interface ExplanationCard { id: string; fen: string; sentence: string }
 
 export interface CustomTabDetail {
   id: number;
@@ -132,6 +137,7 @@ export async function updateCustomTabSection(
     practice_positions?: { id: string; fen: string; category?: string | null }[];
     emoji?: string;
     board_exercises?: BoardExercise[];
+    explanation_cards?: ExplanationCard[];
   },
 ): Promise<boolean> {
   const token = getToken();

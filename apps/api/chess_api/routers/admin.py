@@ -1564,6 +1564,12 @@ class PracticePosition(BaseModel):
     code: str | None = None
 
 
+class ExplanationCard(BaseModel):
+    id: str = Field(min_length=1)
+    fen: str = Field(min_length=1)
+    sentence: str = Field(min_length=1, max_length=2000)
+
+
 class CustomTabSectionUpdateRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     body: str | None = None
@@ -1573,6 +1579,9 @@ class CustomTabSectionUpdateRequest(BaseModel):
     # Madde 2026-08-24: hocanın kendi gösterimi için kaydettiği tahta soruları
     # (Kareye Tıkla/Taşa Tıkla/Taşı Oynat) — bkz. _ALT_KONU_EXERCISE_TYPES.
     board_exercises: list[dict] | None = None
+    # Madde 2026-08-25: Alt Konu'nun Hızlı Erişim sayfasındaki numaralı
+    # dairesel açıklama kartları — konum + cümle.
+    explanation_cards: list[ExplanationCard] | None = None
 
 
 # Madde 2026-08-24: Alt Konu'daki "Kareye Tıkla/Taşa Tıkla/Taşı Oynat" soruları
@@ -1698,7 +1707,8 @@ async def create_custom_tab_section(
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
-            "parent_id": section.parent_id, "board_exercises": section.board_exercises}
+            "parent_id": section.parent_id, "board_exercises": section.board_exercises,
+            "explanation_cards": section.explanation_cards}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1734,12 +1744,20 @@ async def update_custom_tab_section(
                 )
         _validate_board_exercises(payload.board_exercises)
         section.board_exercises = payload.board_exercises
+    if payload.explanation_cards is not None:
+        for card in payload.explanation_cards:
+            try:
+                chess.Board(card.fen)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Kart için konum (fen) okunamadı")
+        section.explanation_cards = [c.model_dump() for c in payload.explanation_cards]
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
-            "board_exercises": section.board_exercises}
+            "board_exercises": section.board_exercises,
+            "explanation_cards": section.explanation_cards}
 
 
 @router.delete("/custom-tab-sections/{section_id}")
@@ -1841,7 +1859,8 @@ async def duplicate_custom_tab_section(
     return {"id": new_root.id, "order_index": new_root.order_index, "title": new_root.title,
             "body": new_root.body, "images": new_root.images,
             "practice_positions": new_root.practice_positions, "emoji": new_root.emoji,
-            "parent_id": new_root.parent_id, "board_exercises": new_root.board_exercises}
+            "parent_id": new_root.parent_id, "board_exercises": new_root.board_exercises,
+            "explanation_cards": new_root.explanation_cards}
 
 
 @router.post("/custom-tabs/{tab_id}/sections/reorder")

@@ -9,6 +9,7 @@ import {
 } from '@/lib/customTabs/pratikYap';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
 import { NestedSectionAccordion } from './NestedSectionAccordion';
+import { readAndClearPendingOpenPath } from '@/lib/customTabs/pendingOpenPath';
 
 interface Props {
   tab: CustomTabDetail;
@@ -38,6 +39,9 @@ interface Props {
  */
 export function CustomTabPanel({ tab, accentColor }: Props) {
   const router = useRouter();
+  /** Madde 2026-08-25: bkz. lib/customTabs/pendingOpenPath.ts — tek seferlik,
+   *  yalnızca Alt Konu sayfasından "Geri" ile dönülünce dolu gelir. */
+  const [initialOpenPath] = useState<number[] | undefined>(() => readAndClearPendingOpenPath(tab.id));
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
   /** Açılış Pratiği Yap satırı diğer alt sekmelerle AYNI akordiyona katılır
    *  (biri açılınca öbürü kapanır) ama numaralı bir bölüm id'si taşımaz. */
@@ -55,6 +59,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
             sınırsız derinlik). Eski köşeli düz-liste tasarımı kaldırıldı. */}
         <NestedSectionAccordion
           tabId={tab.id} sections={tab.sections} parentId={null} depth={0} accentColor={accentColor}
+          initialOpenPath={initialOpenPath}
         />
       </div>
     );
