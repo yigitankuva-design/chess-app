@@ -7,8 +7,6 @@ import {
   duplicateCustomTabSection,
 } from '@/lib/customTabsApi';
 import type { CustomTabSection, PositionPoolEntry, PositionPoolStep } from '@/lib/customTabsApi';
-import { AltKonuExercisesFields } from './AltKonuExercisesFields';
-import type { BoardExercise } from './ExerciseForm';
 import { AltKonuPositionPoolFields } from './AltKonuPositionPoolFields';
 
 /** Madde 2026-08-24: "Antrenör" sekmesindeki "Dersler" alt sekmesi ve TÜM
@@ -134,28 +132,6 @@ export function NestedSectionTree({
     if (!created) { setErr('Kopyalanamadı'); return; }
     cancelDuplicate();
     await onReloadTree();
-  }
-
-  /** Madde 2026-08-24: Alt Konu'da antrenörün kendi gösterimi için kaydettiği
-   *  Kareye Tıkla/Taşa Tıkla/Taşı Oynat soruları — practice_positions'a
-   *  benzer şekilde, sunucuya TÜM dizi PATCH edilir (Derslerdeki
-   *  addExercise/updateExercise/deleteExercise ile AYNI desen). */
-  async function addExercise(s: CustomTabSection, ex: BoardExercise) {
-    const next = [...(s.board_exercises ?? []), ex];
-    const ok = await updateCustomTabSection(s.id, { board_exercises: next });
-    if (ok) onSectionUpdated(s.id, { board_exercises: next });
-  }
-
-  async function updateExerciseAt(s: CustomTabSection, idx: number, ex: BoardExercise) {
-    const next = (s.board_exercises ?? []).map((e, i) => (i === idx ? ex : e));
-    const ok = await updateCustomTabSection(s.id, { board_exercises: next });
-    if (ok) onSectionUpdated(s.id, { board_exercises: next });
-  }
-
-  async function deleteExerciseAt(s: CustomTabSection, idx: number) {
-    const next = (s.board_exercises ?? []).filter((_, i) => i !== idx);
-    const ok = await updateCustomTabSection(s.id, { board_exercises: next });
-    if (ok) onSectionUpdated(s.id, { board_exercises: next });
   }
 
   /** Madde 2026-08-26: Alt Konu'nun Konum Havuzu — her grup kendi kod
@@ -330,29 +306,17 @@ export function NestedSectionTree({
                 )}
 
                 {isAltKonu ? (
-                  /* Madde 2026-08-26: Alt Konu'nun altına yeni alt sekme
+                  /* Madde 2026-08-26/27: Alt Konu'nun altına yeni alt sekme
                      eklenmez — bunun yerine Konum Havuzu (gruplu: kod +
-                     numaralı adımlar) VE antrenörün kendi gösterimi için
-                     Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru ekleme alanı
-                     BİRLİKTE gösterilir. */
-                  <div className="pt-2 border-t border-white/10 space-y-4">
+                     numaralı adımlar) gösterilir. Kareye Tıkla/Taşa Tıkla/
+                     Taşı Oynat soru ekleme alanı KALDIRILDI (madde 2026-08-27/6). */
+                  <div className="pt-2 border-t border-white/10">
                     <AltKonuPositionPoolFields
                       pool={s.position_pool ?? []}
                       onAddGroup={(steps) => addPositionPoolGroup(s, steps)}
                       onDeleteGroup={(groupId) => deletePositionPoolGroup(s, groupId)}
                       onReorder={(nextPool) => reorderPositionPool(s, nextPool)}
                     />
-                    <div className="pt-2 border-t border-white/10">
-                      <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
-                        Kareye Tıkla / Taşa Tıkla / Taşı Oynat
-                      </p>
-                      <AltKonuExercisesFields
-                        exercises={s.board_exercises ?? []}
-                        onAdd={(ex) => addExercise(s, ex)}
-                        onUpdate={(idx, ex) => updateExerciseAt(s, idx, ex)}
-                        onDelete={(idx) => deleteExerciseAt(s, idx)}
-                      />
-                    </div>
                   </div>
                 ) : (
                   /* Bu bölümün KENDİ alt sekmeleri — iç içe (sınırsız derinlik).

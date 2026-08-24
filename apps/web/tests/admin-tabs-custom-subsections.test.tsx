@@ -432,10 +432,7 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     fireEvent.change(screen.getByPlaceholderText('Bu konumla ilgili açıklama cümlesi'), {
       target: { value: 'Tahta 8x8 karelerden oluşur.' },
     });
-    // Madde 2026-08-26: Kareye Tıkla/Taşa Tıkla/Taşı Oynat ekleme alanı da
-    // BİRLİKTE durur ve KENDİ "Konumu Kaydet" butonunu her zaman gösterir
-    // (click_square kurulum fazı) — Konum Havuzu'nunki DOM'da İLK sırada.
-    fireEvent.click(screen.getAllByText('Konumu Kaydet')[0]);
+    fireEvent.click(screen.getByText('Konumu Kaydet'));
     fireEvent.click(screen.getByText(/Havuza Ekle/));
 
     await waitFor(() => {
@@ -445,7 +442,7 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     });
   });
 
-  it('Alt Konu\'da Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru ekleme alanı görünür (antrenörün kendi gösterimi için)', async () => {
+  it('madde 2026-08-27 (6): Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru ekleme alanı KALDIRILDI', async () => {
     mockAntrenorWithDersler();
     await openAntrenor();
     fireEvent.click(screen.getByText('Dersler'));
@@ -456,18 +453,11 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
 
-    await waitFor(() => screen.getByText('Kareye Tıkla / Taşa Tıkla / Taşı Oynat'));
-    // "Konum ekle" ailesi tek başına — Cümle/Görüntü ekle butonları YOK.
-    expect(screen.queryByText('Cümle ekle')).not.toBeInTheDocument();
-    expect(screen.queryByText('Görüntü ekle')).not.toBeInTheDocument();
-    // "Taş nerde?" (place_pieces) burada YOK — sadece 3 tür.
-    expect(screen.getByText('Kareye tıkla')).toBeInTheDocument();
-    expect(screen.getByText('Taşa tıkla')).toBeInTheDocument();
-    expect(screen.getByText('Taşı oynat')).toBeInTheDocument();
-    expect(screen.queryByText('Taş nerde?')).not.toBeInTheDocument();
+    await waitFor(() => screen.getByText('Konum Havuzu'));
+    expect(screen.queryByText('Kareye Tıkla / Taşa Tıkla / Taşı Oynat')).not.toBeInTheDocument();
   });
 
-  it('Konu (Tahta ve Taşlar) seviyesinde soru ekleme alanı YOK', async () => {
+  it('Konu (Tahta ve Taşlar) seviyesinde Konum Havuzu YOK', async () => {
     mockAntrenorWithDersler();
     await openAntrenor();
     fireEvent.click(screen.getByText('Dersler'));
@@ -476,6 +466,7 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     await waitFor(() => screen.getByText('Tahta ve Taşlar'));
     fireEvent.click(screen.getByText('Tahta ve Taşlar'));
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
-    expect(screen.queryByText('Kareye Tıkla / Taşa Tıkla / Taşı Oynat')).not.toBeInTheDocument();
+    expect(screen.queryByText('Konum Havuzu')).not.toBeInTheDocument();
+    expect(screen.queryByText('Buton Ekle')).not.toBeInTheDocument();
   });
 });

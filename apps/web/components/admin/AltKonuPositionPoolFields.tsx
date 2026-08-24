@@ -106,13 +106,16 @@ export function AltKonuPositionPoolFields({ pool, onAddGroup, onDeleteGroup, onR
 
       {/* Yeni grup oluşturma alanı */}
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-3">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 flex-wrap">
           <button type="button" onClick={addButton}
             className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-sm transition-colors flex-shrink-0">
             Buton Ekle
           </button>
           {draftSteps.length > 0 && (
-            <div className="flex flex-col gap-1.5">
+            // Madde 2026-08-27 (1): admin'deki taslak butonlar YATAY sıralanır
+            // — Hızlı Erişim'deki (AltKonuWalkthrough) dikey sütun BUNDAN AYRI,
+            // değişmedi.
+            <div className="flex flex-row flex-wrap gap-1.5">
               {draftSteps.map((s, i) => {
                 const isActive = activeIdx === i;
                 return (
@@ -145,24 +148,30 @@ export function AltKonuPositionPoolFields({ pool, onAddGroup, onDeleteGroup, onR
             />
             <textarea value={active.sentence} onChange={(e) => updateActive({ sentence: e.target.value })}
               placeholder="Bu konumla ilgili açıklama cümlesi" rows={2} className="neon-input text-sm" />
-            <PositionAnalysisPanel fen={active.fen} />
-            {err && <p className="text-rose-400 text-xs">{err}</p>}
-            <button type="button" onClick={saveActiveStep}
-              className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm transition-colors">
-              Konumu Kaydet
-            </button>
           </div>
         )}
 
-        {draftSteps.length > 0 && (
-          <div className="pt-2 border-t border-white/10 space-y-2">
-            {err && activeIdx === null && <p className="text-rose-400 text-xs">{err}</p>}
-            <button type="button" onClick={addToPool} disabled={busy}
-              className="px-4 py-2 rounded-lg bg-amber-400/15 text-amber-200 border border-amber-400/50 hover:bg-amber-400/25 disabled:opacity-40 text-sm transition-colors">
-              Havuza Ekle ({draftSteps.length} adım, tek kod ile)
-            </button>
+        {/* Madde 2026-08-27 (5): Analiz Et / Konumu Kaydet / Havuza Ekle AYNI
+            yatay satırda — Kaydet sadece aktif adım varken, Havuza Ekle
+            taslakta en az bir adım varken görünür. */}
+        {(active || draftSteps.length > 0) && (
+          <div className="flex flex-wrap items-start gap-2 pt-2 border-t border-white/10">
+            {active && <PositionAnalysisPanel fen={active.fen} />}
+            {active && (
+              <button type="button" onClick={saveActiveStep}
+                className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm transition-colors">
+                Konumu Kaydet
+              </button>
+            )}
+            {draftSteps.length > 0 && (
+              <button type="button" onClick={addToPool} disabled={busy}
+                className="px-4 py-2 rounded-lg bg-amber-400/15 text-amber-200 border border-amber-400/50 hover:bg-amber-400/25 disabled:opacity-40 text-sm transition-colors">
+                Havuza Ekle ({draftSteps.length} adım, tek kod ile)
+              </button>
+            )}
           </div>
         )}
+        {err && <p className="text-rose-400 text-xs">{err}</p>}
       </div>
     </div>
   );

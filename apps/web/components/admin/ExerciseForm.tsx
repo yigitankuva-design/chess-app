@@ -69,13 +69,6 @@ interface Props {
   onSubmit: (ex: BoardExercise) => Promise<void>;
   initial?: BoardExercise;
   onCancel?: () => void;
-  /** Madde 2026-08-24: verilirse "Cümle ekle"/"Görüntü ekle" aileleri ve aile
-   *  seçim satırı gizlenir — sadece tahta (Konum ekle) soruları kullanılabilir.
-   *  Antrenör/Dersler/Alt Konu gibi yalnızca tahta tipi soru istenen yerlerde. */
-  onlyBoardFamily?: boolean;
-  /** Verilirse "Konum ekle" içindeki tip düğmeleri bu listeyle sınırlanır
-   *  (varsayılan: hepsi — Kareye Tıkla/Taşa Tıkla/Taşı Oynat/Taş Nerde?). */
-  allowedBoardTypes?: ExerciseType[];
 }
 
 const FAMILY_OPTIONS: [QuestionFamily, string][] = [
@@ -90,10 +83,8 @@ function familyOf(ex?: BoardExercise): QuestionFamily {
   return 'konum';
 }
 
-export function ExerciseForm({
-  onSubmit, initial, onCancel, onlyBoardFamily, allowedBoardTypes,
-}: Props) {
-  const [family, setFamily] = useState<QuestionFamily>(() => (onlyBoardFamily ? 'konum' : familyOf(initial)));
+export function ExerciseForm({ onSubmit, initial, onCancel }: Props) {
+  const [family, setFamily] = useState<QuestionFamily>(() => familyOf(initial));
   const editing = !!initial;
   /** Bolum basina taslak. SADECE yeni soru modunda; form kapaninca ucar (YAGNI).
    *  Konum'a taslak BILINCLI yok: tahta durumu yarim kopyalanirsa adim kilidi
@@ -107,27 +98,24 @@ export function ExerciseForm({
         {editing && initial?.code && <span className="ml-2 text-xs font-mono n-muted">Kod: {initial.code}</span>}
       </h3>
 
-      {!onlyBoardFamily && (
-        <div className="flex justify-center gap-3 flex-wrap">
-          {FAMILY_OPTIONS.map(([f, label]) => (
-            <button
-              key={f}
-              type="button"
-              disabled={editing}
-              onClick={() => setFamily(f)}
-              className={`w-36 py-4 px-3 rounded-xl border text-center transition-colors ${
-                family === f ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
-              } ${editing ? 'opacity-60 cursor-not-allowed' : ''}`}
-            >
-              <span className="block font-semibold text-sm">{label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex justify-center gap-3 flex-wrap">
+        {FAMILY_OPTIONS.map(([f, label]) => (
+          <button
+            key={f}
+            type="button"
+            disabled={editing}
+            onClick={() => setFamily(f)}
+            className={`w-36 py-4 px-3 rounded-xl border text-center transition-colors ${
+              family === f ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70 hover:bg-white/5'
+            } ${editing ? 'opacity-60 cursor-not-allowed' : ''}`}
+          >
+            <span className="block font-semibold text-sm">{label}</span>
+          </button>
+        ))}
+      </div>
 
       {family === 'konum' ? (
-        <BoardExerciseFields key="konum" onSubmit={onSubmit} initial={initial} onCancel={onCancel}
-          allowedBoardTypes={allowedBoardTypes} />
+        <BoardExerciseFields key="konum" onSubmit={onSubmit} initial={initial} onCancel={onCancel} />
       ) : (
         <ChoiceExerciseFields
           key={family}
@@ -143,7 +131,7 @@ export function ExerciseForm({
   );
 }
 
-function BoardExerciseFields({ onSubmit, initial, onCancel, allowedBoardTypes }: Props) {
+function BoardExerciseFields({ onSubmit, initial, onCancel }: Props) {
   // Kayıtlı soru düzenlenirken tipi KORUNMALI. Liste eksik kalırsa tip
   // sessizce 'click_square'e düşer ve hocanın sorusu bozulur (ölçüldü).
   const [type, setType] = useState<ExerciseType>(
@@ -329,9 +317,7 @@ function BoardExerciseFields({ onSubmit, initial, onCancel, allowedBoardTypes }:
           ['click_piece', 'Taşa tıkla'],
           ['move_piece', 'Taşı oynat'],
           ['place_pieces', 'Taş nerde?'],
-        ] as [ExerciseType, string][])
-          .filter(([t]) => !allowedBoardTypes || allowedBoardTypes.includes(t))
-          .map(([t, label]) => (
+        ] as [ExerciseType, string][]).map(([t, label]) => (
           <button key={t} type="button" disabled={editing}
             onClick={() => { setType(t); setTargets([]); setSavedFen(null); setErr(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${

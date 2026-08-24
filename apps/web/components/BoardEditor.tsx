@@ -149,10 +149,16 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
       }}
     >
     <div className="space-y-3">
-      <p className="text-xs n-muted text-center">
-        Taşı tahtaya <b>sürükle</b> veya paletten seçip kareye <b>tıkla</b> · eklenen taşı silmek için üstüne <b>tıkla</b>
-      </p>
+      {/* Madde 2026-08-27 (2): Konum Havuzu'nda ('split') bu ipucu satırı
+          KALDIRILDI — diğer kullanım yerlerinde ('side') AYNEN kalır. */}
+      {paletteLayout !== 'split' && (
+        <p className="text-xs n-muted text-center">
+          Taşı tahtaya <b>sürükle</b> veya paletten seçip kareye <b>tıkla</b> · eklenen taşı silmek için üstüne <b>tıkla</b>
+        </p>
+      )}
       {(() => {
+        // Madde 2026-08-27 (3): 'split' modunda taşlar %40 BÜYÜTÜLDÜ (36px → 50px).
+        const pieceSize = paletteLayout === 'split' ? 50 : 36;
         const paletteItem = (p: { code: string; label: string }) => {
           const selected = selectedPaletteKey === p.code;
           return (
@@ -161,10 +167,10 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
               title={p.label}
               aria-label={p.label}
               onClick={() => togglePaletteSelection(p.code)}
-              className={`w-9 h-9 rounded-md p-0.5 border cursor-pointer active:cursor-grabbing ${
+              className={`rounded-md p-0.5 border cursor-pointer active:cursor-grabbing ${
                 selected ? 'ring-2 ring-cyan-400 border-cyan-400' : 'border-black/10'
               }`}
-              style={{ backgroundColor: boardColors.light }}
+              style={{ width: pieceSize, height: pieceSize, backgroundColor: boardColors.light }}
             >
               <SparePiece pieceType={pieceKey(p.code)} />
             </div>
@@ -231,24 +237,47 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
         );
       })()}
 
-      <div className="flex flex-wrap items-center justify-center gap-2" style={{ maxWidth: 440 }}>
-        <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
-          className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
-          Başlangıç konumu
-        </button>
-        <button type="button" onClick={() => onChange(mapToFen({}, turn))}
-          className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
-          Tahtayı temizle
-        </button>
-      </div>
+      {/* Madde 2026-08-27 (4): Konum Havuzu'nda ('split') Hamle Sırası,
+          Başlangıç Konumu ve Tahtayı Temizle AYNI yatay satırda —
+          Hamle Sırası solda. 'side' modunda eski iki-satırlı düzen korunur. */}
+      {paletteLayout === 'split' ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs n-muted">Hamle sırası:</span>
+          <button type="button" onClick={() => setTurn('w')}
+            className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Beyaz</button>
+          <button type="button" onClick={() => setTurn('b')}
+            className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Siyah</button>
+          <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
+            className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+            Başlangıç konumu
+          </button>
+          <button type="button" onClick={() => onChange(mapToFen({}, turn))}
+            className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+            Tahtayı temizle
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-center gap-2" style={{ maxWidth: 440 }}>
+            <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
+              className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+              Başlangıç konumu
+            </button>
+            <button type="button" onClick={() => onChange(mapToFen({}, turn))}
+              className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+              Tahtayı temizle
+            </button>
+          </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-xs n-muted">Hamle sırası:</span>
-        <button type="button" onClick={() => setTurn('w')}
-          className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Beyaz</button>
-        <button type="button" onClick={() => setTurn('b')}
-          className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Siyah</button>
-      </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs n-muted">Hamle sırası:</span>
+            <button type="button" onClick={() => setTurn('w')}
+              className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Beyaz</button>
+            <button type="button" onClick={() => setTurn('b')}
+              className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Siyah</button>
+          </div>
+        </>
+      )}
 
       <p className="text-xs n-muted break-all">FEN: {fen}</p>
     </div>

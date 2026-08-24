@@ -1,5 +1,4 @@
 import { getToken } from '@/lib/auth-storage';
-import type { BoardExercise } from '@/components/admin/ExerciseForm';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -23,11 +22,6 @@ export interface CustomTabSection {
   /** Madde 2026-08-22: bu bölümün İÇİNDE bulunduğu üst bölümün id'si — iç içe
    *  alt sekmeler. null/undefined = en üst seviye (doğrudan sekmenin altında). */
   parent_id?: number | null;
-  /** Madde 2026-08-24: hocanın kendi gösterimi için kaydettiği tahta soruları
-   *  (Kareye Tıkla/Taşa Tıkla/Taşı Oynat) — sporcu CEVAPLAMAZ, Antrenör Hızlı
-   *  Erişim'de sırayla gösterir. Yalnızca bu 3 tür kabul edilir. Eski
-   *  bölümlerde/testlerde yoksa boş kabul edilir (KURAL #3). */
-  board_exercises?: BoardExercise[];
   /** Madde 2026-08-26: Alt Konu'nun Konum Havuzu — her biri KENDİ kod
    *  numarasıyla eklenen, içinde birden çok numaralı adım (konum+cümle+
    *  hamle sırası) barındıran gruplar. Hızlı Erişim'de gruplar arasında
@@ -150,7 +144,6 @@ export async function updateCustomTabSection(
     title?: string; body?: string; images?: string[];
     practice_positions?: { id: string; fen: string; category?: string | null }[];
     emoji?: string;
-    board_exercises?: BoardExercise[];
     position_pool?: PositionPoolEntry[];
   },
 ): Promise<boolean> {
