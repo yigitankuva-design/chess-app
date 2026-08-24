@@ -26,7 +26,9 @@ describe('ExerciseForm — çizim entegrasyonu (C grubu)', () => {
     fireEvent.pointerDown(screen.getByTestId('paint-board-box'), { clientX: 50, clientY: 50 });
 
     fireEvent.change(screen.getByPlaceholderText("Talimat (örn. Piyonu e4'e taşı)"), { target: { value: 'x' } });
-    fireEvent.click(screen.getByText(/^e4$/));
+    // Madde 2026-08-24: hedef kare artık NOTASYONEL ŞABLONDAN değil, tahtaya
+    // tıklanarak seçilir — "Taşa Tıkla" ile AYNI etkileşim.
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
     fireEvent.click(screen.getByText('Tek Kareye Tıklaması Yeterli'));
     fireEvent.click(screen.getByText('Kolay'));
     fireEvent.click(screen.getByText('Soruyu ekle'));

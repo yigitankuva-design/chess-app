@@ -78,8 +78,6 @@ interface Props {
   allowedBoardTypes?: ExerciseType[];
 }
 
-const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-
 const FAMILY_OPTIONS: [QuestionFamily, string][] = [
   ['sentence_question', 'Cümle ekle'],
   ['image_question', 'Görüntü ekle'],
@@ -90,28 +88,6 @@ function familyOf(ex?: BoardExercise): QuestionFamily {
   if (ex?.type === 'sentence_question') return 'sentence_question';
   if (ex?.type === 'image_question') return 'image_question';
   return 'konum';
-}
-
-function SquarePicker({ values, onToggle }: { values: string[]; onToggle: (sq: string) => void }) {
-  return (
-    <div className="space-y-1">
-      <div className="grid grid-cols-8 gap-0.5" style={{ maxWidth: 280 }}>
-        {[8, 7, 6, 5, 4, 3, 2, 1].map((rank) =>
-          FILES.map((f) => {
-            const sq = `${f}${rank}`;
-            const on = values.includes(sq);
-            return (
-              <button key={sq} type="button" onClick={() => onToggle(sq)}
-                className={`text-[15px] py-1.5 rounded transition-colors ${
-                  on ? 'bg-cyan-400/40 text-cyan-100 border border-cyan-400' : 'bg-white/5 text-white/50 hover:bg-white/10'
-                }`}>{sq}</button>
-            );
-          }),
-        )}
-      </div>
-      <p className="text-xs n-muted">Seçili: {values.length ? values.join(', ') : '—'}</p>
-    </div>
-  );
 }
 
 export function ExerciseForm({
@@ -417,17 +393,18 @@ function BoardExerciseFields({ onSubmit, initial, onCancel, allowedBoardTypes }:
               Konumu Değiştir
             </button>
           </div>
-          <p className="text-xs n-muted mb-1">Doğru kare(ler) — birden çok seçebilirsin</p>
-          {/* Kare listesi SOLDA, kaydedilen konum SAĞDA — Zafer Hoca konuma
-              bakarak cevabı kurabilsin. Dar ekranda alt alta iner. */}
-          <div className="flex flex-wrap items-start gap-3">
-            <SquarePicker values={targets} onToggle={toggleTarget} />
-            {savedFen && (
-              <PaintEditor items={annotations} onChange={setAnnotations}>
-                <SavedPositionBoard fen={savedFen} marked={targets} />
-              </PaintEditor>
-            )}
-          </div>
+          <p className="text-xs n-muted mb-1">
+            Doğru kare(ler) — tahtada tıkla, birden çok seçebilirsin (tekrar tıklamak seçimi kaldırır)
+          </p>
+          {/* Madde 2026-08-24: kareler artık NOTASYONEL ŞABLONDAN (kare adı
+              yazan butonlar) değil, doğrudan TAHTA üzerine tıklanarak seçilir —
+              "Taşa Tıkla" ile AYNI etkileşim deseni. */}
+          {savedFen && (
+            <PaintEditor items={annotations} onChange={setAnnotations}>
+              <SavedPositionBoard fen={savedFen} marked={targets} onSquareClick={toggleTarget} />
+            </PaintEditor>
+          )}
+          <p className="text-xs n-muted">Seçili: {targets.length ? targets.join(', ') : '—'}</p>
 
           <p className="text-xs n-muted mt-3 mb-1">Sporcu Tıklama Sayısını Belirle</p>
           <div className="flex flex-wrap gap-2">

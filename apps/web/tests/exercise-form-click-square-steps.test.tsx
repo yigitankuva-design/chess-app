@@ -47,4 +47,22 @@ describe('ExerciseForm — Kareye Tıkla 9 adım (madde 2 + C grubu)', () => {
     expect(screen.getByText('Soruyu kaydet')).toBeEnabled();
     expect(screen.queryByText(/Eksik:/)).not.toBeInTheDocument();
   });
+
+  it('madde 2026-08-24: doğru kare notasyonel şablon YERİNE doğrudan tahtaya tıklanarak seçilir', () => {
+    render(<ExerciseForm onSubmit={vi.fn()} initial={{
+      type: 'click_square', instruction: 'e4 karesine tıkla',
+      fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1', target_squares: [], difficulty: 2,
+    }} />);
+    // Eski notasyonel şablon (kare adı yazan tıklanabilir butonlar) artık YOK.
+    expect(screen.queryByRole('button', { name: 'e4' })).not.toBeInTheDocument();
+    // Konum kaydedilmiş halde doğrudan tahta kare(ler)i gösterir ve tıklanabilir.
+    expect(document.querySelector('[data-square="e4"]')).toBeInTheDocument();
+
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
+    expect(screen.getByText('Seçili: e4')).toBeInTheDocument();
+
+    // Tekrar tıklamak seçimi kaldırır.
+    fireEvent.click(document.querySelector('[data-square="e4"]')!);
+    expect(screen.queryByText('Seçili: e4')).not.toBeInTheDocument();
+  });
 });
