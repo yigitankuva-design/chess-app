@@ -122,4 +122,17 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     const boardCapsule = document.querySelector('div[style*="max-width: 420px"]');
     expect(boardCapsule?.contains(counter)).toBe(true);
   });
+
+  it('madde 2026-08-29: numaralı buton sütunu aşağı kaydırılmış — 1 nolu kart tahtanın üst kenarıyla hizalanır', () => {
+    const pool = [
+      group('g1', '001', [
+        { id: 's1', fen: FEN, sentence: 'Adım 1', turn: 'w' },
+        { id: 's2', fen: FEN2, sentence: 'Adım 2', turn: 'w' },
+      ]),
+    ];
+    render(<AltKonuWalkthrough pool={pool} />);
+    const kart1 = screen.getByLabelText('Adım 1');
+    // Sayaç satırının yüksekliği (32px) + altındaki boşluk (8px) kadar aşağı iner.
+    expect(kart1.parentElement).toHaveStyle({ marginTop: '40px' });
+  });
 });

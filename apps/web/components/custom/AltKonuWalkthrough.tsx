@@ -14,6 +14,11 @@ interface Props {
  *  yükseklikte doluşur, taşınca 2. sütuna geçer. */
 const BOARD_MAX_WIDTH = 420;
 
+/** Madde 2026-08-29: sayaç satırının yüksekliği (İleri/Geri butonları 32px,
+ *  w-8/h-8) + altındaki space-y-2 boşluğu (8px) — numaralı buton sütununu bu
+ *  kadar aşağı kaydırınca 1 nolu kart tahtanın üst kenarıyla hizalanır. */
+const COUNTER_ROW_OFFSET = 32 + 8;
+
 /**
  * Alt Konu'nun ayrı sayfasındaki tasarım — madde: 2026-08-26 (görsel
  * referans doğrultusunda). Konum Havuzu İKİ SEVİYELİ:
@@ -53,7 +58,7 @@ export function AltKonuWalkthrough({ pool }: Props) {
         {group.steps.length > 1 && (
           <div
             className="flex flex-col flex-wrap gap-2 flex-shrink-0"
-            style={{ maxHeight: BOARD_MAX_WIDTH }}
+            style={{ maxHeight: BOARD_MAX_WIDTH, marginTop: COUNTER_ROW_OFFSET }}
           >
             {group.steps.map((s, i) => {
               const active = i === si;
