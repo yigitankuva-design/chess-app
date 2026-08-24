@@ -1570,6 +1570,16 @@ class CustomTabSectionUpdateRequest(BaseModel):
     images: list[str] | None = None
     practice_positions: list[PracticePosition] | None = None
     emoji: str | None = Field(default=None, max_length=10)
+    # Madde 2026-08-24: hocanın kendi gösterimi için kaydettiği tahta soruları
+    # (Kareye Tıkla/Taşa Tıkla/Taşı Oynat) — bkz. _ALT_KONU_EXERCISE_TYPES.
+    board_exercises: list[dict] | None = None
+
+
+# Madde 2026-08-24: Alt Konu'daki "Kareye Tıkla/Taşa Tıkla/Taşı Oynat" soruları
+# sporcu tarafından CEVAPLANMAZ (antrenörün kendi gösterimi) — bu yüzden diğer
+# tahta soru türleri (Taş Nerde?, Taşı Tanı) ve Cümle/Görüntü soruları BURADA
+# kabul edilmez.
+_ALT_KONU_EXERCISE_TYPES = ("click_square", "move_piece", "click_piece")
 
 
 @router.post("/custom-tabs", status_code=201)
@@ -1688,7 +1698,7 @@ async def create_custom_tab_section(
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
-            "parent_id": section.parent_id}
+            "parent_id": section.parent_id, "board_exercises": section.board_exercises}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1714,11 +1724,22 @@ async def update_custom_tab_section(
         section.practice_positions = [p.model_dump() for p in payload.practice_positions]
     if payload.emoji is not None:
         section.emoji = payload.emoji
+    if payload.board_exercises is not None:
+        for ex in payload.board_exercises:
+            ex_type = ex.get("type") if isinstance(ex, dict) else None
+            if ex_type not in _ALT_KONU_EXERCISE_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bu alanda sadece Kareye Tıkla/Taşa Tıkla/Taşı Oynat türü sorular eklenebilir",
+                )
+        _validate_board_exercises(payload.board_exercises)
+        section.board_exercises = payload.board_exercises
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
-            "practice_positions": section.practice_positions, "emoji": section.emoji}
+            "practice_positions": section.practice_positions, "emoji": section.emoji,
+            "board_exercises": section.board_exercises}
 
 
 @router.delete("/custom-tab-sections/{section_id}")
@@ -1820,7 +1841,7 @@ async def duplicate_custom_tab_section(
     return {"id": new_root.id, "order_index": new_root.order_index, "title": new_root.title,
             "body": new_root.body, "images": new_root.images,
             "practice_positions": new_root.practice_positions, "emoji": new_root.emoji,
-            "parent_id": new_root.parent_id}
+            "parent_id": new_root.parent_id, "board_exercises": new_root.board_exercises}
 
 
 @router.post("/custom-tabs/{tab_id}/sections/reorder")

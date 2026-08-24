@@ -9,6 +9,8 @@ import {
 import type { CustomTabSection } from '@/lib/customTabsApi';
 import { PositionPoolFields } from './PositionPoolFields';
 import type { PoolPosition } from './PositionPoolView';
+import { AltKonuExercisesFields } from './AltKonuExercisesFields';
+import type { BoardExercise } from './ExerciseForm';
 
 /** Madde 2026-08-24: "Antrenör" sekmesindeki "Dersler" alt sekmesi ve TÜM
  *  altındaki Düzey/Konu/Alt Konu düğümleri özel bir moda girer — Kopyala
@@ -143,6 +145,28 @@ export function NestedSectionTree({
     if (!created) { setErr('Kopyalanamadı'); return; }
     cancelDuplicate();
     await onReloadTree();
+  }
+
+  /** Madde 2026-08-24: Alt Konu'da antrenörün kendi gösterimi için kaydettiği
+   *  Kareye Tıkla/Taşa Tıkla/Taşı Oynat soruları — practice_positions'a
+   *  benzer şekilde, sunucuya TÜM dizi PATCH edilir (Derslerdeki
+   *  addExercise/updateExercise/deleteExercise ile AYNI desen). */
+  async function addExercise(s: CustomTabSection, ex: BoardExercise) {
+    const next = [...(s.board_exercises ?? []), ex];
+    const ok = await updateCustomTabSection(s.id, { board_exercises: next });
+    if (ok) onSectionUpdated(s.id, { board_exercises: next });
+  }
+
+  async function updateExerciseAt(s: CustomTabSection, idx: number, ex: BoardExercise) {
+    const next = (s.board_exercises ?? []).map((e, i) => (i === idx ? ex : e));
+    const ok = await updateCustomTabSection(s.id, { board_exercises: next });
+    if (ok) onSectionUpdated(s.id, { board_exercises: next });
+  }
+
+  async function deleteExerciseAt(s: CustomTabSection, idx: number) {
+    const next = (s.board_exercises ?? []).filter((_, i) => i !== idx);
+    const ok = await updateCustomTabSection(s.id, { board_exercises: next });
+    if (ok) onSectionUpdated(s.id, { board_exercises: next });
   }
 
   async function addChild() {
@@ -299,8 +323,10 @@ export function NestedSectionTree({
                 {isAltKonu ? (
                   /* Madde 2026-08-24: Alt Konu'nun altına yeni alt sekme
                      eklenmez — bunun yerine Süresiz Pratik Yap'taki ile AYNI
-                     konum havuzu arayüzü gösterilir (soru/konum ekleme). */
-                  <div className="pt-2 border-t border-white/10">
+                     konum havuzu arayüzü VE antrenörün kendi gösterimi için
+                     Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru ekleme alanı
+                     BİRLİKTE gösterilir. */
+                  <div className="pt-2 border-t border-white/10 space-y-4">
                     <PositionPoolFields
                       fen={poolFen} turn={poolTurn}
                       onFenChange={onPoolFenChange} onTurnChange={onPoolTurnChange}
@@ -309,6 +335,17 @@ export function NestedSectionTree({
                       onDeletePosition={(posId) => onDeletePosition(s.id, posId)}
                       onUpdatePosition={(posId, next) => onUpdatePosition(s.id, posId, next)}
                     />
+                    <div className="pt-2 border-t border-white/10">
+                      <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
+                        Kareye Tıkla / Taşa Tıkla / Taşı Oynat
+                      </p>
+                      <AltKonuExercisesFields
+                        exercises={s.board_exercises ?? []}
+                        onAdd={(ex) => addExercise(s, ex)}
+                        onUpdate={(idx, ex) => updateExerciseAt(s, idx, ex)}
+                        onDelete={(idx) => deleteExerciseAt(s, idx)}
+                      />
+                    </div>
                   </div>
                 ) : (
                   /* Bu bölümün KENDİ alt sekmeleri — iç içe (sınırsız derinlik).

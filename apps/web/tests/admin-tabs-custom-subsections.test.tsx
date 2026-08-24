@@ -429,12 +429,49 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     await waitFor(() => screen.getByText('Konum Dizerek Ekle'));
 
     fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
-    fireEvent.click(screen.getByText('Konumu Kaydet'));
+    // Madde 2026-08-24: Alt Konu'da Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru
+    // ekleme alanı da BİRLİKTE durur — o da kendi "Konumu Kaydet" butonunu
+    // gösterir (click_square kurulum fazı). Konum havuzununki DOM'da İLK sırada.
+    fireEvent.click(screen.getAllByText('Konumu Kaydet')[0]);
 
     await waitFor(() => {
       expect(updateCustomTabSection).toHaveBeenCalledWith(
         203, expect.objectContaining({ practice_positions: expect.any(Array) }),
       );
     });
+  });
+
+  it('Alt Konu\'da Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru ekleme alanı görünür (antrenörün kendi gösterimi için)', async () => {
+    mockAntrenorWithDersler();
+    await openAntrenor();
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    await waitFor(() => screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+
+    await waitFor(() => screen.getByText('Kareye Tıkla / Taşa Tıkla / Taşı Oynat'));
+    // "Konum ekle" ailesi tek başına — Cümle/Görüntü ekle butonları YOK.
+    expect(screen.queryByText('Cümle ekle')).not.toBeInTheDocument();
+    expect(screen.queryByText('Görüntü ekle')).not.toBeInTheDocument();
+    // "Taş nerde?" (place_pieces) burada YOK — sadece 3 tür.
+    expect(screen.getByText('Kareye tıkla')).toBeInTheDocument();
+    expect(screen.getByText('Taşa tıkla')).toBeInTheDocument();
+    expect(screen.getByText('Taşı oynat')).toBeInTheDocument();
+    expect(screen.queryByText('Taş nerde?')).not.toBeInTheDocument();
+  });
+
+  it('Konu (Tahta ve Taşlar) seviyesinde soru ekleme alanı YOK', async () => {
+    mockAntrenorWithDersler();
+    await openAntrenor();
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    await waitFor(() => screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(screen.queryByText('Kareye Tıkla / Taşa Tıkla / Taşı Oynat')).not.toBeInTheDocument();
   });
 });

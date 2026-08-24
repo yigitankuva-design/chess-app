@@ -38,3 +38,8 @@ class CustomTabSection(Base):
     images: Mapped[list] = mapped_column(JSON, default=list)
     practice_positions: Mapped[list] = mapped_column(JSON, default=list)
     emoji: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Madde 2026-08-24: hocanın kendi gösterimi için kaydettiği tahta soruları
+    # (Kareye Tıkla/Taşa Tıkla/Taşı Oynat) — Derslerdeki board_exercises ile
+    # AYNI JSON şekli, ama sporcu CEVAPLAMAZ, sadece Antrenör Hızlı Erişim'de
+    # sırayla gösterilir.
+    board_exercises: Mapped[list] = mapped_column(JSON, default=list)

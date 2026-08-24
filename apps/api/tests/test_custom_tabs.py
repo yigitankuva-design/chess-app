@@ -14,7 +14,7 @@ def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():
     # Madde 2026-08-22: parent_id — ic ice (nested) alt sekmeler.
     assert cols == {
         "id", "custom_tab_id", "parent_id", "order_index", "title", "body", "images",
-        "practice_positions", "emoji",
+        "practice_positions", "emoji", "board_exercises",
     }
 
 
@@ -455,3 +455,94 @@ async def test_olmayan_bolum_kopyalanamaz(client):
     r = await client.post("/admin/custom-tab-sections/999999/duplicate", headers=h,
                           json={"new_title": "Yeni"})
     assert r.status_code == 404
+
+
+# ── Alt Konu: Kareye Tıkla/Taşa Tıkla/Taşı Oynat soruları — madde: 2026-08-24 ──
+
+FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+
+@pytest.mark.asyncio
+async def test_kareye_tikla_sorusu_kaydedilir(client):
+    tok = await _teacher_token(client, "cte1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Tahtanın Genel Özellikleri", "body": "", "images": []})).json()
+    assert section["board_exercises"] == []
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"board_exercises": [
+                               {"type": "click_square", "instruction": "e4 karesine tıkla",
+                                "fen": FEN, "target_squares": ["e4"]},
+                           ]})
+    assert r.status_code == 200
+    assert r.json()["board_exercises"] == [
+        {"type": "click_square", "instruction": "e4 karesine tıkla", "fen": FEN, "target_squares": ["e4"]},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_tasa_tikla_ve_tasi_oynat_sorulari_kaydedilir(client):
+    tok = await _teacher_token(client, "cte2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Alt Konu", "body": "", "images": []})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"board_exercises": [
+                               {"type": "click_piece", "instruction": "Atları göster",
+                                "fen": FEN, "piece_squares": ["b1", "g1"]},
+                               {"type": "move_piece", "instruction": "e4 oyna",
+                                "fen": FEN, "moves": ["e4"]},
+                           ]})
+    assert r.status_code == 200
+    types = [ex["type"] for ex in r.json()["board_exercises"]]
+    assert types == ["click_piece", "move_piece"]
+
+
+@pytest.mark.asyncio
+async def test_izin_verilmeyen_soru_turu_reddedilir(client):
+    tok = await _teacher_token(client, "cte3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Alt Konu", "body": "", "images": []})).json()
+
+    for bad_type in ("place_pieces", "identify_piece", "sentence_question", "image_question"):
+        r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                               json={"board_exercises": [{"type": bad_type, "instruction": "x", "fen": FEN}]})
+        assert r.status_code == 400, bad_type
+
+
+@pytest.mark.asyncio
+async def test_gecersiz_hamle_reddedilir(client):
+    tok = await _teacher_token(client, "cte4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Alt Konu", "body": "", "images": []})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"board_exercises": [
+                               {"type": "move_piece", "instruction": "x", "fen": FEN, "moves": ["e9"]},
+                           ]})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_kopyalanan_bolumde_soru_havuzu_bos_baslar(client):
+    tok = await _teacher_token(client, "cte5@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
+    src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                             json={"title": "Sınıf 1", "body": "", "images": []})).json()
+    await client.patch(f"/admin/custom-tab-sections/{src['id']}", headers=h,
+                       json={"board_exercises": [
+                           {"type": "click_square", "instruction": "x", "fen": FEN, "target_squares": ["e4"]},
+                       ]})
+
+    copy = (await client.post(f"/admin/custom-tab-sections/{src['id']}/duplicate", headers=h,
+                              json={"new_title": "Sınıf 2"})).json()
+    assert copy["board_exercises"] == []
