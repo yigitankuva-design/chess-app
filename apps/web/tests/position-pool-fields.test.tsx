@@ -132,6 +132,16 @@ describe('PositionPoolFields — Konumun Sahibi (madde 2026-08-24, showOwnerFiel
     fireEvent.click(screen.getByText('Konumu Kaydet'));
     expect(p.onSavePosition).toHaveBeenCalledWith(undefined, undefined);
   });
+
+  it('showOwnerField açıkken havuzdaki mevcut bir konumu düzenlerken de "Konumun Sahibi" alanı görünür', () => {
+    setup({
+      showOwnerField: true,
+      pool: [{ id: 'p1', fen: START_FEN, code: '001', owner: 'Ali - Veli' }],
+    });
+    fireEvent.click(screen.getByText(/Konum Havuzu/));
+    fireEvent.click(screen.getByRole('button', { name: 'Konum 001' }));
+    expect((screen.getByLabelText('Konumun Sahibi') as HTMLInputElement).value).toBe('Ali - Veli');
+  });
 });
 
 describe('PositionPoolFields — havuz listesi (regresyon)', () => {

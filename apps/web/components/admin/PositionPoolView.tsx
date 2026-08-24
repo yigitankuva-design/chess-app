@@ -21,6 +21,8 @@ interface Props {
   /** Düzenlenen konumu günceller. Kod DEĞİŞMEZ — sporcunun bildiği numara sabittir. */
   onUpdatePosition: (id: string, next: PoolPosition) => void;
   onDeletePosition: (id: string) => void;
+  /** Düzenleme ekranında "Konumun Sahibi" alanını gösterir (yalnızca Kazanç Konumunu Pratik Yap). */
+  showOwnerField?: boolean;
 }
 
 function satirlaraBol<T>(list: T[], size: number): T[][] {
@@ -37,11 +39,14 @@ function satirlaraBol<T>(list: T[], size: number): T[][] {
  * Kodlar `lib/exerciseCodes.ts` ile üretilir — Süresiz Pratik sorularıyla AYNI
  * mantık, ikinci bir numaralandırma yazılmaz.
  */
-export function PositionPoolView({ pool, onUpdatePosition, onDeletePosition }: Props) {
+export function PositionPoolView({
+  pool, onUpdatePosition, onDeletePosition, showOwnerField = false,
+}: Props) {
   const [acik, setAcik] = useState(false);
   const [duzenlenen, setDuzenlenen] = useState<string | null>(null);
   const [taslakFen, setTaslakFen] = useState('');
   const [taslakTurn, setTaslakTurn] = useState<'w' | 'b'>('w');
+  const [taslakOwner, setTaslakOwner] = useState('');
 
   const kodlar = assignExerciseCodes(pool);
 
@@ -50,11 +55,13 @@ export function PositionPoolView({ pool, onUpdatePosition, onDeletePosition }: P
     setDuzenlenen(p.id);
     setTaslakFen(p.fen);
     setTaslakTurn(parsed.ok ? parsed.turn : 'w');
+    setTaslakOwner(p.owner ?? '');
   }
 
   function vazgec() {
     setDuzenlenen(null);
     setTaslakFen('');
+    setTaslakOwner('');
   }
 
   function kaydet(p: PoolPosition, kod: string) {
@@ -63,6 +70,7 @@ export function PositionPoolView({ pool, onUpdatePosition, onDeletePosition }: P
       fen: withTurn(taslakFen, taslakTurn),
       // Kod düzenlemeyle DEĞİŞMEZ; kodsuz eski konumda gösterilen kod kalıcılaşır.
       code: p.code ?? kod,
+      ...(showOwnerField ? { owner: taslakOwner.trim() || null } : {}),
     });
     vazgec();
   }
@@ -119,6 +127,18 @@ export function PositionPoolView({ pool, onUpdatePosition, onDeletePosition }: P
                   fen={taslakFen} turn={taslakTurn}
                   onChange={setTaslakFen} onTurnChange={setTaslakTurn}
                 />
+                {showOwnerField && (
+                  <div className="space-y-1">
+                    <label htmlFor={`pool-owner-edit-${p.id}`} className="text-xs n-muted">Konumun Sahibi</label>
+                    <input
+                      id={`pool-owner-edit-${p.id}`}
+                      value={taslakOwner}
+                      onChange={(e) => setTaslakOwner(e.target.value)}
+                      placeholder="Konumun hangi oyuncular arasında oynandığını yaz"
+                      className="neon-input text-sm"
+                    />
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => kaydet(p, kod)}
                     className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-sm transition-colors">

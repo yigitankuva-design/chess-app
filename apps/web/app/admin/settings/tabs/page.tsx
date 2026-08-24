@@ -302,7 +302,7 @@ export default function AdminTabsPage() {
   /** Havuzdaki bir konumu düzenleyip yeniden kaydeder (kodu değişmez). */
   async function updatePosition(
     tabId: number, sectionId: number, positionId: string,
-    next: { id: string; fen: string; category?: string | null; code?: string },
+    next: { id: string; fen: string; category?: string | null; code?: string; owner?: string | null },
   ) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;

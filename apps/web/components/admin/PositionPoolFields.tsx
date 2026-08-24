@@ -179,6 +179,7 @@ export function PositionPoolFields({
           pool={pool}
           onUpdatePosition={onUpdatePosition}
           onDeletePosition={onDeletePosition}
+          showOwnerField={showOwnerField}
         />
       </div>
     </div>

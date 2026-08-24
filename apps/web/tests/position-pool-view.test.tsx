@@ -106,3 +106,41 @@ describe('PositionPoolView — düzenleme', () => {
     expect(p.onDeletePosition).toHaveBeenCalledWith('a');
   });
 });
+
+describe('PositionPoolView — Konumun Sahibi düzenleme (madde 2026-08-30, showOwnerField)', () => {
+  it('showOwnerField kapalıyken (varsayılan) düzenleme ekranında "Konumun Sahibi" alanı YOKTUR', () => {
+    setup({ pool: [{ id: 'a', fen: FEN, code: '001', owner: 'Ali - Veli' }] });
+    fireEvent.click(screen.getByText(/Konum Havuzu/));
+    fireEvent.click(screen.getByRole('button', { name: 'Konum 001' }));
+    expect(screen.queryByText('Konumun Sahibi')).not.toBeInTheDocument();
+  });
+
+  it('showOwnerField açıkken mevcut sahip değeriyle önceden doldurulur ve düzenlenip kaydedilebilir', () => {
+    const p = setup({
+      pool: [{ id: 'a', fen: FEN, code: '001', owner: 'Ali - Veli' }],
+      showOwnerField: true,
+    });
+    fireEvent.click(screen.getByText(/Konum Havuzu/));
+    fireEvent.click(screen.getByRole('button', { name: 'Konum 001' }));
+    const input = screen.getByLabelText('Konumun Sahibi') as HTMLInputElement;
+    expect(input.value).toBe('Ali - Veli');
+
+    fireEvent.change(input, { target: { value: 'Zafer - Öğrenci' } });
+    fireEvent.click(screen.getByText('Değişikliği Kaydet'));
+    expect(p.onUpdatePosition).toHaveBeenCalledWith(
+      'a', expect.objectContaining({ owner: 'Zafer - Öğrenci' }),
+    );
+  });
+
+  it('showOwnerField açıkken sahip alanı boşaltılıp kaydedilirse owner null olur', () => {
+    const p = setup({
+      pool: [{ id: 'a', fen: FEN, code: '001', owner: 'Ali - Veli' }],
+      showOwnerField: true,
+    });
+    fireEvent.click(screen.getByText(/Konum Havuzu/));
+    fireEvent.click(screen.getByRole('button', { name: 'Konum 001' }));
+    fireEvent.change(screen.getByLabelText('Konumun Sahibi'), { target: { value: '' } });
+    fireEvent.click(screen.getByText('Değişikliği Kaydet'));
+    expect(p.onUpdatePosition).toHaveBeenCalledWith('a', expect.objectContaining({ owner: null }));
+  });
+});
