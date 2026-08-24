@@ -400,7 +400,7 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     expect(screen.getAllByText('+ Alt Sekme Ekle').length).toBeGreaterThan(0);
   });
 
-  it('Alt Konu (Tahtanın Genel Özellikleri) açılınca "+ Alt Sekme Ekle" yerine konum havuzu (Süresiz Pratik ile AYNI) gösterilir', async () => {
+  it('Alt Konu (Tahtanın Genel Özellikleri) açılınca "+ Alt Sekme Ekle" yerine Konum Havuzu (Buton Ekle) gösterilir', async () => {
     mockAntrenorWithDersler();
     await openAntrenor();
     fireEvent.click(screen.getByText('Dersler'));
@@ -411,11 +411,11 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
 
-    await waitFor(() => screen.getByText('Konum Dizerek Ekle'));
-    expect(screen.getByText('FEN Ekle')).toBeInTheDocument();
+    await waitFor(() => screen.getByText('Konum Havuzu'));
+    expect(screen.getByText('Buton Ekle')).toBeInTheDocument();
   });
 
-  it('Alt Konu\'da Konumu Kaydet ile doğru bölüme (id 203) konum eklenir', async () => {
+  it('Alt Konu\'da Buton Ekle → cümle → Konumu Kaydet → Havuza Ekle ile doğru bölüme (id 203) konum grubu eklenir', async () => {
     mockAntrenorWithDersler();
     (updateCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue(true);
     await openAntrenor();
@@ -426,17 +426,21 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     fireEvent.click(screen.getByText('Tahta ve Taşlar'));
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
-    await waitFor(() => screen.getByText('Konum Dizerek Ekle'));
+    await waitFor(() => screen.getByText('Buton Ekle'));
 
-    fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
-    // Madde 2026-08-24: Alt Konu'da Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru
-    // ekleme alanı da BİRLİKTE durur — o da kendi "Konumu Kaydet" butonunu
-    // gösterir (click_square kurulum fazı). Konum havuzununki DOM'da İLK sırada.
+    fireEvent.click(screen.getByText('Buton Ekle'));
+    fireEvent.change(screen.getByPlaceholderText('Bu konumla ilgili açıklama cümlesi'), {
+      target: { value: 'Tahta 8x8 karelerden oluşur.' },
+    });
+    // Madde 2026-08-26: Kareye Tıkla/Taşa Tıkla/Taşı Oynat ekleme alanı da
+    // BİRLİKTE durur ve KENDİ "Konumu Kaydet" butonunu her zaman gösterir
+    // (click_square kurulum fazı) — Konum Havuzu'nunki DOM'da İLK sırada.
     fireEvent.click(screen.getAllByText('Konumu Kaydet')[0]);
+    fireEvent.click(screen.getByText(/Havuza Ekle/));
 
     await waitFor(() => {
       expect(updateCustomTabSection).toHaveBeenCalledWith(
-        203, expect.objectContaining({ practice_positions: expect.any(Array) }),
+        203, expect.objectContaining({ position_pool: expect.any(Array) }),
       );
     });
   });

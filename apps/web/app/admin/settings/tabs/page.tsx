@@ -608,11 +608,6 @@ export default function AdminTabsPage() {
                         };
                       })}
                       onReloadTree={() => reloadCustomTabDetail(c.id)}
-                      poolFen={poolFen} poolTurn={poolTurn}
-                      onPoolFenChange={setPoolFen} onPoolTurnChange={setPoolTurn}
-                      onSavePosition={(sectionId, fen) => savePosition(c.id, sectionId, fen)}
-                      onDeletePosition={(sectionId, posId) => deletePosition(c.id, sectionId, posId)}
-                      onUpdatePosition={(sectionId, posId, next) => updatePosition(c.id, sectionId, posId, next)}
                     />
                   ) : (
                     <>

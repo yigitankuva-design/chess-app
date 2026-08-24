@@ -31,22 +31,23 @@ function mockDersHierarchy() {
       {
         id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', emoji: '📘',
         body: 'Konu açıklaması', images: [], parent_id: 202,
-        practice_positions: [{ id: 'p1', fen: FEN }],
-        explanation_cards: [{ id: 'c1', fen: FEN, sentence: 'Tahta 8x8 karelerden oluşur.' }],
+        practice_positions: [],
+        position_pool: [{
+          id: 'g1', code: '001',
+          steps: [{ id: 's1', fen: FEN, sentence: 'Tahta 8x8 karelerden oluşur.', turn: 'w' }],
+        }],
       },
     ],
   });
 }
 
-describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08-25)', () => {
-  it('bölüm başlığı, yazı, Konum Havuzu sayacı ve açıklama kartları gösterilir', async () => {
+describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08-26)', () => {
+  it('bölüm başlığı, yazı, Konum Havuzu sayacı ve aktif adımın cümlesi gösterilir', async () => {
     mockDersHierarchy();
     render(<AltKonuPage />);
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
     expect(screen.getByText('Konu açıklaması')).toBeInTheDocument();
     expect(screen.getByText('1 / 1 — Konum Havuzu 001')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByLabelText('Açıklama 1'));
     expect(screen.getByText('Tahta 8x8 karelerden oluşur.')).toBeInTheDocument();
   });
 

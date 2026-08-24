@@ -6,13 +6,10 @@ import {
   createCustomTabSection, updateCustomTabSection, deleteCustomTabSection,
   duplicateCustomTabSection,
 } from '@/lib/customTabsApi';
-import type { CustomTabSection } from '@/lib/customTabsApi';
-import { PositionPoolFields } from './PositionPoolFields';
-import type { PoolPosition } from './PositionPoolView';
+import type { CustomTabSection, PositionPoolEntry, PositionPoolStep } from '@/lib/customTabsApi';
 import { AltKonuExercisesFields } from './AltKonuExercisesFields';
 import type { BoardExercise } from './ExerciseForm';
-import { AltKonuExplanationCardsFields } from './AltKonuExplanationCardsFields';
-import type { ExplanationCard } from '@/lib/customTabsApi';
+import { AltKonuPositionPoolFields } from './AltKonuPositionPoolFields';
 
 /** Madde 2026-08-24: "Antrenör" sekmesindeki "Dersler" alt sekmesi ve TÜM
  *  altındaki Düzey/Konu/Alt Konu düğümleri özel bir moda girer — Kopyala
@@ -44,15 +41,6 @@ interface Props {
    *  DERSLER_TITLE açıklaması. Kök seviyede (sekmenin ilk çağrısı) verilmez/false'tur;
    *  "Dersler" düğümünün kendisinden başlayarak TÜM alt düğümlere miras kalır. */
   inDersler?: boolean;
-  /** Alt Konu (3. derinlik) düğümlerinde "+ Alt Sekme Ekle" yerine gösterilen
-   *  konum havuzu — Süresiz Pratik Yap'taki PositionPoolFields ile AYNI. */
-  poolFen: string;
-  poolTurn: 'w' | 'b';
-  onPoolFenChange: (fen: string) => void;
-  onPoolTurnChange: (turn: 'w' | 'b') => void;
-  onSavePosition: (sectionId: number, fen?: string) => void;
-  onDeletePosition: (sectionId: number, positionId: string) => void;
-  onUpdatePosition: (sectionId: number, positionId: string, next: PoolPosition) => void;
 }
 
 /**
@@ -65,8 +53,7 @@ interface Props {
  */
 export function NestedSectionTree({
   tabId, parentId, allSections, depth, onSectionCreated, onSectionUpdated, onReloadTree,
-  inDersler = false, poolFen, poolTurn, onPoolFenChange, onPoolTurnChange,
-  onSavePosition, onDeletePosition, onUpdatePosition,
+  inDersler = false,
 }: Props) {
   const children = allSections
     .filter((s) => (s.parent_id ?? null) === parentId)
@@ -171,18 +158,24 @@ export function NestedSectionTree({
     if (ok) onSectionUpdated(s.id, { board_exercises: next });
   }
 
-  /** Madde 2026-08-25: Alt Konu'nun Hızlı Erişim sayfasında tahtanın solunda
-   *  numaralı gösterilen açıklama kartları — AYNI TÜM-DİZİ-PATCH deseni. */
-  async function addExplanationCard(s: CustomTabSection, card: ExplanationCard) {
-    const next = [...(s.explanation_cards ?? []), card];
-    const ok = await updateCustomTabSection(s.id, { explanation_cards: next });
-    if (ok) onSectionUpdated(s.id, { explanation_cards: next });
+  /** Madde 2026-08-26: Alt Konu'nun Konum Havuzu — her grup kendi kod
+   *  numarasıyla eklenir, içinde numaralı adımlar (konum+cümle+hamle sırası)
+   *  barındırır. AYNI TÜM-DİZİ-PATCH deseni. */
+  async function addPositionPoolGroup(s: CustomTabSection, steps: PositionPoolStep[]) {
+    const next = [...(s.position_pool ?? []), { id: crypto.randomUUID(), steps }];
+    const ok = await updateCustomTabSection(s.id, { position_pool: next });
+    if (ok) onSectionUpdated(s.id, { position_pool: next });
   }
 
-  async function deleteExplanationCard(s: CustomTabSection, cardId: string) {
-    const next = (s.explanation_cards ?? []).filter((c) => c.id !== cardId);
-    const ok = await updateCustomTabSection(s.id, { explanation_cards: next });
-    if (ok) onSectionUpdated(s.id, { explanation_cards: next });
+  async function deletePositionPoolGroup(s: CustomTabSection, groupId: string) {
+    const next = (s.position_pool ?? []).filter((g) => g.id !== groupId);
+    const ok = await updateCustomTabSection(s.id, { position_pool: next });
+    if (ok) onSectionUpdated(s.id, { position_pool: next });
+  }
+
+  async function reorderPositionPool(s: CustomTabSection, nextPool: PositionPoolEntry[]) {
+    const ok = await updateCustomTabSection(s.id, { position_pool: nextPool });
+    if (ok) onSectionUpdated(s.id, { position_pool: nextPool });
   }
 
   async function addChild() {
@@ -337,19 +330,17 @@ export function NestedSectionTree({
                 )}
 
                 {isAltKonu ? (
-                  /* Madde 2026-08-24: Alt Konu'nun altına yeni alt sekme
-                     eklenmez — bunun yerine Süresiz Pratik Yap'taki ile AYNI
-                     konum havuzu arayüzü VE antrenörün kendi gösterimi için
+                  /* Madde 2026-08-26: Alt Konu'nun altına yeni alt sekme
+                     eklenmez — bunun yerine Konum Havuzu (gruplu: kod +
+                     numaralı adımlar) VE antrenörün kendi gösterimi için
                      Kareye Tıkla/Taşa Tıkla/Taşı Oynat soru ekleme alanı
                      BİRLİKTE gösterilir. */
                   <div className="pt-2 border-t border-white/10 space-y-4">
-                    <PositionPoolFields
-                      fen={poolFen} turn={poolTurn}
-                      onFenChange={onPoolFenChange} onTurnChange={onPoolTurnChange}
-                      onSavePosition={(fen) => onSavePosition(s.id, fen)}
-                      pool={s.practice_positions}
-                      onDeletePosition={(posId) => onDeletePosition(s.id, posId)}
-                      onUpdatePosition={(posId, next) => onUpdatePosition(s.id, posId, next)}
+                    <AltKonuPositionPoolFields
+                      pool={s.position_pool ?? []}
+                      onAddGroup={(steps) => addPositionPoolGroup(s, steps)}
+                      onDeleteGroup={(groupId) => deletePositionPoolGroup(s, groupId)}
+                      onReorder={(nextPool) => reorderPositionPool(s, nextPool)}
                     />
                     <div className="pt-2 border-t border-white/10">
                       <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
@@ -360,16 +351,6 @@ export function NestedSectionTree({
                         onAdd={(ex) => addExercise(s, ex)}
                         onUpdate={(idx, ex) => updateExerciseAt(s, idx, ex)}
                         onDelete={(idx) => deleteExerciseAt(s, idx)}
-                      />
-                    </div>
-                    <div className="pt-2 border-t border-white/10">
-                      <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
-                        Açıklama Kartları (Hızlı Erişim&apos;de tahtanın solunda numaralı gösterilir)
-                      </p>
-                      <AltKonuExplanationCardsFields
-                        cards={s.explanation_cards ?? []}
-                        onAdd={(card) => addExplanationCard(s, card)}
-                        onDelete={(cardId) => deleteExplanationCard(s, cardId)}
                       />
                     </div>
                   </div>
@@ -386,11 +367,6 @@ export function NestedSectionTree({
                       onSectionUpdated={onSectionUpdated}
                       onReloadTree={onReloadTree}
                       inDersler={noDup}
-                      poolFen={poolFen} poolTurn={poolTurn}
-                      onPoolFenChange={onPoolFenChange} onPoolTurnChange={onPoolTurnChange}
-                      onSavePosition={onSavePosition}
-                      onDeletePosition={onDeletePosition}
-                      onUpdatePosition={onUpdatePosition}
                     />
                   </div>
                 )}

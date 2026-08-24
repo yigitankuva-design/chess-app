@@ -28,12 +28,26 @@ export interface CustomTabSection {
    *  Erişim'de sırayla gösterir. Yalnızca bu 3 tür kabul edilir. Eski
    *  bölümlerde/testlerde yoksa boş kabul edilir (KURAL #3). */
   board_exercises?: BoardExercise[];
-  /** Madde 2026-08-25: Alt Konu'nun Hızlı Erişim sayfasındaki tahtanın
-   *  solundaki numaralı dairesel açıklama kartları — konum + cümle. */
-  explanation_cards?: { id: string; fen: string; sentence: string }[];
+  /** Madde 2026-08-26: Alt Konu'nun Konum Havuzu — her biri KENDİ kod
+   *  numarasıyla eklenen, içinde birden çok numaralı adım (konum+cümle+
+   *  hamle sırası) barındıran gruplar. Hızlı Erişim'de gruplar arasında
+   *  İleri/Geri, bir grubun İÇİNDEKİ adımlar arasında numaralı butonlarla
+   *  gezinilir. */
+  position_pool?: PositionPoolEntry[];
 }
 
-export interface ExplanationCard { id: string; fen: string; sentence: string }
+export interface PositionPoolStep {
+  id: string;
+  fen: string;
+  sentence: string;
+  turn: 'w' | 'b';
+}
+
+export interface PositionPoolEntry {
+  id: string;
+  code?: string | null;
+  steps: PositionPoolStep[];
+}
 
 export interface CustomTabDetail {
   id: number;
@@ -137,7 +151,7 @@ export async function updateCustomTabSection(
     practice_positions?: { id: string; fen: string; category?: string | null }[];
     emoji?: string;
     board_exercises?: BoardExercise[];
-    explanation_cards?: ExplanationCard[];
+    position_pool?: PositionPoolEntry[];
   },
 ): Promise<boolean> {
   const token = getToken();

@@ -64,10 +64,7 @@ export default function AltKonuPage() {
           ))}
         </div>
       )}
-      <AltKonuWalkthrough
-        positions={section.practice_positions}
-        cards={section.explanation_cards ?? []}
-      />
+      <AltKonuWalkthrough pool={section.position_pool ?? []} />
     </main>
   );
 }

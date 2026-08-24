@@ -1564,10 +1564,19 @@ class PracticePosition(BaseModel):
     code: str | None = None
 
 
-class ExplanationCard(BaseModel):
+class PositionPoolStep(BaseModel):
     id: str = Field(min_length=1)
     fen: str = Field(min_length=1)
     sentence: str = Field(min_length=1, max_length=2000)
+    turn: str = Field(pattern="^[wb]$")
+
+
+class PositionPoolEntry(BaseModel):
+    id: str = Field(min_length=1)
+    # Sporcuya/hocaya gösterilen kalıcı numara ("001"). Yoksa ekran taraf
+    # sıraya göre tutarlı bir kod üretir (assignExerciseCodes ile AYNI mantık).
+    code: str | None = None
+    steps: list[PositionPoolStep] = Field(min_length=1)
 
 
 class CustomTabSectionUpdateRequest(BaseModel):
@@ -1579,9 +1588,10 @@ class CustomTabSectionUpdateRequest(BaseModel):
     # Madde 2026-08-24: hocanın kendi gösterimi için kaydettiği tahta soruları
     # (Kareye Tıkla/Taşa Tıkla/Taşı Oynat) — bkz. _ALT_KONU_EXERCISE_TYPES.
     board_exercises: list[dict] | None = None
-    # Madde 2026-08-25: Alt Konu'nun Hızlı Erişim sayfasındaki numaralı
-    # dairesel açıklama kartları — konum + cümle.
-    explanation_cards: list[ExplanationCard] | None = None
+    # Madde 2026-08-26: Alt Konu'nun Konum Havuzu — her biri kendi kod
+    # numarasıyla eklenen, İÇİNDE birden çok numaralı adım (konum+cümle+
+    # hamle sırası) barındıran gruplar.
+    position_pool: list[PositionPoolEntry] | None = None
 
 
 # Madde 2026-08-24: Alt Konu'daki "Kareye Tıkla/Taşa Tıkla/Taşı Oynat" soruları
@@ -1708,7 +1718,7 @@ async def create_custom_tab_section(
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
             "parent_id": section.parent_id, "board_exercises": section.board_exercises,
-            "explanation_cards": section.explanation_cards}
+            "position_pool": section.position_pool}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1744,20 +1754,21 @@ async def update_custom_tab_section(
                 )
         _validate_board_exercises(payload.board_exercises)
         section.board_exercises = payload.board_exercises
-    if payload.explanation_cards is not None:
-        for card in payload.explanation_cards:
-            try:
-                chess.Board(card.fen)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Kart için konum (fen) okunamadı")
-        section.explanation_cards = [c.model_dump() for c in payload.explanation_cards]
+    if payload.position_pool is not None:
+        for entry in payload.position_pool:
+            for step in entry.steps:
+                try:
+                    chess.Board(step.fen)
+                except ValueError:
+                    raise HTTPException(status_code=400, detail="Adım için konum (fen) okunamadı")
+        section.position_pool = [e.model_dump() for e in payload.position_pool]
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
             "board_exercises": section.board_exercises,
-            "explanation_cards": section.explanation_cards}
+            "position_pool": section.position_pool}
 
 
 @router.delete("/custom-tab-sections/{section_id}")
@@ -1860,7 +1871,7 @@ async def duplicate_custom_tab_section(
             "body": new_root.body, "images": new_root.images,
             "practice_positions": new_root.practice_positions, "emoji": new_root.emoji,
             "parent_id": new_root.parent_id, "board_exercises": new_root.board_exercises,
-            "explanation_cards": new_root.explanation_cards}
+            "position_pool": new_root.position_pool}
 
 
 @router.post("/custom-tabs/{tab_id}/sections/reorder")
