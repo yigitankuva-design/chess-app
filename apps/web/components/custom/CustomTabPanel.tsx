@@ -54,7 +54,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
             AYNI görsel dil — bölümlerin kendi alt bölümleri olabilir (iç içe,
             sınırsız derinlik). Eski köşeli düz-liste tasarımı kaldırıldı. */}
         <NestedSectionAccordion
-          sections={tab.sections} parentId={null} depth={0} accentColor={accentColor}
+          tabId={tab.id} sections={tab.sections} parentId={null} depth={0} accentColor={accentColor}
         />
       </div>
     );

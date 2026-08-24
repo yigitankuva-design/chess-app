@@ -1,18 +1,21 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
 import type { CustomTabSection } from '@/lib/customTabsApi';
-import { PositionPoolViewer } from './PositionPoolViewer';
 
 /** Madde 2026-08-24: admin tarafındaki NestedSectionTree ile AYNI kural —
  *  "Antrenör/Dersler" alt sekmesi ve altındaki Düzey/Konu/Alt Konu
  *  düğümlerinde, en derin seviye (Alt Konu, 3. derinlik) kendi alt
- *  bölümleri yerine hocanın kaydettiği konum havuzunu gösterir — hoca
- *  sırayla öğrencileriyle paylaşabilsin diye. */
+ *  bölümleri yerine hocanın kaydettiği soruları gösterir. Madde 2026-08-25:
+ *  bu artık AKORDİYON İÇİNDE değil, AYRI bir sayfada (kod numarasına göre
+ *  sıralı İleri/Geri gezinme ile) açılır — bkz. AltKonuWalkthrough. */
 const DERSLER_TITLE = 'Dersler';
 const ALT_KONU_DEPTH = 3;
 
 interface Props {
+  /** Ayrı sayfaya (alt-konu/[sectionId]) yönlendirmek için gereken sekme id'si. */
+  tabId: number;
   /** Sekmenin TÜM bölümleri (düz liste) — her çağrı kendi çocuklarını burada filtreler. */
   sections: CustomTabSection[];
   /** Bu düzeyde hangi bölümlerin gösterileceği — null = sekmenin en üst seviyesi. */
@@ -35,8 +38,9 @@ interface Props {
  * + görsel).
  */
 export function NestedSectionAccordion({
-  sections, parentId, depth, accentColor, inDersler = false,
+  tabId, sections, parentId, depth, accentColor, inDersler = false,
 }: Props) {
+  const router = useRouter();
   const [openId, setOpenId] = useState<number | null>(null);
   const children = sections
     .filter((s) => (s.parent_id ?? null) === parentId)
@@ -61,9 +65,13 @@ export function NestedSectionAccordion({
               active={open}
               size={size}
               tint={depth === 0 ? accentColor : '#fff'}
-              onClick={() => setOpenId((p) => (p === s.id ? null : s.id))}
+              onClick={() => (
+                isAltKonu
+                  ? router.push(`/custom/${tabId}/alt-konu/${s.id}`)
+                  : setOpenId((p) => (p === s.id ? null : s.id))
+              )}
             />
-            {open && (
+            {open && !isAltKonu && (
               <Branch offset={offset}>
                 <div className="space-y-3">
                   {s.body && <p className="t-muted whitespace-pre-wrap text-sm">{s.body}</p>}
@@ -75,14 +83,10 @@ export function NestedSectionAccordion({
                       ))}
                     </div>
                   )}
-                  {isAltKonu ? (
-                    <PositionPoolViewer pool={s.practice_positions} />
-                  ) : (
-                    <NestedSectionAccordion
-                      sections={sections} parentId={s.id} depth={depth + 1}
-                      accentColor={accentColor} inDersler={childInDersler}
-                    />
-                  )}
+                  <NestedSectionAccordion
+                    tabId={tabId} sections={sections} parentId={s.id} depth={depth + 1}
+                    accentColor={accentColor} inDersler={childInDersler}
+                  />
                 </div>
               </Branch>
             )}

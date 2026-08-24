@@ -251,7 +251,8 @@ describe('CustomTabPanel', () => {
     expect(sira[1]).toContain('🏁');
   });
 
-  it('Dersler/Düzey/Konu/Alt Konu\'da kaydedilen konumlar SIRALI kod listesiyle görünür (madde: 2026-08-24)', () => {
+  it('Alt Konu\'ya tıklanınca AYRI sayfaya yönlendirilir, akordiyon içinde açılmaz (madde: 2026-08-25)', () => {
+    push.mockClear();
     const tab: CustomTabDetail = {
       id: 5, label: 'Antrenör', emoji: '🎓',
       sections: [
@@ -273,15 +274,9 @@ describe('CustomTabPanel', () => {
     fireEvent.click(screen.getByText('Tahta ve Taşlar'));
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
 
-    expect(screen.getByLabelText('Konum 001')).toBeInTheDocument();
-    expect(screen.getByLabelText('Konum 002')).toBeInTheDocument();
-    expect(screen.queryByTestId('saved-position-board')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByLabelText('Konum 001'));
-    expect(screen.getByTestId('saved-position-board')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByLabelText('Konum 001'));
-    expect(screen.queryByTestId('saved-position-board')).not.toBeInTheDocument();
+    expect(push).toHaveBeenCalledWith('/custom/5/alt-konu/203');
+    // Akordiyon içinde İÇERİK açılmaz — ayrı sayfaya gidiyor.
+    expect(screen.queryByLabelText(/Konum 001/)).not.toBeInTheDocument();
   });
 
   it('Konu (Tahta ve Taşlar) seviyesinde hâlâ NORMAL iç içe akordiyon davranışı sürer (konum havuzu YOK)', () => {
