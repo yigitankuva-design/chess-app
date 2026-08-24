@@ -48,9 +48,11 @@ export default function AltKonuPage() {
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-4">
       <div className="flex items-center gap-3">
+        {/* Madde 2026-08-28 (1): ok işareti KALINLAŞTIRILDI (bold) ve
+            görünürlüğü ARTIRILDI (t-muted yerine t-premium, daha büyük punto). */}
         <button onClick={goBack} aria-label="Geri"
-          className="flex items-center justify-center rounded-full border border-white/15 t-muted flex-shrink-0"
-          style={{ width: 36, height: 36 }}>
+          className="flex items-center justify-center rounded-full border border-white/15 t-premium flex-shrink-0"
+          style={{ width: 36, height: 36, fontSize: '1.35rem', fontWeight: 700 }}>
           ←
         </button>
         <h1 className="text-xl font-extrabold t-premium">{section.title}</h1>

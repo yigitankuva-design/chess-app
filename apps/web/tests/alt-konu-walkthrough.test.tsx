@@ -103,4 +103,23 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     const capsule = document.querySelector('div[style*="max-width: 420px"]');
     expect(capsule).toBeInTheDocument();
   });
+
+  it('madde 2026-08-28 (2/3): İleri/Geri çerçevesi ve sayacın yazı kalınlığı %50 artırılmış (600), sayaç tahtayla AYNI kapta durur', () => {
+    const pool = [
+      group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }]),
+      group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'y', turn: 'w' }]),
+    ];
+    render(<AltKonuWalkthrough pool={pool} />);
+
+    const prevBtn = screen.getByLabelText('Önceki konum');
+    expect(prevBtn).toHaveStyle({ borderWidth: '1.5px', fontWeight: '600' });
+    const nextBtn = screen.getByLabelText('Sonraki konum');
+    expect(nextBtn).toHaveStyle({ borderWidth: '1.5px', fontWeight: '600' });
+
+    const counter = screen.getByText('1 / 2 — Konum Havuzu 001');
+    expect(counter).toHaveStyle({ fontWeight: '600' });
+    // Sayaç, tahtanın 420px'lik kabıyla AYNI kapsayıcı içinde (sol kenar hizası).
+    const boardCapsule = document.querySelector('div[style*="max-width: 420px"]');
+    expect(boardCapsule?.contains(counter)).toBe(true);
+  });
 });

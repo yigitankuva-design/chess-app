@@ -85,4 +85,13 @@ describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08
     expect(writePendingOpenPath).toHaveBeenCalledWith({ tabId: 5, path: [200, 201, 202] });
     expect(push).toHaveBeenCalledWith('/home');
   });
+
+  it('madde 2026-08-28 (1): Geri butonundaki ok işareti kalınlaştırılmış (bold) ve büyütülmüş', async () => {
+    mockDersHierarchy();
+    render(<AltKonuPage />);
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    const backBtn = screen.getByLabelText('Geri');
+    expect(backBtn).toHaveClass('t-premium');
+    expect(backBtn).toHaveStyle({ fontWeight: '700' });
+  });
 });

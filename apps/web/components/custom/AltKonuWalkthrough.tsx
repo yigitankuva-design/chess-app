@@ -49,24 +49,6 @@ export function AltKonuWalkthrough({ pool }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs t-muted">
-          {gi + 1} / {pool.length} — Konum Havuzu {group.code ?? codes[gi]}
-        </p>
-        <div className="flex gap-2">
-          <button type="button" aria-label="Önceki konum" onClick={() => goToGroup(-1)}
-            disabled={gi === 0}
-            className="w-8 h-8 flex items-center justify-center rounded-full border border-white/15 t-muted disabled:opacity-30">
-            ‹
-          </button>
-          <button type="button" aria-label="Sonraki konum" onClick={() => goToGroup(1)}
-            disabled={gi >= pool.length - 1}
-            className="w-8 h-8 flex items-center justify-center rounded-full border border-white/15 t-muted disabled:opacity-30">
-            ›
-          </button>
-        </div>
-      </div>
-
       <div className="flex items-start justify-center gap-3">
         {group.steps.length > 1 && (
           <div
@@ -94,7 +76,32 @@ export function AltKonuWalkthrough({ pool }: Props) {
           </div>
         )}
 
-        <div style={{ maxWidth: BOARD_MAX_WIDTH, width: '100%' }}>
+        {/* Madde 2026-08-28 (3): sayaç ARTIK bu sütunun İÇİNDE — böylece
+            başlangıcı tahtanın sol kenarıyla AYNI hizada, sağa kaymış olur
+            (numaralı buton sütunu varsa ondan sonra başlar). */}
+        <div style={{ maxWidth: BOARD_MAX_WIDTH, width: '100%' }} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs t-muted" style={{ fontWeight: 600 }}>
+              {gi + 1} / {pool.length} — Konum Havuzu {group.code ?? codes[gi]}
+            </p>
+            <div className="flex gap-2">
+              {/* Madde 2026-08-28 (2): çerçeve VE ok işaretleri %50 kalınlaştırıldı
+                  (1px → 1.5px çerçeve, 400 → 600 yazı kalınlığı). */}
+              <button type="button" aria-label="Önceki konum" onClick={() => goToGroup(-1)}
+                disabled={gi === 0}
+                className="w-8 h-8 flex items-center justify-center rounded-full t-muted disabled:opacity-30"
+                style={{ borderWidth: '1.5px', borderStyle: 'solid', borderColor: 'rgba(255,255,255,0.15)', fontWeight: 600 }}>
+                ‹
+              </button>
+              <button type="button" aria-label="Sonraki konum" onClick={() => goToGroup(1)}
+                disabled={gi >= pool.length - 1}
+                className="w-8 h-8 flex items-center justify-center rounded-full t-muted disabled:opacity-30"
+                style={{ borderWidth: '1.5px', borderStyle: 'solid', borderColor: 'rgba(255,255,255,0.15)', fontWeight: 600 }}>
+                ›
+              </button>
+            </div>
+          </div>
+
           <ChessBoard fen={step.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
         </div>
       </div>
