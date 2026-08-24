@@ -29,10 +29,11 @@ export default function AltKonuPage() {
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-6">
-      <button onClick={() => router.back()} className="text-sm t-muted">← Geri</button>
-      <h1 className="text-2xl font-extrabold t-premium flex items-center gap-2">
-        <span>{section.emoji || '🎯'}</span> <span>{section.title}</span>
-      </h1>
+      {/* Madde 2026-08-25: ana sayfaya değil, sekmenin kendi sayfasına döner
+          — antrenör oradan Dersler→Düzey→Konu→Alt Konu'ya tekrar erişir. */}
+      <button onClick={() => router.push(`/custom/${tabId}`)} className="text-sm t-muted">← Geri</button>
+      {/* Madde 2026-08-25: başlığın solunda ikon/avatar YOK — sadece metin. */}
+      <h1 className="text-2xl font-extrabold t-premium">{section.title}</h1>
       {section.body && <p className="t-muted whitespace-pre-wrap text-sm">{section.body}</p>}
       {section.images.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">

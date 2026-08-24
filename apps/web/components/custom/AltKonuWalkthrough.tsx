@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { SavedPositionBoard } from '@/components/admin/SavedPositionBoard';
+import type { Square } from 'chess.js';
+import { ChessBoard } from '@/components/ChessBoard';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 import type { PoolPosition } from '@/components/admin/PositionPoolView';
 import type { BoardExercise } from '@/components/admin/ExerciseForm';
@@ -15,6 +16,10 @@ const TYPE_LABELS: Record<string, string> = {
   click_piece: 'Taşa Tıkla',
   move_piece: 'Taşı Oynat',
 };
+
+/** Madde 2026-08-25: tahta %75 büyütüldü (240px → 420px) — antrenör
+ *  öğrencilerine gösterirken daha net görünsün. */
+const BOARD_MAX_WIDTH = 420;
 
 interface WalkItem {
   code: string;
@@ -51,11 +56,19 @@ function buildWalkItems(positions: PoolPosition[], exercises: BoardExercise[]): 
 /**
  * Alt Konu'nun ayrı sayfasında (madde: 2026-08-25) kaydedilmiş konumları VE
  * Kareye Tıkla/Taşa Tıkla/Taşı Oynat sorularını SIRAYLA (kod numarasına göre)
- * gösteren gezinme — antrenör dersi anlatırken İleri/Geri ile tek tek ilerler.
+ * gösteren gezinme — antrenör dersi anlatırken Sonraki/Önceki ile tek tek
+ * ilerler. Tahta ChessBoard bileşenidir (SavedPositionBoard değil) — sağ
+ * tıkla ok/çember çizme ve notasyon gösterimi canlı maçlarla AYNI şekilde
+ * çalışsın diye (madde 4/5/6).
  */
 export function AltKonuWalkthrough({ positions, exercises }: Props) {
   const items = buildWalkItems(positions, exercises);
   const [idx, setIdx] = useState(0);
+  /** Madde 2026-08-25: bu sayfaya ÖZEL, YEREL bir tercih — BotGame/LiveGame'in
+   *  paylaşılan (localStorage) "Notasyon Verilerini Gizle" tercihiyle KARIŞMAZ
+   *  (bkz. lib/board-notation-context.tsx: "ders/bulmaca tahtaları bu tercihi
+   *  kullanmaz" — KURAL #3, mevcut maç ekranları etkilenmesin diye). */
+  const [hideNotation, setHideNotation] = useState(false);
 
   if (items.length === 0) {
     return <p className="t-muted text-sm">Henüz soru eklenmedi.</p>;
@@ -72,25 +85,49 @@ export function AltKonuWalkthrough({ positions, exercises }: Props) {
       {item.instruction && (
         <p className="text-sm font-semibold text-center">{item.instruction}</p>
       )}
-      <div className="flex justify-center">
-        <SavedPositionBoard fen={item.fen} marked={item.marked} />
+      <div className="mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH }}>
+        <ChessBoard
+          fen={item.fen}
+          highlightSquares={item.marked as Square[]}
+          hideNotation={hideNotation}
+        />
       </div>
-      {item.moves && item.moves.length > 0 && (
-        <p className="text-xs t-muted text-center">Hamleler: {item.moves.join(' ')}</p>
-      )}
       <div className="flex justify-center gap-3">
         <button type="button"
           onClick={() => setIdx((i) => Math.max(0, i - 1))}
           disabled={current === 0}
           className="px-4 py-2 rounded-lg border border-white/15 text-sm t-muted disabled:opacity-30">
-          ← Geri
+          ‹ Önceki Soru
         </button>
         <button type="button"
           onClick={() => setIdx((i) => Math.min(items.length - 1, i + 1))}
           disabled={current === items.length - 1}
           className="px-4 py-2 rounded-lg border border-white/15 text-sm t-muted disabled:opacity-30">
-          İleri →
+          Sonraki Soru ›
         </button>
+      </div>
+
+      {/* Madde 2026-08-25: İleri/Geri'nin ALTINDA notasyon alanı — canlı
+          maçlardaki "Notasyon Verilerini Gizle" ile AYNI tercih (paylaşılan
+          context, tarayıcıda kalıcı). */}
+      <div className="t-card-i p-3 w-full mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH }}>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold t-muted uppercase tracking-widest">Notasyon</p>
+          <label className="flex items-center gap-1.5 text-xs t-muted cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hideNotation}
+              onChange={() => setHideNotation((v) => !v)}
+              aria-label="Notasyon Verilerini Gizle"
+              className="h-3.5 w-3.5"
+              style={{ accentColor: 'var(--t-accent)' }}
+            />
+            Notasyon Verilerini Gizle
+          </label>
+        </div>
+        {item.moves && item.moves.length > 0 && (
+          <p className="text-sm font-mono mt-2">Hamleler: {item.moves.join(' ')}</p>
+        )}
       </div>
     </div>
   );

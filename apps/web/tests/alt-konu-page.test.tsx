@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
-const back = vi.fn();
+const push = vi.fn();
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '5', sectionId: '203' }),
-  useRouter: () => ({ back }),
+  useRouter: () => ({ push }),
 }));
 vi.mock('@/lib/customTabsApi', () => ({ getCustomTab: vi.fn() }));
 
@@ -31,8 +31,22 @@ describe('Alt Konu ayrı sayfası — madde 2026-08-25', () => {
     expect(screen.getByText('Konu açıklaması')).toBeInTheDocument();
     expect(screen.getByText('1 / 2 — Konum Havuzu 001')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('İleri →'));
+    fireEvent.click(screen.getByText('Sonraki Soru ›'));
     expect(screen.getByText('2 / 2 — Kareye Tıkla 001')).toBeInTheDocument();
+  });
+
+  it('madde 2: başlığın solunda ikon/avatar YOKTUR', async () => {
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 5, label: 'Antrenör', emoji: '🎓',
+      sections: [{
+        id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', emoji: '📘',
+        body: '', images: [], parent_id: 202, practice_positions: [], board_exercises: [],
+      }],
+    });
+    render(<AltKonuPage />);
+    const heading = await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(heading.textContent).toBe('Tahtanın Genel Özellikleri');
+    expect(screen.queryByText('📘')).not.toBeInTheDocument();
   });
 
   it('bölüm bulunamazsa hata mesajı gösterir', async () => {
@@ -49,8 +63,8 @@ describe('Alt Konu ayrı sayfası — madde 2026-08-25', () => {
     await waitFor(() => screen.getByText('Sayfa bulunamadı'));
   });
 
-  it('Geri butonu router.back() çağırır', async () => {
-    back.mockClear();
+  it('madde 1: Geri butonu ana sayfaya değil, sekmenin kendi sayfasına (/custom/5) yönlendirir', async () => {
+    push.mockClear();
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 5, label: 'Antrenör', emoji: '🎓',
       sections: [{
@@ -61,6 +75,6 @@ describe('Alt Konu ayrı sayfası — madde 2026-08-25', () => {
     render(<AltKonuPage />);
     await waitFor(() => screen.getByText('Alt Konu'));
     fireEvent.click(screen.getByText('← Geri'));
-    expect(back).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith('/custom/5');
   });
 });
