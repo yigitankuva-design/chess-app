@@ -2,6 +2,15 @@
 import { useState } from 'react';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
 import type { CustomTabSection } from '@/lib/customTabsApi';
+import { PositionPoolViewer } from './PositionPoolViewer';
+
+/** Madde 2026-08-24: admin tarafındaki NestedSectionTree ile AYNI kural —
+ *  "Antrenör/Dersler" alt sekmesi ve altındaki Düzey/Konu/Alt Konu
+ *  düğümlerinde, en derin seviye (Alt Konu, 3. derinlik) kendi alt
+ *  bölümleri yerine hocanın kaydettiği konum havuzunu gösterir — hoca
+ *  sırayla öğrencileriyle paylaşabilsin diye. */
+const DERSLER_TITLE = 'Dersler';
+const ALT_KONU_DEPTH = 3;
 
 interface Props {
   /** Sekmenin TÜM bölümleri (düz liste) — her çağrı kendi çocuklarını burada filtreler. */
@@ -13,6 +22,9 @@ interface Props {
   /** Sekmenin kart rengi — yalnızca EN ÜST seviyedeki başlıklara uygulanır
    *  (Açılış Pratiği'ndeki desenle AYNI: iç seviyeler beyaz kalır). */
   accentColor?: string;
+  /** Bu çağrı "Dersler" alt sekmesinin İÇİNDE mi? — admin tarafındaki
+   *  NestedSectionTree'deki inDersler ile AYNI mantık. */
+  inDersler?: boolean;
 }
 
 /**
@@ -22,7 +34,9 @@ interface Props {
  * Branch — dairesel ikon + kesikli dal çizgisi), salt-okunur (başlık + yazı
  * + görsel).
  */
-export function NestedSectionAccordion({ sections, parentId, depth, accentColor }: Props) {
+export function NestedSectionAccordion({
+  sections, parentId, depth, accentColor, inDersler = false,
+}: Props) {
   const [openId, setOpenId] = useState<number | null>(null);
   const children = sections
     .filter((s) => (s.parent_id ?? null) === parentId)
@@ -37,6 +51,8 @@ export function NestedSectionAccordion({ sections, parentId, depth, accentColor 
     <div className="grid gap-2.5">
       {children.map((s) => {
         const open = openId === s.id;
+        const childInDersler = inDersler || s.title === DERSLER_TITLE;
+        const isAltKonu = inDersler && depth === ALT_KONU_DEPTH;
         return (
           <div key={s.id}>
             <PathNode
@@ -59,9 +75,14 @@ export function NestedSectionAccordion({ sections, parentId, depth, accentColor 
                       ))}
                     </div>
                   )}
-                  <NestedSectionAccordion
-                    sections={sections} parentId={s.id} depth={depth + 1} accentColor={accentColor}
-                  />
+                  {isAltKonu ? (
+                    <PositionPoolViewer pool={s.practice_positions} />
+                  ) : (
+                    <NestedSectionAccordion
+                      sections={sections} parentId={s.id} depth={depth + 1}
+                      accentColor={accentColor} inDersler={childInDersler}
+                    />
+                  )}
                 </div>
               </Branch>
             )}

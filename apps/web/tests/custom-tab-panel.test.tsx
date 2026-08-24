@@ -250,4 +250,54 @@ describe('CustomTabPanel', () => {
     expect(sira[0]).toContain('🏆');
     expect(sira[1]).toContain('🏁');
   });
+
+  it('Dersler/Düzey/Konu/Alt Konu\'da kaydedilen konumlar SIRALI kod listesiyle görünür (madde: 2026-08-24)', () => {
+    const tab: CustomTabDetail = {
+      id: 5, label: 'Antrenör', emoji: '🎓',
+      sections: [
+        { id: 200, order_index: 1, title: 'Dersler', body: '', images: [], practice_positions: [], parent_id: null },
+        { id: 201, order_index: 1, title: 'Temel Düzey', body: '', images: [], practice_positions: [], parent_id: 200 },
+        { id: 202, order_index: 1, title: 'Tahta ve Taşlar', body: '', images: [], practice_positions: [], parent_id: 201 },
+        {
+          id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [], parent_id: 202,
+          practice_positions: [
+            { id: 'p1', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' },
+            { id: 'p2', fen: '8/8/8/4k3/8/8/4P3/4K3 w - - 0 1' },
+          ],
+        },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Dersler'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+
+    expect(screen.getByLabelText('Konum 001')).toBeInTheDocument();
+    expect(screen.getByLabelText('Konum 002')).toBeInTheDocument();
+    expect(screen.queryByTestId('saved-position-board')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Konum 001'));
+    expect(screen.getByTestId('saved-position-board')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Konum 001'));
+    expect(screen.queryByTestId('saved-position-board')).not.toBeInTheDocument();
+  });
+
+  it('Konu (Tahta ve Taşlar) seviyesinde hâlâ NORMAL iç içe akordiyon davranışı sürer (konum havuzu YOK)', () => {
+    const tab: CustomTabDetail = {
+      id: 5, label: 'Antrenör', emoji: '🎓',
+      sections: [
+        { id: 200, order_index: 1, title: 'Dersler', body: '', images: [], practice_positions: [], parent_id: null },
+        { id: 201, order_index: 1, title: 'Temel Düzey', body: '', images: [], practice_positions: [], parent_id: 200 },
+        { id: 202, order_index: 1, title: 'Tahta ve Taşlar', body: 'konu yazısı', images: [], practice_positions: [], parent_id: 201 },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Dersler'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    expect(screen.getByText('konu yazısı')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Konum 001/)).not.toBeInTheDocument();
+  });
 });
