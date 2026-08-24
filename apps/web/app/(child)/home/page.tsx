@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { getAthleteName } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
@@ -119,7 +119,11 @@ const PRACTICE_MODES = [
   { slug: 'test',    emoji: '📝', label: 'Kendini Test Et',    color: '#a78bfa' },
 ];
 
-const QA_STATE_KEY = 'bea_qa_state_v2';
+/** Madde 2026-08-25: sayfa yenilenince (F5) Hızlı Erişim'in görünümü
+ *  DEĞİŞMESİN diye açılım durumu sessionStorage'da tutulur. v3 — önceki
+ *  şekil (showLevels/showTemel/showEglence) tamamen farklıydı, eski
+ *  sürümden kalan veri sessizce yok sayılsın diye anahtar değişti. */
+const QA_STATE_KEY = 'bea_qa_state_v3';
 
 interface ModuleSummary { id: number; order_index: number; name: string; lessons_count: number; icon?: string }
 interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number; icon?: string | null }
@@ -170,6 +174,10 @@ export default function ChildHomePage() {
   const showPlay = openTab === 'play';
   const router = useRouter();
   const [openBot, setOpenBot] = useState(false);
+  /** Madde 2026-08-25: sessionStorage'dan geri yükleme bitene kadar açılım
+   *  durumu KAYDEDİLMEZ — yoksa geri yükleme öncesi varsayılan (kapalı) hal
+   *  kaydedilmiş halin üzerine yazar. */
+  const restored = useRef(false);
 
   const L = settings.labels;
   const orderedTabs = visibleTabsInOrder(settings);
@@ -256,12 +264,50 @@ export default function ChildHomePage() {
     }
   }, []);
 
-  // Not: Hiyerarşi durumu KASITLI olarak saklanmaz — kullanıcı her girişte
-  // akışa baştan başlar (Düzey/Oyun türü → ... ) ve tıklayarak ilerler.
-  // Eski oturumlardan kalan kayıt varsa temizlenir.
+  // Madde 2026-08-25: sayfa yenilenince (F5) Hızlı Erişim görünümü DEĞİŞMESİN
+  // — açık sekme/düzey/ders/alt konu sessionStorage'dan geri yüklenir. Önceki
+  // "her girişte baştan başlasın" kararının (2026-07-22) kasıtlı tersine
+  // çevrilmesidir — kullanıcı isteği üzerine.
   useEffect(() => {
-    try { sessionStorage.removeItem(QA_STATE_KEY); } catch { /* ignore */ }
+    try {
+      const raw = sessionStorage.getItem(QA_STATE_KEY);
+      if (raw) {
+        const st = JSON.parse(raw) as {
+          openTab?: TabKey | number | null;
+          openLevel?: number | null;
+          openLessonId?: number | null;
+          openSubtopic?: { lessonId: number; stepId: number; title: string } | null;
+          openBot?: boolean;
+        };
+        if (st.openTab !== undefined && st.openTab !== null) {
+          setOpenTab(st.openTab);
+          if (st.openTab === 'lessons') loadModules();
+          if (typeof st.openTab === 'number') {
+            getCustomTab(st.openTab).then((detail) => {
+              if (detail) setCustomTabDetails((prev) => ({ ...prev, [st.openTab as number]: detail }));
+            });
+          }
+        }
+        if (st.openLevel != null) { setOpenLevel(st.openLevel); loadLessons(st.openLevel); }
+        if (st.openLessonId != null) setOpenLessonId(st.openLessonId);
+        if (st.openSubtopic) setOpenSubtopic(st.openSubtopic);
+        if (st.openBot) setOpenBot(true);
+      }
+    } catch { /* ignore */ }
+    restored.current = true;
+    // loadModules/loadLessons stabildir (useCallback []) — bağımlılığa eklemek
+    // gereksiz yeniden çalıştırma riski taşır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!restored.current) return;
+    try {
+      sessionStorage.setItem(QA_STATE_KEY, JSON.stringify({
+        openTab, openLevel, openLessonId, openSubtopic, openBot,
+      }));
+    } catch { /* ignore */ }
+  }, [openTab, openLevel, openLessonId, openSubtopic, openBot]);
 
   function toggleLevel(levelId: number) {
     const opening = openLevel !== levelId;
