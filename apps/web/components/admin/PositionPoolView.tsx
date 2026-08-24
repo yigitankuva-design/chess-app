@@ -9,6 +9,8 @@ export interface PoolPosition {
   fen: string;
   category?: string | null;
   code?: string;
+  /** Konumun hangi oyuncular arasında oynandığı — yalnızca Kazanç Konumu'nda girilir. */
+  owner?: string | null;
 }
 
 /** Bir yatay satırda kaç kod kartı durur (kullanıcı kararı: 1-12, 13-24, …). */

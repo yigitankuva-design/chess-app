@@ -7,6 +7,8 @@ export interface PoolPosition {
   category?: string | null;
   /** Hoca'nın verdiği kalıcı numara ("001"). Eski konumlarda yok. */
   code?: string;
+  /** Konumun hangi oyuncular arasında oynandığı — yalnızca Kazanç Konumu'nda girilir. */
+  owner?: string | null;
 }
 
 /**

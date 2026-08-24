@@ -15,7 +15,7 @@ export interface CustomTabSection {
   title: string;
   body: string;
   images: string[];
-  practice_positions: { id: string; fen: string; category?: string | null }[];
+  practice_positions: { id: string; fen: string; category?: string | null; owner?: string | null }[];
   /** İkon havuzundan seçilmiş bölüm ikonu — yoksa sporcu tarafı eski
    *  varsayılana (Kazanç/Oyunsonu için 🏆/🏁, diğerleri için 🎯) düşer. */
   emoji?: string | null;
@@ -142,7 +142,7 @@ export async function updateCustomTabSection(
   sectionId: number,
   patch: {
     title?: string; body?: string; images?: string[];
-    practice_positions?: { id: string; fen: string; category?: string | null }[];
+    practice_positions?: { id: string; fen: string; category?: string | null; owner?: string | null }[];
     emoji?: string;
     position_pool?: PositionPoolEntry[];
   },

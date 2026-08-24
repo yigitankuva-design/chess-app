@@ -20,7 +20,7 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
 import {
-  PRATIK_YAP_LABEL, FIXED_SECTIONS, OYUNSONU_SECTION,
+  PRATIK_YAP_LABEL, FIXED_SECTIONS, OYUNSONU_SECTION, KAZANC_SECTION,
   isFixedSection, sectionEmoji, sortPratikSections,
 } from '@/lib/customTabs/pratikYap';
 
@@ -271,7 +271,7 @@ export default function AdminTabsPage() {
    * category: yalnızca Oyunsonu Pratiği'nde dolu gelir (5 kategori kartı).
    */
   async function savePosition(
-    tabId: number, sectionId: number, fenOverride?: string, category?: string,
+    tabId: number, sectionId: number, fenOverride?: string, category?: string, owner?: string,
   ) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
@@ -279,6 +279,7 @@ export default function AdminTabsPage() {
       id: crypto.randomUUID(),
       fen: fenOverride ?? poolFen,
       ...(category ? { category } : {}),
+      ...(owner ? { owner } : {}),
     };
     const nextPool = [...existing.practice_positions, newPos];
     const ok = await updateCustomTabSection(sectionId, { practice_positions: nextPool });
@@ -713,10 +714,11 @@ export default function AdminTabsPage() {
                                       <PositionPoolFields
                                         fen={poolFen} turn={poolTurn}
                                         onFenChange={setPoolFen} onTurnChange={setPoolTurn}
-                                        onSavePosition={(f) => savePosition(c.id, s.id, f)}
+                                        onSavePosition={(f, owner) => savePosition(c.id, s.id, f, undefined, owner)}
                                         pool={s.practice_positions}
                                         onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
                                         onUpdatePosition={(posId, next) => updatePosition(c.id, s.id, posId, next)}
+                                        showOwnerField={s.title === KAZANC_SECTION}
                                       />
                                     )}
                                   </div>

@@ -180,7 +180,9 @@ async def test_konum_havuzu_kaydedilir(client):
     r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
                            json={"practice_positions": [{"id": "p1", "fen": fen}]})
     assert r.status_code == 200
-    assert r.json()["practice_positions"] == [{"id": "p1", "fen": fen, "category": None, "code": None}]
+    assert r.json()["practice_positions"] == [
+        {"id": "p1", "fen": fen, "category": None, "code": None, "owner": None}
+    ]
 
 
 @pytest.mark.asyncio
@@ -250,7 +252,9 @@ async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client):
                        json={"practice_positions": [{"id": "p1", "fen": fen}]})
 
     detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
-    assert detail["sections"][0]["practice_positions"] == [{"id": "p1", "fen": fen, "category": None, "code": None}]
+    assert detail["sections"][0]["practice_positions"] == [
+        {"id": "p1", "fen": fen, "category": None, "code": None, "owner": None}
+    ]
 
 
 # ── Iç içe (nested) alt sekmeler — madde: 2026-08-22, "Antrenör"/"Sınıflar" ihtiyacı ──

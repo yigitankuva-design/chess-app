@@ -1562,6 +1562,8 @@ class PracticePosition(BaseModel):
     # Sporcuya ve hocaya gösterilen kalıcı numara ("001"). Eski konumlarda yok;
     # o durumda ekran tarafı sıraya göre tutarlı bir kod üretir.
     code: str | None = None
+    # Konumun hangi oyuncular arasında oynandığı — yalnızca Kazanç Konumu'nda girilir.
+    owner: str | None = None
 
 
 class PositionPoolStep(BaseModel):

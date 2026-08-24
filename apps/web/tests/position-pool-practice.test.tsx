@@ -84,3 +84,32 @@ describe('PositionPoolPractice — başlıkta kod', () => {
     expect(screen.getByText(/Pratiğe Başla/)).toBeInTheDocument();
   });
 });
+
+describe('PositionPoolPractice — Konumun Sahibi (madde 2026-08-24)', () => {
+  it('konumda owner varsa "kod - sahip" olarak kod kısmının sağında gösterilir', async () => {
+    const { LEVELS, ALL_TIMES } = await import('@/lib/play/levels');
+    render(
+      <PositionPoolPractice
+        title="Kazanç Konumunu Pratik Yap"
+        positions={[{ id: 'p1', fen: POOL[0].fen, code: '001', owner: 'Ali - Veli' }]}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white', rated: false }}
+      />,
+    );
+    expect(await screen.findByText('🎯 Kazanç Konumunu Pratik Yap')).toBeInTheDocument();
+    expect(screen.getByText('· 001')).toBeInTheDocument();
+    expect(screen.getByText('- Ali - Veli')).toBeInTheDocument();
+  });
+
+  it('owner yoksa ek metin gösterilmez', async () => {
+    const { LEVELS, ALL_TIMES } = await import('@/lib/play/levels');
+    render(
+      <PositionPoolPractice
+        title="Kazanç Konumunu Pratik Yap"
+        positions={[{ id: 'p1', fen: POOL[0].fen, code: '001' }]}
+        initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white', rated: false }}
+      />,
+    );
+    expect(await screen.findByText('· 001')).toBeInTheDocument();
+    expect(screen.queryByText(/^-/)).not.toBeInTheDocument();
+  });
+});

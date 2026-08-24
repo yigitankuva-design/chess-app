@@ -11,9 +11,12 @@ export const OPENING_ROW = { title: 'Açılış Pratiği Yap', emoji: '📖' };
 /** Konumları 5 kategoriye ayrılan alt sekmenin adı. */
 export const OYUNSONU_SECTION = 'Oyunsonu Pratiği Yap';
 
+/** Konum ekleme akışında "Konumun Sahibi" alanı yalnızca bu alt sekmede vardır. */
+export const KAZANC_SECTION = 'Kazanç Konumunu Pratik Yap';
+
 /** Her zaman var olması gereken alt sekmeler (yoksa otomatik oluşturulur). */
 export const FIXED_SECTIONS: { title: string; emoji: string }[] = [
-  { title: 'Kazanç Konumunu Pratik Yap', emoji: '🏆' },
+  { title: KAZANC_SECTION, emoji: '🏆' },
   { title: OYUNSONU_SECTION, emoji: '🏁' },
 ];
 

@@ -16,12 +16,15 @@ interface Props {
   /**
    * Konumu havuza ekler. FEN verilmezse elle dizilen konum (`fen` prop'u)
    * kaydedilir; verilirse doğrudan o FEN kaydedilir (yapıştırma dalı).
+   * `owner` yalnızca `showOwnerField` açıkken doldurulur.
    */
-  onSavePosition: (fen?: string) => void;
+  onSavePosition: (fen?: string, owner?: string) => void;
   pool: PoolPosition[];
   onDeletePosition: (id: string) => void;
   /** Havuzdaki bir konum düzenlenip yeniden kaydedildiğinde çağrılır. */
   onUpdatePosition: (id: string, next: PoolPosition) => void;
+  /** Kaydetmeden önce "Konumun Sahibi" kartını gösterir (yalnızca Kazanç Konumunu Pratik Yap). */
+  showOwnerField?: boolean;
 }
 
 /** Hangi ekleme yöntemi açık; null = henüz seçilmedi (iki kart yan yana). */
@@ -41,11 +44,14 @@ const CARD =
  */
 export function PositionPoolFields({
   fen, turn, onFenChange, onTurnChange, onSavePosition, pool, onDeletePosition, onUpdatePosition,
+  showOwnerField = false,
 }: Props) {
   const [mode, setMode] = useState<Mode>(null);
   const [fenText, setFenText] = useState('');
   /** Hoca sırayı elle değiştirdiyse burada durur; yoksa FEN'inki geçerlidir. */
   const [fenTurnOverride, setFenTurnOverride] = useState<'w' | 'b' | null>(null);
+  /** "Konumun Sahibi" — yalnızca showOwnerField açıkken kullanılır. */
+  const [ownerText, setOwnerText] = useState('');
 
   const parsed = parseFenInput(fenText);
   const fenTouched = fenText.trim().length > 0;
@@ -54,10 +60,31 @@ export function PositionPoolFields({
 
   function saveFen() {
     if (!parsed.ok) return;
-    onSavePosition(finalFen);
+    if (showOwnerField) onSavePosition(finalFen, ownerText.trim() || undefined);
+    else onSavePosition(finalFen);
     setFenText('');
     setFenTurnOverride(null);
+    setOwnerText('');
   }
+
+  function saveBoard() {
+    if (showOwnerField) onSavePosition(undefined, ownerText.trim() || undefined);
+    else onSavePosition();
+    setOwnerText('');
+  }
+
+  const ownerField = showOwnerField && (
+    <div className="space-y-1">
+      <label htmlFor="pool-owner-input" className="text-xs n-muted">Konumun Sahibi</label>
+      <input
+        id="pool-owner-input"
+        value={ownerText}
+        onChange={(e) => setOwnerText(e.target.value)}
+        placeholder="Konumun hangi oyuncular arasında oynandığını yaz"
+        className="neon-input text-sm"
+      />
+    </div>
+  );
 
   const turnBtn = (t: 'w' | 'b', label: string) => (
     <button type="button"
@@ -103,7 +130,8 @@ export function PositionPoolFields({
           <BoardEditor fen={fen} turn={turn} onChange={onFenChange} onTurnChange={onTurnChange} />
           {/* Madde 2026-08-22: kaydetmeden önce hoca konumu motora analiz ettirebilir. */}
           <PositionAnalysisPanel fen={fen} />
-          <button type="button" onClick={() => onSavePosition()}
+          {ownerField}
+          <button type="button" onClick={saveBoard}
             className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-sm transition-colors">
             Konumu Kaydet
           </button>
@@ -135,6 +163,7 @@ export function PositionPoolFields({
                 {turnBtn('b', 'Siyah')}
               </div>
               <SavedPositionBoard fen={finalFen} marked={[]} />
+              {ownerField}
             </>
           )}
 

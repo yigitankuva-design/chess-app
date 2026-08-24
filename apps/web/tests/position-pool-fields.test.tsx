@@ -97,6 +97,43 @@ describe('PositionPoolFields — FEN ile ekleme', () => {
   });
 });
 
+describe('PositionPoolFields — Konumun Sahibi (madde 2026-08-24, showOwnerField)', () => {
+  it('showOwnerField kapalıyken (varsayılan) "Konumun Sahibi" alanı YOKTUR', () => {
+    setup();
+    fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
+    expect(screen.queryByText('Konumun Sahibi')).not.toBeInTheDocument();
+  });
+
+  it('showOwnerField açıkken elle dizme akışında "Konumun Sahibi" alanı görünür ve kaydedince değeriyle birlikte çağrılır', () => {
+    const p = setup({ showOwnerField: true });
+    fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
+    expect(screen.getByText('Konumun Sahibi')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/hangi oyuncular arasında/i), {
+      target: { value: 'Ali Veli' },
+    });
+    fireEvent.click(screen.getByText('Konumu Kaydet'));
+    expect(p.onSavePosition).toHaveBeenCalledWith(undefined, 'Ali Veli');
+  });
+
+  it('showOwnerField açıkken FEN akışında da "Konumun Sahibi" alanı görünür ve kaydedince değeriyle birlikte çağrılır', () => {
+    const p = setup({ showOwnerField: true });
+    fireEvent.click(screen.getByText('FEN Ekle'));
+    fireEvent.change(screen.getByPlaceholderText(/FEN/i), { target: { value: START_FEN } });
+    fireEvent.change(screen.getByPlaceholderText(/hangi oyuncular arasında/i), {
+      target: { value: 'Zafer - Öğrenci' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'FEN Konumunu Kaydet' }));
+    expect(p.onSavePosition).toHaveBeenCalledWith(START_FEN, 'Zafer - Öğrenci');
+  });
+
+  it('showOwnerField açık ama sahip alanı boş bırakılırsa owner olmadan çağrılır', () => {
+    const p = setup({ showOwnerField: true });
+    fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
+    fireEvent.click(screen.getByText('Konumu Kaydet'));
+    expect(p.onSavePosition).toHaveBeenCalledWith(undefined, undefined);
+  });
+});
+
 describe('PositionPoolFields — havuz listesi (regresyon)', () => {
   it('havuz kartı konum sayısını gösterir (kodlar kapalı durur)', () => {
     setup({ pool: [{ id: 'p1', fen: START_FEN }, { id: 'p2', fen: START_FEN }] });

@@ -61,6 +61,7 @@ export function PositionPoolPractice({ positions, initialCriteria, title }: Prop
           <p className="font-semibold text-sm">
             🎯 {title}
             {kod && <span className="t-muted font-mono"> · {kod}</span>}
+            {current.owner && <span className="t-muted"> - {current.owner}</span>}
           </p>
         </div>
       )}
