@@ -64,3 +64,24 @@ describe('StockfishEngine.analyze (madde: 2026-08-22, "Konumu Analiz Et")', () =
     expect(result).toEqual({ bestMove: 'f7f8q', scoreCp: null, mate: 2 });
   });
 });
+
+describe('StockfishEngine.analyzeMultiPv (Analiz Et sekmesi)', () => {
+  it('her aday hamle için puan VE tam devam dizisi (pv) döner, multipv sırasına göre', async () => {
+    const eng = new StockfishEngine();
+    await eng.init();
+    const result = await eng.analyzeMultiPv('startpos', 8, 3);
+    expect(result).toEqual([
+      { moveUci: 'e2e4', scoreCp: 40, mate: null, pvUci: ['e2e4', 'e7e5'] },
+      { moveUci: 'd2d4', scoreCp: 20, mate: null, pvUci: ['d2d4', 'd7d5'] },
+      { moveUci: 'g1f3', scoreCp: -10, mate: null, pvUci: ['g1f3', 'g8f6'] },
+    ]);
+  });
+
+  it('mat skorunu satır bazında doğru parse eder', async () => {
+    vi.stubGlobal('Worker', FakeMateWorker);
+    const eng = new StockfishEngine();
+    await eng.init();
+    const result = await eng.analyzeMultiPv('startpos', 20, 1);
+    expect(result).toEqual([{ moveUci: 'f7f8q', scoreCp: null, mate: 2, pvUci: ['f7f8q'] }]);
+  });
+});

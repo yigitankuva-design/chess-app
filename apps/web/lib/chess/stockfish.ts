@@ -109,6 +109,52 @@ export class StockfishEngine {
     });
   }
 
+  /**
+   * Analiz Et sekmesi — "Son Maçlarımı İncele" / "Kendi Konumumu Analiz Et" için:
+   * MultiPV ile birden fazla aday hamleyi, HER BİRİNİN puanı (cp/mat) ve tam devam
+   * dizisiyle (pv) birlikte döner. `bestMoveCandidates`'ten farkı: sadece ilk hamle
+   * değil, puan + tüm devam hamleleri de gelir (görsel referans: lichess/chess.com
+   * tarzı 3 satırlı analiz paneli). Sonuç multipv indeksine göre sıralıdır
+   * (0. indeks = en iyi hamle).
+   */
+  async analyzeMultiPv(
+    fen: string, depth = 20, multiPv = 3,
+  ): Promise<{ moveUci: string; scoreCp: number | null; mate: number | null; pvUci: string[] }[]> {
+    return new Promise((resolve) => {
+      const candidates = new Map<number, { scoreCp: number | null; mate: number | null; pvUci: string[] }>();
+      const listener = (line: string) => {
+        if (line.startsWith('info') && line.includes(' pv ')) {
+          const pvMatch = line.match(/ pv (.+)$/);
+          if (!pvMatch) return;
+          // "multipv" alanı MultiPV=1 iken motor tarafından hiç YAZILMAYABİLİR
+          // (gerçek Stockfish'te de bazı sürümlerde olur) — yoksa 1. sıra kabul edilir.
+          const mpvMatch = line.match(/multipv (\d+)/);
+          const cpMatch = line.match(/score cp (-?\d+)/);
+          const mateMatch = line.match(/score mate (-?\d+)/);
+          candidates.set(mpvMatch ? Number(mpvMatch[1]) : 1, {
+            scoreCp: mateMatch ? null : (cpMatch ? Number(cpMatch[1]) : null),
+            mate: mateMatch ? Number(mateMatch[1]) : null,
+            pvUci: pvMatch[1].trim().split(' '),
+          });
+        } else if (line.startsWith('bestmove')) {
+          this.listeners = this.listeners.filter((l) => l !== listener);
+          this.send('setoption name MultiPV value 1');
+          const ordered = Array.from(candidates.keys())
+            .sort((a, b) => a - b)
+            .map((k) => {
+              const c = candidates.get(k)!;
+              return { moveUci: c.pvUci[0], scoreCp: c.scoreCp, mate: c.mate, pvUci: c.pvUci };
+            });
+          resolve(ordered);
+        }
+      };
+      this.listeners.push(listener);
+      this.send(`setoption name MultiPV value ${multiPv}`);
+      this.send(`position fen ${fen}`);
+      this.send(`go depth ${depth}`);
+    });
+  }
+
   destroy(): void {
     try { this.worker?.terminate(); } catch { /* ignore */ }
     this.worker = null;

@@ -1,7 +1,7 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import ChildProfile, Game, GameMove, GameType, GameStatus, GameResult
@@ -158,3 +158,63 @@ async def game_detail(
         "white_child_id": game.white_child_id, "black_child_id": game.black_child_id,
         "result": game.result.value if game.result else None,
     }
+
+
+@router.get("")
+async def list_my_games(
+    limit: int = Query(default=20, ge=1, le=50),
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde: Analiz Et sekmesi — sporcunun BITMIS maclarini (en yeniden eskiye)
+    listeler. Devam eden/iptal edilen maclar analiz icin anlamli degil, listelenmez."""
+    games = (await db.execute(
+        select(Game).where(
+            Game.status == GameStatus.finished,
+            or_(Game.white_child_id == child.id, Game.black_child_id == child.id),
+        ).order_by(Game.started_at.desc()).limit(limit)
+    )).scalars().all()
+
+    out = []
+    for game in games:
+        if game.type == GameType.bot:
+            opponent = {"type": "bot", "level": game.black_bot_level}
+        else:
+            other_id = (
+                game.black_child_id if game.white_child_id == child.id else game.white_child_id
+            )
+            other = await db.get(ChildProfile, other_id) if other_id else None
+            opponent = {"type": "human", "name": other.display_name if other else None}
+        out.append({
+            "id": game.id, "type": game.type.value,
+            "result": game.result.value if game.result else None,
+            "student_color": game.student_color,
+            "started_at": game.started_at.isoformat(),
+            "finished_at": game.finished_at.isoformat() if game.finished_at else None,
+            "opponent": opponent,
+            # Acilis pratiginden baslayan maclarda ilk konum (ply 0) standart
+            # baslangic DEGILDIR — Analiz Et ekraninin dogru gostermesi icin.
+            "start_fen": game.start_fen,
+        })
+    return out
+
+
+@router.get("/{game_id}/moves")
+async def game_moves(
+    game_id: int,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde: Analiz Et sekmesi — bir macin tam hamle listesi (ply sirasina gore),
+    sporcunun hamle hamle geri/ileri gidip motor analizi gorebilmesi icin."""
+    game = await db.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404)
+    # YETKI: game_detail ile AYNI desen — yalnizca katilimci gorebilir.
+    if child.id not in (game.white_child_id, game.black_child_id):
+        raise HTTPException(status_code=403, detail="Not your game")
+
+    moves = (await db.execute(
+        select(GameMove).where(GameMove.game_id == game_id).order_by(GameMove.ply.asc())
+    )).scalars().all()
+    return [{"ply": m.ply, "san": m.san, "fen_after": m.fen_after} for m in moves]
