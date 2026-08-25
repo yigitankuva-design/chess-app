@@ -6,18 +6,26 @@ vi.mock('@/lib/auth-storage', () => ({ getAthleteName: () => 'Test Sporcu' }));
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 
-vi.mock('@/lib/settings/settings-context', () => ({
-  useSettings: () => ({
-    settings: {
-      labels: {
-        sections: { quickAccess: 'Hızlı Erişim', lessonsPick: 'Ders Seç' },
-        features: { play: 'Maç Yap', lessons: 'Dersler', analiz: 'Analiz', eglence: 'Eğlence' },
-        icons: { play: '', lessons: '', analiz: '', eglence: '' },
+vi.mock('@/lib/settings/settings-context', async () => {
+  const { LEVELS, TIME_GROUPS } = await vi.importActual<typeof import('@/lib/play/levels')>('@/lib/play/levels');
+  return {
+    useSettings: () => ({
+      settings: {
+        labels: {
+          sections: { quickAccess: 'Hızlı Erişim', lessonsPick: 'Ders Seç' },
+          features: { play: 'Maç Yap', lessons: 'Dersler', analiz: 'Analiz', eglence: 'Eğlence' },
+          icons: { play: '', lessons: '', analiz: '', eglence: '' },
+        },
+        customTabs: [],
+        play: {
+          levels: LEVELS,
+          timeGroups: TIME_GROUPS,
+          tournamentDefaults: { roundsTotal: 4, timeControlLabel: '10+0', rated: true },
+        },
       },
-      customTabs: [],
-    },
-  }),
-}));
+    }),
+  };
+});
 
 vi.mock('@/lib/settings/defaults', () => ({ visibleTabsInOrder: () => ['play'] }));
 vi.mock('@/lib/practice/practiceApi', () => ({ fetchLessonScores: async () => null }));

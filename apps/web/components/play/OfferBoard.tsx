@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { useLobbyContext } from '@/lib/lobby/LobbyContext';
 import { offerSummary, tempoEmoji } from '@/lib/play/offers';
-import { TIME_GROUPS } from '@/lib/play/levels';
 import type { TimeControl } from '@/components/BotGame';
 import { COLOR_CHOICES } from '@/lib/play/color';
 import type { ColorChoice } from '@/lib/play/color';
 import { formatPlayerLabel } from '@/lib/play/titles';
+import { useSettings } from '@/lib/settings/settings-context';
 
 /** Teklif panosu: acik teklifleri listeler, tek dokunusla mac baslatir,
  *  uygun teklif yoksa sporcunun kendi teklifini birakmasini saglar.
@@ -14,6 +14,8 @@ import { formatPlayerLabel } from '@/lib/play/titles';
 export function OfferBoard() {
   const { offers, myOffer, notice, createOffer, cancelOffer, takeOffer } =
     useLobbyContext();
+  const { settings } = useSettings();
+  const timeGroups = settings.play.timeGroups;
   const [formOpen, setFormOpen] = useState(false);
   const [tc, setTc] = useState<{ tempo: string; item: TimeControl } | null>(null);
   const [color, setColor] = useState<ColorChoice>('random');
@@ -110,7 +112,7 @@ export function OfferBoard() {
         </button>
       ) : (
         <div className="t-card-i p-4 space-y-4">
-          {TIME_GROUPS.map((g) => (
+          {timeGroups.map((g) => (
             <div key={g.cat} className="space-y-2">
               <p className="text-xs font-semibold t-muted uppercase tracking-wide flex items-center gap-1.5">
                 <span>{g.emoji}</span> {g.cat}

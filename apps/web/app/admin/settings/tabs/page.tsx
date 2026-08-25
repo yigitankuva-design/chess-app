@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 import { useSettings } from '@/lib/settings/settings-context';
@@ -15,6 +15,7 @@ import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
 import { OpeningCategoryCards } from '@/components/admin/OpeningCategoryCards';
 import { FunActivityFields } from '@/components/admin/FunActivityFields';
+import { PlaySettingsFields } from '@/components/admin/PlaySettingsFields';
 import { NestedSectionTree } from '@/components/admin/NestedSectionTree';
 import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
@@ -91,15 +92,20 @@ export default function AdminTabsPage() {
   /** Konum havuzu düzenleme dizme alanı — açık alt sekmeye ait, geçici (kaydedilmemiş) taslak. */
   const [poolFen, setPoolFen] = useState(START_FEN);
   const [poolTurn, setPoolTurn] = useState<'w' | 'b'>('w');
+  /** Madde 2026-09-05 (2+5): Maç Yap'ın gerçek oyun ayarları (bot seviyeleri/
+   *  süre kontrolü/turnuva varsayılanları) — "⚙️ Maç Ayarları" alt bölümü
+   *  kapatılıp açıldığında en güncel hâliyle görünsün diye kaydedince yeniden çekilir. */
+  const [playSettings, setPlaySettings] = useState<AppSettingsData['play']>(DEFAULT_SETTINGS.play);
 
-  useEffect(() => {
+  const loadSettings = useCallback(() => {
     const token = getToken();
-    fetch(`${API_BASE}/admin/settings`, { headers: { Authorization: `Bearer ${token}` } })
+    return fetch(`${API_BASE}/admin/settings`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : {}))
       .then((d) => {
         const s = mergeSettings(d);
         setTabs(s.tabs);
         setIcons(s.labels.icons);
+        setPlaySettings(s.play);
         // Bozuk/eksik sırayı onar: bilinen sekmeler, eksikler sona
         const clean = (Array.isArray(s.tabOrder) ? s.tabOrder : []).filter((t): t is TabKey => ALL_TABS.includes(t as TabKey));
         setOrder([...clean, ...ALL_TABS.filter((t) => !clean.includes(t))]);
@@ -107,6 +113,8 @@ export default function AdminTabsPage() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => { loadSettings(); }, [loadSettings]);
 
   useEffect(() => {
     listCustomTabs().then(setCustomTabs);
@@ -501,6 +509,22 @@ export default function AdminTabsPage() {
                           </div>
                         );
                       })}
+
+                      <div className="rounded-lg border border-white/10 bg-white/[0.03]">
+                        <button type="button"
+                          onClick={() => setOpenPlaySub((p) => (p === 'settings' ? null : 'settings'))}
+                          aria-expanded={openPlaySub === 'settings'}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
+                          <span className="text-lg leading-none">⚙️</span>
+                          <span className="text-sm font-semibold n-text flex-1">Maç Ayarları</span>
+                          <span className="text-xs n-muted">{openPlaySub === 'settings' ? '▴' : '▾'}</span>
+                        </button>
+                        {openPlaySub === 'settings' && (
+                          <div className="px-3 pb-3">
+                            <PlaySettingsFields play={playSettings} onSaved={() => { reload(); loadSettings(); }} />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : content ? (
                     <Link href={content.href}

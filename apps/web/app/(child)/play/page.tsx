@@ -7,10 +7,10 @@ import { FriendChallenge } from '@/components/play/FriendChallenge';
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
-import { LEVELS, ALL_TIMES } from '@/lib/play/levels';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor, ColorChoice } from '@/lib/play/color';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
+import { useSettings } from '@/lib/settings/settings-context';
 import { usePresenceCount } from '@/lib/presence/PresenceContext';
 import { ActivePlayersBadge } from '@/components/play/ActivePlayersBadge';
 import { getCustomTab } from '@/lib/customTabsApi';
@@ -48,15 +48,18 @@ function PlayInner() {
   const activeCount = usePresenceCount();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { settings } = useSettings();
+  const allTimes = settings.play.timeGroups.flatMap((g) => g.items);
 
   // Hızlı Erişim patikasından (skill+tc) gelinmişse doğrudan bot maçına gir.
   // "skill" param adı tarihseldir — artık ham Stockfish skill değeri DEĞİL,
-  // LEVELS'teki düzey numarasını (1-10) taşır (10 seviyeli sisteme geçişte
-  // skill değerleri artık düzeyler arasında benzersiz olmadığı için).
+  // admin'in düzenlediği düzey listesindeki düzey numarasını (1-10) taşır
+  // (10 seviyeli sisteme geçişte skill değerleri artık düzeyler arasında
+  // benzersiz olmadığı için).
   const skillParam = searchParams.get('skill');
   const tcParam = searchParams.get('tc');
-  const quickLevel = skillParam !== null ? LEVELS.find((l) => l.level === Number(skillParam)) : undefined;
-  const quickTc = tcParam ? ALL_TIMES.find((t) => t.label === tcParam) : undefined;
+  const quickLevel = skillParam !== null ? settings.play.levels.find((l) => l.level === Number(skillParam)) : undefined;
+  const quickTc = tcParam ? allTimes.find((t) => t.label === tcParam) : undefined;
   const colorParam = searchParams.get('color');
   const quickColor: ColorChoice =
     colorParam === 'white' || colorParam === 'black' || colorParam === 'random'

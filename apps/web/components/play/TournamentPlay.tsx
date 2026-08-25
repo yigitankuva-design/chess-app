@@ -7,8 +7,8 @@ import {
 } from '@/lib/tournamentsApi';
 import type { TournamentSummary, TournamentDetail } from '@/lib/tournamentsApi';
 import { formatPlayerLabel } from '@/lib/play/titles';
-import { TIME_GROUPS } from '@/lib/play/levels';
 import type { TimeControl } from '@/components/BotGame';
+import { useSettings } from '@/lib/settings/settings-context';
 
 const STATUS_LABEL: Record<TournamentSummary['status'], string> = {
   upcoming: 'Başlamadı',
@@ -30,6 +30,9 @@ function tempoLabel(baseMs: number | null, incrementMs: number | null): string {
  *  (LiveGame) ekranında oynanır. */
 export function TournamentPlay() {
   const router = useRouter();
+  const { settings } = useSettings();
+  const timeGroups = settings.play.timeGroups;
+  const tournamentDefaults = settings.play.tournamentDefaults;
   const [list, setList] = useState<TournamentSummary[] | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
@@ -38,9 +41,20 @@ export function TournamentPlay() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
-  const [rounds, setRounds] = useState('4');
+  const [rounds, setRounds] = useState(String(tournamentDefaults.roundsTotal));
   const [tc, setTc] = useState<TimeControl | null>(null);
-  const [rated, setRated] = useState(true);
+  const [rated, setRated] = useState(tournamentDefaults.rated);
+
+  /** Oluşturma formu açılınca, admin'in belirlediği varsayılan süre önceden
+   *  seçili gelsin (tur sayısı/puanlı-puansız zaten useState başlangıcında
+   *  ayarlandı — süre listesi async yüklendiği için burada ayrıca eşleştirilir). */
+  function openCreateForm() {
+    setRounds(String(tournamentDefaults.roundsTotal));
+    setRated(tournamentDefaults.rated);
+    const defaultTc = timeGroups.flatMap((g) => g.items).find((i) => i.label === tournamentDefaults.timeControlLabel);
+    setTc(defaultTc ?? null);
+    setShowCreate(true);
+  }
 
   const refreshList = useCallback(async () => {
     setList(await listTournaments());
@@ -240,7 +254,7 @@ export function TournamentPlay() {
   return (
     <div className="space-y-3">
       {!showCreate ? (
-        <button type="button" onClick={() => setShowCreate(true)}
+        <button type="button" onClick={openCreateForm}
           className="t-btn px-4 py-2.5 text-sm w-full">
           + Turnuva Oluştur
         </button>
@@ -259,7 +273,7 @@ export function TournamentPlay() {
           </div>
           <div className="space-y-3">
             <p className="text-xs t-muted uppercase tracking-wide">Tempo ve Süre</p>
-            {TIME_GROUPS.map((g) => (
+            {timeGroups.map((g) => (
               <div key={g.cat} className="space-y-1.5">
                 <p className="text-xs t-muted flex items-center gap-1.5">
                   <span>{g.emoji}</span> {g.cat}

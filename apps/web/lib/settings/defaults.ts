@@ -1,5 +1,14 @@
 // Sporcu paneli global ayarları — tip + varsayılanlar + derin birleştirme.
 // Sunucudan gelen ayar eksik/boşsa bu varsayılanlar (bugünkü görünüm) kullanılır (fail-safe).
+import { LEVELS, TIME_GROUPS } from '@/lib/play/levels';
+import type { PlayLevel } from '@/lib/play/levels';
+import type { TimeControl } from '@/components/BotGame';
+
+export interface PlayTimeGroup {
+  cat: string;
+  emoji: string;
+  items: TimeControl[];
+}
 
 export interface AppSettingsData {
   labels: {
@@ -21,6 +30,19 @@ export interface AppSettingsData {
     darkSquare: string;
     pieces: Record<string, string>;      // wK..bP → data-URI; yoksa gömülü SVG
   };
+  /**
+   * Madde 2026-09-05 (2+5): Maç Yap ayarları admin'den düzenlenebilir.
+   * `levels` 10 SABİT eleman sayısında kalır (Kolay/Orta/Zor grupları
+   * [0]/[4]/[9] indekslerine bağlı) — admin yalnızca skill/depth/blunderChance
+   * düzenler, eleman ekleyip çıkaramaz. `timeGroups`'un 3 kategorisi
+   * (Yıldırım/Hızlı/Klasik) SABİT kalır, admin yalnızca içindeki süre
+   * seçeneklerini (item) ekleyip/kaldırıp/düzenleyebilir.
+   */
+  play: {
+    levels: PlayLevel[];
+    timeGroups: PlayTimeGroup[];
+    tournamentDefaults: { roundsTotal: number; timeControlLabel: string; rated: boolean };
+  };
 }
 
 export type TabKey = 'play' | 'lessons' | 'analiz' | 'eglence';
@@ -41,6 +63,11 @@ export const DEFAULT_SETTINGS: AppSettingsData = {
     lightSquare: '#eef0fb',
     darkSquare: '#c3c6ee',
     pieces: {},
+  },
+  play: {
+    levels: LEVELS.map((l) => ({ ...l })),
+    timeGroups: TIME_GROUPS.map((g) => ({ ...g, items: g.items.map((i) => ({ ...i })) })),
+    tournamentDefaults: { roundsTotal: 4, timeControlLabel: '10+0', rated: true },
   },
 };
 

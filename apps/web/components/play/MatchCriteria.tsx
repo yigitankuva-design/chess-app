@@ -1,10 +1,10 @@
 'use client';
 import { useState } from 'react';
-import { LEVELS, LEVEL_GROUPS, TIME_GROUPS } from '@/lib/play/levels';
 import type { PlayLevel } from '@/lib/play/levels';
 import { COLOR_CHOICES } from '@/lib/play/color';
 import type { ColorChoice } from '@/lib/play/color';
 import type { TimeControl } from '@/components/BotGame';
+import { useSettings } from '@/lib/settings/settings-context';
 
 export interface MatchCriteriaValue {
   level: PlayLevel;
@@ -56,8 +56,19 @@ export function MatchCriteria({
   onStart, startLabel, showLevel = true, simplifiedLevels = false, showColor = true,
   showRatedMode = false,
 }: Props) {
+  const { settings } = useSettings();
+  const levels = settings.play.levels;
+  const timeGroups = settings.play.timeGroups;
+  /** Madde 2026-08-18/19: Pratik Yap'ta 10 düzey yerine 3 gruplu (Kolay/Orta/
+   *  Zor) seçim — admin'in düzenlediği listeden AYNI sabit indekslerle türetilir. */
+  const levelGroups = [
+    { label: 'Kolay', level: levels[0] },
+    { label: 'Orta', level: levels[4] },
+    { label: 'Zor', level: levels[9] },
+  ];
+
   /**
-   * null = HENÜZ SEÇİLMEDİ. Varsayılan LEVELS[0] verilseydi 1. adım daha
+   * null = HENÜZ SEÇİLMEDİ. Varsayılan levels[0] verilseydi 1. adım daha
    * başlarken tamamlanmış sayılır ve sıralı kilit işlevsiz kalırdı.
    */
   const [level, setLevel] = useState<PlayLevel | null>(null);
@@ -68,7 +79,7 @@ export function MatchCriteria({
   // Düzey gösterilmiyorsa o adım kendiliğinden tamam sayılır.
   const levelDone = !showLevel || level !== null;
   const tempoDone = levelDone && tc !== null;
-  const effectiveLevel = level ?? LEVELS[0];
+  const effectiveLevel = level ?? levels[0];
 
   let step = 1;
   const levelStep = showLevel ? step++ : null;
@@ -96,7 +107,7 @@ export function MatchCriteria({
             {levelStep}. Düzey Seç
           </p>
           <div className="grid grid-cols-3 gap-2">
-            {LEVEL_GROUPS.map((g) => {
+            {levelGroups.map((g) => {
               const active = level?.level === g.level.level;
               return (
                 <button key={g.label} type="button" onClick={() => setLevel(g.level)}
@@ -121,7 +132,7 @@ export function MatchCriteria({
             {levelStep}. Düzey Seç <span className="normal-case">(1 en kolay · 10 en zor)</span>
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {LEVELS.map((l) => {
+            {levels.map((l) => {
               const active = level?.level === l.level;
               return (
                 <button key={l.level} type="button" onClick={() => setLevel(l)}
@@ -148,7 +159,7 @@ export function MatchCriteria({
         <p className="text-xs font-semibold t-muted uppercase tracking-wide">
           {tempoStep}. Tempo ve Süre Seç
         </p>
-        {TIME_GROUPS.map((g) => (
+        {timeGroups.map((g) => (
           <div key={g.cat} className="space-y-2">
             <p className="text-xs font-semibold t-muted uppercase tracking-wide flex items-center gap-1.5">
               <span>{g.emoji}</span> {g.cat}
