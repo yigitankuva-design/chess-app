@@ -1,0 +1,164 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { toTurkishSan } from '@/lib/chess/analysisFormat';
+
+export interface NotationMove {
+  ply: number;
+  san: string;
+  fenAfter: string;
+}
+
+interface Props {
+  moves: NotationMove[];
+  /** Verilirse aktif hamle vurgulanır ve tıklanabilir olur (Maçlarımın Analizi). */
+  currentPly?: number;
+  onSelectPly?: (ply: number) => void;
+  hideNotation: boolean;
+  onToggleHideNotation: () => void;
+  /** Madde 2026-09-05 (3): sağ tık menüsündeki "Bu Hamleden Sonrasını Sil". */
+  onDeleteAfter?: (ply: number) => void;
+}
+
+interface MovePair {
+  moveNumber: number;
+  white?: NotationMove;
+  black?: NotationMove;
+}
+
+function buildPairs(moves: NotationMove[]): MovePair[] {
+  const pairs: MovePair[] = [];
+  moves.forEach((m) => {
+    const moveNumber = Math.ceil(m.ply / 2);
+    let pair = pairs.find((p) => p.moveNumber === moveNumber);
+    if (!pair) { pair = { moveNumber }; pairs.push(pair); }
+    if (m.ply % 2 === 1) pair.white = m; else pair.black = m;
+  });
+  return pairs;
+}
+
+interface MenuState {
+  x: number;
+  y: number;
+  move: NotationMove;
+}
+
+/**
+ * Analiz Et sekmesi — madde 2026-09-05 (4): "Hamleler" kartı, kullanıcının
+ * gönderdiği görsele göre tasarlandı — başlık + "Notasyon Verilerini Gizle"
+ * onay kutusu üstte (ayırıcı çizgiyle), altında 3 TAM hamle/satır sabit
+ * genişlikte grid, her hücre "N. beyaz - siyah" biçiminde (siyah henüz
+ * oynanmadıysa sondaki "-" yine de görünür). Maçlarımın Analizi ve Yeni
+ * Analiz'de AYNI tasarım kullanılır.
+ *
+ * Madde (3): bir hamleye SAĞ TIKLAYINCA "FEN Kopyala" / "Bu Hamleden
+ * Sonrasını Sil" seçenekli bir menü açılır.
+ */
+export function NotationCard({
+  moves, currentPly, onSelectPly, hideNotation, onToggleHideNotation, onDeleteAfter,
+}: Props) {
+  const [menu, setMenu] = useState<MenuState | null>(null);
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    window.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [menu]);
+
+  function openMenu(e: React.MouseEvent, move: NotationMove) {
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, move });
+  }
+
+  async function copyFen() {
+    const m = menu?.move;
+    setMenu(null);
+    if (!m) return;
+    try {
+      await navigator.clipboard.writeText(m.fenAfter);
+    } catch {
+      /* pano erişimi yoksa sessizce yoksay — kritik olmayan bir kolaylık. */
+    }
+  }
+
+  function deleteAfter() {
+    const m = menu?.move;
+    setMenu(null);
+    if (m) onDeleteAfter?.(m.ply);
+  }
+
+  const pairs = buildPairs(moves);
+  const clickable = !!onSelectPly;
+
+  const moveCell = (m: NotationMove) => {
+    const active = currentPly === m.ply;
+    const label = toTurkishSan(m.san);
+    if (!clickable) {
+      return (
+        <span className="px-1" onContextMenu={(e) => openMenu(e, m)}>{label}</span>
+      );
+    }
+    return (
+      <button type="button" onClick={() => onSelectPly!(m.ply)} onContextMenu={(e) => openMenu(e, m)}
+        className="rounded px-1" style={{ background: active ? 'rgba(34,211,238,0.25)' : undefined }}>
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div className="rounded-xl border-2 border-white/20 p-3">
+      <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-white/15">
+        <p className="font-bold text-sm t-premium">Hamleler</p>
+        <label className="flex items-center gap-1.5 text-xs t-muted cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={hideNotation}
+            onChange={onToggleHideNotation}
+            aria-label="Notasyon Verilerini Gizle"
+            className="h-3.5 w-3.5"
+            style={{ accentColor: 'var(--t-accent)' }}
+          />
+          Notasyon Verilerini Gizle
+        </label>
+      </div>
+
+      {moves.length === 0 ? (
+        <p className="text-xs t-muted">Henüz hamle yok.</p>
+      ) : (
+        <div className="grid gap-x-2 gap-y-1.5 text-sm font-mono"
+          style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          {pairs.map((p) => (
+            <div key={p.moveNumber} className="whitespace-nowrap overflow-hidden text-ellipsis">
+              <span className="t-muted">{p.moveNumber}.</span>{' '}
+              {p.white && moveCell(p.white)}
+              {' - '}
+              {p.black && moveCell(p.black)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {menu && (
+        <div
+          className="fixed z-50 rounded-lg border border-white/20 py-1 t-card-i"
+          style={{ left: menu.x, top: menu.y, minWidth: 190 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button type="button" onClick={copyFen}
+            className="block w-full text-left px-3 py-2 text-xs hover:bg-white/10 transition-colors">
+            FEN Kopyala
+          </button>
+          <button type="button" onClick={deleteAfter}
+            className="block w-full text-left px-3 py-2 text-xs text-rose-300 hover:bg-white/10 transition-colors">
+            Bu Hamleden Sonrasını Sil
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

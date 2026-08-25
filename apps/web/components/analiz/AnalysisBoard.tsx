@@ -30,6 +30,11 @@ interface Props {
    *  oynatabilir — verilirse tahta tıklanabilir/sürüklenebilir olur. */
   interactive?: boolean;
   onPieceDrop?: (from: Square, to: Square) => boolean;
+  /** Madde 2026-09-05 (2): fare tekerleğiyle hamle geçmişinde ileri/geri gidilir. */
+  onWheelStep?: (delta: 1 | -1) => void;
+  /** Madde 2026-09-05 (4): "Notasyon Verilerini Gizle" ile tahtanın kare
+   *  koordinat etiketleri gizlenir (hamle verisi ETKİLENMEZ). */
+  hideNotation?: boolean;
 }
 
 /**
@@ -40,7 +45,9 @@ interface Props {
  * "otomatik/elle" anahtarı YOK, çağıran taraf ne zaman bu bileşeni monte
  * edeceğine/fen'i değiştireceğine karar vererek tetikleme şeklini belirler.
  */
-export function AnalysisBoard({ fen, boardOrientation = 'white', interactive = false, onPieceDrop }: Props) {
+export function AnalysisBoard({
+  fen, boardOrientation = 'white', interactive = false, onPieceDrop, onWheelStep, hideNotation = false,
+}: Props) {
   const engineRef = useRef<StockfishEngine | null>(null);
   const requestIdRef = useRef(0);
   const [lines, setLines] = useState<CandidateLine[]>([]);
@@ -91,7 +98,8 @@ export function AnalysisBoard({ fen, boardOrientation = 'white', interactive = f
         <div style={{ width: '100%' }}>
           <ChessBoard fen={fen} highlightSquares={[] as Square[]}
             boardOrientation={boardOrientation}
-            interactive={interactive} onPieceDrop={onPieceDrop} />
+            interactive={interactive} onPieceDrop={onPieceDrop}
+            onWheelStep={onWheelStep} hideNotation={hideNotation} />
         </div>
       </div>
       <div style={{ maxWidth: ANALYSIS_BOARD_MAX_WIDTH }}>

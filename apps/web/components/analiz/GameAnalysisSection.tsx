@@ -22,6 +22,7 @@ export function GameAnalysisSection() {
   const [moves, setMoves] = useState<GameMoveDto[]>([]);
   const [ply, setPly] = useState(0);
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
+  const [hideNotation, setHideNotation] = useState(false);
 
   useEffect(() => {
     listMyGames().then((g) => { setGames(g); setLoading(false); });
@@ -41,6 +42,20 @@ export function GameAnalysisSection() {
   const baseFen = selectedGame.start_fen ?? START_FEN;
   const fen = ply === 0 ? baseFen : (moves[ply - 1]?.fen_after ?? baseFen);
 
+  /** Madde 2026-09-05 (2): tahta üzerinde fare tekerleği ile hamle geçmişinde
+   *  ileri/geri gidilir — 0..moves.length arasında sınırlanır. */
+  function handleWheelStep(delta: 1 | -1) {
+    setPly((p) => Math.max(0, Math.min(moves.length, p + delta)));
+  }
+
+  /** Madde 2026-09-05 (3): sağ tık menüsündeki "Bu Hamleden Sonrasını Sil" —
+   *  kullanıcı kararıyla YALNIZCA bu analiz oturumunda geçici bir kırpma;
+   *  sporcunun kayıtlı maçı DEĞİŞMEZ (backend'e hiçbir istek atılmaz). */
+  function handleDeleteAfter(afterPly: number) {
+    setMoves((prev) => prev.filter((m) => m.ply <= afterPly));
+    setPly((p) => Math.min(p, afterPly));
+  }
+
   return (
     <div className="space-y-3">
       {/* Madde 2026-09-03 (4): ortalanmış (hafif sağa kaymış), okusuz, %20
@@ -54,9 +69,13 @@ export function GameAnalysisSection() {
           Maç listesine dön
         </button>
       </div>
-      <AnalysisBoard fen={fen} boardOrientation={orientation} />
+      <AnalysisBoard fen={fen} boardOrientation={orientation}
+        onWheelStep={handleWheelStep} hideNotation={hideNotation} />
       <GameMoveList moves={moves} currentPly={ply} onSelectPly={setPly}
-        onFlipBoard={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))} />
+        onFlipBoard={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
+        hideNotation={hideNotation} onToggleHideNotation={() => setHideNotation((v) => !v)}
+        onDeleteAfter={handleDeleteAfter}
+      />
     </div>
   );
 }

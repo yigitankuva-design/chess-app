@@ -3,14 +3,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/components/ChessBoard', () => ({
   ChessBoard: ({
-    fen, boardOrientation, interactive, onPieceDrop,
+    fen, boardOrientation, interactive, onPieceDrop, onWheelStep, hideNotation,
   }: {
     fen: string; boardOrientation?: string; interactive?: boolean;
     onPieceDrop?: (from: string, to: string) => boolean;
+    onWheelStep?: (delta: 1 | -1) => void; hideNotation?: boolean;
   }) => (
     <div data-testid="board" data-fen={fen} data-orientation={boardOrientation}
       data-interactive={interactive ? 'true' : 'false'}
-      onClick={() => onPieceDrop?.('e2', 'e4')} />
+      data-hide-notation={hideNotation ? 'true' : 'false'}
+      onClick={() => onPieceDrop?.('e2', 'e4')}>
+      <button type="button" data-testid="wheel-forward" onClick={() => onWheelStep?.(1)} />
+    </div>
   ),
 }));
 
@@ -124,6 +128,26 @@ describe('AnalysisBoard — interactive/onPieceDrop (madde 2026-09-02, "Yeni Ana
     render(<AnalysisBoard fen={FEN1} interactive onPieceDrop={onPieceDrop} />);
     fireEvent.click(screen.getByTestId('board'));
     expect(onPieceDrop).toHaveBeenCalledWith('e2', 'e4');
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
+  });
+});
+
+describe('AnalysisBoard — onWheelStep/hideNotation (madde 2026-09-05 (2)(4))', () => {
+  it('onWheelStep ChessBoard\'a aktarılır ve çağrılabilir', async () => {
+    analyzeMultiPv.mockResolvedValue([]);
+    const onWheelStep = vi.fn();
+    render(<AnalysisBoard fen={FEN1} onWheelStep={onWheelStep} />);
+    fireEvent.click(screen.getByTestId('wheel-forward'));
+    expect(onWheelStep).toHaveBeenCalledWith(1);
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
+  });
+
+  it('hideNotation varsayılan olarak false, verilince ChessBoard\'a aktarılır', async () => {
+    analyzeMultiPv.mockResolvedValue([]);
+    const { rerender } = render(<AnalysisBoard fen={FEN1} />);
+    expect(screen.getByTestId('board')).toHaveAttribute('data-hide-notation', 'false');
+    rerender(<AnalysisBoard fen={FEN1} hideNotation />);
+    expect(screen.getByTestId('board')).toHaveAttribute('data-hide-notation', 'true');
     await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
   });
 });

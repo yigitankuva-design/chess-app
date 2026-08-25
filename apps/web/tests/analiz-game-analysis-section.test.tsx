@@ -2,8 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/components/analiz/AnalysisBoard', () => ({
-  AnalysisBoard: ({ fen, boardOrientation }: { fen: string; boardOrientation?: string }) => (
-    <div data-testid="analysis-board" data-fen={fen} data-orientation={boardOrientation} />
+  AnalysisBoard: ({
+    fen, boardOrientation, onWheelStep, hideNotation,
+  }: {
+    fen: string; boardOrientation?: string; onWheelStep?: (delta: 1 | -1) => void; hideNotation?: boolean;
+  }) => (
+    <div data-testid="analysis-board" data-fen={fen} data-orientation={boardOrientation}
+      data-hide-notation={hideNotation ? 'true' : 'false'}>
+      <button type="button" data-testid="wheel-forward" onClick={() => onWheelStep?.(1)} />
+      <button type="button" data-testid="wheel-back" onClick={() => onWheelStep?.(-1)} />
+    </div>
   ),
   ANALYSIS_BOARD_MAX_WIDTH: 380,
 }));
@@ -76,5 +84,73 @@ describe('GameAnalysisSection', () => {
     listMyGames.mockResolvedValue([]);
     render(<GameAnalysisSection />);
     expect(await screen.findByText('Henüz bitmiş bir maçın yok.')).toBeInTheDocument();
+  });
+});
+
+describe('GameAnalysisSection — fare tekerleği ile ileri/geri (madde 2026-09-05 (2))', () => {
+  it('tekerlek ileri hamle geçmişinde ileri gider', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board');
+
+    fireEvent.click(screen.getByTestId('wheel-forward'));
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', 'FEN_AFTER_E4');
+    fireEvent.click(screen.getByTestId('wheel-forward'));
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', 'FEN_AFTER_E5');
+  });
+
+  it('sonda tekerlek ileri gitmeye çalışınca sınırın ötesine geçmez', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board');
+
+    fireEvent.click(screen.getByTestId('wheel-forward'));
+    fireEvent.click(screen.getByTestId('wheel-forward'));
+    fireEvent.click(screen.getByTestId('wheel-forward'));
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', 'FEN_AFTER_E5');
+  });
+
+  it('tekerlek geri başlangıç konumunun gerisine geçmez', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board');
+
+    fireEvent.click(screen.getByTestId('wheel-back'));
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', START_FEN);
+  });
+});
+
+describe('GameAnalysisSection — Notasyon Verilerini Gizle (madde 2026-09-05 (4))', () => {
+  it('onToggleHideNotation, AnalysisBoard\'a hideNotation olarak yansır', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board');
+
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-hide-notation', 'false');
+    fireEvent.click(screen.getByLabelText('Notasyon Verilerini Gizle'));
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-hide-notation', 'true');
+  });
+});
+
+describe('GameAnalysisSection — "Bu Hamleden Sonrasını Sil" (madde 2026-09-05 (3), geçici/görüntü)', () => {
+  it('seçilen hamleden sonrası yerel görünümden kaldırılır', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board');
+
+    fireEvent.contextMenu(screen.getByText('e4'));
+    fireEvent.click(screen.getByText('Bu Hamleden Sonrasını Sil'));
+    expect(screen.queryByText('e5')).not.toBeInTheDocument();
+    expect(screen.getByText('e4')).toBeInTheDocument();
   });
 });

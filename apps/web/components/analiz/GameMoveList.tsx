@@ -1,5 +1,5 @@
 import type { GameMoveDto } from '@/lib/analiz/analizApi';
-import { MoveNotationGrid } from './MoveNotationGrid';
+import { NotationCard } from './NotationCard';
 
 interface Props {
   moves: GameMoveDto[];
@@ -8,6 +8,9 @@ interface Props {
   onSelectPly: (ply: number) => void;
   /** Tahtayı çevirir (madde 2026-08-30/3). */
   onFlipBoard: () => void;
+  hideNotation: boolean;
+  onToggleHideNotation: () => void;
+  onDeleteAfter: (ply: number) => void;
 }
 
 type IconType = 'flip' | 'first' | 'prev' | 'next' | 'last';
@@ -60,11 +63,12 @@ const NavBtn = ({
 );
 
 /**
- * Analiz Et sekmesi — "Son Maçlarımı İncele": oynatma kontrolleri
- * (çevir/⏮/◀/▶/⏭) + hamle numaralı SAN listesi. Bir hamleye tıklayınca o
- * pozisyona atlar.
+ * Analiz Et sekmesi — "Maçlarımın Analizi": oynatma kontrolleri
+ * (çevir/⏮/◀/▶/⏭) + "Hamleler" notasyon kartı (bkz. NotationCard.tsx).
  */
-export function GameMoveList({ moves, currentPly, onSelectPly, onFlipBoard }: Props) {
+export function GameMoveList({
+  moves, currentPly, onSelectPly, onFlipBoard, hideNotation, onToggleHideNotation, onDeleteAfter,
+}: Props) {
   const total = moves.length;
 
   return (
@@ -77,7 +81,12 @@ export function GameMoveList({ moves, currentPly, onSelectPly, onFlipBoard }: Pr
         <NavBtn label="Sona git" icon="last" onClick={() => onSelectPly(total)} disabled={currentPly === total} />
       </div>
 
-      <MoveNotationGrid moves={moves} currentPly={currentPly} onSelectPly={onSelectPly} />
+      <NotationCard
+        moves={moves.map((m) => ({ ply: m.ply, san: m.san, fenAfter: m.fen_after }))}
+        currentPly={currentPly} onSelectPly={onSelectPly}
+        hideNotation={hideNotation} onToggleHideNotation={onToggleHideNotation}
+        onDeleteAfter={onDeleteAfter}
+      />
     </div>
   );
 }
