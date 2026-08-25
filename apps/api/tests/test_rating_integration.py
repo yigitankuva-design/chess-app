@@ -119,23 +119,23 @@ async def test_athletes_tempo_verilmezse_puan_none(client, db):
 
 @pytest.mark.asyncio
 async def test_puanli_turnuva_maci_bitince_siralamaya_yansir(client, db):
-    tok, teacher_id = await _teacher(client, "rt3@t.com")
-    h = {"Authorization": f"Bearer {tok}"}
+    _, teacher_id = await _teacher(client, "rt3@t.com")
     parent_id = await _parent_id(client, "rp3@t.com")
-    created = (await client.post("/admin/tournaments", headers=h, json={
+    children = [await _add_child(db, f"S{i}", teacher_id, parent_id) for i in range(2)]
+    creator_h = {"Authorization": f"Bearer {_child_token(children[0].id)}"}
+    created = (await client.post("/tournaments", headers=creator_h, json={
         "name": "Puanlı Turnuva", "rounds_total": 1,
         "base_ms": 300_000, "increment_ms": 0, "rated": True,
     })).json()
     assert created["rated"] is True
     assert created["tempo"] == "Yıldırım"
 
-    children = [await _add_child(db, f"S{i}", teacher_id, parent_id) for i in range(2)]
     for c in children:
         r = await client.post(f"/tournaments/{created['id']}/join",
                               headers={"Authorization": f"Bearer {_child_token(c.id)}"})
         assert r.status_code == 201
 
-    start = (await client.post(f"/admin/tournaments/{created['id']}/start", headers=h)).json()
+    start = (await client.post(f"/tournaments/{created['id']}/start", headers=creator_h)).json()
     pairing_id = start["pairings_by_round"]["1"][0]["id"]
 
     r = await client.get(f"/tournaments/{created['id']}",
