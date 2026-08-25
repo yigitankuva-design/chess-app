@@ -17,6 +17,7 @@ import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayers
 import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
+import { AnalizPanel } from '@/components/analiz/AnalizPanel';
 import { raised, pressed, PathNode, Branch, SH_LIGHT, VerticalDivider } from '@/components/ui/neumorphic';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -172,6 +173,9 @@ export default function ChildHomePage() {
 
   // Maç Yap: Oyun türü → Zorluk → Tempo → Süre
   const showPlay = openTab === 'play';
+  // Madde 2026-09-01 (1): Analiz Et artık AYRI SAYFAYA gitmez, diğer sekmelerle
+  // (Maç Yap/Dersler/Eğlence) AYNI akordiyona katılır.
+  const showAnaliz = openTab === 'analiz';
   const router = useRouter();
   const [openBot, setOpenBot] = useState(false);
   /** Madde 2026-08-25: sessionStorage'dan geri yükleme bitene kadar açılım
@@ -395,15 +399,11 @@ export default function ChildHomePage() {
           {orderedTabs.map((key) => {
             // Madde 1 (2026-08-19): admin ikon havuzundan seçtiyse (L.icons.X)
             // o kullanılır; seçmediyse eski sabit çizgi-ikona düşer.
-            if (key === 'analiz') {
-              return (
-                <FeatureTab key={key} icon={L.icons.analiz || <IconAnalyst s={45} />} label={L.features.analiz}
-                  color={FEATURE_COLORS.analiz} href="/analiz" ledOn={openTab === null} />
-              );
-            }
             const meta = {
               play:    { icon: L.icons.play || <IconSwords s={45} />, label: L.features.play,    color: FEATURE_COLORS.play },
               lessons: { icon: L.icons.lessons || <IconBook s={45} />, label: L.features.lessons, color: FEATURE_COLORS.lessons },
+              // Madde 2026-09-01 (1): Analiz Et diğer sekmelerle AYNI akordiyona katılır.
+              analiz:  { icon: L.icons.analiz || <IconAnalyst s={45} />, label: L.features.analiz, color: FEATURE_COLORS.analiz },
               eglence: { icon: L.icons.eglence || <IconPuzzle s={45} />, label: L.features.eglence, color: FEATURE_COLORS.eglence },
             }[key];
             return (
@@ -446,6 +446,14 @@ export default function ChildHomePage() {
             </div>
           );
         })()}
+
+        {/* Madde 2026-09-01 (1): Analiz Et'in alt sekmeleri (Yeni Analiz /
+            Maçlarımın Analizi / Konum Analizi) AYNI EKRANDA. */}
+        {showAnaliz && (
+          <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
+            <AnalizPanel />
+          </div>
+        )}
 
         {/* Maç Yap patikası — Oyun türü › Zorluk › Tempo › Süre */}
         {showPlay && (

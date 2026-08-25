@@ -24,7 +24,7 @@ function rakipAdi(game: GameSummary): string {
 
 /**
  * Analiz Et sekmesi — "Son Maçlarımı İncele": bitmiş maçların listesi.
- * Bir karta tıklayınca o maç incelemeye açılır (bkz. app/(child)/analiz/page.tsx).
+ * Bir karta tıklayınca o maç incelemeye açılır (bkz. components/analiz/GameAnalysisSection.tsx).
  */
 export function GameHistoryList({ games, loading, onSelect }: Props) {
   if (loading) return <p className="text-sm t-muted">Yükleniyor…</p>;
