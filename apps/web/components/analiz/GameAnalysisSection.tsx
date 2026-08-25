@@ -4,7 +4,7 @@ import { listMyGames, getGameMoves } from '@/lib/analiz/analizApi';
 import type { GameSummary, GameMoveDto } from '@/lib/analiz/analizApi';
 import { GameHistoryList } from './GameHistoryList';
 import { GameMoveList } from './GameMoveList';
-import { AnalysisBoard } from './AnalysisBoard';
+import { AnalysisBoard, ANALYSIS_BOARD_MAX_WIDTH } from './AnalysisBoard';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -43,9 +43,17 @@ export function GameAnalysisSection() {
 
   return (
     <div className="space-y-3">
-      <button type="button" onClick={() => setSelectedGame(null)} className="text-xs t-muted">
-        ← Maç listesine dön
-      </button>
+      {/* Madde 2026-09-03 (4): ortalanmış (hafif sağa kaymış), okusuz, %20
+          büyütülmüş (0.75rem → 0.9rem) — tıklanınca listeye döner. */}
+      <div className="flex justify-center" style={{ maxWidth: ANALYSIS_BOARD_MAX_WIDTH }}>
+        <button type="button" onClick={() => setSelectedGame(null)} className="t-muted"
+          style={{
+            fontSize: '0.9rem', marginLeft: '12%',
+            background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+          }}>
+          Maç listesine dön
+        </button>
+      </div>
       <AnalysisBoard fen={fen} boardOrientation={orientation} />
       <GameMoveList moves={moves} currentPly={ply} onSelectPly={setPly}
         onFlipBoard={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))} />

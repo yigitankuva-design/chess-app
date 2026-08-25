@@ -5,6 +5,7 @@ vi.mock('@/components/analiz/AnalysisBoard', () => ({
   AnalysisBoard: ({ fen, boardOrientation }: { fen: string; boardOrientation?: string }) => (
     <div data-testid="analysis-board" data-fen={fen} data-orientation={boardOrientation} />
   ),
+  ANALYSIS_BOARD_MAX_WIDTH: 380,
 }));
 
 const listMyGames = vi.fn();
@@ -58,14 +59,15 @@ describe('GameAnalysisSection', () => {
     expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', 'FEN_AFTER_E5');
   });
 
-  it('"Maç listesine dön" ile listeye geri döner', async () => {
+  it('"Maç listesine dön" ile listeye geri döner (madde 2026-09-03 (4): ok işareti YOK)', async () => {
     listMyGames.mockResolvedValue(GAMES);
     getGameMoves.mockResolvedValue(MOVES);
     render(<GameAnalysisSection />);
     fireEvent.click(await screen.findByText('Bot · Düzey 4'));
     await screen.findByTestId('analysis-board');
 
-    fireEvent.click(screen.getByText('← Maç listesine dön'));
+    expect(screen.queryByText(/←/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Maç listesine dön'));
     expect(await screen.findByText('Bot · Düzey 4')).toBeInTheDocument();
     expect(screen.queryByTestId('analysis-board')).not.toBeInTheDocument();
   });

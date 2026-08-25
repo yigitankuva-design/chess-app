@@ -28,7 +28,6 @@ export function CandidateLines({ lines, depth, loading = false }: Props) {
     <div className="space-y-1.5">
       <p className="text-xs t-muted flex items-center gap-1">
         🔍 Stockfish · Derinlik {depth}
-        {loading && <span className="animate-pulse">— analiz ediliyor…</span>}
       </p>
       <div className="space-y-1">
         {!loading && lines.length === 0 && (

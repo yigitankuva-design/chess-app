@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BoardEditor, START_FEN } from '@/components/BoardEditor';
 import { parseFenInput, withTurn } from '@/lib/chess/fenInput';
-import { AnalysisBoard } from './AnalysisBoard';
 
 type Mode = 'board' | 'fen' | null;
 
@@ -11,18 +11,21 @@ const CARD = 'flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border text-le
 /**
  * Analiz Et sekmesi — "Kendi Konumumu Analiz Et": admin'in "Konumu Analiz Et"
  * giriş desenini (bkz. components/admin/PositionPoolFields.tsx) sporcu
- * tarafına taşır — Konum Dizerek Ekle / FEN Ekle iki kartı, ama sonuç 3 aday
- * hamleli AnalysisBoard'tur. Analiz ELLE tetiklenir ("🔍 Analiz Et" butonu) —
- * tek statik pozisyon olduğu için otomatik yeniden hesaplayacak bir tetikleyici
- * (hamle ilerlemesi gibi) yok.
+ * tarafına taşır — Konum Dizerek Ekle / FEN Ekle iki kartı. Madde 2026-09-03
+ * (7): "Analiz Et" artık AYRI BİR SAYFAYA (/analiz/konum/sonuc) yönlendirir —
+ * konum ekleme ve analiz sonucu AYNI sayfada değil.
  */
 export function CustomPositionAnalysis() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>(null);
   const [fen, setFen] = useState(START_FEN);
   const [turn, setTurn] = useState<'w' | 'b'>('w');
   const [fenText, setFenText] = useState('');
   const [fenTurnOverride, setFenTurnOverride] = useState<'w' | 'b' | null>(null);
-  const [analyzedFen, setAnalyzedFen] = useState<string | null>(null);
+
+  function goAnalyze(targetFen: string) {
+    router.push(`/analiz/konum/sonuc?fen=${encodeURIComponent(targetFen)}`);
+  }
 
   const parsed = parseFenInput(fenText);
   const fenTouched = fenText.trim().length > 0;
@@ -44,7 +47,7 @@ export function CustomPositionAnalysis() {
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
-        <button type="button" onClick={() => { setMode(mode === 'board' ? null : 'board'); setAnalyzedFen(null); }}
+        <button type="button" onClick={() => setMode(mode === 'board' ? null : 'board')}
           className={CARD}
           style={{
             borderColor: mode === 'board' ? 'rgb(34 211 238)' : 'rgba(255,255,255,0.15)',
@@ -53,7 +56,7 @@ export function CustomPositionAnalysis() {
           <span className="text-xl leading-none">🧩</span>
           <span className="text-sm font-semibold">Konum Dizerek Ekle</span>
         </button>
-        <button type="button" onClick={() => { setMode(mode === 'fen' ? null : 'fen'); setAnalyzedFen(null); }}
+        <button type="button" onClick={() => setMode(mode === 'fen' ? null : 'fen')}
           className={CARD}
           style={{
             borderColor: mode === 'fen' ? 'rgb(34 211 238)' : 'rgba(255,255,255,0.15)',
@@ -67,7 +70,7 @@ export function CustomPositionAnalysis() {
       {mode === 'board' && (
         <div className="space-y-3">
           <BoardEditor fen={fen} turn={turn} onChange={setFen} onTurnChange={setTurn} />
-          <button type="button" onClick={() => setAnalyzedFen(withTurn(fen, turn))}
+          <button type="button" onClick={() => goAnalyze(withTurn(fen, turn))}
             className="px-4 py-2 rounded-lg bg-violet-400/15 text-violet-200 border border-violet-400/50 hover:bg-violet-400/25 text-sm transition-colors">
             🔍 Analiz Et
           </button>
@@ -99,16 +102,10 @@ export function CustomPositionAnalysis() {
             </div>
           )}
 
-          <button type="button" disabled={!parsed.ok} onClick={() => setAnalyzedFen(finalFen)}
+          <button type="button" disabled={!parsed.ok} onClick={() => goAnalyze(finalFen)}
             className="px-4 py-2 rounded-lg bg-violet-400/15 text-violet-200 border border-violet-400/50 hover:bg-violet-400/25 disabled:opacity-40 text-sm transition-colors">
             🔍 Analiz Et
           </button>
-        </div>
-      )}
-
-      {analyzedFen && (
-        <div className="pt-2 border-t border-white/10">
-          <AnalysisBoard fen={analyzedFen} />
         </div>
       )}
     </div>

@@ -26,9 +26,11 @@ describe('CandidateLines', () => {
     expect(screen.getByText('#2')).toBeInTheDocument();
   });
 
-  it('yükleniyor durumunda mesaj gösterir', () => {
+  it('madde 2026-09-03 (2): "analiz ediliyor" ifadesi ARTIK gösterilmez (yüklenirken de)', () => {
     render(<CandidateLines depth={20} lines={[]} loading />);
-    expect(screen.getByText(/analiz ediliyor/)).toBeInTheDocument();
+    expect(screen.queryByText(/analiz ediliyor/)).not.toBeInTheDocument();
+    // Yüklenirken "Analiz alınamadı." da gösterilmez (henüz sonuç bekleniyor).
+    expect(screen.queryByText('Analiz alınamadı.')).not.toBeInTheDocument();
   });
 
   it('boş ve yüklenmiyor durumunda "analiz alınamadı" gösterir', () => {

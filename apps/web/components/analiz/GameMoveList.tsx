@@ -1,5 +1,5 @@
 import type { GameMoveDto } from '@/lib/analiz/analizApi';
-import { toTurkishSan } from '@/lib/chess/analysisFormat';
+import { MoveNotationGrid } from './MoveNotationGrid';
 
 interface Props {
   moves: GameMoveDto[];
@@ -67,14 +67,6 @@ const NavBtn = ({
 export function GameMoveList({ moves, currentPly, onSelectPly, onFlipBoard }: Props) {
   const total = moves.length;
 
-  const pairs: { moveNumber: number; white?: GameMoveDto; black?: GameMoveDto }[] = [];
-  moves.forEach((m) => {
-    const moveNumber = Math.ceil(m.ply / 2);
-    let pair = pairs.find((p) => p.moveNumber === moveNumber);
-    if (!pair) { pair = { moveNumber }; pairs.push(pair); }
-    if (m.ply % 2 === 1) pair.white = m; else pair.black = m;
-  });
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-center gap-2">
@@ -85,31 +77,7 @@ export function GameMoveList({ moves, currentPly, onSelectPly, onFlipBoard }: Pr
         <NavBtn label="Sona git" icon="last" onClick={() => onSelectPly(total)} disabled={currentPly === total} />
       </div>
 
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-mono t-card-i p-2">
-        {pairs.length === 0 && <p className="text-xs t-muted">Hamle yok.</p>}
-        {pairs.map((p) => (
-          <span key={p.moveNumber} className="whitespace-nowrap">
-            <span className="t-muted">{p.moveNumber}.</span>{' '}
-            {p.white && (
-              <button type="button" onClick={() => onSelectPly(p.white!.ply)}
-                className="rounded px-1"
-                style={{ background: currentPly === p.white.ply ? 'rgba(34,211,238,0.25)' : undefined }}>
-                {toTurkishSan(p.white.san)}
-              </button>
-            )}
-            {p.black && (
-              <>
-                {' '}
-                <button type="button" onClick={() => onSelectPly(p.black!.ply)}
-                  className="rounded px-1"
-                  style={{ background: currentPly === p.black.ply ? 'rgba(34,211,238,0.25)' : undefined }}>
-                  {toTurkishSan(p.black.san)}
-                </button>
-              </>
-            )}
-          </span>
-        ))}
-      </div>
+      <MoveNotationGrid moves={moves} currentPly={currentPly} onSelectPly={onSelectPly} />
     </div>
   );
 }

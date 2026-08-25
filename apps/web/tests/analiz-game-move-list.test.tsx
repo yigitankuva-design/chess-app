@@ -9,12 +9,11 @@ const MOVES = [
 ];
 
 describe('GameMoveList', () => {
-  it('hamleleri numaralı çiftler halinde gösterir', () => {
+  it('hamleleri numaralı 3\'lü grid içinde gösterir', () => {
     render(<GameMoveList moves={MOVES} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
-    expect(screen.getByText('e4')).toBeInTheDocument();
+    expect(screen.getByText('1. e4')).toBeInTheDocument();
     expect(screen.getByText('e5')).toBeInTheDocument();
-    expect(screen.getByText('Af3')).toBeInTheDocument();
-    expect(screen.getByText('2.')).toBeInTheDocument();
+    expect(screen.getByText('2. Af3')).toBeInTheDocument();
   });
 
   it('başta "Başa git"/"Geri" pasif, "İleri"/"Sona git" aktiftir', () => {
@@ -41,13 +40,13 @@ describe('GameMoveList', () => {
   it('bir hamleye tıklayınca o ply ile çağrılır', () => {
     const onSelectPly = vi.fn();
     render(<GameMoveList moves={MOVES} currentPly={0} onSelectPly={onSelectPly} onFlipBoard={vi.fn()} />);
-    fireEvent.click(screen.getByText('Af3'));
+    fireEvent.click(screen.getByText('2. Af3'));
     expect(onSelectPly).toHaveBeenCalledWith(3);
   });
 
   it('hamle yokken bilgi mesajı gösterir', () => {
     render(<GameMoveList moves={[]} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
-    expect(screen.getByText('Hamle yok.')).toBeInTheDocument();
+    expect(screen.getByText('Henüz hamle yok.')).toBeInTheDocument();
   });
 });
 

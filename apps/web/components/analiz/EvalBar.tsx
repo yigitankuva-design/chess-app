@@ -14,13 +14,6 @@ function whiteFraction(scoreCp: number | null, mate: number | null): number {
   return 1 / (1 + Math.pow(10, -clamped / 400));
 }
 
-function scoreLabel(scoreCp: number | null, mate: number | null): string {
-  if (mate !== null) return `M${Math.abs(mate)}`;
-  if (scoreCp === null) return '–';
-  const val = (scoreCp / 100).toFixed(1);
-  return scoreCp > 0 ? `+${val}` : val;
-}
-
 /**
  * Analiz Et sekmesi — dikey eval çubuğu (görsel referans: lichess/chess.com
  * analiz paneli). Tahtayla AYNI satırda, `align-items: stretch` ile
@@ -36,23 +29,12 @@ export function EvalBar({ scoreCp, mate }: Props) {
       aria-valuemin={0}
       aria-valuemax={100}
       className="relative flex-shrink-0 rounded-md overflow-hidden"
-      style={{ width: 22, background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.15)' }}
+      style={{ width: 22, background: '#1a1a1a', border: '2px solid rgba(34,211,238,0.6)' }}
     >
       <div
         className="absolute left-0 right-0 bottom-0 transition-all duration-300"
         style={{ height: `${whiteRatio * 100}%`, background: '#eef0f2' }}
       />
-      <div
-        className="absolute left-0 right-0 text-center font-mono"
-        style={{
-          fontSize: 9, fontWeight: 700, padding: '2px 0',
-          top: whiteRatio >= 0.5 ? undefined : 2,
-          bottom: whiteRatio >= 0.5 ? 2 : undefined,
-          color: whiteRatio >= 0.5 ? '#111' : '#eee',
-        }}
-      >
-        {scoreLabel(scoreCp, mate)}
-      </div>
     </div>
   );
 }

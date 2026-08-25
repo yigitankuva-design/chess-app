@@ -38,3 +38,16 @@ describe('FreePlayAnalysis — "Yeni Analiz" (madde 2026-09-02 (2))', () => {
     expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', START_FEN);
   });
 });
+
+describe('FreePlayAnalysis — notasyon alanı (madde 2026-09-03 (1))', () => {
+  it('başlangıçta "henüz hamle yok" gösterir', () => {
+    render(<FreePlayAnalysis />);
+    expect(screen.getByText('Henüz hamle yok.')).toBeInTheDocument();
+  });
+
+  it('hamle oynandıkça aday hamlelerin ALTINDA notasyon listesine eklenir', () => {
+    render(<FreePlayAnalysis />);
+    fireEvent.click(screen.getByTestId('drop-e2e4'));
+    expect(screen.getByText('1. e4')).toBeInTheDocument();
+  });
+});

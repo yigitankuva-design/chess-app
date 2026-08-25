@@ -7,31 +7,38 @@ describe('EvalBar', () => {
     render(<EvalBar scoreCp={0} mate={null} />);
     const meter = screen.getByRole('meter');
     expect(Number(meter.getAttribute('aria-valuenow'))).toBe(50);
-    expect(screen.getByText('0.0')).toBeInTheDocument();
   });
 
   it('beyaz avantajlıyken %50\'nin üstünde bir değer gösterir', () => {
     render(<EvalBar scoreCp={300} mate={null} />);
     const meter = screen.getByRole('meter');
     expect(Number(meter.getAttribute('aria-valuenow'))).toBeGreaterThan(50);
-    expect(screen.getByText('+3.0')).toBeInTheDocument();
   });
 
   it('siyah avantajlıyken %50\'nin altında bir değer gösterir', () => {
     render(<EvalBar scoreCp={-250} mate={null} />);
     const meter = screen.getByRole('meter');
     expect(Number(meter.getAttribute('aria-valuenow'))).toBeLessThan(50);
-    expect(screen.getByText('-2.5')).toBeInTheDocument();
   });
 
-  it('mat skorunu M ile gösterir', () => {
+  it('mat verilen tarafa göre uca yakın bir değer gösterir', () => {
     render(<EvalBar scoreCp={null} mate={3} />);
-    expect(screen.getByText('M3')).toBeInTheDocument();
+    expect(Number(screen.getByRole('meter').getAttribute('aria-valuenow'))).toBeGreaterThan(90);
   });
 
-  it('skor yoksa tire gösterir, %50 kalır', () => {
+  it('skor yoksa %50 kalır', () => {
     render(<EvalBar scoreCp={null} mate={null} />);
-    expect(screen.getByText('–')).toBeInTheDocument();
     expect(screen.getByRole('meter')).toHaveAttribute('aria-valuenow', '50');
+  });
+
+  it('madde 2026-09-03 (6): çubuğun içinde SAYISAL DEĞERLENDİRME metni YOKTUR', () => {
+    const { container } = render(<EvalBar scoreCp={320} mate={null} />);
+    expect(screen.queryByText('+3.2')).not.toBeInTheDocument();
+    expect(container.querySelector('.font-mono')).not.toBeInTheDocument();
+  });
+
+  it('madde 2026-09-03 (6): çerçeve rengi belirgin (accent renkli, 2px)', () => {
+    render(<EvalBar scoreCp={0} mate={null} />);
+    expect(screen.getByRole('meter')).toHaveStyle({ border: '2px solid rgba(34,211,238,0.6)' });
   });
 });
