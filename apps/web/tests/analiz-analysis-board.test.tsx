@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/components/ChessBoard', () => ({
-  ChessBoard: ({ fen, boardOrientation }: { fen: string; boardOrientation?: string }) => (
-    <div data-testid="board" data-fen={fen} data-orientation={boardOrientation} />
+  ChessBoard: ({
+    fen, boardOrientation, interactive, onPieceDrop,
+  }: {
+    fen: string; boardOrientation?: string; interactive?: boolean;
+    onPieceDrop?: (from: string, to: string) => boolean;
+  }) => (
+    <div data-testid="board" data-fen={fen} data-orientation={boardOrientation}
+      data-interactive={interactive ? 'true' : 'false'}
+      onClick={() => onPieceDrop?.('e2', 'e4')} />
   ),
 }));
 
@@ -92,6 +99,31 @@ describe('AnalysisBoard — boardOrientation (madde 2026-08-30/3)', () => {
     analyzeMultiPv.mockResolvedValue([]);
     render(<AnalysisBoard fen={FEN1} boardOrientation="black" />);
     expect(screen.getByTestId('board')).toHaveAttribute('data-orientation', 'black');
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
+  });
+});
+
+describe('AnalysisBoard — interactive/onPieceDrop (madde 2026-09-02, "Yeni Analiz")', () => {
+  it('varsayılan olarak interaktif DEĞİLDİR', async () => {
+    analyzeMultiPv.mockResolvedValue([]);
+    render(<AnalysisBoard fen={FEN1} />);
+    expect(screen.getByTestId('board')).toHaveAttribute('data-interactive', 'false');
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
+  });
+
+  it('interactive verilince ChessBoard\'a aktarılır', async () => {
+    analyzeMultiPv.mockResolvedValue([]);
+    render(<AnalysisBoard fen={FEN1} interactive onPieceDrop={() => true} />);
+    expect(screen.getByTestId('board')).toHaveAttribute('data-interactive', 'true');
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
+  });
+
+  it('onPieceDrop ChessBoard\'a aktarılır ve çağrılabilir', async () => {
+    analyzeMultiPv.mockResolvedValue([]);
+    const onPieceDrop = vi.fn(() => true);
+    render(<AnalysisBoard fen={FEN1} interactive onPieceDrop={onPieceDrop} />);
+    fireEvent.click(screen.getByTestId('board'));
+    expect(onPieceDrop).toHaveBeenCalledWith('e2', 'e4');
     await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
   });
 });

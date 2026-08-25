@@ -26,6 +26,10 @@ interface Props {
   fen: string;
   /** Madde 2026-08-30 (3): "Tahtayı çevir" butonuyla değiştirilir. */
   boardOrientation?: 'white' | 'black';
+  /** Madde 2026-09-02: "Yeni Analiz" sayfasında sporcu taşları serbestçe
+   *  oynatabilir — verilirse tahta tıklanabilir/sürüklenebilir olur. */
+  interactive?: boolean;
+  onPieceDrop?: (from: Square, to: Square) => boolean;
 }
 
 /**
@@ -36,7 +40,7 @@ interface Props {
  * "otomatik/elle" anahtarı YOK, çağıran taraf ne zaman bu bileşeni monte
  * edeceğine/fen'i değiştireceğine karar vererek tetikleme şeklini belirler.
  */
-export function AnalysisBoard({ fen, boardOrientation = 'white' }: Props) {
+export function AnalysisBoard({ fen, boardOrientation = 'white', interactive = false, onPieceDrop }: Props) {
   const engineRef = useRef<StockfishEngine | null>(null);
   const requestIdRef = useRef(0);
   const [lines, setLines] = useState<CandidateLine[]>([]);
@@ -86,7 +90,8 @@ export function AnalysisBoard({ fen, boardOrientation = 'white' }: Props) {
         <EvalBar scoreCp={scoreCp} mate={mate} />
         <div style={{ width: '100%' }}>
           <ChessBoard fen={fen} highlightSquares={[] as Square[]}
-            boardOrientation={boardOrientation} />
+            boardOrientation={boardOrientation}
+            interactive={interactive} onPieceDrop={onPieceDrop} />
         </div>
       </div>
       <div style={{ maxWidth: ANALYSIS_BOARD_MAX_WIDTH }}>
