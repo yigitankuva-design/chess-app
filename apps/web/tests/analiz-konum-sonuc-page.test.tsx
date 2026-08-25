@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/settings/useTabGuard', () => ({ useTabGuard: vi.fn() }));
 vi.mock('@/components/analiz/AnalysisBoard', () => ({
   AnalysisBoard: ({ fen }: { fen: string }) => <div data-testid="analysis-board" data-fen={fen} />,
+  ANALYSIS_BOARD_MAX_WIDTH: 380,
 }));
 
 import KonumAnalizSonucPage from '@/app/(child)/analiz/konum/sonuc/page';

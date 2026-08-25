@@ -6,15 +6,6 @@ interface Props {
   onSelect: (game: GameSummary) => void;
 }
 
-function sonucSimgesi(game: GameSummary): string {
-  if (!game.result) return '❔';
-  if (game.result === '1/2-1/2') return '🤝';
-  if (!game.student_color) return '❔';
-  const kazandi = (game.result === '1-0' && game.student_color === 'w')
-    || (game.result === '0-1' && game.student_color === 'b');
-  return kazandi ? '✅' : '❌';
-}
-
 function rakipAdi(game: GameSummary): string {
   if (game.opponent.type === 'bot') {
     return `Bot · Düzey ${game.opponent.level ?? '?'}`;
@@ -23,7 +14,9 @@ function rakipAdi(game: GameSummary): string {
 }
 
 /**
- * Analiz Et sekmesi — "Son Maçlarımı İncele": bitmiş maçların listesi.
+ * Analiz Et sekmesi — "Maçlarımın Analizi": bitmiş maçların listesi. Madde
+ * 2026-09-04 (2): sonuç ikonu KALDIRILDI, tarih rakip isminin SAĞINA
+ * (aynı satırda) alındı — her satır TEK SATIR halinde sıralanır.
  * Bir karta tıklayınca o maç incelemeye açılır (bkz. components/analiz/GameAnalysisSection.tsx).
  */
 export function GameHistoryList({ games, loading, onSelect }: Props) {
@@ -34,14 +27,11 @@ export function GameHistoryList({ games, loading, onSelect }: Props) {
     <div className="space-y-2">
       {games.map((g) => (
         <button key={g.id} type="button" onClick={() => onSelect(g)}
-          className="t-card-i w-full flex items-center gap-3 px-4 py-3 text-left">
-          <span className="text-xl leading-none">{sonucSimgesi(g)}</span>
-          <div className="flex-1">
-            <p className="font-semibold text-sm">{rakipAdi(g)}</p>
-            <p className="text-xs t-muted">
-              {new Date(g.started_at).toLocaleDateString('tr-TR')}
-            </p>
-          </div>
+          className="t-card-i w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
+          <p className="font-semibold text-sm">{rakipAdi(g)}</p>
+          <p className="text-xs t-muted flex-shrink-0">
+            {new Date(g.started_at).toLocaleDateString('tr-TR')}
+          </p>
         </button>
       ))}
     </div>

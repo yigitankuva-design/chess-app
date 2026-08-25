@@ -9,11 +9,13 @@ const MOVES = [
 ];
 
 describe('GameMoveList', () => {
-  it('hamleleri numaralı 3\'lü grid içinde gösterir', () => {
+  it('hamleleri numaralı tam-hamle çiftleri halinde 3\'lü grid içinde gösterir', () => {
     render(<GameMoveList moves={MOVES} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
-    expect(screen.getByText('1. e4')).toBeInTheDocument();
+    expect(screen.getByText('1.')).toBeInTheDocument();
+    expect(screen.getByText('e4')).toBeInTheDocument();
     expect(screen.getByText('e5')).toBeInTheDocument();
-    expect(screen.getByText('2. Af3')).toBeInTheDocument();
+    expect(screen.getByText('2.')).toBeInTheDocument();
+    expect(screen.getByText('Af3')).toBeInTheDocument();
   });
 
   it('başta "Başa git"/"Geri" pasif, "İleri"/"Sona git" aktiftir', () => {
@@ -40,13 +42,27 @@ describe('GameMoveList', () => {
   it('bir hamleye tıklayınca o ply ile çağrılır', () => {
     const onSelectPly = vi.fn();
     render(<GameMoveList moves={MOVES} currentPly={0} onSelectPly={onSelectPly} onFlipBoard={vi.fn()} />);
-    fireEvent.click(screen.getByText('2. Af3'));
+    fireEvent.click(screen.getByText('Af3'));
     expect(onSelectPly).toHaveBeenCalledWith(3);
   });
 
   it('hamle yokken bilgi mesajı gösterir', () => {
     render(<GameMoveList moves={[]} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
     expect(screen.getByText('Henüz hamle yok.')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-04 (1c/3c/4c): bir hamlenin beyaz+siyah kısmı satır sınırında BÖLÜNMEZ', () => {
+    const moves = [
+      { ply: 1, san: 'e4', fen_after: 'f1' },
+      { ply: 2, san: 'e5', fen_after: 'f2' },
+      { ply: 3, san: 'Nf3', fen_after: 'f3' },
+      { ply: 4, san: 'Nc6', fen_after: 'f4' },
+    ];
+    render(<GameMoveList moves={moves} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
+    // 2. hamle "2." numarasını YALNIZCA BİR KEZ alır — "2..." diye ayrı bir siyah satırı YOKTUR.
+    expect(screen.queryAllByText('2.')).toHaveLength(1);
+    expect(screen.queryByText(/2\.\.\./)).not.toBeInTheDocument();
+    expect(screen.getByText('Ac6')).toBeInTheDocument();
   });
 });
 

@@ -48,6 +48,7 @@ describe('FreePlayAnalysis — notasyon alanı (madde 2026-09-03 (1))', () => {
   it('hamle oynandıkça aday hamlelerin ALTINDA notasyon listesine eklenir', () => {
     render(<FreePlayAnalysis />);
     fireEvent.click(screen.getByTestId('drop-e2e4'));
-    expect(screen.getByText('1. e4')).toBeInTheDocument();
+    expect(screen.getByText('1.')).toBeInTheDocument();
+    expect(screen.getByText('e4')).toBeInTheDocument();
   });
 });

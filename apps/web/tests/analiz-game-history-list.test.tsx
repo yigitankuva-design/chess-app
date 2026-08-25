@@ -23,20 +23,15 @@ describe('GameHistoryList', () => {
     expect(screen.getByText('Henüz bitmiş bir maçın yok.')).toBeInTheDocument();
   });
 
-  it('sporcu kazandıysa ✅, bot düzeyi gösterir', () => {
+  it('madde 2026-09-04 (2): sonuç ikonu YOK, rakip adının SAĞINDA tarih gösterilir, tek satır', () => {
     render(<GameHistoryList games={[game()]} loading={false} onSelect={vi.fn()} />);
-    expect(screen.getByText('✅')).toBeInTheDocument();
     expect(screen.getByText('Bot · Düzey 4')).toBeInTheDocument();
-  });
-
-  it('sporcu kaybettiyse ❌ gösterir', () => {
-    render(<GameHistoryList games={[game({ result: '0-1', student_color: 'w' })]} loading={false} onSelect={vi.fn()} />);
-    expect(screen.getByText('❌')).toBeInTheDocument();
-  });
-
-  it('beraberlikte 🤝 gösterir', () => {
-    render(<GameHistoryList games={[game({ result: '1/2-1/2' })]} loading={false} onSelect={vi.fn()} />);
-    expect(screen.getByText('🤝')).toBeInTheDocument();
+    expect(screen.getByText('30.08.2026')).toBeInTheDocument();
+    expect(screen.queryByText('✅')).not.toBeInTheDocument();
+    expect(screen.queryByText('❌')).not.toBeInTheDocument();
+    expect(screen.queryByText('🤝')).not.toBeInTheDocument();
+    const row = screen.getByText('Bot · Düzey 4').closest('button');
+    expect(row?.className).toContain('justify-between');
   });
 
   it('insan rakip adını gösterir', () => {
