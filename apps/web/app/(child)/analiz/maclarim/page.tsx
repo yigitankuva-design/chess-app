@@ -1,6 +1,8 @@
 'use client';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
+import { useSettings } from '@/lib/settings/settings-context';
 import { GameAnalysisSection } from '@/components/analiz/GameAnalysisSection';
 import { AnalizPageHeader } from '@/components/analiz/AnalizPageHeader';
 
@@ -9,6 +11,10 @@ import { AnalizPageHeader } from '@/components/analiz/AnalizPageHeader';
 export default function MaclarimAnalizPage() {
   useTabGuard('analiz');
   const router = useRouter();
+  const { settings } = useSettings();
+  useEffect(() => {
+    if (settings.analizFeatures.matches === false) router.replace('/home');
+  }, [settings.analizFeatures.matches, router]);
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">

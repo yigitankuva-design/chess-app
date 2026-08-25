@@ -39,3 +39,37 @@ describe('AnalizPanel — madde 2026-09-02: her alt sekme AYRI SAYFAYA gider', (
     buttons.forEach((b) => expect(b.querySelector('svg, img')).toBeNull());
   });
 });
+
+describe('AnalizPanel — madde 2026-09-05 (3): admin özellik aç/kapa', () => {
+  it('freePlay=false iken "Yeni Analiz" listede görünmez', async () => {
+    vi.resetModules();
+    vi.doMock('@/lib/settings/settings-context', () => ({
+      useSettings: () => ({ settings: { analizFeatures: { matches: true, freePlay: false, position: true } } }),
+    }));
+    const { AnalizPanel: Panel } = await import('@/components/analiz/AnalizPanel');
+    render(<Panel />);
+    expect(screen.queryByText('Yeni Analiz')).not.toBeInTheDocument();
+    expect(screen.getByText('Maçlarımın Analizi')).toBeInTheDocument();
+    expect(screen.getByText('Konum Analizi')).toBeInTheDocument();
+  });
+
+  it('matches=false iken "Maçlarımın Analizi" listede görünmez', async () => {
+    vi.resetModules();
+    vi.doMock('@/lib/settings/settings-context', () => ({
+      useSettings: () => ({ settings: { analizFeatures: { matches: false, freePlay: true, position: true } } }),
+    }));
+    const { AnalizPanel: Panel } = await import('@/components/analiz/AnalizPanel');
+    render(<Panel />);
+    expect(screen.queryByText('Maçlarımın Analizi')).not.toBeInTheDocument();
+  });
+
+  it('position=false iken "Konum Analizi" listede görünmez', async () => {
+    vi.resetModules();
+    vi.doMock('@/lib/settings/settings-context', () => ({
+      useSettings: () => ({ settings: { analizFeatures: { matches: true, freePlay: true, position: false } } }),
+    }));
+    const { AnalizPanel: Panel } = await import('@/components/analiz/AnalizPanel');
+    render(<Panel />);
+    expect(screen.queryByText('Konum Analizi')).not.toBeInTheDocument();
+  });
+});

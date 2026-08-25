@@ -43,6 +43,12 @@ export interface AppSettingsData {
     timeGroups: PlayTimeGroup[];
     tournamentDefaults: { roundsTotal: number; timeControlLabel: string; rated: boolean };
   };
+  /**
+   * Madde 2026-09-05 (3): Analiz Et'in 3 alt özelliği admin'den ayrı ayrı
+   * gösterilip gizlenebilir — AnalizPanel.tsx'teki SUB_TABS ile aynı sıra
+   * (matches="Maçlarımın Analizi", freePlay="Yeni Analiz", position="Konum Analizi").
+   */
+  analizFeatures: { matches: boolean; freePlay: boolean; position: boolean };
 }
 
 export type TabKey = 'play' | 'lessons' | 'analiz' | 'eglence';
@@ -69,6 +75,7 @@ export const DEFAULT_SETTINGS: AppSettingsData = {
     timeGroups: TIME_GROUPS.map((g) => ({ ...g, items: g.items.map((i) => ({ ...i })) })),
     tournamentDefaults: { roundsTotal: 4, timeControlLabel: '10+0', rated: true },
   },
+  analizFeatures: { matches: true, freePlay: true, position: true },
 };
 
 /**

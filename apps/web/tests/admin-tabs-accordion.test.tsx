@@ -83,10 +83,26 @@ describe('Admin Sekmeler — akordiyon', () => {
     expect(screen.getByText('Turnuvaya Katıl').closest('button')).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('Analiz Et kartı açılınca yakında notu görünür', async () => {
+  it('Analiz Et kartı açılınca 3 özellik aç/kapa onay kutusu görünür (madde 2026-09-05 (3))', async () => {
     await renderPage();
     fireEvent.click(screen.getByLabelText('Analiz Et sekmesini aç'));
-    expect(screen.getByText(/yakında/i)).toBeInTheDocument();
+    expect(screen.getByText('Yeni Analiz')).toBeInTheDocument();
+    expect(screen.getByText('Maçlarımın Analizi')).toBeInTheDocument();
+    expect(screen.getByText('Konum Analizi')).toBeInTheDocument();
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(3);
+    checkboxes.forEach((c) => expect(c).toBeChecked());
+  });
+
+  it('bir özellik onay kutusu kaldırılınca PATCH /admin/settings analizFeatures gönderir', async () => {
+    await renderPage();
+    fireEvent.click(screen.getByLabelText('Analiz Et sekmesini aç'));
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByText('Yeni Analiz').closest('label')!.querySelector('input')!);
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBe(before + 1));
+    const body = JSON.parse(fetchMock.mock.calls[before][1].body as string);
+    expect(body.analizFeatures.freePlay).toBe(false);
   });
 
   it('Eğlence kartı açılınca oyun/yarışma ekleme alanı görünür (madde: 2026-08-21)', async () => {

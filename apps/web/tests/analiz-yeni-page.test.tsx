@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const push = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+const replace = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace }) }));
 vi.mock('@/lib/settings/useTabGuard', () => ({ useTabGuard: vi.fn() }));
 vi.mock('@/components/analiz/FreePlayAnalysis', () => ({
   FreePlayAnalysis: () => <div data-testid="freeplay-analysis" />,
@@ -27,5 +28,17 @@ describe('YeniAnalizPage (madde 2026-09-02 (1)(2)(3))', () => {
     render(<YeniAnalizPage />);
     fireEvent.click(screen.getByLabelText('Geri'));
     expect(push).toHaveBeenCalledWith('/home');
+  });
+});
+
+describe('YeniAnalizPage — madde 2026-09-05 (3): admin bu özelliği kapattıysa', () => {
+  it('analizFeatures.freePlay=false iken /home\'a yönlendirir', async () => {
+    vi.resetModules();
+    vi.doMock('@/lib/settings/settings-context', () => ({
+      useSettings: () => ({ settings: { analizFeatures: { matches: true, freePlay: false, position: true } } }),
+    }));
+    const { default: Page } = await import('@/app/(child)/analiz/yeni/page');
+    render(<Page />);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/home'));
   });
 });

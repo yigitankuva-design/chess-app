@@ -96,6 +96,8 @@ export default function AdminTabsPage() {
    *  süre kontrolü/turnuva varsayılanları) — "⚙️ Maç Ayarları" alt bölümü
    *  kapatılıp açıldığında en güncel hâliyle görünsün diye kaydedince yeniden çekilir. */
   const [playSettings, setPlaySettings] = useState<AppSettingsData['play']>(DEFAULT_SETTINGS.play);
+  /** Madde 2026-09-05 (3): Analiz Et'in 3 alt özelliğinin admin'den aç/kapa durumu. */
+  const [analizFeatures, setAnalizFeatures] = useState<AppSettingsData['analizFeatures']>(DEFAULT_SETTINGS.analizFeatures);
 
   const loadSettings = useCallback(() => {
     const token = getToken();
@@ -106,6 +108,7 @@ export default function AdminTabsPage() {
         setTabs(s.tabs);
         setIcons(s.labels.icons);
         setPlaySettings(s.play);
+        setAnalizFeatures(s.analizFeatures);
         // Bozuk/eksik sırayı onar: bilinen sekmeler, eksikler sona
         const clean = (Array.isArray(s.tabOrder) ? s.tabOrder : []).filter((t): t is TabKey => ALL_TABS.includes(t as TabKey));
         setOrder([...clean, ...ALL_TABS.filter((t) => !clean.includes(t))]);
@@ -143,6 +146,21 @@ export default function AdminTabsPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ labels: { icons: next } }),
+    });
+    if (!r.ok) { setMsg('Kaydedilemedi'); return; }
+    setMsg('Kaydedildi ✓');
+    reload();
+  }
+
+  /** Madde 2026-09-05 (3): Analiz Et'in 3 alt özelliğinden biri aç/kapa edilir. */
+  async function saveAnalizFeature(key: keyof AppSettingsData['analizFeatures'], on: boolean) {
+    const next = { ...analizFeatures, [key]: on };
+    setAnalizFeatures(next);
+    const token = getToken();
+    const r = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ analizFeatures: next }),
     });
     if (!r.ok) { setMsg('Kaydedilemedi'); return; }
     setMsg('Kaydedildi ✓');
@@ -525,6 +543,21 @@ export default function AdminTabsPage() {
                           </div>
                         )}
                       </div>
+                    </div>
+                  ) : key === 'analiz' ? (
+                    <div className="space-y-2">
+                      {([
+                        ['freePlay', 'Yeni Analiz'],
+                        ['matches', 'Maçlarımın Analizi'],
+                        ['position', 'Konum Analizi'],
+                      ] as const).map(([featureKey, label]) => (
+                        <label key={featureKey}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 bg-white/[0.03] cursor-pointer">
+                          <input type="checkbox" checked={analizFeatures[featureKey]}
+                            onChange={(e) => saveAnalizFeature(featureKey, e.target.checked)} />
+                          <span className="text-sm font-semibold n-text flex-1">{label}</span>
+                        </label>
+                      ))}
                     </div>
                   ) : content ? (
                     <Link href={content.href}
