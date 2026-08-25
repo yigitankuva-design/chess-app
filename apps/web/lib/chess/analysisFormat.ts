@@ -1,5 +1,25 @@
 import { Chess } from 'chess.js';
 
+/** İngilizce SAN taş harfi → Türkçe karşılığı (Şah/Vezir/Kale/Fil/At). Piyon
+ *  hamlelerinde harf yoktur, dokunulmaz. */
+const TURKISH_PIECE_LETTERS: Record<string, string> = {
+  K: 'Ş', Q: 'V', R: 'K', B: 'F', N: 'A',
+};
+
+/**
+ * Analiz Et sekmesi — madde 2026-08-31 (2): notasyon Türkçe yürütülür. SAN'ın
+ * baştaki taş harfini (varsa) ve terfi harfini (=Q gibi) Türkçe karşılığına
+ * çevirir; kare adları (a-h, 1-8), al/şah/mat işaretleri (x, +, #) ve rok
+ * notasyonu (O-O/O-O-O) DEĞİŞMEZ.
+ */
+export function toTurkishSan(san: string): string {
+  if (!san || san.startsWith('O-O')) return san;
+  const firstLetter = san[0];
+  let result = TURKISH_PIECE_LETTERS[firstLetter] ? TURKISH_PIECE_LETTERS[firstLetter] + san.slice(1) : san;
+  result = result.replace(/=([KQRBN])/, (_match, p: string) => `=${TURKISH_PIECE_LETTERS[p]}`);
+  return result;
+}
+
 /**
  * Analiz Et sekmesi — motorun UCI hamle dizisini (pv) okunabilir SAN dizisine
  * çevirir. Geçersiz/eksik bir hamleye rastlarsa orada durur (o ana kadarki
@@ -43,7 +63,8 @@ export function formatContinuation(fen: string, sanMoves: string[]): string {
   let moveNumber = Number(parts[5]) || 1;
 
   const tokens: string[] = [];
-  sanMoves.forEach((san, i) => {
+  sanMoves.forEach((sanRaw, i) => {
+    const san = toTurkishSan(sanRaw);
     const isWhiteMove = sideToMove === 'w' ? i % 2 === 0 : i % 2 !== 0;
     if (isWhiteMove) {
       tokens.push(`${moveNumber}.`, san);

@@ -11,10 +11,13 @@ import { pvUciToSan, formatContinuation, scoreForWhite } from '@/lib/chess/analy
 /** Tahta + eval bar + 3 aday hamle panelinin oturduğu sabit genişlik. */
 export const ANALYSIS_BOARD_MAX_WIDTH = 380;
 
-// Madde 2026-08-30 (1): derinlik 20 → 14 — MultiPV=3 ile derinlik 20 çok
-// yavaştı (üç hattı birden aramak süreyi katlıyor). Skill YİNE 20 (en güçlü
-// hamle seçimi), sadece arama derinliği azaltıldı.
+// Madde 2026-08-30/31 (1): derinlik 20 → 14, ayrıca bir süre sınırı (movetime)
+// eklendi — MultiPV=3 ile derinlik tek başına yeterince hızlı olmuyordu
+// (karmaşık pozisyonlarda arama uzayabiliyordu). Motor artık hangisi önce
+// gelirse (derinlik veya süre) onda durur. Skill YİNE 20 (en güçlü hamle
+// seçimi), sadece arama süresi/derinliği kısıtlandı.
 const ANALYSIS_DEPTH = 14;
+const ANALYSIS_MOVETIME_MS = 700;
 const MULTI_PV = 3;
 // Madde 2026-08-30 (2): her aday hattın devamı en fazla 4 hamle (ply) gösterilir.
 const CONTINUATION_PLIES = 4;
@@ -57,7 +60,9 @@ export function AnalysisBoard({ fen, boardOrientation = 'white' }: Props) {
       // Yarış koşulu koruması: motor isteği İPTAL edilemez (StockfishEngine'de
       // cancel yok) — fen hızlıca değişirse (ör. hamle listesinde ileri/geri)
       // eski isteğin sonucu YENİ fen üzerine yazmasın.
-      const candidates = await engineRef.current.analyzeMultiPv(fen, ANALYSIS_DEPTH, MULTI_PV);
+      const candidates = await engineRef.current.analyzeMultiPv(
+        fen, ANALYSIS_DEPTH, MULTI_PV, ANALYSIS_MOVETIME_MS,
+      );
       if (requestId !== requestIdRef.current) return;
 
       const sideToMove: 'w' | 'b' = fen.split(' ')[1] === 'b' ? 'b' : 'w';

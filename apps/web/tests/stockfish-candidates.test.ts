@@ -84,4 +84,28 @@ describe('StockfishEngine.analyzeMultiPv (Analiz Et sekmesi)', () => {
     const result = await eng.analyzeMultiPv('startpos', 20, 1);
     expect(result).toEqual([{ moveUci: 'f7f8q', scoreCp: null, mate: 2, pvUci: ['f7f8q'] }]);
   });
+
+  it('madde 2026-08-31 (1): motora derinlik İLE BİRLİKTE bir süre sınırı (movetime) da gönderilir', async () => {
+    const sent: string[] = [];
+    class SpyWorker extends FakeWorker {
+      postMessage(cmd: string) { sent.push(cmd); super.postMessage(cmd); }
+    }
+    vi.stubGlobal('Worker', SpyWorker);
+    const eng = new StockfishEngine();
+    await eng.init();
+    await eng.analyzeMultiPv('startpos', 14, 3, 700);
+    expect(sent).toContain('go depth 14 movetime 700');
+  });
+
+  it('movetime verilmezse varsayılan (700ms) kullanılır', async () => {
+    const sent: string[] = [];
+    class SpyWorker extends FakeWorker {
+      postMessage(cmd: string) { sent.push(cmd); super.postMessage(cmd); }
+    }
+    vi.stubGlobal('Worker', SpyWorker);
+    const eng = new StockfishEngine();
+    await eng.init();
+    await eng.analyzeMultiPv('startpos', 14, 3);
+    expect(sent).toContain('go depth 14 movetime 700');
+  });
 });

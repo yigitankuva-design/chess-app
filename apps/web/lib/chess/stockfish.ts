@@ -119,6 +119,10 @@ export class StockfishEngine {
    */
   async analyzeMultiPv(
     fen: string, depth = 20, multiPv = 3,
+    /** Madde 2026-08-31 (1): karmaşık pozisyonlarda derinlik tek başına yeterince
+     *  hızlı olmayabiliyor — motor bu süre (ms) dolunca da durur (hangisi önce
+     *  gelirse). Sporcu için "hala sonuç bekleniyor" hissini engeller. */
+    movetimeMs = 700,
   ): Promise<{ moveUci: string; scoreCp: number | null; mate: number | null; pvUci: string[] }[]> {
     return new Promise((resolve) => {
       const candidates = new Map<number, { scoreCp: number | null; mate: number | null; pvUci: string[] }>();
@@ -151,7 +155,7 @@ export class StockfishEngine {
       this.listeners.push(listener);
       this.send(`setoption name MultiPV value ${multiPv}`);
       this.send(`position fen ${fen}`);
-      this.send(`go depth ${depth}`);
+      this.send(`go depth ${depth} movetime ${movetimeMs}`);
     });
   }
 

@@ -13,7 +13,7 @@ describe('GameMoveList', () => {
     render(<GameMoveList moves={MOVES} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
     expect(screen.getByText('e4')).toBeInTheDocument();
     expect(screen.getByText('e5')).toBeInTheDocument();
-    expect(screen.getByText('Nf3')).toBeInTheDocument();
+    expect(screen.getByText('Af3')).toBeInTheDocument();
     expect(screen.getByText('2.')).toBeInTheDocument();
   });
 
@@ -41,7 +41,7 @@ describe('GameMoveList', () => {
   it('bir hamleye tıklayınca o ply ile çağrılır', () => {
     const onSelectPly = vi.fn();
     render(<GameMoveList moves={MOVES} currentPly={0} onSelectPly={onSelectPly} onFlipBoard={vi.fn()} />);
-    fireEvent.click(screen.getByText('Nf3'));
+    fireEvent.click(screen.getByText('Af3'));
     expect(onSelectPly).toHaveBeenCalledWith(3);
   });
 
@@ -66,5 +66,31 @@ describe('GameMoveList — Tahtayı çevir (madde 2026-08-30/3)', () => {
     render(<GameMoveList moves={[]} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={onFlipBoard} />);
     fireEvent.click(screen.getByLabelText('Tahtayı çevir'));
     expect(onFlipBoard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GameMoveList — kart boyutu ve ikon büyüklüğü (madde 2026-08-31/3)', () => {
+  const LABELS = ['Tahtayı çevir', 'Başa git', 'Geri', 'İleri', 'Sona git'];
+
+  it('5 buton da AYNI (küçültülmüş) boyutta ve dikdörtgen kart şeklindedir', () => {
+    render(<GameMoveList moves={[]} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
+    LABELS.forEach((label) => {
+      expect(screen.getByLabelText(label)).toHaveStyle({ width: '58px', height: '43px' });
+    });
+  });
+
+  it('5 butonun sarmalayıcısı sarmalamaz (flex-wrap YOK) — tek satırda kalır', () => {
+    render(<GameMoveList moves={[]} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
+    const row = screen.getByLabelText('Tahtayı çevir').parentElement;
+    expect(row?.className).not.toContain('flex-wrap');
+  });
+
+  it('5 butonun içindeki simgeler AYNI boyuttadır (20x20 SVG)', () => {
+    render(<GameMoveList moves={[]} currentPly={0} onSelectPly={vi.fn()} onFlipBoard={vi.fn()} />);
+    LABELS.forEach((label) => {
+      const svg = screen.getByLabelText(label).querySelector('svg');
+      expect(svg).toHaveAttribute('width', '20');
+      expect(svg).toHaveAttribute('height', '20');
+    });
   });
 });

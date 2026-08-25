@@ -36,7 +36,7 @@ describe('AnalysisBoard', () => {
     render(<AnalysisBoard fen={FEN1} />);
 
     expect(await screen.findByText('1. e4 e5')).toBeInTheDocument();
-    expect(analyzeMultiPv).toHaveBeenCalledWith(FEN1, 14, 3);
+    expect(analyzeMultiPv).toHaveBeenCalledWith(FEN1, 14, 3, 700);
     expect(screen.getByTestId('board')).toHaveAttribute('data-fen', FEN1);
   });
 
@@ -47,7 +47,7 @@ describe('AnalysisBoard', () => {
 
     rerender(<AnalysisBoard fen={FEN2} />);
     await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalledTimes(2));
-    expect(analyzeMultiPv).toHaveBeenLastCalledWith(FEN2, 14, 3);
+    expect(analyzeMultiPv).toHaveBeenLastCalledWith(FEN2, 14, 3, 700);
   });
 
   it('yarış koşulu: eski (yavaş) isteğin sonucu, yeni fen üzerine YAZILMAZ', async () => {
@@ -75,7 +75,7 @@ describe('AnalysisBoard — devam dizisi 4 hamleyle sınırlı (madde 2026-08-30
       { moveUci: 'e2e4', scoreCp: 40, mate: null, pvUci: ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1b5', 'a7a6'] },
     ]);
     render(<AnalysisBoard fen={FEN1} />);
-    expect(await screen.findByText('1. e4 e5 2. Nf3 Nc6')).toBeInTheDocument();
+    expect(await screen.findByText('1. e4 e5 2. Af3 Ac6')).toBeInTheDocument();
     expect(screen.queryByText(/Bb5/)).not.toBeInTheDocument();
   });
 });
