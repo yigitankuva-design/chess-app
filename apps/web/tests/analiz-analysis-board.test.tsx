@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/components/ChessBoard', () => ({
-  ChessBoard: ({ fen }: { fen: string }) => <div data-testid="board" data-fen={fen} />,
+  ChessBoard: ({ fen, boardOrientation }: { fen: string; boardOrientation?: string }) => (
+    <div data-testid="board" data-fen={fen} data-orientation={boardOrientation} />
+  ),
 }));
 
 const analyzeMultiPv = vi.fn();
@@ -34,7 +36,7 @@ describe('AnalysisBoard', () => {
     render(<AnalysisBoard fen={FEN1} />);
 
     expect(await screen.findByText('1. e4 e5')).toBeInTheDocument();
-    expect(analyzeMultiPv).toHaveBeenCalledWith(FEN1, 20, 3);
+    expect(analyzeMultiPv).toHaveBeenCalledWith(FEN1, 14, 3);
     expect(screen.getByTestId('board')).toHaveAttribute('data-fen', FEN1);
   });
 
@@ -45,7 +47,7 @@ describe('AnalysisBoard', () => {
 
     rerender(<AnalysisBoard fen={FEN2} />);
     await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalledTimes(2));
-    expect(analyzeMultiPv).toHaveBeenLastCalledWith(FEN2, 20, 3);
+    expect(analyzeMultiPv).toHaveBeenLastCalledWith(FEN2, 14, 3);
   });
 
   it('yarış koşulu: eski (yavaş) isteğin sonucu, yeni fen üzerine YAZILMAZ', async () => {
@@ -64,5 +66,32 @@ describe('AnalysisBoard', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(screen.getByText('1... e5')).toBeInTheDocument();
     expect(screen.queryByText('+9.99')).not.toBeInTheDocument();
+  });
+});
+
+describe('AnalysisBoard — devam dizisi 4 hamleyle sınırlı (madde 2026-08-30/2)', () => {
+  it('motor 4\'ten fazla hamle dönse bile yalnızca ilk 4\'ü gösterilir', async () => {
+    analyzeMultiPv.mockResolvedValue([
+      { moveUci: 'e2e4', scoreCp: 40, mate: null, pvUci: ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1b5', 'a7a6'] },
+    ]);
+    render(<AnalysisBoard fen={FEN1} />);
+    expect(await screen.findByText('1. e4 e5 2. Nf3 Nc6')).toBeInTheDocument();
+    expect(screen.queryByText(/Bb5/)).not.toBeInTheDocument();
+  });
+});
+
+describe('AnalysisBoard — boardOrientation (madde 2026-08-30/3)', () => {
+  it('boardOrientation ChessBoard\'a aktarılır (varsayılan "white")', async () => {
+    analyzeMultiPv.mockResolvedValue([]);
+    render(<AnalysisBoard fen={FEN1} />);
+    expect(screen.getByTestId('board')).toHaveAttribute('data-orientation', 'white');
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
+  });
+
+  it('boardOrientation="black" verilince ChessBoard\'a aktarılır', async () => {
+    analyzeMultiPv.mockResolvedValue([]);
+    render(<AnalysisBoard fen={FEN1} boardOrientation="black" />);
+    expect(screen.getByTestId('board')).toHaveAttribute('data-orientation', 'black');
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalled());
   });
 });

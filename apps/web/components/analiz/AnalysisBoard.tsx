@@ -11,22 +11,29 @@ import { pvUciToSan, formatContinuation, scoreForWhite } from '@/lib/chess/analy
 /** Tahta + eval bar + 3 aday hamle panelinin oturduğu sabit genişlik. */
 export const ANALYSIS_BOARD_MAX_WIDTH = 380;
 
-const ANALYSIS_DEPTH = 20;
+// Madde 2026-08-30 (1): derinlik 20 → 14 — MultiPV=3 ile derinlik 20 çok
+// yavaştı (üç hattı birden aramak süreyi katlıyor). Skill YİNE 20 (en güçlü
+// hamle seçimi), sadece arama derinliği azaltıldı.
+const ANALYSIS_DEPTH = 14;
 const MULTI_PV = 3;
+// Madde 2026-08-30 (2): her aday hattın devamı en fazla 4 hamle (ply) gösterilir.
+const CONTINUATION_PLIES = 4;
 
 interface Props {
   fen: string;
+  /** Madde 2026-08-30 (3): "Tahtayı çevir" butonuyla değiştirilir. */
+  boardOrientation?: 'white' | 'black';
 }
 
 /**
  * Analiz Et sekmesi — hem "Son Maçlarımı İncele" (fen her ply'de değişir) hem
  * "Kendi Konumumu Analiz Et" (fen sabittir, tek seferlik) için ORTAK panel.
  * `fen` prop'u her değiştiğinde (mount dahil) motor EN GÜÇLÜ seviyede
- * (Skill 20, Depth 20) 3 aday hamleyi otomatik yeniden hesaplar — ayrı bir
+ * (Skill 20, Depth 14) 3 aday hamleyi otomatik yeniden hesaplar — ayrı bir
  * "otomatik/elle" anahtarı YOK, çağıran taraf ne zaman bu bileşeni monte
  * edeceğine/fen'i değiştireceğine karar vererek tetikleme şeklini belirler.
  */
-export function AnalysisBoard({ fen }: Props) {
+export function AnalysisBoard({ fen, boardOrientation = 'white' }: Props) {
   const engineRef = useRef<StockfishEngine | null>(null);
   const requestIdRef = useRef(0);
   const [lines, setLines] = useState<CandidateLine[]>([]);
@@ -56,7 +63,7 @@ export function AnalysisBoard({ fen }: Props) {
       const sideToMove: 'w' | 'b' = fen.split(' ')[1] === 'b' ? 'b' : 'w';
       const nextLines: CandidateLine[] = candidates.map((c) => {
         const white = scoreForWhite(c.scoreCp, c.mate, sideToMove);
-        const san = pvUciToSan(fen, c.pvUci);
+        const san = pvUciToSan(fen, c.pvUci.slice(0, CONTINUATION_PLIES));
         return { scoreCp: white.cp, mate: white.mate, continuation: formatContinuation(fen, san) };
       });
       setLines(nextLines);
@@ -73,7 +80,8 @@ export function AnalysisBoard({ fen }: Props) {
       <div className="flex items-stretch gap-2" style={{ maxWidth: ANALYSIS_BOARD_MAX_WIDTH }}>
         <EvalBar scoreCp={scoreCp} mate={mate} />
         <div style={{ width: '100%' }}>
-          <ChessBoard fen={fen} highlightSquares={[] as Square[]} />
+          <ChessBoard fen={fen} highlightSquares={[] as Square[]}
+            boardOrientation={boardOrientation} />
         </div>
       </div>
       <div style={{ maxWidth: ANALYSIS_BOARD_MAX_WIDTH }}>

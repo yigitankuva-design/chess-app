@@ -5,14 +5,24 @@ interface Props {
   /** 0 = başlangıç konumu (henüz hamle yok); N = moves[N-1]'in fen_after'ı. */
   currentPly: number;
   onSelectPly: (ply: number) => void;
+  /** Tahtayı çevirir (madde 2026-08-30/3). */
+  onFlipBoard: () => void;
 }
 
+const NAV_ICONS: Record<string, string> = {
+  'Tahtayı çevir': '⇅', 'Başa git': '⏮', 'Geri': '◀', 'İleri': '▶', 'Sona git': '⏭',
+};
+
+/** Madde 2026-08-30 (3): oynatma kartları %50 büyütüldü (36px → 54px yükseklik)
+ *  ve dikdörtgen kart görünümüne çevrildi (genişlik yükseklikten belirgin
+ *  şekilde fazla), çerçeve kalınlaştırıldı (1px → 2px). */
 const NavBtn = ({
   label, onClick, disabled,
-}: { label: string; onClick: () => void; disabled: boolean }) => (
+}: { label: string; onClick: () => void; disabled?: boolean }) => (
   <button type="button" aria-label={label} onClick={onClick} disabled={disabled}
-    className="w-9 h-9 flex items-center justify-center rounded-lg t-muted border border-white/15 disabled:opacity-30 hover:bg-white/5 transition-colors">
-    {label === 'Başa git' ? '⏮' : label === 'Geri' ? '◀' : label === 'İleri' ? '▶' : '⏭'}
+    className="flex items-center justify-center rounded-xl t-muted border-2 border-white/20 disabled:opacity-30 hover:bg-white/5 transition-colors text-lg"
+    style={{ width: 72, height: 54 }}>
+    {NAV_ICONS[label]}
   </button>
 );
 
@@ -20,7 +30,7 @@ const NavBtn = ({
  * Analiz Et sekmesi — "Son Maçlarımı İncele": oynatma kontrolleri (⏮◀▶⏭) +
  * hamle numaralı SAN listesi. Bir hamleye tıklayınca o pozisyona atlar.
  */
-export function GameMoveList({ moves, currentPly, onSelectPly }: Props) {
+export function GameMoveList({ moves, currentPly, onSelectPly, onFlipBoard }: Props) {
   const total = moves.length;
 
   const pairs: { moveNumber: number; white?: GameMoveDto; black?: GameMoveDto }[] = [];
@@ -33,7 +43,8 @@ export function GameMoveList({ moves, currentPly, onSelectPly }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-2 flex-wrap">
+        <NavBtn label="Tahtayı çevir" onClick={onFlipBoard} />
         <NavBtn label="Başa git" onClick={() => onSelectPly(0)} disabled={currentPly === 0} />
         <NavBtn label="Geri" onClick={() => onSelectPly(Math.max(0, currentPly - 1))} disabled={currentPly === 0} />
         <NavBtn label="İleri" onClick={() => onSelectPly(Math.min(total, currentPly + 1))} disabled={currentPly === total} />

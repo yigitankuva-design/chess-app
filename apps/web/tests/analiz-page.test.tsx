@@ -3,7 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/lib/settings/useTabGuard', () => ({ useTabGuard: () => {} }));
 vi.mock('@/components/analiz/AnalysisBoard', () => ({
-  AnalysisBoard: ({ fen }: { fen: string }) => <div data-testid="analysis-board" data-fen={fen} />,
+  AnalysisBoard: ({ fen, boardOrientation }: { fen: string; boardOrientation?: string }) => (
+    <div data-testid="analysis-board" data-fen={fen} data-orientation={boardOrientation} />
+  ),
 }));
 vi.mock('@/components/analiz/CustomPositionAnalysis', () => ({
   CustomPositionAnalysis: () => <div data-testid="custom-position" />,
@@ -89,5 +91,21 @@ describe('AnalizPage — Son Maçlarımı İncele', () => {
     render(<AnalizPage />);
     fireEvent.click(screen.getByText('Son Maçlarımı İncele'));
     expect(await screen.findByText('Henüz bitmiş bir maçın yok.')).toBeInTheDocument();
+  });
+
+  it('Tahtayı çevir butonu AnalysisBoard\'ın yönünü değiştirir (madde 2026-08-30/3)', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<AnalizPage />);
+    fireEvent.click(screen.getByText('Son Maçlarımı İncele'));
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board');
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-orientation', 'white');
+
+    fireEvent.click(screen.getByLabelText('Tahtayı çevir'));
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-orientation', 'black');
+
+    fireEvent.click(screen.getByLabelText('Tahtayı çevir'));
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-orientation', 'white');
   });
 });

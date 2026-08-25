@@ -45,6 +45,7 @@ export default function AnalizPage() {
   const [selectedGame, setSelectedGame] = useState<GameSummary | null>(null);
   const [moves, setMoves] = useState<GameMoveDto[]>([]);
   const [ply, setPly] = useState(0);
+  const [orientation, setOrientation] = useState<'white' | 'black'>('white');
 
   useEffect(() => {
     if (mode !== 'games' || selectedGame) return;
@@ -55,6 +56,7 @@ export default function AnalizPage() {
   async function selectGame(g: GameSummary) {
     setSelectedGame(g);
     setPly(0);
+    setOrientation('white');
     setMoves(await getGameMoves(g.id));
   }
 
@@ -129,8 +131,9 @@ export default function AnalizPage() {
         <BackButton onClick={() => setSelectedGame(null)} />
         <h1 className="text-xl font-extrabold t-premium">Maç İncelemesi</h1>
       </div>
-      <AnalysisBoard fen={fen} />
-      <GameMoveList moves={moves} currentPly={ply} onSelectPly={setPly} />
+      <AnalysisBoard fen={fen} boardOrientation={orientation} />
+      <GameMoveList moves={moves} currentPly={ply} onSelectPly={setPly}
+        onFlipBoard={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))} />
     </main>
   );
 }
