@@ -1,7 +1,7 @@
 import { ANALYSIS_BOARD_MAX_WIDTH } from './AnalysisBoard';
 
 const BackArrowIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff"
     strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
     <path d="M15 18l-6-6 6-6" />
   </svg>
