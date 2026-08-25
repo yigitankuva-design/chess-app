@@ -193,3 +193,20 @@ export async function deleteCustomTabSection(sectionId: number): Promise<boolean
     return false;
   }
 }
+
+/** Madde 2026-09-05 (4): bir sekmenin bölümlerini (bir üst bölümün TÜM
+ *  kardeşlerini) verilen sırayla yeniden numaralandırır — yukarı/aşağı taşıma
+ *  için kullanılır. Sunucu `ordered_ids` sırasına göre order_index=1..N atar. */
+export async function reorderCustomTabSections(tabId: number, orderedIds: number[]): Promise<boolean> {
+  const token = getToken();
+  try {
+    const r = await fetch(`${API_BASE}/admin/custom-tabs/${tabId}/sections/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ordered_ids: orderedIds }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}

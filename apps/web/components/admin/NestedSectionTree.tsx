@@ -4,7 +4,7 @@ import { IconPicker } from './IconPicker';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import {
   createCustomTabSection, updateCustomTabSection, deleteCustomTabSection,
-  duplicateCustomTabSection,
+  duplicateCustomTabSection, reorderCustomTabSections,
 } from '@/lib/customTabsApi';
 import type { CustomTabSection, PositionPoolEntry, PositionPoolStep } from '@/lib/customTabsApi';
 import { AltKonuPositionPoolFields } from './AltKonuPositionPoolFields';
@@ -108,6 +108,23 @@ export function NestedSectionTree({
     await onReloadTree();
   }
 
+  /** Madde 2026-09-05 (4): bu düğümü kardeşleri arasında yukarı/aşağı taşır —
+   *  komşusuyla yer değiştirir, YENİ sıradaki TÜM kardeşlerin id listesi
+   *  sunucuya gönderilir (mevcut `/sections/reorder` ucu, madde 2026-08-22'de
+   *  eklenmiş ama hiç arayüzden çağrılmıyordu). */
+  async function moveSection(id: number, dir: -1 | 1) {
+    const i = children.findIndex((c) => c.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= children.length) return;
+    const reordered = [...children];
+    [reordered[i], reordered[j]] = [reordered[j], reordered[i]];
+    setBusy(true); setErr(null);
+    const ok = await reorderCustomTabSections(tabId, reordered.map((c) => c.id));
+    setBusy(false);
+    if (!ok) { setErr('Sıralanamadı'); return; }
+    await onReloadTree();
+  }
+
   function startDuplicate(s: CustomTabSection) {
     setDuplicatingId(s.id);
     setDuplicateTitle('');
@@ -192,7 +209,7 @@ export function NestedSectionTree({
       {children.length === 0 && (
         <p className="text-xs n-muted">Henüz alt sekme yok. Aşağıdan ekleyebilirsin.</p>
       )}
-      {children.map((s) => {
+      {children.map((s, idx) => {
         const open = openId === s.id;
         const editing = editingId === s.id;
         // Madde 2026-08-24: "Dersler" ve TÜM altındaki düğümlerde Kopyala yok.
@@ -218,6 +235,16 @@ export function NestedSectionTree({
                 className="flex-1 flex items-center gap-2 text-left hover:bg-white/5 transition-colors">
                 <span className="text-sm font-semibold n-text flex-1">{s.title}</span>
                 <span className="text-xs n-muted">{open ? '▴' : '▾'}</span>
+              </button>
+              <button type="button" onClick={() => moveSection(s.id, -1)} disabled={busy || idx === 0}
+                aria-label={`${s.title} alt sekmesini yukarı taşı`}
+                className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">
+                ↑
+              </button>
+              <button type="button" onClick={() => moveSection(s.id, 1)} disabled={busy || idx === children.length - 1}
+                aria-label={`${s.title} alt sekmesini aşağı taşı`}
+                className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">
+                ↓
               </button>
               <button type="button" onClick={() => startEdit(s)}
                 aria-label={`${s.title} alt sekmesini düzenle`}
