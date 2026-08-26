@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { listMyGames, getGameMoves } from '@/lib/analiz/analizApi';
 import type { GameSummary, GameMoveDto } from '@/lib/analiz/analizApi';
 import { GameHistoryList } from './GameHistoryList';
 import { GameMoveList } from './GameMoveList';
 import { AnalysisBoard, ANALYSIS_BOARD_MAX_WIDTH } from './AnalysisBoard';
+import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -35,11 +36,20 @@ export function GameAnalysisSection() {
     setMoves(await getGameMoves(g.id));
   }
 
+  const baseFen = selectedGame?.start_fen ?? START_FEN;
+  /** Madde 2026-09-05 (3): hamle kalitesi işaretleri — maç seçilince arka
+   *  planda TÜM hamleler baştan değerlendirilir (React hook kuralları
+   *  gereği erken return'den ÖNCE, koşulsuz çağrılır). */
+  const evalMoves = useMemo(
+    () => moves.map((m) => ({ ply: m.ply, fenAfter: m.fen_after })),
+    [moves],
+  );
+  const { evalByPly, progress } = useMoveQualityEval(baseFen, evalMoves, !!selectedGame);
+
   if (!selectedGame) {
     return <GameHistoryList games={games} loading={loading} onSelect={selectGame} />;
   }
 
-  const baseFen = selectedGame.start_fen ?? START_FEN;
   const fen = ply === 0 ? baseFen : (moves[ply - 1]?.fen_after ?? baseFen);
 
   /** Madde 2026-09-05 (2): tahta üzerinde fare tekerleği ile hamle geçmişinde
@@ -75,6 +85,7 @@ export function GameAnalysisSection() {
         onFlipBoard={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
         hideNotation={hideNotation} onToggleHideNotation={() => setHideNotation((v) => !v)}
         onDeleteAfter={handleDeleteAfter}
+        evalByPly={evalByPly} evalProgress={progress}
       />
     </div>
   );

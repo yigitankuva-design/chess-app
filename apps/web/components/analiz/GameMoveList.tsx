@@ -1,5 +1,6 @@
 import type { GameMoveDto } from '@/lib/analiz/analizApi';
 import { NotationCard } from './NotationCard';
+import type { WhiteScore } from '@/lib/chess/moveQuality';
 
 interface Props {
   moves: GameMoveDto[];
@@ -11,6 +12,9 @@ interface Props {
   hideNotation: boolean;
   onToggleHideNotation: () => void;
   onDeleteAfter: (ply: number) => void;
+  /** Madde 2026-09-05 (3): hamle kalitesi işaretleri için ply→skor haritası. */
+  evalByPly?: Record<number, WhiteScore>;
+  evalProgress?: { done: number; total: number };
 }
 
 type IconType = 'flip' | 'first' | 'prev' | 'next' | 'last';
@@ -68,6 +72,7 @@ const NavBtn = ({
  */
 export function GameMoveList({
   moves, currentPly, onSelectPly, onFlipBoard, hideNotation, onToggleHideNotation, onDeleteAfter,
+  evalByPly, evalProgress,
 }: Props) {
   const total = moves.length;
 
@@ -86,6 +91,7 @@ export function GameMoveList({
         currentPly={currentPly} onSelectPly={onSelectPly}
         hideNotation={hideNotation} onToggleHideNotation={onToggleHideNotation}
         onDeleteAfter={onDeleteAfter}
+        evalByPly={evalByPly} evalProgress={evalProgress}
       />
     </div>
   );

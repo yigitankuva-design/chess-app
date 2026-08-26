@@ -4,6 +4,7 @@ import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { AnalysisBoard } from './AnalysisBoard';
 import { NotationCard } from './NotationCard';
+import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -32,6 +33,9 @@ export function FreePlayAnalysis() {
   const [viewIndex, setViewIndex] = useState(0);
   const [hideNotation, setHideNotation] = useState(false);
   const fen = viewIndex > 0 ? history[viewIndex - 1].fenAfter : START_FEN;
+  /** Madde 2026-09-05 (3): hamle kalitesi işaretleri — `history` zaten
+   *  {ply, fenAfter} şeklinde, ekstra dönüşüm/useMemo gerekmez. */
+  const { evalByPly, progress } = useMoveQualityEval(START_FEN, history);
 
   function handlePieceDrop(from: Square, to: Square): boolean {
     try {
@@ -69,6 +73,7 @@ export function FreePlayAnalysis() {
         onSelectPly={setViewIndex}
         hideNotation={hideNotation} onToggleHideNotation={() => setHideNotation((v) => !v)}
         onDeleteAfter={handleDeleteAfter}
+        evalByPly={evalByPly} evalProgress={progress}
       />
     </div>
   );

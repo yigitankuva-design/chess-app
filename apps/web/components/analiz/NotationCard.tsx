@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { toTurkishSan } from '@/lib/chess/analysisFormat';
+import { classifyMoveQuality } from '@/lib/chess/moveQuality';
+import type { WhiteScore } from '@/lib/chess/moveQuality';
 
 export interface NotationMove {
   ply: number;
@@ -17,6 +19,12 @@ interface Props {
   onToggleHideNotation: () => void;
   /** Madde 2026-09-05 (3): sağ tık menüsündeki "Bu Hamleden Sonrasını Sil". */
   onDeleteAfter?: (ply: number) => void;
+  /** Madde 2026-09-05 (3): hamle kalitesi işaretleri (?/??/!/!!) için
+   *  ply→skor haritası — 0 = başlangıç, N = N. hamleden sonrası (Beyaz açısından). */
+  evalByPly?: Record<number, WhiteScore>;
+  /** Arka planda kaç ply değerlendirildi / toplam kaç ply var — verilirse ve
+   *  bitmemişse küçük bir "değerlendiriliyor" satırı gösterilir. */
+  evalProgress?: { done: number; total: number };
 }
 
 interface MovePair {
@@ -53,8 +61,11 @@ interface MenuState {
  * Madde (3): bir hamleye SAĞ TIKLAYINCA "FEN Kopyala" / "Bu Hamleden
  * Sonrasını Sil" seçenekli bir menü açılır.
  */
+const QUALITY_COLOR = { bad: '#f87171', good: '#7dd3fc' } as const;
+
 export function NotationCard({
   moves, currentPly, onSelectPly, hideNotation, onToggleHideNotation, onDeleteAfter,
+  evalByPly, evalProgress,
 }: Props) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
@@ -96,15 +107,25 @@ export function NotationCard({
 
   const moveCell = (m: NotationMove) => {
     const active = currentPly === m.ply;
-    const label = toTurkishSan(m.san);
+    const mover: 'w' | 'b' = m.ply % 2 === 1 ? 'w' : 'b';
+    const before = evalByPly?.[m.ply - 1];
+    const after = evalByPly?.[m.ply];
+    const quality = before && after ? classifyMoveQuality(before, after, mover) : null;
+    const label = toTurkishSan(m.san) + (quality?.symbol ?? '');
+    const qualityColor = quality ? QUALITY_COLOR[quality.tone] : undefined;
     if (!clickable) {
       return (
-        <span className="px-1" onContextMenu={(e) => openMenu(e, m)}>{label}</span>
+        <span className="px-1" style={qualityColor ? { color: qualityColor, fontWeight: 700 } : undefined}
+          onContextMenu={(e) => openMenu(e, m)}>{label}</span>
       );
     }
     return (
       <button type="button" onClick={() => onSelectPly!(m.ply)} onContextMenu={(e) => openMenu(e, m)}
-        className="rounded px-1" style={{ background: active ? 'rgba(34,211,238,0.25)' : undefined }}>
+        className="rounded px-1"
+        style={{
+          background: active ? 'rgba(34,211,238,0.25)' : undefined,
+          color: qualityColor, fontWeight: qualityColor ? 700 : undefined,
+        }}>
         {label}
       </button>
     );
@@ -126,6 +147,12 @@ export function NotationCard({
           Notasyon Verilerini Gizle
         </label>
       </div>
+
+      {evalProgress && evalProgress.done < evalProgress.total && (
+        <p className="text-[0.7rem] t-muted mb-1.5">
+          Hamleler değerlendiriliyor... ({evalProgress.done}/{evalProgress.total})
+        </p>
+      )}
 
       {moves.length === 0 ? (
         <p className="text-xs t-muted">Henüz hamle yok.</p>

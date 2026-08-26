@@ -19,6 +19,13 @@ vi.mock('@/components/analiz/AnalysisBoard', () => ({
   ),
 }));
 
+// Madde 2026-09-05 (3): gerçek motor/Worker burada test edilmiyor (bkz.
+// use-move-quality-eval.test.tsx) — bu dosya yalnızca FreePlayAnalysis'ın
+// KENDİ mantığını (hamle oynama, tekerlek, dallanma, silme) test ediyor.
+vi.mock('@/lib/chess/useMoveQualityEval', () => ({
+  useMoveQualityEval: () => ({ evalByPly: {}, progress: { done: 0, total: 0 } }),
+}));
+
 import { FreePlayAnalysis } from '@/components/analiz/FreePlayAnalysis';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';

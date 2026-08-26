@@ -23,6 +23,13 @@ vi.mock('@/lib/analiz/analizApi', () => ({
   getGameMoves: (...args: unknown[]) => getGameMoves(...args),
 }));
 
+// Madde 2026-09-05 (3): gerçek motor/Worker burada test edilmiyor (bkz.
+// use-move-quality-eval.test.tsx) — bu dosya yalnızca GameAnalysisSection'ın
+// KENDİ mantığını (maç seçimi, hamle listesi, tekerlek, silme) test ediyor.
+vi.mock('@/lib/chess/useMoveQualityEval', () => ({
+  useMoveQualityEval: () => ({ evalByPly: {}, progress: { done: 0, total: 0 } }),
+}));
+
 import { GameAnalysisSection } from '@/components/analiz/GameAnalysisSection';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
