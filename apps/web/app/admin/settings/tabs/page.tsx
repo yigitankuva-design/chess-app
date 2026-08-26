@@ -688,6 +688,7 @@ export default function AdminTabsPage() {
                                 onChange={(next) => saveSectionIcon(c.id, s.id, next)}
                                 size={30}
                                 ariaLabel={`${s.title} ikonunu değiştir`}
+                                showLevelBadges
                               />
                               <button type="button"
                                 onClick={() => setOpenSectionId((p) => (p === s.id ? null : s.id))}

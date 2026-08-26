@@ -228,6 +228,7 @@ export function NestedSectionTree({
                 }}
                 size={30}
                 ariaLabel={`${s.title} ikonunu değiştir`}
+                showLevelBadges
               />
               <button type="button"
                 onClick={() => setOpenId((p) => (p === s.id ? null : s.id))}
@@ -375,7 +376,7 @@ export function NestedSectionTree({
         <p className="text-xs font-bold n-muted uppercase tracking-widest">+ Alt Sekme Ekle</p>
         <div className="flex items-center gap-2">
           <IconPicker value={newEmoji ?? undefined} onChange={setNewEmoji} size={30}
-            ariaLabel="Yeni alt sekmenin ikonunu seç" />
+            ariaLabel="Yeni alt sekmenin ikonunu seç" showLevelBadges />
           <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Alt sekme başlığı" className="neon-input text-sm flex-1" />
         </div>

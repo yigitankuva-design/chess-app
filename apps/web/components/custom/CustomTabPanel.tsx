@@ -7,6 +7,7 @@ import type { CustomTabDetail } from '@/lib/customTabsApi';
 import {
   sectionEmoji, sortPratikSections, OYUNSONU_SECTION, OYUNSONU_CATEGORIES, groupByCategory,
 } from '@/lib/customTabs/pratikYap';
+import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
 import { NestedSectionAccordion } from './NestedSectionAccordion';
 import { readAndClearPendingOpenPath } from '@/lib/customTabs/pendingOpenPath';
@@ -100,7 +101,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
         return (
           <div key={s.id}>
             <PathNode
-              icon={emoji}
+              icon={renderSectionIcon(emoji)}
               label={s.title}
               active={open}
               size={40}

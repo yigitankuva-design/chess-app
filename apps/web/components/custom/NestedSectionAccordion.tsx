@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
 import type { CustomTabSection } from '@/lib/customTabsApi';
+import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
 
 /** Madde 2026-08-24: admin tarafındaki NestedSectionTree ile AYNI kural —
  *  "Antrenör/Dersler" alt sekmesi ve altındaki Düzey/Konu/Alt Konu
@@ -64,7 +65,7 @@ export function NestedSectionAccordion({
         return (
           <div key={s.id}>
             <PathNode
-              icon={s.emoji || '🎯'}
+              icon={renderSectionIcon(s.emoji)}
               label={s.title}
               active={open}
               size={size}
