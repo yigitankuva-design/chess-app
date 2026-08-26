@@ -132,6 +132,32 @@ async def test_admin_module_lessons(client):
 
 
 @pytest.mark.asyncio
+async def test_admin_module_description_roundtrips(client):
+    """Madde 2026-09-05 (1): Module.description GET /admin/content'te döner ve
+    PATCH /admin/modules/{id} ile güncellenebilir (Düzey tanımları özelliği)."""
+    ttok = await _teacher_token(client, email="tdesc@t.com")
+    h = {"Authorization": f"Bearer {ttok}"}
+
+    r = await client.post("/admin/modules", headers=h,
+                          json={"name": "Temel Düzey", "description": "", "icon": "default"})
+    assert r.status_code == 201
+    module_id = r.json()["id"]
+
+    r2 = await client.get("/admin/content", headers=h)
+    assert r2.status_code == 200
+    row = next(m for m in r2.json() if m["id"] == module_id)
+    assert row["description"] == ""
+
+    r3 = await client.patch(f"/admin/modules/{module_id}", headers=h,
+                            json={"description": "ELO 0-399, satranca yeni başlayan öğrenciler."})
+    assert r3.status_code == 200
+
+    r4 = await client.get("/admin/content", headers=h)
+    row2 = next(m for m in r4.json() if m["id"] == module_id)
+    assert row2["description"] == "ELO 0-399, satranca yeni başlayan öğrenciler."
+
+
+@pytest.mark.asyncio
 async def test_admin_cannot_delete_teacher(client):
     ttok = await _teacher_token(client, email="t5@t.com")
     # Başka bir teacher hedefle

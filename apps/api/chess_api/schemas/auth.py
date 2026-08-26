@@ -101,6 +101,7 @@ class AdminModuleSummary(BaseModel):
     id: int
     order_index: int
     name: str
+    description: str
     lesson_count: int
     icon: str
 

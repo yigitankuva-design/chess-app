@@ -4,10 +4,14 @@ import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { IconPicker } from '@/components/admin/IconPicker';
+import { suggestedLevelDescription } from '@/lib/content/levelDefinitions';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface ModuleRow { id: number; order_index: number; name: string; lesson_count: number; icon: string; }
+interface ModuleRow {
+  id: number; order_index: number; name: string; description: string;
+  lesson_count: number; icon: string;
+}
 
 export default function AdminContentPage() {
   const [rows, setRows] = useState<ModuleRow[]>([]);
@@ -17,6 +21,10 @@ export default function AdminContentPage() {
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('');
   const [adding, setAdding] = useState(false);
+  /** Madde 2026-09-05 (1): hangi düzeyin açıklaması düzenleniyor — null = hiçbiri. */
+  const [editingDescId, setEditingDescId] = useState<number | null>(null);
+  const [descDraft, setDescDraft] = useState('');
+  const [savingDesc, setSavingDesc] = useState(false);
 
   async function refresh() {
     const token = getToken();
@@ -72,6 +80,36 @@ export default function AdminContentPage() {
       });
       if (r.ok) await refresh();
     } catch { /* ignore */ }
+  }
+
+  /** Madde 2026-09-05 (1): düzey açıklaması aç/düzenle/kaydet. */
+  function startEditDescription(m: ModuleRow) {
+    setEditingDescId(m.id);
+    setDescDraft(m.description);
+  }
+
+  function cancelEditDescription() {
+    setEditingDescId(null);
+    setDescDraft('');
+  }
+
+  async function saveDescription(id: number) {
+    setSavingDesc(true);
+    try {
+      const token = getToken();
+      const r = await fetch(`${API_BASE}/admin/modules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ description: descDraft }),
+      });
+      if (!r.ok) { setMsg('Kaydedilemedi'); setSavingDesc(false); return; }
+      await refresh();
+      cancelEditDescription();
+      setMsg('Kaydedildi ✓');
+    } catch {
+      setMsg('Kaydedilemedi');
+    }
+    setSavingDesc(false);
   }
 
   async function deleteModule(id: number, name: string) {
@@ -235,6 +273,49 @@ export default function AdminContentPage() {
                   >
                     Sil
                   </button>
+                </div>
+
+                {/* Madde 2026-09-05 (1): düzey açıklaması — ELO/yaş tanımı. */}
+                <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="mt-3 pt-3 border-t border-white/10">
+                  {editingDescId === m.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={descDraft}
+                        onChange={(e) => setDescDraft(e.target.value)}
+                        placeholder="Bu düzey kimin için uygun? (ELO aralığı, yaş, özellikler...)"
+                        rows={3}
+                        className="neon-input text-sm w-full"
+                      />
+                      {descDraft.trim().length === 0 && suggestedLevelDescription(m.name) && (
+                        <button type="button"
+                          onClick={() => setDescDraft(suggestedLevelDescription(m.name)!)}
+                          className="px-3 py-1.5 rounded-md text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 transition-colors">
+                          Önerilen açıklamayı kullan
+                        </button>
+                      )}
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => saveDescription(m.id)} disabled={savingDesc}
+                          className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-40 text-sm transition-colors">
+                          {savingDesc ? 'Kaydediliyor...' : 'Kaydet'}
+                        </button>
+                        <button type="button" onClick={cancelEditDescription}
+                          className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+                          Vazgeç
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <p className="text-sm n-muted flex-1">
+                        {m.description || 'Bu düzey için henüz açıklama yok — sporcuya "kime uygun" olduğunu göstermek için ekleyebilirsin.'}
+                      </p>
+                      <button type="button" onClick={() => startEditDescription(m)}
+                        aria-label={`${m.name} açıklamasını düzenle`}
+                        className="px-2.5 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs flex-shrink-0">
+                        {m.description ? 'Düzenle' : '+ Açıklama Ekle'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </Link>
             );

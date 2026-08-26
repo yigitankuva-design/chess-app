@@ -14,9 +14,9 @@ import { reorderCustomTabSections } from '@/lib/customTabsApi';
 import type { CustomTabSection } from '@/lib/customTabsApi';
 
 const SECTIONS: CustomTabSection[] = [
-  { id: 1, order_index: 1, title: 'Birinci', body: '', images: [] },
-  { id: 2, order_index: 2, title: 'İkinci', body: '', images: [] },
-  { id: 3, order_index: 3, title: 'Üçüncü', body: '', images: [] },
+  { id: 1, order_index: 1, title: 'Birinci', body: '', images: [], practice_positions: [] },
+  { id: 2, order_index: 2, title: 'İkinci', body: '', images: [], practice_positions: [] },
+  { id: 3, order_index: 3, title: 'Üçüncü', body: '', images: [], practice_positions: [] },
 ];
 
 function setup() {

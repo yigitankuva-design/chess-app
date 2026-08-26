@@ -127,7 +127,8 @@ async def content(
             select(func.count(Lesson.id)).where(Lesson.module_id == m.id)
         )).scalar_one()
         out.append(AdminModuleSummary(
-            id=m.id, order_index=m.order_index, name=m.name, lesson_count=lc, icon=m.icon,
+            id=m.id, order_index=m.order_index, name=m.name, description=m.description,
+            lesson_count=lc, icon=m.icon,
         ))
     return out
 

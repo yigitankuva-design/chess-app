@@ -126,7 +126,10 @@ const PRACTICE_MODES = [
  *  sürümden kalan veri sessizce yok sayılsın diye anahtar değişti. */
 const QA_STATE_KEY = 'bea_qa_state_v3';
 
-interface ModuleSummary { id: number; order_index: number; name: string; lessons_count: number; icon?: string }
+interface ModuleSummary {
+  id: number; order_index: number; name: string; description?: string;
+  lessons_count: number; icon?: string;
+}
 interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number; icon?: string | null }
 interface Subtopic { stepId: number; title: string; icon?: string }
 
@@ -552,6 +555,10 @@ export default function ChildHomePage() {
                     size={44}
                     onClick={() => toggleLevel(lv.id)}
                   />
+                  {/* Madde 2026-09-05 (1): düzey tanımı — ELO/yaş/özellikler (admin'den girilir). */}
+                  {lv.description && (
+                    <p className="text-xs t-muted pl-14 -mt-1 mb-1.5 leading-snug">{lv.description}</p>
+                  )}
 
                   {levelOpen && (
                     <Branch offset={21}>
