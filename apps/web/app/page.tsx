@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -59,7 +60,8 @@ export default function HomePage() {
     <main className="neon-shell flex flex-col items-center justify-center p-8 gap-6">
       <div className="w-full max-w-xs neon-card neon-cyan p-7">
         <div className="text-center">
-          <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-20 w-auto mx-auto mb-3 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" />
+          <Image src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" width={640} height={640}
+            className="h-20 w-auto mx-auto mb-3 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" />
           <h1 className="text-2xl font-bold mb-1 n-text">Bozüyük Satranç Akademisi</h1>
           <p className="text-sm n-muted">Akademik Gelişim Platformu</p>
           <div className="my-4 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />

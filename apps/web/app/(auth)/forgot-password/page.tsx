@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ForgotPasswordPage() {
   return (
     <div className="space-y-6 text-center">
       <div>
-        <img src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" className="h-16 w-auto mx-auto mb-3 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" />
+        <Image src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" width={640} height={640}
+          className="h-16 w-auto mx-auto mb-3 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" />
         <h1 className="text-2xl font-bold n-text">Şifremi Unuttum</h1>
       </div>
 

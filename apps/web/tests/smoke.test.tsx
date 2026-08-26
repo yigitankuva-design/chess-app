@@ -20,4 +20,9 @@ describe('HomePage', () => {
       screen.getByRole('button', { name: /Giriş Yap/i })
     ).toBeInTheDocument();
   });
+
+  it('logoyu next/image ile render eder (madde 2026-09-05 (4))', () => {
+    render(<HomePage />);
+    expect(screen.getByAltText('Bozüyük Satranç Akademisi Logo')).toBeInTheDocument();
+  });
 });
