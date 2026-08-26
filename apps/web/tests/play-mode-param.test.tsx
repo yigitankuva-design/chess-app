@@ -15,9 +15,6 @@ vi.mock('@/components/BotGame', () => ({ BotGame: () => <div data-testid="bot-ga
 vi.mock('@/components/play/OfferBoard', () => ({
   OfferBoard: () => <div data-testid="offer-board" />,
 }));
-vi.mock('@/components/play/TournamentPlay', () => ({
-  TournamentPlay: () => <div data-testid="tournament-play" />,
-}));
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: ({ initialVariantId, initialCriteria }: {
     initialVariantId?: number;
@@ -66,9 +63,10 @@ describe('/play — ?mode= ile doğrudan akış açılır', () => {
     expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
   });
 
-  it('mode=tournament turnuva ekranını açar', () => {
+  it('mode=tournament turnuva alt sekmelerini açar', () => {
     renderWith('mode=tournament');
-    expect(screen.getByTestId('tournament-play')).toBeInTheDocument();
+    expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
+    expect(screen.getByText('Turnuva Oluştur')).toBeInTheDocument();
   });
 
   it('mode=bot kriter ekranını açar', () => {

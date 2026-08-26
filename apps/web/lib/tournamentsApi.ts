@@ -2,14 +2,18 @@ import { getToken } from '@/lib/auth-storage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+/** Lichess Arena modeli (2026-09-05): sabit tur sayısı yok, sabit SÜRE var —
+ *  sporcu maçını bitirip sayfaya dönünce anında en yakın puanlı rakiple eşleşir. */
 export interface TournamentSummary {
   id: number;
   name: string;
-  rounds_total: number;
+  starts_at: string;
+  duration_minutes: number;
+  ends_at: string;
+  seconds_remaining: number;
   base_ms: number | null;
   increment_ms: number | null;
   status: 'upcoming' | 'active' | 'finished';
-  current_round: number | null;
   joined: boolean;
   /** Madde 6 (2026-08-20): "Oyun Modu" — Puanlı turnuvada maçlar Performans
    *  Puanını etkiler. tempo=null ise (tempo 9 sabitten birine eşleşmiyorsa)
@@ -21,8 +25,8 @@ export interface TournamentSummary {
 export interface TournamentPairingRow {
   id: number;
   white_child_id: number;
-  white_name: string;
-  black_child_id: number | null;
+  white_name: string | null;
+  black_child_id: number;
   black_name: string | null;
   game_id: number | null;
   result: string | null;
@@ -30,35 +34,29 @@ export interface TournamentPairingRow {
 
 export interface TournamentStandingRow {
   child_id: number;
-  display_name: string;
+  display_name: string | null;
   score: number;
+  /** Sonneborn-Berger ("averaj") — puan eşitliğinde sıralama tayin eder. */
+  sb: number;
+  /** Üst üste kaç galibiyet — 2'ye ulaşınca sonraki sonuç katlanır (🔥). */
+  streak: number;
   rating: number | null;
   title: string | null;
 }
 
-export interface MyPairing {
+export interface MyActivePairing {
   id: number;
-  round_number: number;
-  is_bye: boolean;
+  opponent_id: number;
   opponent_name: string | null;
   my_color: 'white' | 'black';
   game_id: number | null;
-  result: string | null;
 }
 
-export interface TournamentDetail {
-  id: number;
-  name: string;
-  rounds_total: number;
-  base_ms: number | null;
-  increment_ms: number | null;
-  status: 'upcoming' | 'active' | 'finished';
-  current_round: number | null;
-  rated: boolean;
-  tempo: string | null;
+export interface TournamentDetail extends TournamentSummary {
   standings: TournamentStandingRow[];
-  my_pairing: MyPairing | null;
-  pairings_by_round: Record<string, TournamentPairingRow[]>;
+  /** Şu an süren (henüz sonuçlanmamış) eşleşmen — round kavramı yok. */
+  my_pairing: MyActivePairing | null;
+  recent_pairings: TournamentPairingRow[];
 }
 
 function authHeaders(): HeadersInit {
@@ -99,7 +97,8 @@ export async function joinTournament(id: number): Promise<boolean> {
 
 export interface TournamentCreatePayload {
   name: string;
-  rounds_total: number;
+  starts_at: string;          // ISO tarih-saat
+  duration_minutes: number;
   base_ms: number | null;
   increment_ms: number | null;
   rated: boolean;
@@ -117,45 +116,11 @@ export async function createTournament(payload: TournamentCreatePayload): Promis
   }
 }
 
-export async function startTournament(id: number): Promise<TournamentDetail | null> {
-  try {
-    const r = await fetch(`${API_BASE}/tournaments/${id}/start`, { method: 'POST', headers: authHeaders() });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
-    return null;
-  }
-}
-
-export async function advanceTournamentRound(id: number): Promise<TournamentDetail | null> {
-  try {
-    const r = await fetch(`${API_BASE}/tournaments/${id}/next-round`, { method: 'POST', headers: authHeaders() });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
-    return null;
-  }
-}
-
 export async function deleteTournament(id: number): Promise<boolean> {
   try {
     const r = await fetch(`${API_BASE}/tournaments/${id}`, { method: 'DELETE', headers: authHeaders() });
     return r.ok;
   } catch {
     return false;
-  }
-}
-
-export async function startPairingGame(
-  tournamentId: number, pairingId: number,
-): Promise<{ game_id: number; color: 'white' | 'black' } | null> {
-  try {
-    const r = await fetch(`${API_BASE}/tournaments/${tournamentId}/pairings/${pairingId}/start-game`, {
-      method: 'POST', headers: authHeaders(),
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
-    return null;
   }
 }

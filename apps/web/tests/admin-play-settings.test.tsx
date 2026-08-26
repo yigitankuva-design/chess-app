@@ -73,16 +73,16 @@ describe('PlaySettingsFields — Turnuva Varsayılanları', () => {
     global.fetch = vi.fn(() => Promise.resolve({ ok: true, json: async () => ({}) })) as never;
   });
 
-  it('varsayılan tur sayısı/süre/puanlı değeri gösterilir ve değiştirilip kaydedilebilir', async () => {
+  it('varsayılan süre(dk)/tempo/puanlı değeri gösterilir ve değiştirilip kaydedilebilir', async () => {
     const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
     render(<PlaySettingsFields play={DEFAULT_SETTINGS.play} onSaved={vi.fn()} />);
-    const roundsInput = screen.getByDisplayValue(String(DEFAULT_SETTINGS.play.tournamentDefaults.roundsTotal));
-    fireEvent.change(roundsInput, { target: { value: '6' } });
+    const durationInput = screen.getByLabelText('Süre (dk)');
+    fireEvent.change(durationInput, { target: { value: '90' } });
     fireEvent.click(screen.getByText('Turnuva varsayılanlarını kaydet'));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const body = lastPatchBody(fetchMock);
-    expect(body.play.tournamentDefaults.roundsTotal).toBe(6);
+    expect(body.play.tournamentDefaults.durationMinutes).toBe(90);
   });
 
   it('kaydedilince onSaved çağrılır', async () => {

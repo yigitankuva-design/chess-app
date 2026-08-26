@@ -119,45 +119,47 @@ async def test_athletes_tempo_verilmezse_puan_none(client, db):
 
 @pytest.mark.asyncio
 async def test_puanli_turnuva_maci_bitince_siralamaya_yansir(client, db):
+    """Arena modelinde eslesme normalde WS uzerinden olusur (bkz.
+    test_tournament_ws.py / arena_matchmaking) — burada asil test edilen
+    finalize_tournament_pairing + apply_rating_update'in AYNI commit icinde
+    puani gunceleyip standings'e yansimasi."""
+    from datetime import datetime
     _, teacher_id = await _teacher(client, "rt3@t.com")
     parent_id = await _parent_id(client, "rp3@t.com")
     children = [await _add_child(db, f"S{i}", teacher_id, parent_id) for i in range(2)]
     creator_h = {"Authorization": f"Bearer {_child_token(children[0].id)}"}
     created = (await client.post("/tournaments", headers=creator_h, json={
-        "name": "Puanlı Turnuva", "rounds_total": 1,
+        "name": "Puanlı Turnuva",
+        "starts_at": datetime.utcnow().isoformat(), "duration_minutes": 60,
         "base_ms": 300_000, "increment_ms": 0, "rated": True,
     })).json()
     assert created["rated"] is True
     assert created["tempo"] == "Yıldırım"
 
-    for c in children:
-        r = await client.post(f"/tournaments/{created['id']}/join",
-                              headers={"Authorization": f"Bearer {_child_token(c.id)}"})
-        assert r.status_code == 201
-
-    start = (await client.post(f"/tournaments/{created['id']}/start", headers=creator_h)).json()
-    pairing_id = start["pairings_by_round"]["1"][0]["id"]
+    r = await client.post(f"/tournaments/{created['id']}/join",
+                          headers={"Authorization": f"Bearer {_child_token(children[1].id)}"})
+    assert r.status_code == 201
 
     r = await client.get(f"/tournaments/{created['id']}",
                          headers={"Authorization": f"Bearer {_child_token(children[0].id)}"})
     standings = r.json()["standings"]
     assert all(s["rating"] == 400 for s in standings)  # henuz mac oynanmadi
 
-    # Beyaz tarafi belirle ve maci terk ettirip sonuclandiralim.
-    from sqlalchemy import select as sa_select
-    from chess_api.models import TournamentPairing
-    pairing = (await db.execute(sa_select(TournamentPairing).where(TournamentPairing.id == pairing_id))).scalar_one()
     game = Game(type=GameType.human, status=GameStatus.finished,
-               white_child_id=pairing.white_child_id, black_child_id=pairing.black_child_id,
+               white_child_id=children[0].id, black_child_id=children[1].id,
                base_ms=300_000, increment_ms=0, rated=True)
     db.add(game)
     await db.commit()
     await db.refresh(game)
+    from chess_api.models import TournamentPairing, GameResult
+    pairing = TournamentPairing(tournament_id=created["id"],
+                                white_child_id=children[0].id, black_child_id=children[1].id,
+                                game_id=game.id)
+    db.add(pairing)
+    await db.commit()
     from chess_api.services.tournaments import finalize_tournament_pairing
     from chess_api.services.rating import apply_rating_update
-    from chess_api.models import GameResult
     game.result = GameResult.white_wins
-    pairing.game_id = game.id
     await finalize_tournament_pairing(db, game)
     await apply_rating_update(db, game)
     await db.commit()
@@ -166,5 +168,5 @@ async def test_puanli_turnuva_maci_bitince_siralamaya_yansir(client, db):
                          headers={"Authorization": f"Bearer {_child_token(children[0].id)}"})
     standings = r.json()["standings"]
     ratings = {s["child_id"]: s["rating"] for s in standings}
-    assert ratings[pairing.white_child_id] == 420
+    assert ratings[children[0].id] == 420
     assert ratings[pairing.black_child_id] == 380

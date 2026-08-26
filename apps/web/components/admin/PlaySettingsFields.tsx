@@ -174,13 +174,13 @@ export function PlaySettingsFields({ play, onSaved }: Props) {
         <p className="text-xs font-bold n-muted uppercase tracking-widest">Turnuva Varsayılanları</p>
         <p className="text-xs n-muted">Sporcu turnuva oluştururken formda bu değerler baştan seçili gelir.</p>
         <label className="flex items-center gap-2 text-xs">
-          <span className="n-muted w-20">Tur sayısı</span>
-          <input type="number" min={1} value={tournamentDefaults.roundsTotal}
-            onChange={(e) => setTournamentDefaults((p) => ({ ...p, roundsTotal: Number(e.target.value) }))}
+          <span className="n-muted w-20">Süre (dk)</span>
+          <input type="number" min={5} value={tournamentDefaults.durationMinutes}
+            onChange={(e) => setTournamentDefaults((p) => ({ ...p, durationMinutes: Number(e.target.value) }))}
             className="neon-input text-xs px-2 py-1 w-24" />
         </label>
         <label className="flex items-center gap-2 text-xs">
-          <span className="n-muted w-20">Süre</span>
+          <span className="n-muted w-20">Tempo</span>
           <select value={tournamentDefaults.timeControlLabel}
             onChange={(e) => setTournamentDefaults((p) => ({ ...p, timeControlLabel: e.target.value }))}
             className="neon-input text-xs px-2 py-1">

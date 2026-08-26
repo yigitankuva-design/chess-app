@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+const push = vi.fn();
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
 }));
 
 vi.mock('@/lib/settings/useTabGuard', () => ({ useTabGuard: () => {} }));
@@ -20,10 +21,6 @@ vi.mock('@/components/play/OfferBoard', () => ({
 
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: () => <div>Bota Karşı Pratik Yap</div>,
-}));
-
-vi.mock('@/components/play/TournamentPlay', () => ({
-  TournamentPlay: () => <div data-testid="tournament-play" />,
 }));
 
 import PlayPage from '@/app/(child)/play/page';
@@ -50,10 +47,27 @@ describe('/play — 4 sekme (madde a)', () => {
     expect(screen.getByTestId('offer-board')).toBeInTheDocument();
   });
 
-  it('Turnuvaya Katıl seçilince turnuva ekranı açılır', () => {
+  it('Turnuvaya Katıl seçilince 2 alt sekme (Turnuvaya Katıl/Turnuva Oluştur) açılır', () => {
     render(<PlayPage />);
     fireEvent.click(screen.getByText('Turnuvaya Katıl'));
-    expect(screen.getByTestId('tournament-play')).toBeInTheDocument();
+    expect(screen.getByText('Turnuva Oluştur')).toBeInTheDocument();
+    expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
+  });
+
+  it('Turnuva alt sekmesi "Turnuvaya Katıl" lobi sayfasına yönlendirir', () => {
+    push.mockClear();
+    render(<PlayPage />);
+    fireEvent.click(screen.getByText('Turnuvaya Katıl'));
+    fireEvent.click(screen.getByText('Turnuvaya Katıl'));
+    expect(push).toHaveBeenCalledWith('/play/tournament/lobby');
+  });
+
+  it('Turnuva alt sekmesi "Turnuva Oluştur" oluşturma sayfasına yönlendirir', () => {
+    push.mockClear();
+    render(<PlayPage />);
+    fireEvent.click(screen.getByText('Turnuvaya Katıl'));
+    fireEvent.click(screen.getByText('Turnuva Oluştur'));
+    expect(push).toHaveBeenCalledWith('/play/tournament/create');
   });
 
   it('Açılışı Pratiği Yap seçilince rakip türü sorulur', () => {

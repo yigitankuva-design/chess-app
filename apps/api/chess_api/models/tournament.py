@@ -17,7 +17,6 @@ class Tournament(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    rounds_total: Mapped[int] = mapped_column(Integer)
     base_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     increment_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Madde 6 (2026-08-20): Puanli turnuvada maclar Performans Puanini
@@ -26,8 +25,10 @@ class Tournament(Base):
     status: Mapped[TournamentStatus] = mapped_column(
         Enum(TournamentStatus), default=TournamentStatus.upcoming,
     )
-    # Aktif oldugunda 1'den baslar; upcoming'de None.
-    current_round: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Lichess Arena modeli (2026-09-05): sabit tur yok, sabit SÜRE var.
+    # ends_at DB'de tutulmaz — starts_at + duration_minutes'tan hesaplanır.
+    starts_at: Mapped[datetime] = mapped_column(DateTime)
+    duration_minutes: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -39,8 +40,12 @@ class TournamentParticipant(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
     child_id: Mapped[int] = mapped_column(ForeignKey("child_profiles.id"), index=True)
-    # Galibiyet=1, beraberlik=0.5, kayip=0, bay gecme=1 (madde: Isvicre usulu).
+    # Lichess Arena puanlamasi: galibiyet=2, beraberlik=1, kayip=0 — 2 galibiyet
+    # ust uste gelince "seri" aktiflesir, seri aktifken sonraki sonuc katlanir.
     score: Mapped[float] = mapped_column(Float, default=0.0)
+    # Ust uste kac galibiyet — 2'ye ulasinca sonraki sonuc (bu dahil) katlanir;
+    # beraberlik/kayip sifirlar.
+    current_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -49,15 +54,15 @@ class TournamentPairing(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
-    round_number: Mapped[int] = mapped_column(Integer)
     white_child_id: Mapped[int] = mapped_column(ForeignKey("child_profiles.id"), index=True)
-    # None = bay gecme (white_child_id otomatik 1 puan alir, mac oynanmaz).
-    black_child_id: Mapped[int | None] = mapped_column(ForeignKey("child_profiles.id"), nullable=True, index=True)
-    # Mac henuz baslamadiysa None — sporcu "Maca Basla" deyince doldurulur.
+    # Arena'da bay gecme yok — kuyrukta yalniz kalan sporcu rakip gelene kadar
+    # bekler, bu yuzden black_child_id hep dolu (eslesme aninda olusturulur).
+    black_child_id: Mapped[int] = mapped_column(ForeignKey("child_profiles.id"), index=True)
+    # Eslesme aninda mac da olusturulur, bu yuzden hep dolu.
     # ON DELETE SET NULL: child_deletion.py bir maci hard-delete ederse bu
     # satir "oynanmamis" gibi kalir, patlamaz (KURAL #3).
     game_id: Mapped[int | None] = mapped_column(
         ForeignKey("games.id", ondelete="SET NULL"), nullable=True,
     )
-    # '1-0' | '0-1' | '1/2-1/2' | 'bye' | None (henuz sonuclanmadi).
+    # '1-0' | '0-1' | '1/2-1/2' | None (henuz sonuclanmadi).
     result: Mapped[str | None] = mapped_column(String(10), nullable=True)

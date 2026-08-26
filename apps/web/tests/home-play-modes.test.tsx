@@ -20,7 +20,7 @@ vi.mock('@/lib/settings/settings-context', async () => {
         play: {
           levels: LEVELS,
           timeGroups: TIME_GROUPS,
-          tournamentDefaults: { roundsTotal: 4, timeControlLabel: '10+0', rated: true },
+          tournamentDefaults: { durationMinutes: 60, timeControlLabel: '10+0', rated: true },
         },
       },
     }),

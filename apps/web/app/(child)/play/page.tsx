@@ -16,7 +16,6 @@ import { ActivePlayersBadge } from '@/components/play/ActivePlayersBadge';
 import { getCustomTab } from '@/lib/customTabsApi';
 import { PositionPoolPractice } from '@/components/play/PositionPoolPractice';
 import type { PoolPosition } from '@/lib/play/positionPool';
-import { TournamentPlay } from '@/components/play/TournamentPlay';
 
 /** "pool" ana ekrandaki özel sekme alt sekmesinden gelir — kart listesinde YOKTUR. */
 type Mode = 'friend' | 'bot' | 'opening' | 'tournament' | 'pool';
@@ -207,12 +206,31 @@ function PlayInner() {
     );
   }
 
-  // ── Turnuvaya Katıl ─────────────────────────────────────────────────────────
+  // ── Turnuva: 2 alt sekme, her biri KENDİ sayfasına yönlendirir ─────────────
+  // Madde 2026-09-05: Lichess Arena modeli — turnuva lobisi ve oluşturma
+  // ekranı artık ayrı sayfalarda (/play/tournament/lobby, /play/tournament/create).
   if (mode === 'tournament') {
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-        <p className="font-semibold text-sm">🏆 Turnuvaya Katıl</p>
-        <TournamentPlay />
+        <p className="font-semibold text-sm">🏆 Turnuva</p>
+        <button type="button" onClick={() => router.push('/play/tournament/lobby')}
+          className="t-card-i w-full flex items-center gap-4 px-4 py-4 text-left">
+          <span className="text-2xl">🔎</span>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Turnuvaya Katıl</p>
+            <p className="text-xs t-muted mt-0.5">Devam eden turnuvaları gör, katıl</p>
+          </div>
+          <ChevronRight />
+        </button>
+        <button type="button" onClick={() => router.push('/play/tournament/create')}
+          className="t-card-i w-full flex items-center gap-4 px-4 py-4 text-left">
+          <span className="text-2xl">➕</span>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Turnuva Oluştur</p>
+            <p className="text-xs t-muted mt-0.5">Kendi turnuvanı başlat</p>
+          </div>
+          <ChevronRight />
+        </button>
       </main>
     );
   }

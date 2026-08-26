@@ -1,111 +1,36 @@
-"""Turnuva eslestirme (basitlestirilmis Isvicre usulu) ve mac-bitince-puanlama.
+"""Turnuva puanlama — Lichess Arena modeli (2026-09-05).
 
-Gercek FIDE Isvicre sistemi (Buchholz/Sonneborn-Berger tie-break, renk
-dengesi, vb.) bu uygulamanin olcegi (sinif ici birkac sporcu, birkac tur)
-icin gereksiz karmasiklik. Burada GREEDY bir esleme yapilir: puana gore
-sirala, en ustten baslayarak her oyuncuyu DAHA ONCE OYNAMADIGI en yakin
-puanli rakiple esle. Gerideki izleme (backtracking) YOKTUR — uygun rakip
-bulunamazsa (herkesle oynamis), tekrar eslesmeye izin verilir; sistem asla
-kilitlenmez.
+Eslesmeler artik bu dosyada URETILMIYOR: rakip bulma islemi
+`services/arena_matchmaking.py`'deki canli kuyruga tasindi (sporcu maçini
+bitirip turnuva sayfasina donunce, o anki puanina EN YAKIN bekleyen rakiple
+ANINDA eslesir — sabit tur YOK). Bu dosyada yalnizca:
+- bir mac bitince turnuva puanini guncelleyen TEK cagri noktasi
+  (`finalize_tournament_pairing`, Lichess'in 2/1/0 + seri katlama kurali),
+- siralama esitliginde kullanilan Sonneborn-Berger ("averaj") hesabi
+kalir.
 """
-import random
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.models import Game, GameType, TournamentPairing, TournamentParticipant
 
 
-async def _played_pairs(db: AsyncSession, tournament_id: int) -> set[frozenset[int]]:
-    rows = (await db.execute(
-        select(TournamentPairing.white_child_id, TournamentPairing.black_child_id)
-        .where(TournamentPairing.tournament_id == tournament_id)
-    )).all()
-    return {frozenset((w, b)) for w, b in rows if b is not None}
-
-
-async def _bye_takers(db: AsyncSession, tournament_id: int) -> set[int]:
-    rows = (await db.execute(
-        select(TournamentPairing.white_child_id)
-        .where(
-            TournamentPairing.tournament_id == tournament_id,
-            TournamentPairing.black_child_id.is_(None),
-        )
-    )).scalars().all()
-    return set(rows)
-
-
-def _pick_bye(candidates: list[int], already_had_bye: set[int]) -> int:
-    """Daha once bay gecmemis birini tercih eder — ayni kisi art arda bay
-    gecip haksiz puan almasin diye. Hepsi bay gectiyse (kucuk turnuvada
-    olasi) rastgele biri secilir."""
-    fresh = [c for c in candidates if c not in already_had_bye]
-    pool = fresh if fresh else candidates
-    return random.choice(pool)
-
-
-async def generate_pairings(
-    db: AsyncSession, tournament_id: int, round_number: int,
-) -> list[TournamentPairing]:
-    """Verilen tur icin eslesme satirlari OLUSTURUR (db.add), commit ETMEZ."""
-    participants = (await db.execute(
-        select(TournamentParticipant).where(TournamentParticipant.tournament_id == tournament_id)
-    )).scalars().all()
-
-    played = await _played_pairs(db, tournament_id)
-    already_had_bye = await _bye_takers(db, tournament_id)
-
-    if round_number == 1:
-        order = [p.child_id for p in participants]
-        random.shuffle(order)
-    else:
-        # Puana gore azalan; esitlikte KARARLI sira (join sirasi) — rastgele
-        # sallanti her "sonraki tur" cagrisinda farkli sonuc uretmesin diye.
-        order = [p.child_id for p in sorted(participants, key=lambda p: (-p.score, p.id))]
-
-    remaining = list(order)
-    bye_id: int | None = None
-    if len(remaining) % 2 == 1:
-        bye_id = _pick_bye(remaining, already_had_bye)
-        remaining.remove(bye_id)
-
-    pairings: list[TournamentPairing] = []
-    while remaining:
-        top = remaining.pop(0)
-        # En yakin puanli (siradaki), daha once oynamamis ilk rakibi bul.
-        opponent = None
-        for cand in remaining:
-            if frozenset((top, cand)) not in played:
-                opponent = cand
-                break
-        if opponent is None:
-            # Herkesle oynamis (kucuk turnuva) — tekrar eslesmeye izin ver,
-            # sistem kilitlenmesin.
-            opponent = remaining[0]
-        remaining.remove(opponent)
-        pairing = TournamentPairing(
-            tournament_id=tournament_id, round_number=round_number,
-            white_child_id=top, black_child_id=opponent,
-        )
-        db.add(pairing)
-        pairings.append(pairing)
-
-    if bye_id is not None:
-        bye_pairing = TournamentPairing(
-            tournament_id=tournament_id, round_number=round_number,
-            white_child_id=bye_id, black_child_id=None, result="bye",
-        )
-        db.add(bye_pairing)
-        pairings.append(bye_pairing)
-        for p in participants:
-            if p.child_id == bye_id:
-                p.score += 1.0
-
-    return pairings
+def _apply_arena_points(participant: TournamentParticipant, *, is_win: bool, is_draw: bool) -> None:
+    """Lichess Arena puanlamasi: galibiyet=2, beraberlik=1, kayip=0. 2 galibiyet
+    ust uste gelince ("seri") sonraki HER sonuc (bu dahil) KATLANIR — mağlubiyet
+    veya galibiyet-olmayan bir sonuc seriyi sifirlar. Katlama, BU macin
+    sonucundan ONCEKI seri sayisina gore karar verilir (Lichess ornegi:
+    2 galibiyet + 1 beraberlik = 2 + 2 + (2*1) = 6 puan)."""
+    base = 2.0 if is_win else (1.0 if is_draw else 0.0)
+    points = base * 2 if participant.current_streak >= 2 else base
+    participant.current_streak = participant.current_streak + 1 if is_win else 0
+    participant.score += points
 
 
 async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
     """Insan-insan bir mac bitince (checkmate/pat/terk/bayrak/beraberlik —
     TUMU icin TEK cagri noktasi) — eger bu mac bir turnuva eslesmesine
-    baglıysa, sonucu esleme satirina yazar ve iki tarafin puanini gunceller.
+    baglıysa, sonucu esleme satirina yazar ve iki tarafin puanini/serisini
+    Lichess Arena kuralina gore gunceller.
 
     Bagli degilse (sıradan Arkadasla Oyna maci) HICBIR SEY yapmaz.
     """
@@ -127,14 +52,41 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
     )).scalars().all()
     by_child = {p.child_id: p for p in participants}
 
-    if game.result.value == "1-0":
-        white_pts, black_pts = 1.0, 0.0
-    elif game.result.value == "0-1":
-        white_pts, black_pts = 0.0, 1.0
-    else:
-        white_pts, black_pts = 0.5, 0.5
+    is_draw = game.result.value == "1/2-1/2"
+    white_wins = game.result.value == "1-0"
 
-    if pairing.white_child_id in by_child:
-        by_child[pairing.white_child_id].score += white_pts
-    if pairing.black_child_id in by_child:
-        by_child[pairing.black_child_id].score += black_pts
+    white_p = by_child.get(pairing.white_child_id)
+    black_p = by_child.get(pairing.black_child_id)
+    if white_p is not None:
+        _apply_arena_points(white_p, is_win=white_wins and not is_draw, is_draw=is_draw)
+    if black_p is not None:
+        _apply_arena_points(black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw)
+
+
+def compute_sonneborn_berger(
+    participants: list[TournamentParticipant], pairings: list[TournamentPairing],
+) -> dict[int, float]:
+    """Siralama esitliginde kullanilan "averaj": kazandigin rakiplerin GUNCEL
+    toplam puani tam, berabere kaldiklarinin yarisi eklenir (klasik
+    FIDE/Isvicre usulu Sonneborn-Berger). Saf fonksiyon — DB'ye dokunmaz."""
+    score_by_child = {p.child_id: p.score for p in participants}
+    sb: dict[int, float] = {p.child_id: 0.0 for p in participants}
+
+    for pairing in pairings:
+        if pairing.result is None or pairing.result == "1/2-1/2":
+            is_draw = pairing.result == "1/2-1/2"
+            if is_draw:
+                w_opp = score_by_child.get(pairing.black_child_id, 0.0)
+                b_opp = score_by_child.get(pairing.white_child_id, 0.0)
+                if pairing.white_child_id in sb:
+                    sb[pairing.white_child_id] += w_opp / 2
+                if pairing.black_child_id in sb:
+                    sb[pairing.black_child_id] += b_opp / 2
+            continue
+
+        winner_id = pairing.white_child_id if pairing.result == "1-0" else pairing.black_child_id
+        loser_id = pairing.black_child_id if pairing.result == "1-0" else pairing.white_child_id
+        if winner_id in sb:
+            sb[winner_id] += score_by_child.get(loser_id, 0.0)
+
+    return sb

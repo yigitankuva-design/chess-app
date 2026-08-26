@@ -41,7 +41,8 @@ export interface AppSettingsData {
   play: {
     levels: PlayLevel[];
     timeGroups: PlayTimeGroup[];
-    tournamentDefaults: { roundsTotal: number; timeControlLabel: string; rated: boolean };
+    /** Lichess Arena modeli (2026-09-05): sabit tur sayısı yerine sabit SÜRE. */
+    tournamentDefaults: { durationMinutes: number; timeControlLabel: string; rated: boolean };
   };
   /**
    * Madde 2026-09-05 (3): Analiz Et'in 3 alt özelliği admin'den ayrı ayrı
@@ -73,7 +74,7 @@ export const DEFAULT_SETTINGS: AppSettingsData = {
   play: {
     levels: LEVELS.map((l) => ({ ...l })),
     timeGroups: TIME_GROUPS.map((g) => ({ ...g, items: g.items.map((i) => ({ ...i })) })),
-    tournamentDefaults: { roundsTotal: 4, timeControlLabel: '10+0', rated: true },
+    tournamentDefaults: { durationMinutes: 60, timeControlLabel: '10+0', rated: true },
   },
   analizFeatures: { matches: true, freePlay: true, position: true },
 };
