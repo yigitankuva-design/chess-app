@@ -182,7 +182,7 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
                 <span className="t-muted w-5 text-right">{i + 1}.</span>
                 <span className="flex-1">
                   {formatPlayerLabel(row.display_name ?? 'Sporcu', row.rating, row.title)}
-                  {row.streak >= 2 && <> 🔥</>}
+                  {detail.winning_streak_bonus && row.streak >= 2 && <> 🔥</>}
                 </span>
                 <span className="t-muted text-xs w-10 text-right">{row.sb.toFixed(1)}</span>
                 <span className="font-semibold w-8 text-right">{row.score}</span>

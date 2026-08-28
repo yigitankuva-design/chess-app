@@ -21,6 +21,9 @@ async def _create_pairing_game(tournament_id: int, white_child_id: int, black_ch
             base_ms=t.base_ms if t else None,
             increment_ms=t.increment_ms if t and t.increment_ms else 0,
             rated=t.rated if t else False,
+            # "Başlangıç Konumu" (2026-09-06): tum eslesmeler AYNI FEN'den
+            # baslar — hoca/sporcu belirli bir acilis/varyanti tema secebilsin.
+            start_fen=t.start_fen if t else None,
         )
         db.add(TournamentPairing(
             tournament_id=tournament_id,

@@ -122,7 +122,10 @@ async def test_eslesince_mac_ve_esleme_birlikte_olusur(tournament_env):
     from chess_api.models import Game
     from sqlalchemy import select
 
-    tid = await _make_tournament(tournament_env, base_ms=300_000, increment_ms=0, rated=True)
+    fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+    tid = await _make_tournament(
+        tournament_env, base_ms=300_000, increment_ms=0, rated=True, start_fen=fen,
+    )
 
     game_id = await _create_pairing_game(tid, 1, 2)
 
@@ -132,6 +135,8 @@ async def test_eslesince_mac_ve_esleme_birlikte_olusur(tournament_env):
         assert game.white_child_id == 1 and game.black_child_id == 2
         assert game.base_ms == 300_000
         assert game.rated is True
+        # "Başlangıç Konumu" (2026-09-06): turnuvanin FEN'i maca aynen tasinir.
+        assert game.start_fen == fen
 
         pairing = (await db.execute(
             select(TournamentPairing).where(TournamentPairing.tournament_id == tid)

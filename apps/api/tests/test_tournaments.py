@@ -76,6 +76,46 @@ async def test_sporcu_turnuva_olusturur_ve_otomatik_katilir(client, db):
 
 
 @pytest.mark.asyncio
+async def test_olusturma_ekrani_yeni_alanlari_kaydeder(client, db):
+    """Madde 2026-09-06 (Turnuva Oluştur ekranı): açıklama, başlangıç konumu
+    (FEN), galibiyet ödülü (seri katlama aç/kapa) turnuvayla birlikte
+    kaydedilir ve GET'te geri döner."""
+    _, teacher_id = await _teacher(client, "t1c@t.com")
+    parent_id = await _parent_id(client, "p1c@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+
+    fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+    created = await _create_tournament(
+        client, creator.id,
+        description="Yaz kampı final turnuvası",
+        start_fen=fen, winning_streak_bonus=False,
+    )
+    assert created["description"] == "Yaz kampı final turnuvası"
+    assert created["start_fen"] == fen
+    assert created["winning_streak_bonus"] is False
+
+    r = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(creator.id))
+    body = r.json()
+    assert body["description"] == "Yaz kampı final turnuvası"
+    assert body["start_fen"] == fen
+    assert body["winning_streak_bonus"] is False
+
+
+@pytest.mark.asyncio
+async def test_olusturma_ekrani_yeni_alanlar_bos_gecilebilir(client, db):
+    """Açıklama/başlangıç konumu boş bırakılabilir; galibiyet ödülü
+    varsayılan olarak açık (True) gelir (geriye dönük uyumlu)."""
+    _, teacher_id = await _teacher(client, "t1d@t.com")
+    parent_id = await _parent_id(client, "p1d@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+
+    created = await _create_tournament(client, creator.id)
+    assert created["description"] is None
+    assert created["start_fen"] is None
+    assert created["winning_streak_bonus"] is True
+
+
+@pytest.mark.asyncio
 async def test_detay_joined_alani_katilmayan_icin_false_doner(client, db):
     """GET /tournaments/{id}: ayni hocaya bagli ama HENUZ katilmamis bir
     sporcu detayi gorebilir (madde: mimari) ama joined=False donmeli —
@@ -337,6 +377,52 @@ async def test_streak_katlama_lichess_ornegi(db):
     )).scalars().all()
     scores = {p.child_id: p.score for p in parts}
     assert scores[p1.id] == 6.0
+    assert scores[p2.id] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_galibiyet_odulu_kapaliyken_seri_katlanmaz(db):
+    """"Galibiyet Ödülü" kapalıyken (winning_streak_bonus=False) 2 galibiyet
+    üst üste gelse bile sonraki sonuç KATLANMAZ — hep düz 2/1/0."""
+    t = Tournament(name="X", created_by_user_id=1, status=TournamentStatus.active,
+                   starts_at=datetime.utcnow(), duration_minutes=60,
+                   winning_streak_bonus=False)
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    p2 = ChildProfile(parent_user_id=1, display_name="B", age=9, pin_hash="x")
+    db.add_all([p1, p2])
+    await db.commit()
+    await db.refresh(p1)
+    await db.refresh(p2)
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p1.id))
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p2.id))
+    await db.commit()
+
+    async def _play(result: str):
+        game = Game(type=GameType.human, status=GameStatus.finished,
+                   white_child_id=p1.id, black_child_id=p2.id, result=GameResult(result))
+        db.add(game)
+        await db.commit()
+        await db.refresh(game)
+        pairing = TournamentPairing(tournament_id=t.id, white_child_id=p1.id,
+                                    black_child_id=p2.id, game_id=game.id)
+        db.add(pairing)
+        await db.commit()
+        await finalize_tournament_pairing(db, game)
+        await db.commit()
+
+    await _play("1-0")       # p1: 2 puan, seri=1
+    await _play("1-0")       # p1: +2 puan, seri=2
+    await _play("1/2-1/2")   # seri>=2 ama bonus KAPALI -> katlanmaz (+1, +1)
+
+    parts = (await db.execute(
+        select(TournamentParticipant).where(TournamentParticipant.tournament_id == t.id)
+    )).scalars().all()
+    scores = {p.child_id: p.score for p in parts}
+    assert scores[p1.id] == 5.0  # 2+2+1 (katlanmadi)
     assert scores[p2.id] == 1.0
 
 

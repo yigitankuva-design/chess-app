@@ -11,17 +11,21 @@ kalir.
 """
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from chess_api.models import Game, GameType, TournamentPairing, TournamentParticipant
+from chess_api.models import Game, GameType, Tournament, TournamentPairing, TournamentParticipant
 
 
-def _apply_arena_points(participant: TournamentParticipant, *, is_win: bool, is_draw: bool) -> None:
-    """Lichess Arena puanlamasi: galibiyet=2, beraberlik=1, kayip=0. 2 galibiyet
-    ust uste gelince ("seri") sonraki HER sonuc (bu dahil) KATLANIR — mağlubiyet
-    veya galibiyet-olmayan bir sonuc seriyi sifirlar. Katlama, BU macin
-    sonucundan ONCEKI seri sayisina gore karar verilir (Lichess ornegi:
-    2 galibiyet + 1 beraberlik = 2 + 2 + (2*1) = 6 puan)."""
+def _apply_arena_points(
+    participant: TournamentParticipant, *, is_win: bool, is_draw: bool, streak_bonus: bool = True,
+) -> None:
+    """Lichess Arena puanlamasi: galibiyet=2, beraberlik=1, kayip=0. "Galibiyet
+    Ödülü" (streak_bonus) acikken 2 galibiyet ust uste gelince ("seri") sonraki
+    HER sonuc (bu dahil) KATLANIR — maglubiyet veya galibiyet-olmayan bir sonuc
+    seriyi sifirlar. Katlama, BU macin sonucundan ONCEKI seri sayisina gore
+    karar verilir (Lichess ornegi: 2 galibiyet + 1 beraberlik = 2 + 2 + (2*1) =
+    6 puan). streak_bonus KAPALIYSA seri yine sayilir (ileride acilirsa diye)
+    ama HICBIR sonuc katlanmaz — hep duz 2/1/0."""
     base = 2.0 if is_win else (1.0 if is_draw else 0.0)
-    points = base * 2 if participant.current_streak >= 2 else base
+    points = base * 2 if streak_bonus and participant.current_streak >= 2 else base
     participant.current_streak = participant.current_streak + 1 if is_win else 0
     participant.score += points
 
@@ -44,6 +48,9 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
 
     pairing.result = game.result.value
 
+    tournament = await db.get(Tournament, pairing.tournament_id)
+    streak_bonus = tournament.winning_streak_bonus if tournament else True
+
     participants = (await db.execute(
         select(TournamentParticipant).where(
             TournamentParticipant.tournament_id == pairing.tournament_id,
@@ -58,9 +65,9 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
     white_p = by_child.get(pairing.white_child_id)
     black_p = by_child.get(pairing.black_child_id)
     if white_p is not None:
-        _apply_arena_points(white_p, is_win=white_wins and not is_draw, is_draw=is_draw)
+        _apply_arena_points(white_p, is_win=white_wins and not is_draw, is_draw=is_draw, streak_bonus=streak_bonus)
     if black_p is not None:
-        _apply_arena_points(black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw)
+        _apply_arena_points(black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw, streak_bonus=streak_bonus)
 
 
 def compute_sonneborn_berger(

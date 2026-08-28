@@ -53,6 +53,8 @@ def _tournament_out(t: Tournament) -> dict:
         "base_ms": t.base_ms, "increment_ms": t.increment_ms,
         "status": t.status.value,
         "rated": t.rated, "tempo": tempo_category(t.base_ms, t.increment_ms),
+        "description": t.description, "start_fen": t.start_fen,
+        "winning_streak_bonus": t.winning_streak_bonus,
     }
 
 
@@ -101,6 +103,9 @@ async def create_tournament(
         starts_at=payload.starts_at, duration_minutes=payload.duration_minutes,
         base_ms=payload.base_ms, increment_ms=payload.increment_ms,
         rated=payload.rated,
+        description=(payload.description or None),
+        start_fen=(payload.start_fen or None),
+        winning_streak_bonus=payload.winning_streak_bonus,
     )
     db.add(t)
     await db.flush()

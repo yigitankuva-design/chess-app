@@ -28,6 +28,7 @@ function baseDetail(overrides: Record<string, unknown> = {}) {
     starts_at: new Date().toISOString(), duration_minutes: 60,
     ends_at: new Date().toISOString(), seconds_remaining: 1800,
     base_ms: 300000, increment_ms: 0, status: 'active', joined: true, rated: false, tempo: null,
+    description: null, start_fen: null, winning_streak_bonus: true,
     standings: [{ child_id: 1, display_name: 'Ali', score: 4, sb: 2.5, streak: 2, rating: null, title: null }],
     my_pairing: null,
     recent_pairings: [],
@@ -77,6 +78,11 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
   it('sıralamada 2+ galibiyet serisi 🔥 ile gösterilir', async () => {
     await renderPage(baseDetail());
     expect(screen.getByText(/🔥/)).toBeInTheDocument();
+  });
+
+  it('"Galibiyet Ödülü" kapalıysa (winning_streak_bonus=false) 🔥 gösterilmez', async () => {
+    await renderPage(baseDetail({ winning_streak_bonus: false }));
+    expect(screen.queryByText(/🔥/)).not.toBeInTheDocument();
   });
 
   it('turnuva silinince lobiye yönlendirir', async () => {

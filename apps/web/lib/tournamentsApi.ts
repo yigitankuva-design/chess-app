@@ -20,6 +20,12 @@ export interface TournamentSummary {
    *  rated=true olsa da hiçbir maç puanlanmaz. */
   rated: boolean;
   tempo: string | null;
+  /** Madde 2026-09-06 ("Turnuva Oluştur" ekranı). */
+  description: string | null;
+  /** Tüm eşleşmeler bu FEN'den başlar — boş/null = standart başlangıç. */
+  start_fen: string | null;
+  /** "Galibiyet Ödülü": açıkken 2 galibiyet üst üste sonraki sonucu katlar. */
+  winning_streak_bonus: boolean;
 }
 
 export interface TournamentPairingRow {
@@ -102,6 +108,9 @@ export interface TournamentCreatePayload {
   base_ms: number | null;
   increment_ms: number | null;
   rated: boolean;
+  description?: string | null;
+  start_fen?: string | null;
+  winning_streak_bonus?: boolean;
 }
 
 export async function createTournament(payload: TournamentCreatePayload): Promise<TournamentSummary | null> {

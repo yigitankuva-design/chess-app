@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Integer, Float, Boolean, Enum, ForeignKey, DateTime
+from sqlalchemy import String, Integer, Float, Boolean, Enum, ForeignKey, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -29,6 +29,17 @@ class Tournament(Base):
     # ends_at DB'de tutulmaz — starts_at + duration_minutes'tan hesaplanır.
     starts_at: Mapped[datetime] = mapped_column(DateTime)
     duration_minutes: Mapped[int] = mapped_column(Integer)
+    # Madde 2026-09-06 (turnuva oluşturma ekranı): serbest metin açıklama.
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tum eslesmeler bu FEN'den baslar (bos/None = standart baslangic) —
+    # hoca/sporcu belirli bir acilis/varyanti tema olarak secebilsin diye.
+    start_fen: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # "Galibiyet Odulu" (2026-09-06): acik iken 2 galibiyet ust uste gelince
+    # sonraki sonuc katlanir (bkz. services/tournaments.py::_apply_arena_points);
+    # kapaliysa hep duz 2/1/0 puanlanir. Varsayilan True — mevcut davranis degismez.
+    winning_streak_bonus: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true",
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
