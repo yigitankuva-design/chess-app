@@ -16,7 +16,7 @@ vi.mock('@/lib/hooks/use-websocket', () => ({
   wsBase: () => 'ws://test',
 }));
 
-import { TournamentDetailView } from '@/app/(child)/play/tournament/[id]/page';
+import { TournamentDetailView } from '@/components/play/TournamentDetailView';
 
 function mockFetchOnce(data: unknown, ok = true) {
   return { ok, json: async () => data } as Response;
