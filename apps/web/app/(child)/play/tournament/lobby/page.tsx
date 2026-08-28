@@ -33,12 +33,79 @@ function formatRemaining(seconds: number): string {
 
 const rowStyle: React.CSSProperties = { background: '#1c1c1e', color: '#fff' };
 
+interface TableProps {
+  rows: TournamentSummary[];
+  showRemaining: boolean;
+  actionColumnLabel: string;
+  mode: 'joinable' | 'finished';
+  busyId: number | null;
+  onJoin: (id: number) => void;
+  onOpen: (id: number) => void;
+}
+
+function TournamentTable({ rows, showRemaining, actionColumnLabel, mode, busyId, onJoin, onOpen }: TableProps) {
+  return (
+    <div className="overflow-x-auto rounded-lg">
+      <table className="w-full text-sm" style={{ borderCollapse: 'collapse', minWidth: 640 }}>
+        <thead>
+          <tr className="text-left">
+            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Saat</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Turnuva İsmi</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Tempo</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Toplam Süre</th>
+            {showRemaining && (
+              <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Kalan Süre</th>
+            )}
+            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Katılımcı Sayısı</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">{actionColumnLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((t, i) => (
+            <tr key={t.id} style={{ ...rowStyle, borderTop: i > 0 ? '1px solid rgba(255,255,255,0.12)' : undefined }}>
+              <td className="px-3 py-3">{formatTime(t.starts_at)}</td>
+              <td className="px-3 py-3 font-semibold">{t.name}</td>
+              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatTempo(t.base_ms)}</td>
+              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatDuration(t.duration_minutes)}</td>
+              {showRemaining && (
+                <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatRemaining(t.seconds_remaining)}</td>
+              )}
+              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{t.participant_count}</td>
+              <td className="px-3 py-3">
+                {mode === 'finished' ? (
+                  <button type="button" onClick={() => onOpen(t.id)}
+                    className="px-4 py-2 rounded-md text-xs font-bold"
+                    style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}>
+                    Görüntüle
+                  </button>
+                ) : t.joined ? (
+                  <button type="button" onClick={() => onOpen(t.id)}
+                    className="px-4 py-2 rounded-md text-xs font-bold"
+                    style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}>
+                    Aç
+                  </button>
+                ) : (
+                  <button type="button" disabled={busyId === t.id} onClick={() => onJoin(t.id)}
+                    className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50"
+                    style={{ background: 'var(--t-accent)', color: '#fff' }}>
+                    {busyId === t.id ? '...' : 'Katıl'}
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** "Turnuvaya Katıl" lobisi — Zafer'in gönderdiği tablo görseline göre.
- *  Madde 2026-09-07: başlık "Aktif Turnuvalar" olduğu için yalnızca
- *  status='active' turnuvalar listelenir (upcoming/finished burada değil —
- *  "Kalan Süre" sütunu zaten sadece aktif turnuva için anlamlı). İkon YOK
- *  (madde 2); saat "15:45" formatında (madde 1); Tempo kutusu filtre
- *  görevi görür (madde 3). */
+ *  Madde 2026-09-07: 3 ayrı bölüm — Aktif (görseldeki AYNI tablo), Yaklaşan
+ *  (henüz başlamamış, "Kalan Süre" sütunu yok, hâlâ katılınabilir) ve Biten
+ *  (salt-okunur, "Görüntüle" ile sıralamaya bakılabilir). İkon YOK (madde 2);
+ *  saat "15:45" formatında (madde 1); Tempo kutusu filtre görevi görür
+ *  (madde 3) — üç bölümü de AYNI anda filtreler. */
 export default function TournamentLobbyPage() {
   const router = useRouter();
   const { settings } = useSettings();
@@ -51,12 +118,17 @@ export default function TournamentLobbyPage() {
 
   useEffect(() => { listTournaments().then(setList); }, []);
 
-  const active = useMemo(() => (list ?? []).filter((t) => t.status === 'active'), [list]);
-  const filtered = useMemo(() => active.filter((t) => {
+  const matches = (t: TournamentSummary) => {
     const matchesSearch = t.name.toLowerCase().includes(search.trim().toLowerCase());
     const matchesTempo = !tempoFilter || t.tempo === tempoFilter;
     return matchesSearch && matchesTempo;
-  }), [active, search, tempoFilter]);
+  };
+  const active = useMemo(() => (list ?? []).filter((t) => t.status === 'active' && matches(t)),
+    [list, search, tempoFilter]);
+  const upcoming = useMemo(() => (list ?? []).filter((t) => t.status === 'upcoming' && matches(t)),
+    [list, search, tempoFilter]);
+  const finished = useMemo(() => (list ?? []).filter((t) => t.status === 'finished' && matches(t)),
+    [list, search, tempoFilter]);
 
   async function join(id: number) {
     setBusyId(id); setMsg(null);
@@ -66,8 +138,14 @@ export default function TournamentLobbyPage() {
     router.push(`/play/tournament/${id}`);
   }
 
+  function open(id: number) {
+    router.push(`/play/tournament/${id}`);
+  }
+
+  const nothingToShow = list !== null && active.length === 0 && upcoming.length === 0 && finished.length === 0;
+
   return (
-    <main id="main-content" className="px-4 pt-5 pb-12 max-w-3xl mx-auto space-y-4">
+    <main id="main-content" className="px-4 pt-5 pb-12 max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--t-text)' }}>Aktif Turnuvalar</h1>
         <div className="mt-2" style={{ borderTop: '3px solid var(--t-text)' }} />
@@ -88,54 +166,34 @@ export default function TournamentLobbyPage() {
 
       {list === null ? (
         <p className="text-sm t-muted">Yükleniyor...</p>
-      ) : filtered.length === 0 ? (
+      ) : nothingToShow ? (
         <div className="t-card-i p-5 text-center space-y-2">
           <p className="text-3xl">🏆</p>
-          <p className="text-sm t-muted">Şu anda katılabileceğin aktif bir turnuva yok.</p>
+          <p className="text-sm t-muted">Şu anda görebileceğin bir turnuva yok.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg">
-          <table className="w-full text-sm" style={{ borderCollapse: 'collapse', minWidth: 640 }}>
-            <thead>
-              <tr className="text-left">
-                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Saat</th>
-                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Turnuva İsmi</th>
-                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Tempo</th>
-                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Toplam Süre</th>
-                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Kalan Süre</th>
-                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Katılımcı Sayısı</th>
-                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Katılım İsteği</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t, i) => (
-                <tr key={t.id} style={{ ...rowStyle, borderTop: i > 0 ? '1px solid rgba(255,255,255,0.12)' : undefined }}>
-                  <td className="px-3 py-3">{formatTime(t.starts_at)}</td>
-                  <td className="px-3 py-3 font-semibold">{t.name}</td>
-                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatTempo(t.base_ms)}</td>
-                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatDuration(t.duration_minutes)}</td>
-                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatRemaining(t.seconds_remaining)}</td>
-                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{t.participant_count}</td>
-                  <td className="px-3 py-3">
-                    {t.joined ? (
-                      <button type="button" onClick={() => router.push(`/play/tournament/${t.id}`)}
-                        className="px-4 py-2 rounded-md text-xs font-bold"
-                        style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}>
-                        Aç
-                      </button>
-                    ) : (
-                      <button type="button" disabled={busyId === t.id} onClick={() => join(t.id)}
-                        className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50"
-                        style={{ background: 'var(--t-accent)', color: '#fff' }}>
-                        {busyId === t.id ? '...' : 'Katıl'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {active.length > 0 && (
+            <TournamentTable rows={active} showRemaining actionColumnLabel="Katılım İsteği"
+              mode="joinable" busyId={busyId} onJoin={join} onOpen={open} />
+          )}
+
+          {upcoming.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-base font-bold" style={{ color: 'var(--t-text)' }}>Yaklaşan Turnuvalar</h2>
+              <TournamentTable rows={upcoming} showRemaining={false} actionColumnLabel="Katılım İsteği"
+                mode="joinable" busyId={busyId} onJoin={join} onOpen={open} />
+            </div>
+          )}
+
+          {finished.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-base font-bold" style={{ color: 'var(--t-text)' }}>Biten Turnuvalar</h2>
+              <TournamentTable rows={finished} showRemaining={false} actionColumnLabel="Sonuç"
+                mode="finished" busyId={busyId} onJoin={join} onOpen={open} />
+            </div>
+          )}
+        </>
       )}
       {msg && <p className="text-sm" style={{ color: 'var(--t-accent)' }}>{msg}</p>}
     </main>

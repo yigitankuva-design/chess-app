@@ -42,10 +42,10 @@ describe('Turnuva Lobisi — /play/tournament/lobby', () => {
   it('liste boşsa bilgi mesajı gösterir', async () => {
     global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([]));
     render(<TournamentLobbyPage />);
-    await waitFor(() => expect(screen.getByText(/katılabileceğin aktif bir turnuva yok/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/görebileceğin bir turnuva yok/)).toBeInTheDocument());
   });
 
-  it('7 sütun başlığı da render edilir', async () => {
+  it('7 sütun başlığı da render edilir (Aktif tablo)', async () => {
     global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([row()]));
     render(<TournamentLobbyPage />);
     await waitFor(() => screen.getByText('Yaz Turnuvası'));
@@ -59,18 +59,6 @@ describe('Turnuva Lobisi — /play/tournament/lobby', () => {
     global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([row({ starts_at: '2026-09-07T15:45:00' })]));
     render(<TournamentLobbyPage />);
     await waitFor(() => expect(screen.getByText('15:45')).toBeInTheDocument());
-  });
-
-  it('sadece AKTİF turnuvalar listelenir — upcoming/finished görünmez', async () => {
-    global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([
-      row({ id: 1, name: 'Aktif Olan', status: 'active' }),
-      row({ id: 2, name: 'Henüz Başlamadı', status: 'upcoming' }),
-      row({ id: 3, name: 'Bitmiş Olan', status: 'finished' }),
-    ]));
-    render(<TournamentLobbyPage />);
-    await waitFor(() => expect(screen.getByText('Aktif Olan')).toBeInTheDocument());
-    expect(screen.queryByText('Henüz Başlamadı')).not.toBeInTheDocument();
-    expect(screen.queryByText('Bitmiş Olan')).not.toBeInTheDocument();
   });
 
   it('katılımcı sayısı gösterilir', async () => {
@@ -121,5 +109,58 @@ describe('Turnuva Lobisi — /play/tournament/lobby', () => {
     fireEvent.change(screen.getByLabelText('Tempo'), { target: { value: 'Yıldırım' } });
     expect(screen.queryByText('Hızlı Turnuva')).not.toBeInTheDocument();
     expect(screen.getByText('Yıldırım Turnuva')).toBeInTheDocument();
+  });
+
+  describe('Yaklaşan ve Biten turnuvalar (Zafer: "ekle tabiki çok önemli")', () => {
+    it('aktif, yaklaşan ve biten turnuvalar AYNI ANDA 3 ayrı bölümde gösterilir', async () => {
+      global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([
+        row({ id: 1, name: 'Aktif Olan', status: 'active' }),
+        row({ id: 2, name: 'Henüz Başlamadı', status: 'upcoming' }),
+        row({ id: 3, name: 'Bitmiş Olan', status: 'finished' }),
+      ]));
+      render(<TournamentLobbyPage />);
+      await waitFor(() => expect(screen.getByText('Aktif Olan')).toBeInTheDocument());
+      expect(screen.getByText('Henüz Başlamadı')).toBeInTheDocument();
+      expect(screen.getByText('Bitmiş Olan')).toBeInTheDocument();
+      expect(screen.getByText('Yaklaşan Turnuvalar')).toBeInTheDocument();
+      expect(screen.getByText('Biten Turnuvalar')).toBeInTheDocument();
+    });
+
+    it('Yaklaşan turnuvalar tablosunda "Kalan Süre" sütunu YOK ama "Katıl" çalışır', async () => {
+      global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([
+        row({ id: 2, name: 'Henüz Başlamadı', status: 'upcoming', joined: false }),
+      ]));
+      render(<TournamentLobbyPage />);
+      await waitFor(() => screen.getByText('Henüz Başlamadı'));
+      const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
+      expect(headers).not.toContain('Kalan Süre');
+      expect(screen.getByRole('button', { name: 'Katıl' })).toBeInTheDocument();
+    });
+
+    it('Biten turnuvalar tablosunda Katıl YOK, "Görüntüle" turnuva sayfasına götürür', async () => {
+      global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([
+        row({ id: 3, name: 'Bitmiş Olan', status: 'finished', joined: false }),
+      ]));
+      render(<TournamentLobbyPage />);
+      await waitFor(() => screen.getByText('Bitmiş Olan'));
+      expect(screen.queryByRole('button', { name: 'Katıl' })).not.toBeInTheDocument();
+      const goBtn = screen.getByRole('button', { name: 'Görüntüle' });
+      fireEvent.click(goBtn);
+      expect(push).toHaveBeenCalledWith('/play/tournament/3');
+    });
+
+    it('arama/tempo filtresi ÜÇ bölümü de aynı anda filtreler', async () => {
+      global.fetch = vi.fn().mockResolvedValue(mockFetchOnce([
+        row({ id: 1, name: 'Yaz Aktif', status: 'active', tempo: 'Hızlı' }),
+        row({ id: 2, name: 'Yaz Yaklaşan', status: 'upcoming', tempo: 'Hızlı' }),
+        row({ id: 3, name: 'Kış Biten', status: 'finished', tempo: 'Yıldırım' }),
+      ]));
+      render(<TournamentLobbyPage />);
+      await waitFor(() => screen.getByText('Yaz Aktif'));
+      fireEvent.change(screen.getByPlaceholderText('Ara'), { target: { value: 'yaz' } });
+      expect(screen.getByText('Yaz Aktif')).toBeInTheDocument();
+      expect(screen.getByText('Yaz Yaklaşan')).toBeInTheDocument();
+      expect(screen.queryByText('Kış Biten')).not.toBeInTheDocument();
+    });
   });
 });
