@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from chess_api.database import get_db
@@ -84,7 +84,18 @@ async def list_tournaments(
     )).scalars().all()
     for t in rows:
         await _sync_status(db, t)
-    return [{**_tournament_out(t), "joined": t.id in joined_ids} for t in rows]
+
+    # Lobi tablosundaki "Katılımcı Sayısı" sütunu için (2026-09-07).
+    counts = dict((await db.execute(
+        select(TournamentParticipant.tournament_id, func.count(TournamentParticipant.id))
+        .where(TournamentParticipant.tournament_id.in_(visible_ids))
+        .group_by(TournamentParticipant.tournament_id)
+    )).all())
+
+    return [
+        {**_tournament_out(t), "joined": t.id in joined_ids, "participant_count": counts.get(t.id, 0)}
+        for t in rows
+    ]
 
 
 @router.post("/tournaments", status_code=201)

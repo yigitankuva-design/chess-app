@@ -76,6 +76,24 @@ async def test_sporcu_turnuva_olusturur_ve_otomatik_katilir(client, db):
 
 
 @pytest.mark.asyncio
+async def test_liste_katilimci_sayisini_dondurur(client, db):
+    """Madde 2026-09-07 (lobi tablosu — "Katılımcı Sayısı" sütunu):
+    GET /tournaments her turnuva icin GUNCEL katilimci sayisini doner."""
+    _, teacher_id = await _teacher(client, "t1e@t.com")
+    parent_id = await _parent_id(client, "p1e@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    classmate = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, creator.id)  # olusturan otomatik katilir -> 1
+
+    r = await client.get("/tournaments", headers=_child_headers(creator.id))
+    assert r.json()[0]["participant_count"] == 1
+
+    await client.post(f"/tournaments/{created['id']}/join", headers=_child_headers(classmate.id))
+    r = await client.get("/tournaments", headers=_child_headers(creator.id))
+    assert r.json()[0]["participant_count"] == 2
+
+
+@pytest.mark.asyncio
 async def test_olusturma_ekrani_yeni_alanlari_kaydeder(client, db):
     """Madde 2026-09-06 (Turnuva Oluştur ekranı): açıklama, başlangıç konumu
     (FEN), galibiyet ödülü (seri katlama aç/kapa) turnuvayla birlikte

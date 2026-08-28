@@ -26,6 +26,8 @@ export interface TournamentSummary {
   start_fen: string | null;
   /** "Galibiyet Ödülü": açıkken 2 galibiyet üst üste sonraki sonucu katlar. */
   winning_streak_bonus: boolean;
+  /** Madde 2026-09-07 (lobi tablosu — "Katılımcı Sayısı" sütunu). */
+  participant_count: number;
 }
 
 export interface TournamentPairingRow {

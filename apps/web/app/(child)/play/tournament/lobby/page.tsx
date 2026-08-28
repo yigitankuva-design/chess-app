@@ -1,33 +1,62 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { listTournaments, joinTournament } from '@/lib/tournamentsApi';
 import type { TournamentSummary } from '@/lib/tournamentsApi';
+import { useSettings } from '@/lib/settings/settings-context';
 
-const STATUS_LABEL: Record<TournamentSummary['status'], string> = {
-  upcoming: 'Başlamadı',
-  active: 'Devam ediyor',
-  finished: 'Bitti',
-};
-
-function tempoLabel(baseMs: number | null, incrementMs: number | null): string {
-  if (baseMs == null) return 'Süresiz';
-  const min = Math.round(baseMs / 60000);
-  const inc = incrementMs ? Math.round(incrementMs / 1000) : 0;
-  return `${min}+${inc}`;
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
 }
 
-/** "Turnuvaya Katıl" lobisi — Lichess Arena modeli (2026-09-05): başka
- *  sporcuların (aynı hocaya bağlı) oluşturduğu turnuvaları listeler, "Katıl"
- *  ile otomatik katılım sağlar. Kart tasarımı Zafer'in göndereceği görsele
- *  göre İNCELTİLECEK — şimdilik işlevsel, mevcut t-card-i dilinde. */
+/** "15:45" — Zafer'in düzeltmesi: saat+dakika, "15" tek başına değil. */
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function formatTempo(baseMs: number | null): string {
+  if (baseMs == null) return 'Süresiz';
+  return `${Math.round(baseMs / 60000)} dk`;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} dk`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h} saat` : `${h} saat ${m} dk`;
+}
+
+function formatRemaining(seconds: number): string {
+  return `${Math.max(0, Math.round(seconds / 60))} dk kaldı`;
+}
+
+const rowStyle: React.CSSProperties = { background: '#1c1c1e', color: '#fff' };
+
+/** "Turnuvaya Katıl" lobisi — Zafer'in gönderdiği tablo görseline göre.
+ *  Madde 2026-09-07: başlık "Aktif Turnuvalar" olduğu için yalnızca
+ *  status='active' turnuvalar listelenir (upcoming/finished burada değil —
+ *  "Kalan Süre" sütunu zaten sadece aktif turnuva için anlamlı). İkon YOK
+ *  (madde 2); saat "15:45" formatında (madde 1); Tempo kutusu filtre
+ *  görevi görür (madde 3). */
 export default function TournamentLobbyPage() {
   const router = useRouter();
+  const { settings } = useSettings();
+  const timeGroups = settings.play.timeGroups;
   const [list, setList] = useState<TournamentSummary[] | null>(null);
+  const [search, setSearch] = useState('');
+  const [tempoFilter, setTempoFilter] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => { listTournaments().then(setList); }, []);
+
+  const active = useMemo(() => (list ?? []).filter((t) => t.status === 'active'), [list]);
+  const filtered = useMemo(() => active.filter((t) => {
+    const matchesSearch = t.name.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesTempo = !tempoFilter || t.tempo === tempoFilter;
+    return matchesSearch && matchesTempo;
+  }), [active, search, tempoFilter]);
 
   async function join(id: number) {
     setBusyId(id); setMsg(null);
@@ -38,42 +67,74 @@ export default function TournamentLobbyPage() {
   }
 
   return (
-    <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-      <p className="font-semibold text-sm">🔎 Turnuvaya Katıl</p>
+    <main id="main-content" className="px-4 pt-5 pb-12 max-w-3xl mx-auto space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--t-text)' }}>Aktif Turnuvalar</h1>
+        <div className="mt-2" style={{ borderTop: '3px solid var(--t-text)' }} />
+      </div>
+
+      <div className="flex gap-3">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ara"
+          className="flex-1 px-4 py-2.5 rounded-lg text-sm"
+          style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)', color: 'var(--t-text)' }} />
+        <select value={tempoFilter} onChange={(e) => setTempoFilter(e.target.value)}
+          aria-label="Tempo"
+          className="px-4 py-2.5 rounded-lg text-sm font-bold"
+          style={{ border: '2px solid var(--t-text)', background: 'var(--t-surface)', color: 'var(--t-text)' }}>
+          <option value="">Tempo</option>
+          {timeGroups.map((g) => <option key={g.cat} value={g.cat}>{g.cat}</option>)}
+        </select>
+      </div>
 
       {list === null ? (
         <p className="text-sm t-muted">Yükleniyor...</p>
-      ) : list.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="t-card-i p-5 text-center space-y-2">
           <p className="text-3xl">🏆</p>
-          <p className="text-sm t-muted">Şu anda katılabileceğin bir turnuva yok.</p>
+          <p className="text-sm t-muted">Şu anda katılabileceğin aktif bir turnuva yok.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {list.map((t) => (
-            <div key={t.id} className="t-card-i p-4 flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{t.name}</p>
-                <p className="text-xs t-muted mt-0.5">
-                  {STATUS_LABEL[t.status]} · {t.duration_minutes} dk · {tempoLabel(t.base_ms, t.increment_ms)}
-                  {t.rated && <> · 🏆 Puanlı</>}
-                </p>
-              </div>
-              {t.joined ? (
-                <button type="button" onClick={() => router.push(`/play/tournament/${t.id}`)}
-                  className="t-btn-ghost px-3 py-2 text-xs flex-shrink-0">
-                  Aç
-                </button>
-              ) : t.status !== 'finished' ? (
-                <button type="button" disabled={busyId === t.id} onClick={() => join(t.id)}
-                  className="t-btn px-3 py-2 text-xs flex-shrink-0">
-                  {busyId === t.id ? '...' : 'Katıl'}
-                </button>
-              ) : (
-                <span className="text-xs t-muted flex-shrink-0">Bitti</span>
-              )}
-            </div>
-          ))}
+        <div className="overflow-x-auto rounded-lg">
+          <table className="w-full text-sm" style={{ borderCollapse: 'collapse', minWidth: 640 }}>
+            <thead>
+              <tr className="text-left">
+                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Saat</th>
+                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Turnuva İsmi</th>
+                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Tempo</th>
+                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Toplam Süre</th>
+                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Kalan Süre</th>
+                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Katılımcı Sayısı</th>
+                <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Katılım İsteği</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((t, i) => (
+                <tr key={t.id} style={{ ...rowStyle, borderTop: i > 0 ? '1px solid rgba(255,255,255,0.12)' : undefined }}>
+                  <td className="px-3 py-3">{formatTime(t.starts_at)}</td>
+                  <td className="px-3 py-3 font-semibold">{t.name}</td>
+                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatTempo(t.base_ms)}</td>
+                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatDuration(t.duration_minutes)}</td>
+                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatRemaining(t.seconds_remaining)}</td>
+                  <td className="px-3 py-3" style={{ opacity: 0.8 }}>{t.participant_count}</td>
+                  <td className="px-3 py-3">
+                    {t.joined ? (
+                      <button type="button" onClick={() => router.push(`/play/tournament/${t.id}`)}
+                        className="px-4 py-2 rounded-md text-xs font-bold"
+                        style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}>
+                        Aç
+                      </button>
+                    ) : (
+                      <button type="button" disabled={busyId === t.id} onClick={() => join(t.id)}
+                        className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50"
+                        style={{ background: 'var(--t-accent)', color: '#fff' }}>
+                        {busyId === t.id ? '...' : 'Katıl'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       {msg && <p className="text-sm" style={{ color: 'var(--t-accent)' }}>{msg}</p>}
