@@ -50,11 +50,14 @@ describe('Ana sayfa — Dersler düzey açıklaması (madde 2026-09-05 (1), gün
     expect(screen.getByText('Orta Düzey')).toBeInTheDocument();
   });
 
-  it('açıklaması olan düzeyde açıklama PARANTEZ İÇİNDE gösterilir', async () => {
+  it('açıklaması olan düzeyde açıklama PARANTEZ İÇİNDE VE BEYAZ (t-text) gösterilir', async () => {
     render(<HomePage />);
     fireEvent.click(screen.getByText('Dersler'));
     await waitFor(() => screen.getByText('Temel Düzey'));
-    expect(screen.getByText('(ELO 0-399, yeni başlayanlar için.)')).toBeInTheDocument();
+    const el = screen.getByText('(ELO 0-399, yeni başlayanlar için.)');
+    expect(el).toBeInTheDocument();
+    expect(el.className).toContain('t-text');
+    expect(el.className).not.toContain('t-muted');
   });
 
   it('3. satırda konu özeti (topics) PARANTEZ İÇİNDE VE İTALİK gösterilir (görsel: 2026-09-08)', async () => {
@@ -64,6 +67,8 @@ describe('Ana sayfa — Dersler düzey açıklaması (madde 2026-09-05 (1), gün
     const el = screen.getByText('(Satranç Tahtası, Taşlar ve Temel Kurallar)');
     expect(el).toBeInTheDocument();
     expect(el.className).toContain('italic');
+    expect(el.className).toContain('t-text');
+    expect(el.className).not.toContain('t-muted');
   });
 
   it('düzey adı mavi (Dersler marka rengi) gösterilir (görsel: 2026-09-08)', async () => {
@@ -80,6 +85,6 @@ describe('Ana sayfa — Dersler düzey açıklaması (madde 2026-09-05 (1), gün
     // "Orta Düzey" başlığı yanında boş bir açıklama paragrafı OLMAMALI.
     const label = screen.getByText('Orta Düzey');
     const row = label.closest('button');
-    expect(row?.parentElement?.querySelector('p.t-muted')).toBeNull();
+    expect(row?.parentElement?.querySelector('p.t-text')).toBeNull();
   });
 });

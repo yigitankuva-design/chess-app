@@ -560,15 +560,18 @@ export default function ChildHomePage() {
                   />
                   {/* Madde 2026-09-07 (2), gorsel guncelleme 2026-09-08: baslik 3
                       satir — isim (yukarida, mavi) + (aciklama — duz yazi, parantez
-                      icinde) + (konu ozeti — italik, parantez icinde). Ikisi de
-                      admin'den girilir. Numaralandirma (1./2./3./4.) kaldirildi. */}
+                      icinde, BEYAZ/tam-kontrast) + (konu ozeti — italik, parantez
+                      icinde, BEYAZ/tam-kontrast). "t-text" kullanilir (t-muted DEGIL)
+                      ki Zafer'in istedigi "beyaz" tonu her temada dogru gorunsun —
+                      literal '#fff' acik temada gorunmez olurdu. Ikisi de admin'den
+                      girilir. Numaralandirma (1./2./3./4.) kaldirildi. */}
                   {(lv.description || lv.topics) && (
                     <div className="pl-14 -mt-1 mb-1.5">
                       {lv.description && (
-                        <p className="text-xs t-muted leading-snug">({lv.description})</p>
+                        <p className="text-xs t-text leading-snug">({lv.description})</p>
                       )}
                       {lv.topics && (
-                        <p className="text-xs t-muted leading-snug italic">({lv.topics})</p>
+                        <p className="text-xs t-text leading-snug italic">({lv.topics})</p>
                       )}
                     </div>
                   )}
