@@ -28,3 +28,19 @@ export const DEFAULT_LEVEL_DESCRIPTIONS: Record<string, string> = {
 export function suggestedLevelDescription(moduleName: string): string | null {
   return DEFAULT_LEVEL_DESCRIPTIONS[moduleName.trim()] ?? null;
 }
+
+/**
+ * Madde 2026-09-07 (2): başlığın 3. satırı — düzeyde işlenen konuların kısa
+ * özeti. Zafer'in verdiği TEK örnek Temel Düzey için — diğer düzeyler için
+ * henüz metin verilmedi, o yüzden burada YOK (hiçbir şey uydurulmaz, KURAL #1).
+ * Zafer diğer düzeyler için metin verince buraya eklenir.
+ */
+export const DEFAULT_LEVEL_TOPICS: Record<string, string> = {
+  'Temel Düzey': 'Satranç Tahtası, Taşlar ve Temel Kurallar',
+};
+
+/** Modül adı bilinen bir düzeyle TAM eşleşirse önerilen konu özetini döner;
+ *  eşleşmezse null (buton gösterilmez, hiçbir şey uydurulmaz). */
+export function suggestedLevelTopics(moduleName: string): string | null {
+  return DEFAULT_LEVEL_TOPICS[moduleName.trim()] ?? null;
+}

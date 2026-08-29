@@ -128,7 +128,7 @@ async def content(
         )).scalar_one()
         out.append(AdminModuleSummary(
             id=m.id, order_index=m.order_index, name=m.name, description=m.description,
-            lesson_count=lc, icon=m.icon,
+            topics=m.topics, lesson_count=lc, icon=m.icon,
         ))
     return out
 
@@ -230,7 +230,7 @@ async def content_export(
             ))
         out_modules.append(ContentModuleIO(
             id=m.id, order_index=m.order_index, name=m.name,
-            description=m.description, icon=m.icon, lessons=out_lessons,
+            description=m.description, topics=m.topics, icon=m.icon, lessons=out_lessons,
         ))
     return ContentExport(exported_at=datetime.utcnow(), version=1, modules=out_modules)
 
@@ -259,11 +259,12 @@ async def content_import(
             module.order_index = m_io.order_index
             module.name = m_io.name
             module.description = m_io.description
+            module.topics = m_io.topics
             module.icon = m_io.icon
             counts["modules_updated"] += 1
         else:
             module = Module(order_index=m_io.order_index, name=m_io.name,
-                            description=m_io.description, icon=m_io.icon)
+                            description=m_io.description, topics=m_io.topics, icon=m_io.icon)
             db.add(module)
             counts["modules_created"] += 1
         await db.flush()
@@ -317,12 +318,12 @@ async def create_module(
     _ensure_admin(current)
     max_order = (await db.execute(select(func.max(Module.order_index)))).scalar_one_or_none() or 0
     module = Module(order_index=max_order + 1, name=payload.name,
-                    description=payload.description, icon=payload.icon)
+                    description=payload.description, topics=payload.topics, icon=payload.icon)
     db.add(module)
     await db.commit()
     await db.refresh(module)
     return {"id": module.id, "order_index": module.order_index, "name": module.name,
-            "description": module.description, "icon": module.icon}
+            "description": module.description, "topics": module.topics, "icon": module.icon}
 
 
 @router.patch("/modules/{module_id}")
@@ -340,12 +341,14 @@ async def update_module(
         module.name = payload.name
     if payload.description is not None:
         module.description = payload.description
+    if payload.topics is not None:
+        module.topics = payload.topics
     if payload.icon is not None:
         module.icon = payload.icon
     await db.commit()
     await db.refresh(module)
     return {"id": module.id, "order_index": module.order_index, "name": module.name,
-            "description": module.description, "icon": module.icon}
+            "description": module.description, "topics": module.topics, "icon": module.icon}
 
 
 @router.post("/modules/reorder")

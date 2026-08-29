@@ -5,7 +5,7 @@ from chess_api.models import Module, Lesson, LessonStep, LessonStepType
 @pytest_asyncio.fixture
 async def seeded_lesson(db):
     """Seed one module + one lesson with 3 steps (1 explanation, 2 exercises)."""
-    module = Module(order_index=1, name="Test Modül", description="d", icon="pawn")
+    module = Module(order_index=1, name="Test Modül", description="d", topics="Tahta ve Taşlar", icon="pawn")
     db.add(module)
     await db.flush()
 
@@ -36,6 +36,8 @@ async def test_list_modules(client, seeded_lesson):
     assert len(data) == 1
     assert data[0]["name"] == "Test Modül"
     assert data[0]["lessons_count"] == 1
+    # Madde 2026-09-07 (2): başlığın 3. satırı — konu özeti.
+    assert data[0]["topics"] == "Tahta ve Taşlar"
 
 
 async def test_get_lesson_detail_omits_answers(client, seeded_lesson):

@@ -8,6 +8,7 @@ from chess_api.models import (
 from chess_api.services.jwt import encode_token
 from chess_api.services.tournaments import finalize_tournament_pairing, compute_sonneborn_berger
 from chess_api.services.child_deletion import delete_child_cascade
+from chess_api.schemas.tournament import TournamentCreateRequest
 
 
 async def _teacher(client, email="tt@t.com"):
@@ -73,6 +74,42 @@ async def test_sporcu_turnuva_olusturur_ve_otomatik_katilir(client, db):
     body = r.json()
     assert len(body) == 1
     assert body[0]["joined"] is True
+
+
+def test_starts_at_tz_aware_gelirse_naive_utcye_cevrilir():
+    """BUG FIX (2026-09-07): tarayici starts_at'i `new Date().toISOString()`
+    ile "Z" ekli (tz-AWARE) gonderir; tournaments.starts_at kolonu duz
+    DateTime (timezone=False) oldugu icin asyncpg AWARE bir deger gelince
+    'timestamp cannot be aware' hatasi atip 500 ile patliyordu (sqlite
+    kullanan testler bu hatayi hic gormedi — bu yuzden ilk seferinde kacti).
+    Schema artik AWARE gelen degeri naive UTC'ye ceviriyor."""
+    req = TournamentCreateRequest(
+        name="X", starts_at="2026-09-07T15:45:00.000Z", duration_minutes=60,
+    )
+    assert req.starts_at.tzinfo is None
+    assert req.starts_at.hour == 15 and req.starts_at.minute == 45
+
+    # Naive giris (eski/dogrudan API cagrilari) degismeden kalir.
+    req2 = TournamentCreateRequest(
+        name="X", starts_at="2026-09-07T15:45:00", duration_minutes=60,
+    )
+    assert req2.starts_at.tzinfo is None
+    assert req2.starts_at.hour == 15
+
+
+@pytest.mark.asyncio
+async def test_tarayici_gibi_tz_aware_starts_at_ile_olusturma_basarili(client, db):
+    """Ucdan uca: gercek tarayicinin gonderdigi "Z" ekli ISO string ile
+    turnuva olusturma BASARILI olmali (bkz. yukaridaki schema testi)."""
+    _, teacher_id = await _teacher(client, "t1f@t.com")
+    parent_id = await _parent_id(client, "p1f@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "Tarayici Testi",
+        "starts_at": "2026-09-07T15:45:00.000Z", "duration_minutes": 60,
+    })
+    assert r.status_code == 201, r.text
 
 
 @pytest.mark.asyncio

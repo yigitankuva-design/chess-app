@@ -158,6 +158,32 @@ async def test_admin_module_description_roundtrips(client):
 
 
 @pytest.mark.asyncio
+async def test_admin_module_topics_roundtrips(client):
+    """Madde 2026-09-07 (2): Module.topics (başlığın 3. satırı) GET
+    /admin/content'te döner ve PATCH /admin/modules/{id} ile güncellenebilir
+    — description ile AYNI opsiyonel-boş desen."""
+    ttok = await _teacher_token(client, email="ttopics@t.com")
+    h = {"Authorization": f"Bearer {ttok}"}
+
+    r = await client.post("/admin/modules", headers=h,
+                          json={"name": "Temel Düzey", "description": "", "icon": "default"})
+    assert r.status_code == 201
+    module_id = r.json()["id"]
+
+    r2 = await client.get("/admin/content", headers=h)
+    row = next(m for m in r2.json() if m["id"] == module_id)
+    assert row["topics"] is None
+
+    r3 = await client.patch(f"/admin/modules/{module_id}", headers=h,
+                            json={"topics": "Satranç Tahtası, Taşlar ve Temel Kurallar"})
+    assert r3.status_code == 200
+
+    r4 = await client.get("/admin/content", headers=h)
+    row2 = next(m for m in r4.json() if m["id"] == module_id)
+    assert row2["topics"] == "Satranç Tahtası, Taşlar ve Temel Kurallar"
+
+
+@pytest.mark.asyncio
 async def test_admin_cannot_delete_teacher(client):
     ttok = await _teacher_token(client, email="t5@t.com")
     # Başka bir teacher hedefle

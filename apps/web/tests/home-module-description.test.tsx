@@ -26,7 +26,12 @@ global.fetch = vi.fn((url: string) => {
     return Promise.resolve({
       ok: true,
       json: async () => [
-        { id: 1, order_index: 1, name: 'Temel Düzey', description: 'ELO 0-399, yeni başlayanlar için.', lessons_count: 0 },
+        {
+          id: 1, order_index: 1, name: 'Temel Düzey',
+          description: 'ELO 0-399, yeni başlayanlar için.',
+          topics: 'Satranç Tahtası, Taşlar ve Temel Kurallar',
+          lessons_count: 0,
+        },
         { id: 2, order_index: 2, name: 'Orta Düzey', description: '', lessons_count: 0 },
       ],
     });
@@ -36,20 +41,35 @@ global.fetch = vi.fn((url: string) => {
 
 import HomePage from '@/app/(child)/home/page';
 
-describe('Ana sayfa — Dersler düzey açıklaması (madde 2026-09-05 (1))', () => {
-  it('açıklaması olan düzeyde açıklama metni gösterilir', async () => {
+describe('Ana sayfa — Dersler düzey açıklaması (madde 2026-09-05 (1), güncelleme 2026-09-07 (2))', () => {
+  it('numaralandırma (1./2.) KALDIRILDI — düzey adı numarasız gösterilir', async () => {
     render(<HomePage />);
     fireEvent.click(screen.getByText('Dersler'));
-    await waitFor(() => screen.getByText('1. Temel Düzey'));
-    expect(screen.getByText('ELO 0-399, yeni başlayanlar için.')).toBeInTheDocument();
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    expect(screen.queryByText('1. Temel Düzey')).not.toBeInTheDocument();
+    expect(screen.getByText('Orta Düzey')).toBeInTheDocument();
+  });
+
+  it('açıklaması olan düzeyde açıklama PARANTEZ İÇİNDE gösterilir', async () => {
+    render(<HomePage />);
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    expect(screen.getByText('(ELO 0-399, yeni başlayanlar için.)')).toBeInTheDocument();
+  });
+
+  it('3. satırda konu özeti (topics) gösterilir', async () => {
+    render(<HomePage />);
+    fireEvent.click(screen.getByText('Dersler'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    expect(screen.getByText('Satranç Tahtası, Taşlar ve Temel Kurallar')).toBeInTheDocument();
   });
 
   it('açıklaması olmayan düzeyde hiçbir açıklama satırı gösterilmez', async () => {
     render(<HomePage />);
     fireEvent.click(screen.getByText('Dersler'));
-    await waitFor(() => screen.getByText('2. Orta Düzey'));
+    await waitFor(() => screen.getByText('Orta Düzey'));
     // "Orta Düzey" başlığı yanında boş bir açıklama paragrafı OLMAMALI.
-    const label = screen.getByText('2. Orta Düzey');
+    const label = screen.getByText('Orta Düzey');
     const row = label.closest('button');
     expect(row?.parentElement?.querySelector('p.t-muted')).toBeNull();
   });

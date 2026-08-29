@@ -102,6 +102,7 @@ class AdminModuleSummary(BaseModel):
     order_index: int
     name: str
     description: str
+    topics: str | None = None
     lesson_count: int
     icon: str
 
@@ -135,6 +136,7 @@ class ContentModuleIO(BaseModel):
     order_index: int
     name: str = Field(min_length=1, max_length=120)
     description: str = ""
+    topics: str | None = None
     icon: str = "default"
     lessons: list[ContentLessonIO] = []
 
@@ -162,12 +164,14 @@ class ContentImportResult(BaseModel):
 class ModuleCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = ""
+    topics: str | None = None
     icon: str = "default"
 
 
 class ModuleUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = None
+    topics: str | None = None
     icon: str | None = None
 
 

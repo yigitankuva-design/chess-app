@@ -83,3 +83,47 @@ describe('Admin içerik sayfası — mevcut açıklama gösterimi', () => {
     expect(screen.queryByText('Önerilen açıklamayı kullan')).not.toBeInTheDocument();
   });
 });
+
+describe('Admin içerik sayfası — düzey konu özeti (madde 2026-09-07 (2))', () => {
+  beforeEach(() => { mockFetch(ROWS_WITH_DESC); });
+
+  it('konular boşsa "+ Konu Ekle" gösterilir', async () => {
+    render(<AdminContentPage />);
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    expect(screen.getByText('+ Konu Ekle')).toBeInTheDocument();
+  });
+
+  it('"+ Konu Ekle" tıklanınca textarea açılır ve Temel Düzey için öneri butonu görünür', async () => {
+    render(<AdminContentPage />);
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('+ Konu Ekle'));
+    expect(screen.getByPlaceholderText(/hangi konular işleniyor/)).toBeInTheDocument();
+    expect(screen.getByText('Önerilen konuları kullan')).toBeInTheDocument();
+  });
+
+  it('öneri butonuna basınca textarea Zafer\'in verdiği metinle dolar', async () => {
+    render(<AdminContentPage />);
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('+ Konu Ekle'));
+    fireEvent.click(screen.getByText('Önerilen konuları kullan'));
+    const textarea = screen.getByPlaceholderText(/hangi konular işleniyor/) as HTMLTextAreaElement;
+    expect(textarea.value).toBe('Satranç Tahtası, Taşlar ve Temel Kurallar');
+  });
+
+  it('Kaydet ile PATCH /admin/modules/1 konuları gönderir', async () => {
+    render(<AdminContentPage />);
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('+ Konu Ekle'));
+    const textarea = screen.getByPlaceholderText(/hangi konular işleniyor/);
+    fireEvent.change(textarea, { target: { value: 'Elle yazılan konu özeti.' } });
+    fireEvent.click(screen.getByText('Kaydet'));
+
+    await waitFor(() => {
+      const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const patchCall = calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
+      expect(patchCall).toBeTruthy();
+      expect(patchCall![0]).toContain('/admin/modules/1');
+      expect(JSON.parse((patchCall![1] as RequestInit).body as string)).toEqual({ topics: 'Elle yazılan konu özeti.' });
+    });
+  });
+});

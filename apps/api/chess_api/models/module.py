@@ -16,6 +16,9 @@ class Module(Base):
     order_index: Mapped[int] = mapped_column(Integer, unique=True)
     name: Mapped[str] = mapped_column(String(120))
     description: Mapped[str] = mapped_column(Text)
+    # Madde 2026-09-07 (2): başlığın 3. satırı — bu düzeyde işlenen konuların
+    # kısa özeti (admin'den girilir, açıklamayla AYNI opsiyonel-boş desen).
+    topics: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str] = mapped_column(String(40), default="default")
 
 

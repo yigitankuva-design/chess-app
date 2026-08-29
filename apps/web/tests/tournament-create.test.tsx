@@ -109,4 +109,24 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
     expect(body.description).toBeNull();
     expect(body.start_fen).toBeNull();
   });
+
+  it('başarısız olunca SUNUCUNUN gerçek hata mesajını gösterir (genel "oluşturulamadı" değil)', async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockFetchOnce({ detail: 'Bir hocaya bağlı değilsin' }, false),
+    );
+    render(<TournamentCreatePage />);
+    fireEvent.change(screen.getByLabelText('Turnuva İsmi'), { target: { value: 'X' } });
+    fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
+    await waitFor(() => expect(screen.getByText('Bir hocaya bağlı değilsin')).toBeInTheDocument());
+  });
+
+  it('422 doğrulama hatasında pydantic mesajını gösterir', async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockFetchOnce({ detail: [{ msg: 'Value error, geçersiz tarih' }] }, false),
+    );
+    render(<TournamentCreatePage />);
+    fireEvent.change(screen.getByLabelText('Turnuva İsmi'), { target: { value: 'X' } });
+    fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
+    await waitFor(() => expect(screen.getByText('Value error, geçersiz tarih')).toBeInTheDocument());
+  });
 });

@@ -7,6 +7,8 @@ class ModuleResponse(BaseModel):
     order_index: int
     name: str
     description: str
+    # Madde 2026-09-07 (2): başlığın 3. satırı — bu düzeyde işlenen konular.
+    topics: str | None = None
     icon: str
     lessons_count: int
 

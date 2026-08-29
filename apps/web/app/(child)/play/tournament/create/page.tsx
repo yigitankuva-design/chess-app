@@ -58,7 +58,7 @@ export default function TournamentCreatePage() {
     if (!canCreate || !tc) return;
     const startsAtIso = new Date(`${startDate}T${startTime}`).toISOString();
     setBusy(true); setMsg(null);
-    const created = await createTournament({
+    const result = await createTournament({
       name: name.trim(),
       starts_at: startsAtIso, duration_minutes: duration,
       base_ms: tc.base * 1000, increment_ms: tc.increment * 1000,
@@ -68,8 +68,8 @@ export default function TournamentCreatePage() {
       winning_streak_bonus: winningStreakBonus,
     });
     setBusy(false);
-    if (!created) { setMsg('Turnuva oluşturulamadı'); return; }
-    router.push(`/play/tournament/${created.id}`);
+    if (!result.ok) { setMsg(result.error); return; }
+    router.push(`/play/tournament/${result.data.id}`);
   }
 
   const labelCls = 'text-xs font-semibold t-muted uppercase tracking-wide block mb-1.5';

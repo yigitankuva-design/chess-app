@@ -115,15 +115,33 @@ export interface TournamentCreatePayload {
   winning_streak_bonus?: boolean;
 }
 
-export async function createTournament(payload: TournamentCreatePayload): Promise<TournamentSummary | null> {
+export type CreateTournamentResult =
+  | { ok: true; data: TournamentSummary }
+  | { ok: false; error: string };
+
+/** FastAPI hata govdesi ya duz metin (`{"detail": "..."}` — HTTPException) ya
+ *  da pydantic dogrulama listesi (`{"detail": [{"msg": "...", ...}, ...]}` —
+ *  422) olabilir; ikisini de okunabilir tek satira cevirir. */
+function _errorMessage(body: unknown, fallback: string): string {
+  const detail = (body as { detail?: unknown } | null)?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const msgs = detail.map((d) => (d as { msg?: string })?.msg).filter(Boolean);
+    if (msgs.length > 0) return msgs.join(', ');
+  }
+  return fallback;
+}
+
+export async function createTournament(payload: TournamentCreatePayload): Promise<CreateTournamentResult> {
   try {
     const r = await fetch(`${API_BASE}/tournaments`, {
       method: 'POST', headers: authHeaders(), body: JSON.stringify(payload),
     });
-    if (!r.ok) return null;
-    return await r.json();
+    const body = await r.json().catch(() => null);
+    if (!r.ok) return { ok: false, error: _errorMessage(body, 'Turnuva oluşturulamadı') };
+    return { ok: true, data: body };
   } catch {
-    return null;
+    return { ok: false, error: 'Sunucuya bağlanılamadı' };
   }
 }
 

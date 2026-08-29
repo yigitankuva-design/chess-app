@@ -29,7 +29,7 @@ async def list_modules(db: AsyncSession = Depends(get_db)):
         )
         result.append(ModuleResponse(
             id=m.id, order_index=m.order_index, name=m.name,
-            description=m.description, icon=m.icon, lessons_count=count or 0,
+            description=m.description, topics=m.topics, icon=m.icon, lessons_count=count or 0,
         ))
     return result
 

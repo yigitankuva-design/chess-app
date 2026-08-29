@@ -128,6 +128,8 @@ const QA_STATE_KEY = 'bea_qa_state_v3';
 
 interface ModuleSummary {
   id: number; order_index: number; name: string; description?: string;
+  /** Madde 2026-09-07 (2): başlığın 3. satırı — konu özeti. */
+  topics?: string | null;
   lessons_count: number; icon?: string;
 }
 interface LessonSummary { id: number; order_index: number; title: string; estimated_minutes: number; icon?: string | null }
@@ -550,14 +552,23 @@ export default function ChildHomePage() {
                   )}
                   <PathNode
                     icon={lv.icon && lv.icon !== 'default' ? lv.icon : LEVEL_EMOJIS[li % LEVEL_EMOJIS.length]}
-                    label={`${li + 1}. ${lv.name}`}
+                    label={lv.name}
                     active={levelOpen}
                     size={44}
                     onClick={() => toggleLevel(lv.id)}
                   />
-                  {/* Madde 2026-09-05 (1): düzey tanımı — ELO/yaş/özellikler (admin'den girilir). */}
-                  {lv.description && (
-                    <p className="text-xs t-muted pl-14 -mt-1 mb-1.5 leading-snug">{lv.description}</p>
+                  {/* Madde 2026-09-07 (2): başlık 3 satır — isim (yukarıda) + (açıklama,
+                      ELO/yaş — admin'den girilir) + konu özeti (admin'den girilir).
+                      Numaralandırma (1./2./3./4.) kaldırıldı. */}
+                  {(lv.description || lv.topics) && (
+                    <div className="pl-14 -mt-1 mb-1.5">
+                      {lv.description && (
+                        <p className="text-xs t-muted leading-snug">({lv.description})</p>
+                      )}
+                      {lv.topics && (
+                        <p className="text-xs t-muted leading-snug">{lv.topics}</p>
+                      )}
+                    </div>
                   )}
 
                   {levelOpen && (

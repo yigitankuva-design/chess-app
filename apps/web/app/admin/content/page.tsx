@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { IconPicker } from '@/components/admin/IconPicker';
-import { suggestedLevelDescription } from '@/lib/content/levelDefinitions';
+import { suggestedLevelDescription, suggestedLevelTopics } from '@/lib/content/levelDefinitions';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface ModuleRow {
   id: number; order_index: number; name: string; description: string;
+  topics: string | null;
   lesson_count: number; icon: string;
 }
 
@@ -25,6 +26,10 @@ export default function AdminContentPage() {
   const [editingDescId, setEditingDescId] = useState<number | null>(null);
   const [descDraft, setDescDraft] = useState('');
   const [savingDesc, setSavingDesc] = useState(false);
+  /** Madde 2026-09-07 (2): başlığın 3. satırı — konular — AYNI desen. */
+  const [editingTopicsId, setEditingTopicsId] = useState<number | null>(null);
+  const [topicsDraft, setTopicsDraft] = useState('');
+  const [savingTopics, setSavingTopics] = useState(false);
 
   async function refresh() {
     const token = getToken();
@@ -110,6 +115,36 @@ export default function AdminContentPage() {
       setMsg('Kaydedilemedi');
     }
     setSavingDesc(false);
+  }
+
+  /** Madde 2026-09-07 (2): başlığın 3. satırı — konular aç/düzenle/kaydet. */
+  function startEditTopics(m: ModuleRow) {
+    setEditingTopicsId(m.id);
+    setTopicsDraft(m.topics ?? '');
+  }
+
+  function cancelEditTopics() {
+    setEditingTopicsId(null);
+    setTopicsDraft('');
+  }
+
+  async function saveTopics(id: number) {
+    setSavingTopics(true);
+    try {
+      const token = getToken();
+      const r = await fetch(`${API_BASE}/admin/modules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ topics: topicsDraft }),
+      });
+      if (!r.ok) { setMsg('Kaydedilemedi'); setSavingTopics(false); return; }
+      await refresh();
+      cancelEditTopics();
+      setMsg('Kaydedildi ✓');
+    } catch {
+      setMsg('Kaydedilemedi');
+    }
+    setSavingTopics(false);
   }
 
   async function deleteModule(id: number, name: string) {
@@ -313,6 +348,49 @@ export default function AdminContentPage() {
                         aria-label={`${m.name} açıklamasını düzenle`}
                         className="px-2.5 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs flex-shrink-0">
                         {m.description ? 'Düzenle' : '+ Açıklama Ekle'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Madde 2026-09-07 (2): başlığın 3. satırı — konu özeti. */}
+                <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="mt-3 pt-3 border-t border-white/10">
+                  {editingTopicsId === m.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={topicsDraft}
+                        onChange={(e) => setTopicsDraft(e.target.value)}
+                        placeholder="Bu düzeyde hangi konular işleniyor? (örn. Satranç Tahtası, Taşlar ve Temel Kurallar)"
+                        rows={2}
+                        className="neon-input text-sm w-full"
+                      />
+                      {topicsDraft.trim().length === 0 && suggestedLevelTopics(m.name) && (
+                        <button type="button"
+                          onClick={() => setTopicsDraft(suggestedLevelTopics(m.name)!)}
+                          className="px-3 py-1.5 rounded-md text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 transition-colors">
+                          Önerilen konuları kullan
+                        </button>
+                      )}
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => saveTopics(m.id)} disabled={savingTopics}
+                          className="px-4 py-2 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 disabled:opacity-40 text-sm transition-colors">
+                          {savingTopics ? 'Kaydediliyor...' : 'Kaydet'}
+                        </button>
+                        <button type="button" onClick={cancelEditTopics}
+                          className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+                          Vazgeç
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <p className="text-sm n-muted flex-1">
+                        {m.topics || 'Bu düzey için henüz konu özeti yok — başlığın 3. satırında gösterilir.'}
+                      </p>
+                      <button type="button" onClick={() => startEditTopics(m)}
+                        aria-label={`${m.name} konularını düzenle`}
+                        className="px-2.5 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs flex-shrink-0">
+                        {m.topics ? 'Düzenle' : '+ Konu Ekle'}
                       </button>
                     </div>
                   )}

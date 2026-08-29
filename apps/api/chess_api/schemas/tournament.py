@@ -1,5 +1,5 @@
-from datetime import datetime
-from pydantic import BaseModel, Field
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field, field_validator
 
 
 class TournamentCreateRequest(BaseModel):
@@ -9,6 +9,21 @@ class TournamentCreateRequest(BaseModel):
     # arasinda (bkz. app/(child)/play/tournament/create/page.tsx DURATIONS).
     starts_at: datetime
     duration_minutes: int = Field(ge=5, le=720)
+
+    @field_validator("starts_at")
+    @classmethod
+    def _naive_utc_starts_at(cls, v: datetime) -> datetime:
+        """BUG FIX (2026-09-07): tarayici `new Date(...).toISOString()` ile
+        "Z" ekli (tz-AWARE) bir tarih gonderir. tournaments.starts_at kolonu
+        duz DateTime (timezone=False) — asyncpg AWARE bir datetime'i bu tur
+        kolona yazmaya calisirken 'timestamp cannot be aware' hatasi ATAR ve
+        istek 500 ile patlar (sqlite kullanan testler bu hatayi YAKALAMAZ,
+        bu yuzden test kapisinden gecmisti). Burada AWARE gelen deger UTC'ye
+        cevrilip tzinfo silinir; NAIVE gelen (eski/dogrudan API cagrilari)
+        degismeden birakilir (zaten UTC varsayilir, mevcut convention)."""
+        if v.tzinfo is not None:
+            return v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
     base_ms: int | None = None
     increment_ms: int | None = None
     # Madde 6 (2026-08-20): Puanlı turnuvada maçlar Performans Puanını
