@@ -88,11 +88,14 @@ async def test_rated_mac_terk_edilince_ayni_committe_puan_guncellenir(db, monkey
 
 @pytest.mark.asyncio
 async def test_athletes_tempo_parametresiyle_puan_doner(client, db):
+    """Madde 2026-09-10: unvan sadece provisional (20 maç) bitince gelir —
+    burada games_played=PROVISIONAL_GAMES ile established senaryosu test
+    edilir (bkz. test_athletes_provisional_sporcuda_unvan_gizli, provisional hâli)."""
     tok, teacher_id = await _teacher(client, "rt1@t.com")
     parent_id = await _parent_id(client, "rp1@t.com")
     me = await _add_child(db, "Ben", teacher_id, parent_id)
     other = await _add_child(db, "Arkadaş", teacher_id, parent_id)
-    db.add(ChildTempoRating(child_id=other.id, tempo="Hızlı", rating=555, games_played=3))
+    db.add(ChildTempoRating(child_id=other.id, tempo="Hızlı", rating=555, games_played=20))
     await db.commit()
 
     h = {"Authorization": f"Bearer {_child_token(me.id)}"}
@@ -102,6 +105,25 @@ async def test_athletes_tempo_parametresiyle_puan_doner(client, db):
     row = next(a for a in body if a["child_id"] == other.id)
     assert row["rating"] == 555
     assert row["title"] == "BD-2"
+
+
+@pytest.mark.asyncio
+async def test_athletes_provisional_sporcuda_unvan_gizli(client, db):
+    """Madde 2026-09-10: 20 maçtan AZ oynamış bir sporcuda unvan None döner —
+    puan yine görünür, sadece unvan gizlenir."""
+    tok, teacher_id = await _teacher(client, "rt1b@t.com")
+    parent_id = await _parent_id(client, "rp1b@t.com")
+    me = await _add_child(db, "Ben", teacher_id, parent_id)
+    other = await _add_child(db, "Arkadaş", teacher_id, parent_id)
+    db.add(ChildTempoRating(child_id=other.id, tempo="Hızlı", rating=555, games_played=3))
+    await db.commit()
+
+    h = {"Authorization": f"Bearer {_child_token(me.id)}"}
+    r = await client.get("/athletes?tempo=Hızlı", headers=h)
+    body = r.json()
+    row = next(a for a in body if a["child_id"] == other.id)
+    assert row["rating"] == 555
+    assert row["title"] is None
 
 
 @pytest.mark.asyncio

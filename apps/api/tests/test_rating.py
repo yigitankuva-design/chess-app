@@ -3,7 +3,7 @@ from sqlalchemy import select
 from chess_api.models import ChildProfile, Game, GameType, GameStatus, GameResult, ChildTempoRating
 from chess_api.services.tempo import tempo_category
 from chess_api.services.rating import (
-    title_for_rating, apply_rating_update, get_rating_or_default,
+    title_for_rating, apply_rating_update, get_rating_or_default, get_rating_and_title,
     STARTING_RATING, K_PROVISIONAL, K_ESTABLISHED, PROVISIONAL_GAMES,
 )
 
@@ -203,6 +203,53 @@ async def test_k_faktoru_20_mactan_sonra_dusuyor(db):
 
     # p1 artik K_ESTABLISHED(20) kullanmali: 400 + 20*(1-0.5) = 410 (40 degil).
     assert await get_rating_or_default(db, p1.id, "Yıldırım") == 410
+
+
+@pytest.mark.asyncio
+async def test_kayit_yokken_provisional_unvan_gizli(db):
+    """Madde 2026-09-10: hiç maç oynamamış (kaydı bile olmayan) bir sporcuda
+    unvan None döner — herkes aynı sabit puanla başladığı için erken bir
+    unvan ("OD-1" gibi) yanıltıcı olurdu."""
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    db.add(p1)
+    await db.commit()
+    await db.refresh(p1)
+
+    rating, title = await get_rating_and_title(db, p1.id, "Yıldırım")
+    assert rating == STARTING_RATING
+    assert title is None
+
+
+@pytest.mark.asyncio
+async def test_provisional_esnasinda_unvan_gizli_kalir(db):
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    db.add(p1)
+    await db.commit()
+    await db.refresh(p1)
+    db.add(ChildTempoRating(
+        child_id=p1.id, tempo="Yıldırım", rating=1000, games_played=PROVISIONAL_GAMES - 1,
+    ))
+    await db.commit()
+
+    rating, title = await get_rating_and_title(db, p1.id, "Yıldırım")
+    assert rating == 1000
+    assert title is None  # hâlâ provisional (19 < 20 maç)
+
+
+@pytest.mark.asyncio
+async def test_provisional_bitince_unvan_gorunur(db):
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    db.add(p1)
+    await db.commit()
+    await db.refresh(p1)
+    db.add(ChildTempoRating(
+        child_id=p1.id, tempo="Yıldırım", rating=1000, games_played=PROVISIONAL_GAMES,
+    ))
+    await db.commit()
+
+    rating, title = await get_rating_and_title(db, p1.id, "Yıldırım")
+    assert rating == 1000
+    assert title == "OD-1"
 
 
 @pytest.mark.asyncio

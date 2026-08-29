@@ -15,7 +15,7 @@ from chess_api.services.tournaments import (
 )
 from chess_api.services.swiss import advance_swiss_tournament
 from chess_api.services.tempo import tempo_category
-from chess_api.services.rating import get_rating_or_default, title_for_rating
+from chess_api.services.rating import get_rating_and_title
 from chess_api.routers.live_game import _create_human_game
 
 router = APIRouter(tags=["tournaments"])
@@ -289,8 +289,7 @@ async def _standings(db: AsyncSession, tournament_id: int, tempo: str | None = N
     for p in participants:
         rating = title = None
         if tempo:
-            rating = await get_rating_or_default(db, p.child_id, tempo)
-            title = title_for_rating(rating)
+            rating, title = await get_rating_and_title(db, p.child_id, tempo)
         games_played, wins = games_stats.get(p.child_id, (0, 0))
         win_rate = round(wins / games_played * 100) if games_played > 0 else None
         out.append({

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models.child import ChildProfile
-from chess_api.services.rating import get_rating_or_default, title_for_rating
+from chess_api.services.rating import get_rating_and_title
 from chess_api.services.tempo import TEMPO_CATEGORIES
 
 router = APIRouter(tags=["athletes"])
@@ -42,7 +42,6 @@ async def list_athletes(
     for c in rows:
         rating = title = None
         if valid_tempo:
-            rating = await get_rating_or_default(db, c.id, valid_tempo)
-            title = title_for_rating(rating)
+            rating, title = await get_rating_and_title(db, c.id, valid_tempo)
         out.append({"child_id": c.id, "display_name": c.display_name, "rating": rating, "title": title})
     return out

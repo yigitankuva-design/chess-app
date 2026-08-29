@@ -47,6 +47,28 @@ async def get_rating_or_default(db: AsyncSession, child_id: int, tempo: str) -> 
     return row.rating if row else STARTING_RATING
 
 
+async def get_rating_and_title(db: AsyncSession, child_id: int, tempo: str) -> tuple[int, str | None]:
+    """Madde 2026-09-10: rating'i VE (varsa) unvanı BİRLİKTE döner — SALT
+    OKUNUR görüntüleme için TEK çağrı noktası (game_info, /athletes,
+    sıralama vb. artık bunu kullanır, get_rating_or_default + title_for_rating
+    ikilisini AYRI AYRI çağırmaz).
+
+    Herkes AYNI sabit puanla (STARTING_RATING) başladığı için, ilk
+    PROVISIONAL_GAMES maç bitmeden bir unvan (ör. "OD-1") göstermek
+    yanıltıcı olur — bu yüzden provisional dönemde title=None döner (sayı
+    henüz kendi seviyesine oturmadı). Hiç kaydı olmayan sporcu da 0 maç
+    oynamış sayılır, dolayısıyla provisional'dır."""
+    row = (await db.execute(
+        select(ChildTempoRating).where(
+            ChildTempoRating.child_id == child_id, ChildTempoRating.tempo == tempo,
+        )
+    )).scalar_one_or_none()
+    rating = row.rating if row else STARTING_RATING
+    games_played = row.games_played if row else 0
+    title = title_for_rating(rating) if games_played >= PROVISIONAL_GAMES else None
+    return rating, title
+
+
 async def get_or_create_rating(db: AsyncSession, child_id: int, tempo: str) -> ChildTempoRating:
     row = (await db.execute(
         select(ChildTempoRating).where(

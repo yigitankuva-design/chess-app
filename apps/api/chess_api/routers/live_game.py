@@ -14,7 +14,7 @@ from chess_api.services.game_validation import validate_move
 from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
 from chess_api.services.tournaments import finalize_tournament_pairing
-from chess_api.services.rating import apply_rating_update, get_rating_or_default, title_for_rating
+from chess_api.services.rating import apply_rating_update, get_rating_and_title
 from chess_api.services.tempo import tempo_category
 from chess_api.services.lobby import (
     join_lobby, leave_lobby, online_players, send_to_player, connected_ids,
@@ -309,10 +309,8 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
         tempo = tempo_category(g.base_ms, g.increment_ms) if g.rated else None
         white_rating = black_rating = white_title = black_title = None
         if tempo and g.white_child_id and g.black_child_id:
-            white_rating = await get_rating_or_default(db, g.white_child_id, tempo)
-            black_rating = await get_rating_or_default(db, g.black_child_id, tempo)
-            white_title = title_for_rating(white_rating)
-            black_title = title_for_rating(black_rating)
+            white_rating, white_title = await get_rating_and_title(db, g.white_child_id, tempo)
+            black_rating, black_title = await get_rating_and_title(db, g.black_child_id, tempo)
         await websocket.send_json({
             "type": "game_info",
             "white_name": w.display_name if w else default_name,
@@ -778,8 +776,7 @@ async def _handle_challenge(child_id: int, msg: dict) -> None:
     tempo = criteria.get("tempo") if criteria.get("rated") else None
     if isinstance(tempo, str) and tempo:
         async with get_session_factory()() as db:
-            from_rating = await get_rating_or_default(db, child_id, tempo)
-        from_title = title_for_rating(from_rating)
+            from_rating, from_title = await get_rating_and_title(db, child_id, tempo)
     await send_to_player(target, {
         "type": "challenge_received",
         "from_child_id": child_id,
@@ -861,8 +858,7 @@ async def _handle_offer_create(child_id: int, msg: dict) -> None:
     rating = title = None
     if rated and tempo:
         async with get_session_factory()() as db:
-            rating = await get_rating_or_default(db, child_id, tempo)
-        title = title_for_rating(rating)
+            rating, title = await get_rating_and_title(db, child_id, tempo)
     try:
         create_offer(
             child_id=child_id,

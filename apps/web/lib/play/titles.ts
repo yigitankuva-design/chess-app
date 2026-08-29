@@ -19,9 +19,15 @@ export function titleForRating(rating: number): string {
 }
 
 /** "Ünvan - İsim (Puan)" — örn. "GM - Emir Dinç (2650)" (madde 7). Ünvan/puan
- *  bilinmiyorsa (tempo bağlamsız ekran) sade isim döner. */
+ *  bilinmiyorsa (tempo bağlamsız ekran) sade isim döner.
+ *
+ *  Madde 2026-09-10: unvan artık İSTEMCİDE `titleForRating` ile TÜRETİLMİYOR
+ *  — sunucu provisional dönemde (ilk 20 maç) bilerek `title: null` gönderir,
+ *  çünkü herkes aynı sabit puanla başladığı için erken bir unvan yanıltıcı
+ *  olur (bkz. services/rating.py::get_rating_and_title). Bu yüzden `title`
+ *  null ise unvan HİÇ gösterilmez — puan yine görünür, sadece unvan öneki
+ *  düşer ("Ali (400)" gibi). */
 export function formatPlayerLabel(name: string, rating?: number | null, title?: string | null): string {
   if (rating == null) return name;
-  const t = title ?? titleForRating(rating);
-  return `${t} - ${name} (${rating})`;
+  return title ? `${title} - ${name} (${rating})` : `${name} (${rating})`;
 }
