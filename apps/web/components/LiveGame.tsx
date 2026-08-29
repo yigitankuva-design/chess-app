@@ -30,6 +30,11 @@ interface Props {
    *  — verilirse "Tekrar Oyna" yerine "Turnuvaya Geri Dön" gösterilir VE
    *  maç iptal olursa (game_aborted) otomatik turnuva sayfasına dönülür. */
   tournamentId?: number;
+  /** Madde 2026-09-10: SADECE arena + Yıldırım/Hızlı tempo + Berserk açıkken
+   *  true — sayfa (tournamentId'yle AYNI şekilde) TournamentDetail'den
+   *  hesaplayıp geçirir. İlk hamle bekleme penceresinde "🔥 Berserk" butonu
+   *  gösterilir. */
+  berserkAvailable?: boolean;
 }
 
 /** Backend'deki FIRST_MOVE_TIMEOUT_SECONDS ile AYNI (madde 4) — yalnızca
@@ -46,7 +51,7 @@ function outcomeFor(result: string | undefined, myColor: 'white' | 'black'): Pra
   return null;
 }
 
-export function LiveGame({ gameId, myColor, tournamentId }: Props) {
+export function LiveGame({ gameId, myColor, tournamentId, berserkAvailable }: Props) {
   const router = useRouter();
   const { hideNotation } = useBoardNotation();
   const chessRef = useRef(new Chess());
@@ -80,6 +85,12 @@ export function LiveGame({ gameId, myColor, tournamentId }: Props) {
   const [premove, setPremove] = useState<Premove | null>(null);
   /** Madde 4: ilk hamle için görsel geri sayım — null = gösterilmiyor. */
   const [firstMoveCountdown, setFirstMoveCountdown] = useState<number | null>(null);
+  /** Madde 2026-09-10 (Berserk): hangi taraf berserk yaptı — isim etiketinde 🔥. */
+  const [whiteBerserked, setWhiteBerserked] = useState(false);
+  const [blackBerserked, setBlackBerserked] = useState(false);
+  /** Tıklar tıklar disable olsun diye — sunucudan 'berserked' yankısı
+   *  gelene kadar ikinci bir tıkla tekrar gönderilmesin. */
+  const berserkSentRef = useRef(false);
   /** WebSocket geri çağrısı eski closure'ı görebilir; ref ile ikizlenir. */
   const premoveRef = useRef<Premove | null>(null);
 
@@ -139,6 +150,7 @@ export function LiveGame({ gameId, myColor, tournamentId }: Props) {
       game_id?: number;
       white_id?: number;
       black_id?: number;
+      color?: string;
     };
     const t = msg?.type;
     if (t === 'move_made') {
@@ -211,6 +223,13 @@ export function LiveGame({ gameId, myColor, tournamentId }: Props) {
       setBlackMs(typeof msg.black_ms === 'number' ? msg.black_ms : null);
       setWhiteToMove(msg.white_to_move !== false);
       flagSentRef.current = false;   // yeni hamle: bayrak hakki tazelenir
+    } else if (t === 'berserked') {
+      // Madde 2026-09-10: bir taraf berserk yaptı — SADECE o tarafın saati
+      // yarıya indi (rakibinki aynı kalır), sunucu ikisini de gönderir.
+      setWhiteMs(typeof msg.white_ms === 'number' ? msg.white_ms : null);
+      setBlackMs(typeof msg.black_ms === 'number' ? msg.black_ms : null);
+      if (msg.color === 'white') setWhiteBerserked(true);
+      else if (msg.color === 'black') setBlackBerserked(true);
     } else if (t === 'game_over') {
       setStatus('over');
       setRawResult(msg.result);
@@ -353,13 +372,14 @@ export function LiveGame({ gameId, myColor, tournamentId }: Props) {
   // sporcu rakip sirasindayken tasini hic secemez. Sira kontrolu burada.
   const myTurn = (fen.split(' ')[1] === 'w' && myColor === 'white')
     || (fen.split(' ')[1] === 'b' && myColor === 'black');
+  // Madde 2026-09-10 (Berserk): berserk yapan tarafın ismine 🔥 eklenir.
   const top: PlayerInfo = {
     avatarId: iAmWhite ? blackAvatar : whiteAvatar,
     name: formatPlayerLabel(
       iAmWhite ? blackName : whiteName,
       iAmWhite ? blackRating : whiteRating,
       iAmWhite ? blackTitle : whiteTitle,
-    ),
+    ) + ((iAmWhite ? blackBerserked : whiteBerserked) ? ' 🔥' : ''),
     ms: iAmWhite ? blackMs : whiteMs,
     active: status === 'active' && (iAmWhite ? !whiteToMove : whiteToMove),
   };
@@ -369,10 +389,11 @@ export function LiveGame({ gameId, myColor, tournamentId }: Props) {
       iAmWhite ? whiteName : blackName,
       iAmWhite ? whiteRating : blackRating,
       iAmWhite ? whiteTitle : blackTitle,
-    ),
+    ) + ((iAmWhite ? whiteBerserked : blackBerserked) ? ' 🔥' : ''),
     ms: iAmWhite ? whiteMs : blackMs,
     active: status === 'active' && (iAmWhite ? whiteToMove : !whiteToMove),
   };
+  const myBerserked = iAmWhite ? whiteBerserked : blackBerserked;
 
   // Madde 3 (2026-08-20): Açılış Pratiği'yle AYNI tasarım — 3 dairesel eylem
   // kartı (Beraberlik/Terk Et/Tekrar Oyna) + renkli geri bildirim kartı.
@@ -432,9 +453,6 @@ export function LiveGame({ gameId, myColor, tournamentId }: Props) {
           />
           {firstMoveCountdown !== null && (
             <div
-              role="timer"
-              aria-label={`İlk hamle için ${firstMoveCountdown} saniye kaldı`}
-              className="t-card-i"
               style={{
                 position: 'absolute',
                 top: '50%',
@@ -442,18 +460,46 @@ export function LiveGame({ gameId, myColor, tournamentId }: Props) {
                 transform: 'translate(-50%, -50%)',
                 zIndex: 10,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '0.8rem',
-                padding: '0.7rem 1.8rem',
-                borderRadius: 999,
-                fontWeight: 700,
-                fontSize: '1.8rem',
-                background: 'var(--t-surface)',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+                gap: '0.6rem',
               }}
             >
-              <span aria-hidden="true">⏳</span>
-              <span>İlk hamle: {firstMoveCountdown}sn</span>
+              <div
+                role="timer"
+                aria-label={`İlk hamle için ${firstMoveCountdown} saniye kaldı`}
+                className="t-card-i"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.8rem',
+                  padding: '0.7rem 1.8rem',
+                  borderRadius: 999,
+                  fontWeight: 700,
+                  fontSize: '1.8rem',
+                  background: 'var(--t-surface)',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+                }}
+              >
+                <span aria-hidden="true">⏳</span>
+                <span>İlk hamle: {firstMoveCountdown}sn</span>
+              </div>
+              {/* Madde 2026-09-10: SADECE arena + Yıldırım/Hızlı + Berserk
+                  açıkken, ilk hamleden ÖNCE gösterilir. */}
+              {berserkAvailable && !myBerserked && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (berserkSentRef.current) return;
+                    berserkSentRef.current = true;
+                    send({ type: 'berserk' });
+                  }}
+                  className="t-btn-ghost text-sm px-4 py-2"
+                  style={{ borderRadius: 999, fontWeight: 700 }}
+                >
+                  🔥 Berserk
+                </button>
+              )}
             </div>
           )}
           <HistoryBanner isLive={nav.isLive} viewIndex={nav.viewIndex} onGoLive={nav.goLive} />

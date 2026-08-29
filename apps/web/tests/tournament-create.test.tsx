@@ -29,28 +29,31 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
 
   it('8 kutu (Zafer\'in görseline göre 5 satır) da render edilir', () => {
     render(<TournamentCreatePage />);
-    expect(screen.getByLabelText('Turnuva İsmi')).toBeInTheDocument();
-    expect(screen.getByLabelText('Turnuvanın Toplam Süresi')).toBeInTheDocument();
-    expect(screen.getByLabelText('Turnuva Başlangıç Tarihi')).toBeInTheDocument();
-    expect(screen.getByLabelText('Turnuvanın Başlangıç Saati')).toBeInTheDocument();
-    expect(screen.getByLabelText('Turnuva İle İlgili Açıklama')).toBeInTheDocument();
-    expect(screen.getByLabelText('Tempo')).toBeInTheDocument();
-    expect(screen.getByLabelText('Başlangıç Konumu')).toBeInTheDocument();
-    expect(screen.getByLabelText('Puan Durumu')).toBeInTheDocument();
-    expect(screen.getByLabelText('Galibiyet Ödülü')).toBeInTheDocument();
+    expect(screen.getByLabelText('Turnuva ismi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Turnuva süresi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Başlangıç tarihi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Başlangıç saati')).toBeInTheDocument();
+    expect(screen.getByLabelText('Turnuva ile ilgili açıklama')).toBeInTheDocument();
+    expect(screen.getByLabelText('Maç başı süre')).toBeInTheDocument();
+    expect(screen.getByLabelText('Başlangıç konumu')).toBeInTheDocument();
+    expect(screen.getByLabelText('Puan durumu')).toBeInTheDocument();
+    expect(screen.getByLabelText('Galibiyet ödülü')).toBeInTheDocument();
+    // Madde 2026-09-10: yeni 2 kart.
+    expect(screen.getByLabelText('Turnuva türü')).toBeInTheDocument();
+    expect(screen.getByLabelText('Berserk')).toBeInTheDocument();
   });
 
   it('admin varsayılanları baştan seçili gelir (60 dk, 10+0, Puanlı, Ödül Olsun)', () => {
     render(<TournamentCreatePage />);
-    expect(screen.getByLabelText('Turnuvanın Toplam Süresi')).toHaveValue('60');
-    expect(screen.getByLabelText('Tempo')).toHaveValue('10+0');
-    expect(screen.getByLabelText('Puan Durumu')).toHaveValue('rated');
-    expect(screen.getByLabelText('Galibiyet Ödülü')).toHaveValue('on');
+    expect(screen.getByLabelText('Turnuva süresi')).toHaveValue('60');
+    expect(screen.getByLabelText('Maç başı süre')).toHaveValue('10+0');
+    expect(screen.getByLabelText('Puan durumu')).toHaveValue('rated');
+    expect(screen.getByLabelText('Galibiyet ödülü')).toHaveValue('on');
   });
 
   it('süre dropdown\'ında Zafer\'in verdiği tam liste bulunur (20..720)', () => {
     render(<TournamentCreatePage />);
-    const select = screen.getByLabelText('Turnuvanın Toplam Süresi') as HTMLSelectElement;
+    const select = screen.getByLabelText('Turnuva süresi') as HTMLSelectElement;
     const values = Array.from(select.options).map((o) => o.value);
     expect(values).toEqual([
       '20', '25', '30', '35', '40', '45', '50', '55', '60', '70', '80', '90',
@@ -69,16 +72,16 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
     global.fetch = fetchMock;
     render(<TournamentCreatePage />);
 
-    fireEvent.change(screen.getByLabelText('Turnuva İsmi'), { target: { value: 'Test Turnuvası' } });
-    fireEvent.change(screen.getByLabelText('Turnuvanın Toplam Süresi'), { target: { value: '30' } });
-    fireEvent.change(screen.getByLabelText('Turnuva Başlangıç Tarihi'), { target: { value: '2026-10-05' } });
-    fireEvent.change(screen.getByLabelText('Turnuvanın Başlangıç Saati'), { target: { value: '14:30' } });
-    fireEvent.change(screen.getByLabelText('Turnuva İle İlgili Açıklama'), { target: { value: 'Açıklama metni' } });
-    fireEvent.change(screen.getByLabelText('Başlangıç Konumu'), {
+    fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'Test Turnuvası' } });
+    fireEvent.change(screen.getByLabelText('Turnuva süresi'), { target: { value: '30' } });
+    fireEvent.change(screen.getByLabelText('Başlangıç tarihi'), { target: { value: '2026-10-05' } });
+    fireEvent.change(screen.getByLabelText('Başlangıç saati'), { target: { value: '14:30' } });
+    fireEvent.change(screen.getByLabelText('Turnuva ile ilgili açıklama'), { target: { value: 'Açıklama metni' } });
+    fireEvent.change(screen.getByLabelText('Başlangıç konumu'), {
       target: { value: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2' },
     });
-    fireEvent.change(screen.getByLabelText('Puan Durumu'), { target: { value: 'unrated' } });
-    fireEvent.change(screen.getByLabelText('Galibiyet Ödülü'), { target: { value: 'off' } });
+    fireEvent.change(screen.getByLabelText('Puan durumu'), { target: { value: 'unrated' } });
+    fireEvent.change(screen.getByLabelText('Galibiyet ödülü'), { target: { value: 'off' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
 
@@ -93,6 +96,10 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
     expect(body.start_fen).toBe('rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2');
     expect(body.rated).toBe(false);
     expect(body.winning_streak_bonus).toBe(false);
+    // Madde 2026-09-10: varsayılan Arena, İsviçre alanları null, berserk kapalı.
+    expect(body.tournament_type).toBe('arena');
+    expect(body.rounds_total).toBeNull();
+    expect(body.berserk_enabled).toBe(false);
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/play/tournament/42'));
   });
@@ -101,7 +108,7 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
     const fetchMock = vi.fn().mockResolvedValue(mockFetchOnce({ id: 43, name: 'X' }));
     global.fetch = fetchMock;
     render(<TournamentCreatePage />);
-    fireEvent.change(screen.getByLabelText('Turnuva İsmi'), { target: { value: 'X' } });
+    fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'X' } });
     fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
@@ -115,7 +122,7 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
       mockFetchOnce({ detail: 'Bir hocaya bağlı değilsin' }, false),
     );
     render(<TournamentCreatePage />);
-    fireEvent.change(screen.getByLabelText('Turnuva İsmi'), { target: { value: 'X' } });
+    fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'X' } });
     fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
     await waitFor(() => expect(screen.getByText('Bir hocaya bağlı değilsin')).toBeInTheDocument());
   });
@@ -125,8 +132,62 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
       mockFetchOnce({ detail: [{ msg: 'Value error, geçersiz tarih' }] }, false),
     );
     render(<TournamentCreatePage />);
-    fireEvent.change(screen.getByLabelText('Turnuva İsmi'), { target: { value: 'X' } });
+    fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'X' } });
     fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
     await waitFor(() => expect(screen.getByText('Value error, geçersiz tarih')).toBeInTheDocument());
+  });
+
+  describe('Madde 2026-09-10: Turnuva Türü (Arena/İsviçre) + Berserk', () => {
+    it('İsviçre seçilince "Turnuva süresi" yerine "Tur sayısı" gelir, Berserk kartı kaybolur', () => {
+      render(<TournamentCreatePage />);
+      fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
+      expect(screen.queryByLabelText('Turnuva süresi')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Tur sayısı')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Berserk')).not.toBeInTheDocument();
+    });
+
+    it('Tur sayısı dropdown\'ında 2-15 arası bulunur', () => {
+      render(<TournamentCreatePage />);
+      fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
+      const select = screen.getByLabelText('Tur sayısı') as HTMLSelectElement;
+      const values = Array.from(select.options).map((o) => o.value);
+      expect(values).toEqual(['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']);
+    });
+
+    it('Klasik tempo seçilince (Arena kalsa bile) Berserk kartı kaybolur', () => {
+      render(<TournamentCreatePage />);
+      fireEvent.change(screen.getByLabelText('Maç başı süre'), { target: { value: '30+0' } });
+      expect(screen.queryByLabelText('Berserk')).not.toBeInTheDocument();
+    });
+
+    it('İsviçre turnuvası oluşturulunca duration_minutes null, rounds_total ve tournament_type doğru gönderilir', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(mockFetchOnce({ id: 44, name: 'İsviçre' }));
+      global.fetch = fetchMock;
+      render(<TournamentCreatePage />);
+      fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'İsviçre' } });
+      fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
+      fireEvent.change(screen.getByLabelText('Tur sayısı'), { target: { value: '7' } });
+      fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.tournament_type).toBe('swiss');
+      expect(body.rounds_total).toBe(7);
+      expect(body.duration_minutes).toBeNull();
+      expect(body.berserk_enabled).toBe(false);
+    });
+
+    it('Berserk "Olsun" seçilince payload\'da berserk_enabled=true gönderilir', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(mockFetchOnce({ id: 45, name: 'Berserkli' }));
+      global.fetch = fetchMock;
+      render(<TournamentCreatePage />);
+      fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'Berserkli' } });
+      fireEvent.change(screen.getByLabelText('Berserk'), { target: { value: 'on' } });
+      fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.berserk_enabled).toBe(true);
+    });
   });
 });

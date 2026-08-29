@@ -20,7 +20,11 @@ function formatTempo(baseMs: number | null): string {
   return `${Math.round(baseMs / 60000)} dk`;
 }
 
-function formatDuration(minutes: number): string {
+/** Madde 2026-09-10: İsviçre'de duration_minutes NULL (bitiş tur sayısına
+ *  bağlı, süreye değil) — "X tur" gösterilir, arena'da eskisi gibi süre. */
+function formatDuration(t: TournamentSummary): string {
+  if (t.tournament_type === 'swiss') return `${t.rounds_total ?? '?'} tur`;
+  const minutes = t.duration_minutes ?? 0;
   if (minutes < 60) return `${minutes} dk`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -89,7 +93,7 @@ function TournamentTable({ rows, showRemaining, actionColumnLabel, mode, busyId,
               <td className="px-3 py-3">{formatTime(t.starts_at)}</td>
               <td className="px-3 py-3 font-semibold">{t.name}</td>
               <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatTempo(t.base_ms)}</td>
-              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatDuration(t.duration_minutes)}</td>
+              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatDuration(t)}</td>
               {showRemaining && (
                 <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatRemaining(t.seconds_remaining)}</td>
               )}

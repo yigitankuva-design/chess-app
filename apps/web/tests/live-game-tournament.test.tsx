@@ -18,11 +18,13 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 
 import { LiveGame } from '@/components/LiveGame';
 
-function setup(tournamentId?: number) {
+function setup(tournamentId?: number, berserkAvailable?: boolean, myColor: 'white' | 'black' = 'white') {
   sent.length = 0;
   handler = null;
   push.mockReset();
-  return render(<LiveGame gameId={1} myColor="white" tournamentId={tournamentId} />);
+  return render(
+    <LiveGame gameId={1} myColor={myColor} tournamentId={tournamentId} berserkAvailable={berserkAvailable} />,
+  );
 }
 
 describe('LiveGame — turnuva maçı (madde 2026-09-09, 1/2/3)', () => {
@@ -106,6 +108,60 @@ describe('LiveGame — turnuva maçı (madde 2026-09-09, 1/2/3)', () => {
       act(() => { vi.advanceTimersByTime(1000); });
       // Artık sıra rakipte (siyah, üstte) — onun saati düşmeli, benimki (beyaz) sabit kalır.
       expect(screen.getAllByText('05:00')).toHaveLength(1);
+    });
+  });
+
+  describe('madde 2026-09-10: Berserk', () => {
+    it('berserkAvailable=true iken geri sayım sürerken "🔥 Berserk" butonu görünür', () => {
+      setup(7, true);
+      act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
+      expect(screen.getByRole('button', { name: '🔥 Berserk' })).toBeInTheDocument();
+    });
+
+    it('berserkAvailable=false (varsayılan) iken buton HİÇ görünmez', () => {
+      setup(7, false);
+      act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
+      expect(screen.queryByRole('button', { name: '🔥 Berserk' })).not.toBeInTheDocument();
+    });
+
+    it('tıklanınca {type:"berserk"} gönderir', () => {
+      setup(7, true);
+      act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
+      fireEvent.click(screen.getByRole('button', { name: '🔥 Berserk' }));
+      expect(sent).toContainEqual({ type: 'berserk' });
+    });
+
+    it('kendi berserk yankım gelince buton kaybolur, ismime 🔥 eklenir', () => {
+      setup(7, true, 'white');
+      act(() => handler!({
+        type: 'game_info', moves: [], status: 'active',
+        white_name: 'Ben', black_name: 'Rakip', white_ms: 300_000, black_ms: 300_000,
+      }));
+      fireEvent.click(screen.getByRole('button', { name: '🔥 Berserk' }));
+      act(() => handler!({ type: 'berserked', color: 'white', white_ms: 150_000, black_ms: 300_000 }));
+      expect(screen.queryByRole('button', { name: '🔥 Berserk' })).not.toBeInTheDocument();
+      expect(screen.getByText(/Ben 🔥/)).toBeInTheDocument();
+    });
+
+    it('rakibin berserk yankısı gelince BENİM butonum kalır, rakibin ismine 🔥 eklenir', () => {
+      setup(7, true, 'white');
+      act(() => handler!({
+        type: 'game_info', moves: [], status: 'active',
+        white_name: 'Ben', black_name: 'Rakip', white_ms: 300_000, black_ms: 300_000,
+      }));
+      act(() => handler!({ type: 'berserked', color: 'black', white_ms: 300_000, black_ms: 150_000 }));
+      expect(screen.getByRole('button', { name: '🔥 Berserk' })).toBeInTheDocument();
+      expect(screen.getByText(/Rakip 🔥/)).toBeInTheDocument();
+    });
+
+    it('iki kez tıklansa bile ikinci "berserk" mesajı gönderilmez (yankı gelmeden)', () => {
+      setup(7, true);
+      act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
+      const btn = screen.getByRole('button', { name: '🔥 Berserk' });
+      fireEvent.click(btn);
+      fireEvent.click(btn);
+      const berserkMsgs = sent.filter((m) => (m as { type?: string }).type === 'berserk');
+      expect(berserkMsgs).toHaveLength(1);
     });
   });
 });

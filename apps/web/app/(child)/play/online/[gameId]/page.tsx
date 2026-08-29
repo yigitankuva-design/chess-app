@@ -10,7 +10,12 @@ function LiveGameContent({ gameId }: { gameId: string }) {
   // LiveGame bunu görünce "Turnuvaya Geri Dön" davranışına geçer.
   const tRaw = sp.get('tournamentId');
   const tournamentId = tRaw ? Number(tRaw) : undefined;
-  return <LiveGame gameId={Number(gameId)} myColor={color} tournamentId={tournamentId} />;
+  // Madde 2026-09-10: Berserk SADECE arena + Yıldırım/Hızlı + açıkken.
+  const berserkAvailable = sp.get('berserk') === '1';
+  return (
+    <LiveGame gameId={Number(gameId)} myColor={color} tournamentId={tournamentId}
+      berserkAvailable={berserkAvailable} />
+  );
 }
 
 export default function OnlineGamePage({ params }: { params: Promise<{ gameId: string }> }) {

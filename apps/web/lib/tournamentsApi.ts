@@ -8,8 +8,9 @@ export interface TournamentSummary {
   id: number;
   name: string;
   starts_at: string;
-  duration_minutes: number;
-  ends_at: string;
+  /** Madde 2026-09-10: İsviçre'de NULL (bitiş tur sayısına bağlı, süreye değil). */
+  duration_minutes: number | null;
+  ends_at: string | null;
   seconds_remaining: number;
   base_ms: number | null;
   increment_ms: number | null;
@@ -28,6 +29,13 @@ export interface TournamentSummary {
   winning_streak_bonus: boolean;
   /** Madde 2026-09-07 (lobi tablosu — "Katılımcı Sayısı" sütunu). */
   participant_count: number;
+  /** Madde 2026-09-10 ("Turnuva Türü" / "Berserk" kartları): */
+  tournament_type: 'arena' | 'swiss';
+  /** SADECE İsviçre'de dolu. */
+  rounds_total: number | null;
+  current_round: number | null;
+  /** SADECE arena + Yıldırım/Hızlı tempoda gerçekten etkin olur. */
+  berserk_enabled: boolean;
 }
 
 export interface TournamentPairingRow {
@@ -38,6 +46,8 @@ export interface TournamentPairingRow {
   black_name: string | null;
   game_id: number | null;
   result: string | null;
+  /** Madde 2026-09-10: SADECE İsviçre'de dolu — arena'da hep null. */
+  round_number: number | null;
 }
 
 export interface TournamentStandingRow {
@@ -126,13 +136,18 @@ export async function leaveTournament(id: number): Promise<boolean> {
 export interface TournamentCreatePayload {
   name: string;
   starts_at: string;          // ISO tarih-saat
-  duration_minutes: number;
+  /** Madde 2026-09-10: SADECE arena'da zorunlu — İsviçre'de null gönderilir. */
+  duration_minutes: number | null;
   base_ms: number | null;
   increment_ms: number | null;
   rated: boolean;
   description?: string | null;
   start_fen?: string | null;
   winning_streak_bonus?: boolean;
+  tournament_type?: 'arena' | 'swiss';
+  /** SADECE İsviçre'de zorunlu (2-15). */
+  rounds_total?: number | null;
+  berserk_enabled?: boolean;
 }
 
 export type CreateTournamentResult =

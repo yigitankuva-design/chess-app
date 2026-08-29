@@ -11,6 +11,14 @@ class TournamentStatus(str, enum.Enum):
     finished = "finished"
 
 
+class TournamentType(str, enum.Enum):
+    """Madde 2026-09-10: Arena (sürekli, süre bazlı) turnuvaların yanına
+    İSVİÇRE usulü (sabit tur sayısı, tur-tur eşleştirme) ikinci bir mod
+    olarak geri geldi — bkz. services/swiss.py."""
+    arena = "arena"
+    swiss = "swiss"
+
+
 class Tournament(Base):
     __tablename__ = "tournaments"
 
@@ -33,10 +41,26 @@ class Tournament(Base):
     status: Mapped[TournamentStatus] = mapped_column(
         Enum(TournamentStatus), default=TournamentStatus.upcoming,
     )
+    # Madde 2026-09-10: Arena (varsayılan, geriye dönük uyumlu) VEYA İsviçre.
+    tournament_type: Mapped[TournamentType] = mapped_column(
+        Enum(TournamentType), nullable=False,
+        default=TournamentType.arena, server_default="arena",
+    )
+    # SADECE İsviçre'de dolu — toplam tur sayısı / şu anki tur (0 = henüz
+    # başlamadı). Arena'da ikisi de NULL kalır.
+    rounds_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_round: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0, server_default="0")
+    # "Berserk" (2026-09-10): SADECE arena + Yıldırım/Hızlı tempoda etkindir
+    # (bkz. services/tempo.py::tempo_category) — kontrol routers/live_game.py
+    # _handle_berserk'te yapılır, burada sadece sporcunun TERCİHİ tutulur.
+    berserk_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     # Lichess Arena modeli (2026-09-05): sabit tur yok, sabit SÜRE var.
     # ends_at DB'de tutulmaz — starts_at + duration_minutes'tan hesaplanır.
+    # Madde 2026-09-10: İsviçre'de anlamsız (bitiş tur sayısına bağlı) — NULL
+    # olabilir, bu yüzden nullable yapıldı (arena'da hâlâ zorunlu, şemada
+    # NOT NULL kalmıyor ama pydantic/route seviyesinde arena için zorunlu).
     starts_at: Mapped[datetime] = mapped_column(DateTime)
-    duration_minutes: Mapped[int] = mapped_column(Integer)
+    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Madde 2026-09-06 (turnuva oluşturma ekranı): serbest metin açıklama.
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Tum eslesmeler bu FEN'den baslar (bos/None = standart baslangic) —
@@ -70,6 +94,9 @@ class TournamentParticipant(Base):
     # rakiplerinin Sonneborn-Berger hesabı çekilenin dondurulmuş puanını
     # görmeye devam eder (bkz. services/tournaments.py). NULL = hâlâ katılımcı.
     left_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Madde 2026-09-10 (İsviçre): kaç kez "bay" (rakipsiz otomatik galibiyet)
+    # aldı — sıradaki bay'ı verirken bunu HİÇ almamışlar tercih edilir.
+    bye_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
 
 class TournamentPairing(Base):
@@ -87,5 +114,13 @@ class TournamentPairing(Base):
     game_id: Mapped[int | None] = mapped_column(
         ForeignKey("games.id", ondelete="SET NULL"), nullable=True,
     )
-    # '1-0' | '0-1' | '1/2-1/2' | None (henuz sonuclanmadi).
+    # '1-0' | '0-1' | '1/2-1/2' | 'void' (iptal — bkz. services/tournaments.py)
+    # | None (henuz sonuclanmadi).
     result: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Madde 2026-09-10: SADECE İsviçre'de dolu — hangi turda oynandığı
+    # (arena'da hep NULL, kronolojik sıra zaten artan id ile korunur).
+    round_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # "Berserk" (2026-09-10): bu taraf BU maçta berserk yaptı mı — hem
+    # tekrar berserk yapmasını engellemek hem puanlama bonusu için.
+    white_berserked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    black_berserked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")

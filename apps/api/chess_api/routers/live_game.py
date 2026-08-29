@@ -26,7 +26,8 @@ from chess_api.services.offer_sides import resolve_sides
 from chess_api.services.clock import ClockState, apply_move, is_flagged
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
-    Game, GameMove, GameType, GameStatus, GameResult, ChildProfile, TournamentPairing,
+    Game, GameMove, GameType, GameStatus, GameResult, ChildProfile,
+    Tournament, TournamentType, TournamentPairing,
 )
 
 logger = logging.getLogger(__name__)
@@ -349,6 +350,8 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
                 await _handle_draw(game_id, room)
             elif mtype == "flag":
                 await _handle_flag(game_id, room)
+            elif mtype == "berserk":
+                await _handle_berserk(game_id, child_id, white_id, black_id, room)
             elif mtype == "rematch_offer":
                 await _handle_rematch_offer(game_id, child_id, room)
             elif mtype == "rematch_accept":
@@ -659,6 +662,53 @@ async def _handle_decline_draw(game_id, child_id, room):
         if not game or game.status != GameStatus.active:
             return
     await room.broadcast({"type": "draw_declined", "by_child_id": child_id}, exclude=child_id)
+
+
+async def _handle_berserk(game_id: int, child_id: int, white_id, black_id, room) -> None:
+    """"Berserk" (madde 2026-09-10): SADECE Arena turnuvasında VE SADECE
+    Yıldırım/Hızlı tempoda VE SADECE ilk hamleden ÖNCE (mevcut 15sn ilk-hamle
+    bekleme penceresi) geçerlidir. Kendi saatini (rakibinki DEĞİL) yarıya
+    indirir; karşılığında bu maçı KAZANIRSA +1 sabit puan bonusu alır (bkz.
+    services/tournaments.py::_apply_arena_points, finalize_tournament_pairing
+    pairing'in berserk bayrağını okur)."""
+    async with get_session_factory()() as db:
+        game = await db.get(Game, game_id)
+        if not game or game.status != GameStatus.active or game.base_ms is None:
+            return
+        _, ply = await _current_fen_and_ply(db, game_id)
+        if ply != 1:
+            return  # ilk hamle zaten yapılmış — artık berserk edilemez
+        pairing = (await db.execute(
+            select(TournamentPairing).where(TournamentPairing.game_id == game_id)
+        )).scalar_one_or_none()
+        if pairing is None:
+            return  # turnuva maçı değil (arkadaş maçında Berserk yok)
+        tournament = await db.get(Tournament, pairing.tournament_id)
+        if (not tournament or tournament.tournament_type != TournamentType.arena
+                or not tournament.berserk_enabled):
+            return
+        if tempo_category(game.base_ms, game.increment_ms) not in ("Yıldırım", "Hızlı"):
+            return
+        is_white = child_id == white_id
+        already_berserked = pairing.white_berserked if is_white else pairing.black_berserked
+        if already_berserked:
+            return
+        half = game.base_ms // 2
+        if is_white:
+            game.white_ms = half
+            pairing.white_berserked = True
+        else:
+            game.black_ms = half
+            pairing.black_berserked = True
+        await db.commit()
+        white_ms, black_ms = game.white_ms, game.black_ms
+    await room.broadcast({
+        "type": "berserked", "child_id": child_id,
+        # "color": frontend'in child_id'yi eşlemesine gerek KALMASIN diye —
+        # LiveGame sadece kendi rengini (myColor) bilir, id'leri değil.
+        "color": "white" if is_white else "black",
+        "white_ms": white_ms, "black_ms": black_ms,
+    })
 
 
 async def _handle_rematch_offer(game_id: int, child_id: int, room) -> None:

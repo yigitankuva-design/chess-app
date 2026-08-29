@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from chess_api.models import (
     ChildProfile, Game, GameType, GameStatus, GameResult,
     Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
@@ -43,6 +44,16 @@ def _child_token(child_id: int) -> str:
 
 def _child_headers(child_id: int) -> dict:
     return {"Authorization": f"Bearer {_child_token(child_id)}"}
+
+
+def _patch_game_creation(db_engine, monkeypatch) -> None:
+    """İsviçre round üretimi GERÇEK bir eşleşme (2+ kişi) için _create_human_game
+    çağırır — o da KENDİ oturumunu açar (get_session_factory()); conftest'teki
+    get_db override'i sadece FastAPI bağımlılığına uygulanır, buna DEĞİL (bkz.
+    test_tournament_ws.py'deki AYNI desen/yorum) — yoksa gerçek DATABASE_URL'e
+    bağlanmaya çalışıp ConnectionError verir."""
+    factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+    monkeypatch.setattr("chess_api.routers.live_game.get_session_factory", lambda: factory)
 
 
 async def _create_tournament(client, child_id: int, **overrides) -> dict:
@@ -876,6 +887,114 @@ def test_sonneborn_berger_hesaplanir():
     assert sb[2] == 1.0
     # p3: p1'le berabere (+4.0/2=2.0) + p2'ye kaybetti (+0) = 2.0
     assert sb[3] == 2.0
+
+
+@pytest.mark.asyncio
+async def test_isvicre_turnuva_olusturulabilir(client, db):
+    """Madde 2026-09-10: tournament_type='swiss' + rounds_total ile turnuva
+    oluşturulabilir; duration_minutes None olur (İsviçre'de anlamsız).
+    starts_at GELECEKTE verilir — "simdi" verilirse (Arena'da olduğu gibi)
+    turnuva ANINDA aktifleşip 1. turu üretir (bkz. test_..._basladiktan_sonra),
+    bu test SADECE oluşturma yanıtının alanlarını doğruluyor."""
+    _, teacher_id = await _teacher(client, "tsw1@t.com")
+    parent_id = await _parent_id(client, "psw1@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "İsviçre Turnuvası", "starts_at": future,
+        "tournament_type": "swiss", "rounds_total": 5,
+        "base_ms": 300000, "increment_ms": 2000,
+    })
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["tournament_type"] == "swiss"
+    assert body["rounds_total"] == 5
+    assert body["current_round"] == 0
+    assert body["duration_minutes"] is None
+    assert body["ends_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_isvicre_tur_sayisi_olmadan_olusturulamaz(client, db):
+    _, teacher_id = await _teacher(client, "tsw2@t.com")
+    parent_id = await _parent_id(client, "psw2@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "X", "starts_at": datetime.utcnow().isoformat(), "tournament_type": "swiss",
+    })
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_arena_suresi_olmadan_olusturulamaz(client, db):
+    _, teacher_id = await _teacher(client, "tsw3@t.com")
+    parent_id = await _parent_id(client, "psw3@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "X", "starts_at": datetime.utcnow().isoformat(),
+    })
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_isvicre_1_tur_basladiktan_sonra_katilim_kapanir(client, db, db_engine, monkeypatch):
+    """3 kişi (tek sayı — 1 bay + 1 gerçek eşleşme) round 1'i HEMEN
+    bitirmesin diye — starts_at GELECEKTE verilip sonra geçmişe alınır
+    (mevcut arena testlerinin AYNI deseni, bkz. test_sync_status_...)."""
+    _patch_game_creation(db_engine, monkeypatch)
+    _, teacher_id = await _teacher(client, "tsw4@t.com")
+    parent_id = await _parent_id(client, "psw4@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    b = await _add_child(db, "B", teacher_id, parent_id)
+    c = await _add_child(db, "C", teacher_id, parent_id)
+    latecomer = await _add_child(db, "D", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "İsviçre", "starts_at": future,
+        "tournament_type": "swiss", "rounds_total": 3,
+        "base_ms": 300000, "increment_ms": 0,
+    })
+    tid = r.json()["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(c.id))
+
+    t = await db.get(Tournament, tid)
+    t.starts_at = datetime.utcnow() - timedelta(minutes=1)
+    await db.commit()
+
+    # GET tetikler -> 1. tur üretilir (3 kişi: 1 bay + 1 gerçek eşleşme,
+    # eşleşme henüz sonuçlanmadığı için tur ASILI kalır, current_round=1).
+    r_get = await client.get(f"/tournaments/{tid}", headers=_child_headers(creator.id))
+    assert r_get.json()["current_round"] == 1
+
+    r_join = await client.post(f"/tournaments/{tid}/join", headers=_child_headers(latecomer.id))
+    assert r_join.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_recent_pairings_round_number_dondurur(client, db, db_engine, monkeypatch):
+    _patch_game_creation(db_engine, monkeypatch)
+    _, teacher_id = await _teacher(client, "tsw5@t.com")
+    parent_id = await _parent_id(client, "psw5@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    joiner = await _add_child(db, "B", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "İsviçre", "starts_at": future,
+        "tournament_type": "swiss", "rounds_total": 3,
+        "base_ms": 300000, "increment_ms": 0,
+    })
+    tid = r.json()["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(joiner.id))
+
+    t = await db.get(Tournament, tid)
+    t.starts_at = datetime.utcnow() - timedelta(minutes=1)
+    await db.commit()
+
+    r_get = await client.get(f"/tournaments/{tid}", headers=_child_headers(creator.id))
+    body = r_get.json()
+    assert len(body["recent_pairings"]) == 1
+    assert body["recent_pairings"][0]["round_number"] == 1
 
 
 def test_sonneborn_berger_void_esleme_sayilmaz():

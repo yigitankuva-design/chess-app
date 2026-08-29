@@ -87,7 +87,8 @@ async def sync_tournament_status(db: AsyncSession, t: Tournament) -> None:
 
 
 def _apply_arena_points(
-    participant: TournamentParticipant, *, is_win: bool, is_draw: bool, streak_bonus: bool = True,
+    participant: TournamentParticipant, *, is_win: bool, is_draw: bool,
+    streak_bonus: bool = True, berserk_bonus: bool = False,
 ) -> None:
     """Lichess Arena puanlamasi: galibiyet=2, beraberlik=1, kayip=0. "Galibiyet
     Ödülü" (streak_bonus) acikken 2 galibiyet ust uste gelince ("seri") sonraki
@@ -95,9 +96,15 @@ def _apply_arena_points(
     seriyi sifirlar. Katlama, BU macin sonucundan ONCEKI seri sayisina gore
     karar verilir (Lichess ornegi: 2 galibiyet + 1 beraberlik = 2 + 2 + (2*1) =
     6 puan). streak_bonus KAPALIYSA seri yine sayilir (ileride acilirsa diye)
-    ama HICBIR sonuc katlanmaz — hep duz 2/1/0."""
+    ama HICBIR sonuc katlanmaz — hep duz 2/1/0.
+
+    Madde 2026-09-10 (Berserk): berserk_bonus=True VE galibiyetse, seri
+    katlamasindan SONRA, AYRI olarak +1.0 SABIT eklenir (katlanmaz) — Zafer'in
+    ornegi: 2 (duz galibiyet) + 1 (berserk) = 3; seri varsa (2*2) + 1 = 5."""
     base = 2.0 if is_win else (1.0 if is_draw else 0.0)
     points = base * 2 if streak_bonus and participant.current_streak >= 2 else base
+    if berserk_bonus and is_win:
+        points += 1.0
     participant.current_streak = participant.current_streak + 1 if is_win else 0
     participant.score += points
 
@@ -137,9 +144,15 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
     white_p = by_child.get(pairing.white_child_id)
     black_p = by_child.get(pairing.black_child_id)
     if white_p is not None:
-        _apply_arena_points(white_p, is_win=white_wins and not is_draw, is_draw=is_draw, streak_bonus=streak_bonus)
+        _apply_arena_points(
+            white_p, is_win=white_wins and not is_draw, is_draw=is_draw,
+            streak_bonus=streak_bonus, berserk_bonus=pairing.white_berserked,
+        )
     if black_p is not None:
-        _apply_arena_points(black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw, streak_bonus=streak_bonus)
+        _apply_arena_points(
+            black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw,
+            streak_bonus=streak_bonus, berserk_bonus=pairing.black_berserked,
+        )
 
 
 def compute_sonneborn_berger(

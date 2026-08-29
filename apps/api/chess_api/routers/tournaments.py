@@ -6,21 +6,41 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
-    ChildProfile, Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
+    ChildProfile, Tournament, TournamentStatus, TournamentType,
+    TournamentParticipant, TournamentPairing,
 )
 from chess_api.schemas.tournament import TournamentCreateRequest
 from chess_api.services.tournaments import (
     compute_sonneborn_berger, sync_tournament_status, _ends_at,
 )
+from chess_api.services.swiss import advance_swiss_tournament
 from chess_api.services.tempo import tempo_category
 from chess_api.services.rating import get_rating_or_default, title_for_rating
+from chess_api.routers.live_game import _create_human_game
 
 router = APIRouter(tags=["tournaments"])
 
 RECENT_PAIRINGS_LIMIT = 50
-# Madde 2026-09-09: turnuva durum geçişi + süre-dolunca-iptal mantığı artık
-# services/tournaments.py'de (routers/tournament_ws.py de kullanabilsin diye).
-_sync_status = sync_tournament_status
+
+
+async def _sync_status(db: AsyncSession, t: Tournament) -> None:
+    """Madde 2026-09-09/2026-09-10: turnuva durum geçişi tür bazında dallanır —
+    arena `sync_tournament_status`'a (süre bazlı, services/tournaments.py),
+    İsviçre `advance_swiss_tournament`'a (tur bazlı, services/swiss.py) gider.
+    İkisi de AYNI lazy mimari (arka planda zamanlayıcı YOK). create_game,
+    services'in routers'a bağımlı OLMAMASI için burada (router katmanında)
+    tanımlanır — routers/tournament_ws.py'nin _create_pairing_game'iyle AYNI
+    desen (routers/live_game.py'deki _create_human_game'i sarar)."""
+    if t.tournament_type == TournamentType.swiss:
+        async def _create_game(white_id: int, black_id: int) -> int:
+            return await _create_human_game(
+                white_id, black_id, base_ms=t.base_ms, increment_ms=t.increment_ms or 0,
+                rated=t.rated, start_fen=t.start_fen,
+            )
+
+        await advance_swiss_tournament(db, t, create_game=_create_game)
+    else:
+        await sync_tournament_status(db, t)
 
 
 def _group_owner_id(child: ChildProfile) -> int:
@@ -33,19 +53,27 @@ def _group_owner_id(child: ChildProfile) -> int:
 
 
 def _tournament_out(t: Tournament) -> dict:
-    ends_at = _ends_at(t)
+    # Madde 2026-09-10: İsviçre'de süre/bitiş kavramı YOK (bitiş tur sayısına
+    # bağlı) — duration_minutes NULL olabilir, bu durumda ends_at/seconds_
+    # remaining de anlamsız (None/0) döner.
+    is_swiss = t.tournament_type == TournamentType.swiss
+    ends_at = None if is_swiss else _ends_at(t)
     seconds_remaining = 0
-    if t.status == TournamentStatus.active:
+    if not is_swiss and t.status == TournamentStatus.active:
         seconds_remaining = max(0, int((ends_at - datetime.utcnow()).total_seconds()))
     return {
         "id": t.id, "name": t.name,
         "starts_at": t.starts_at.isoformat(), "duration_minutes": t.duration_minutes,
-        "ends_at": ends_at.isoformat(), "seconds_remaining": seconds_remaining,
+        "ends_at": ends_at.isoformat() if ends_at else None, "seconds_remaining": seconds_remaining,
         "base_ms": t.base_ms, "increment_ms": t.increment_ms,
         "status": t.status.value,
         "rated": t.rated, "tempo": tempo_category(t.base_ms, t.increment_ms),
         "description": t.description, "start_fen": t.start_fen,
         "winning_streak_bonus": t.winning_streak_bonus,
+        # Madde 2026-09-10 (Turnuva Türü / Berserk):
+        "tournament_type": t.tournament_type.value,
+        "rounds_total": t.rounds_total, "current_round": t.current_round,
+        "berserk_enabled": t.berserk_enabled,
     }
 
 
@@ -117,6 +145,9 @@ async def create_tournament(
         description=(payload.description or None),
         start_fen=(payload.start_fen or None),
         winning_streak_bonus=payload.winning_streak_bonus,
+        tournament_type=TournamentType(payload.tournament_type),
+        rounds_total=payload.rounds_total, current_round=0,
+        berserk_enabled=payload.berserk_enabled,
     )
     db.add(t)
     await db.flush()
@@ -161,6 +192,10 @@ async def join_tournament(
     # yalnizca bittiyse (finished) engellenir.
     if t.status == TournamentStatus.finished:
         raise HTTPException(status_code=400, detail="Turnuva bitti")
+    # Madde 2026-09-10: İsviçre'de 1. tur başlayınca (eşleştirmeler üretilince)
+    # katılım KAPANIR — yeni katılan turların ortasında rakipsiz kalırdı.
+    if t.tournament_type == TournamentType.swiss and (t.current_round or 0) >= 1:
+        raise HTTPException(status_code=400, detail="Turnuva başladı, katılım kapandı")
     existing = (await db.execute(
         select(TournamentParticipant).where(
             TournamentParticipant.tournament_id == tournament_id,
@@ -286,6 +321,8 @@ async def _recent_pairings(db: AsyncSession, tournament_id: int) -> list[dict]:
         "white_child_id": p.white_child_id, "white_name": names.get(p.white_child_id),
         "black_child_id": p.black_child_id, "black_name": names.get(p.black_child_id),
         "game_id": p.game_id, "result": p.result,
+        # Madde 2026-09-10: SADECE İsviçre'de dolu — arena'da hep None.
+        "round_number": p.round_number,
     } for p in rows]
 
 

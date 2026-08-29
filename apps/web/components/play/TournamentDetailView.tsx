@@ -129,17 +129,27 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
     return () => clearInterval(t);
   }, [detail]);
 
-  const canQueue = !!detail && detail.joined && detail.status === 'active' && !detail.my_pairing;
+  // Madde 2026-09-10: İsviçre'de eşleştirme tur-tur ÖNCEDEN üretilir
+  // (services/swiss.py) — sürekli kuyruk WS'i SADECE Arena içindir.
+  const canQueue = !!detail && detail.tournament_type === 'arena'
+    && detail.joined && detail.status === 'active' && !detail.my_pairing;
   const token = typeof window !== 'undefined' ? getToken() : null;
   const wsUrl = canQueue && token
     ? `${wsBase()}/ws/tournament/${tournamentId}/queue?token=${encodeURIComponent(token)}&_r=${retryKey}`
     : null;
 
+  // Madde 2026-09-10: Berserk SADECE arena + Yıldırım/Hızlı tempo + açıkken
+  // gösterilir — LiveGame'e query param'la taşınır (tournamentId ile AYNI desen).
+  const berserkAvailable = !!detail && detail.tournament_type === 'arena' && detail.berserk_enabled
+    && (detail.tempo === 'Yıldırım' || detail.tempo === 'Hızlı');
+
   useWebSocket(wsUrl, (data: unknown) => {
     const m = data as { type?: string; game_id?: number; color?: string };
     if (m?.type === 'waiting') setQueueStatus('waiting');
     else if (m?.type === 'matched' && m.game_id != null) {
-      router.push(`/play/online/${m.game_id}?color=${m.color}&tournamentId=${tournamentId}`);
+      router.push(
+        `/play/online/${m.game_id}?color=${m.color}&tournamentId=${tournamentId}&berserk=${berserkAvailable ? '1' : '0'}`,
+      );
     } else if (m?.type === 'timeout') setQueueStatus('timeout');
   });
 
@@ -189,22 +199,33 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
     (activePage - 1) * STANDINGS_PAGE_SIZE, activePage * STANDINGS_PAGE_SIZE,
   );
 
+  const isSwiss = detail.tournament_type === 'swiss';
+  // Madde 2026-09-10: İsviçre'de 1. tur başlayınca (current_round>=1)
+  // katılım backend'de zaten reddediliyor (400) — buton önceden gizlenir.
+  const swissJoinClosed = isSwiss && (detail.current_round ?? 0) >= 1;
+
   /** Üst şeritteki tek satırlık durum mesajı — Zafer'in görseldeki
    *  "Hazır Ol! Eşleşme Yapılıyor" örneğiyle AYNI dil. */
   function statusText(): string {
     if (detail!.status === 'finished') return 'Turnuva sona erdi.';
     if (!detail!.joined) {
-      return detail!.status === 'upcoming'
-        ? `${new Date(detail!.starts_at).toLocaleString('tr-TR')} tarihinde başlayacak.`
-        : 'Turnuva devam ediyor, katılabilirsin.';
+      if (detail!.status === 'upcoming') {
+        return `${new Date(detail!.starts_at).toLocaleString('tr-TR')} tarihinde başlayacak.`;
+      }
+      return swissJoinClosed ? 'Turnuva başladı, katılım kapandı.' : 'Turnuva devam ediyor, katılabilirsin.';
     }
     if (detail!.status === 'upcoming') return 'Turnuva başlayınca eşleşme yapılacak.';
     if (detail!.my_pairing) return `${detail!.my_pairing.opponent_name ?? 'Sporcu'} ile maçın sürüyor.`;
+    if (isSwiss) return `Tur ${detail!.current_round ?? 0}/${detail!.rounds_total ?? '?'} bitmesi bekleniyor.`;
     if (queueStatus === 'timeout') return 'Şu an rakip yok.';
     return 'Hazır Ol! Eşleşme Yapılıyor';
   }
 
-  const remainingLabel = detail.status === 'active' ? formatCountdown(secondsLeft)
+  // Madde 2026-09-10: İsviçre'de "Kalan Süre" kutusu anlamsız (bitiş tur
+  // sayısına bağlı) — yerine "Tur N/Toplam" gösterilir (aynı footer kutusu).
+  const remainingLabel = isSwiss
+    ? `Tur ${detail.current_round ?? 0}/${detail.rounds_total ?? '?'}`
+    : detail.status === 'active' ? formatCountdown(secondsLeft)
     : detail.status === 'upcoming' ? '--:--' : '0:00';
 
   return (
@@ -221,7 +242,7 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
               style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171' }}>
               {busy ? '...' : 'ÇEKİL'}
             </button>
-          ) : detail.status !== 'finished' ? (
+          ) : detail.status !== 'finished' && !swissJoinClosed ? (
             <button type="button" disabled={busy} onClick={join}
               className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50 flex-shrink-0"
               style={{ background: 'var(--t-accent)', color: '#fff' }}>
@@ -244,7 +265,8 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
             <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--t-border)' }}>
               <button type="button"
                 onClick={() => router.push(
-                  `/play/online/${detail.my_pairing!.game_id}?color=${detail.my_pairing!.my_color}&tournamentId=${tournamentId}`,
+                  `/play/online/${detail.my_pairing!.game_id}?color=${detail.my_pairing!.my_color}`
+                  + `&tournamentId=${tournamentId}&berserk=${berserkAvailable ? '1' : '0'}`,
                 )}
                 className="t-btn px-4 py-2.5 text-sm w-full">
                 Maça Devam Et

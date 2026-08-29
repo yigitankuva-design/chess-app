@@ -1,14 +1,17 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, field_validator
+from typing import Literal
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class TournamentCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    # Lichess Arena modeli (2026-09-05): sabit tur sayisi yok, sabit SURE var.
-    # Turnuva Olustur ekranindaki sure secenekleri 20 dk - 720 dk (12 saat)
-    # arasinda (bkz. app/(child)/play/tournament/create/page.tsx DURATIONS).
     starts_at: datetime
-    duration_minutes: int = Field(ge=5, le=720)
+    # Madde 2026-09-10: Arena'da ZORUNLU (5-720 dk), İsviçre'de kullanılmaz
+    # (None'a zorlanır) — bkz. _type_specific_fields. Lichess Arena modeli
+    # (2026-09-05): sabit tur sayisi yok, sabit SURE var. Turnuva Olustur
+    # ekranindaki sure secenekleri 20 dk - 720 dk (12 saat) arasinda (bkz.
+    # app/(child)/play/tournament/create/page.tsx DURATIONS).
+    duration_minutes: int | None = Field(default=None, ge=5, le=720)
 
     @field_validator("starts_at")
     @classmethod
@@ -37,3 +40,26 @@ class TournamentCreateRequest(BaseModel):
     # "Galibiyet Ödülü": acikken seri (2 galibiyet ust uste) sonraki sonucu
     # katlar; kapaliysa hep duz 2/1/0.
     winning_streak_bonus: bool = True
+    # Madde 2026-09-10 ("Turnuva Türü" / "Berserk" kartları):
+    tournament_type: Literal["arena", "swiss"] = "arena"
+    # İsviçre'de ZORUNLU (2-15 tur), arena'da kullanılmaz (None'a zorlanır).
+    rounds_total: int | None = Field(default=None, ge=2, le=15)
+    # SADECE arena + Yıldırım/Hızlı tempoda gerçekten etkin olur (kontrol
+    # routers/live_game.py::_handle_berserk'te) — burada sadece tercih.
+    berserk_enabled: bool = False
+
+    @model_validator(mode="after")
+    def _type_specific_fields(self) -> "TournamentCreateRequest":
+        """Arena ve İsviçre'nin süre/tur alanları KARŞILIKLI DIŞLAR —
+        birinin zorunlu olduğu yerde diğeri anlamsız, o yüzden sessizce
+        None'a zorlanır (yanlışlıkla ikisi birden gönderilirse DB'de tutarsız
+        kalmasın)."""
+        if self.tournament_type == "swiss":
+            if self.rounds_total is None:
+                raise ValueError("İsviçre turnuvasında tur sayısı zorunludur")
+            self.duration_minutes = None
+        else:
+            if self.duration_minutes is None:
+                raise ValueError("Turnuva süresi zorunludur")
+            self.rounds_total = None
+        return self

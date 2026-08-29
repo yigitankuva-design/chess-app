@@ -5,7 +5,9 @@ from chess_api.database import get_session_factory
 from chess_api.services.arena_matchmaking import find_arena_opponent, leave_arena_queue
 from chess_api.services.tournaments import sync_tournament_status
 from chess_api.routers.live_game import _child_id_from_token, _create_human_game
-from chess_api.models import Tournament, TournamentStatus, TournamentParticipant, TournamentPairing
+from chess_api.models import (
+    Tournament, TournamentStatus, TournamentType, TournamentParticipant, TournamentPairing,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -53,6 +55,12 @@ async def tournament_queue_ws(websocket: WebSocket, tournament_id: int, token: s
         if not t:
             await websocket.send_json({"type": "error", "message": "not_active"})
             await websocket.close(code=4404)
+            return
+        # Madde 2026-09-10: bu WS SADECE Arena içindir — İsviçre'de eşleştirme
+        # tur-tur ÖNCEDEN üretilir (services/swiss.py), sürekli kuyruk YOK.
+        if t.tournament_type != TournamentType.arena:
+            await websocket.send_json({"type": "error", "message": "not_arena"})
+            await websocket.close(code=4400)
             return
         # Lazy senkron: DB'de hâlâ "active" görünse bile süresi gerçekte
         # dolmuş olabilir (madde 2026-09-09 (6)) — burada da tetiklenir,

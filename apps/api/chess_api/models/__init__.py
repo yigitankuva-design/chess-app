@@ -21,12 +21,12 @@ from chess_api.models.fun_activity import FunActivity
 from chess_api.models.pool_image import PoolImage
 from chess_api.models.custom_tab import CustomTab, CustomTabSection
 from chess_api.models.tournament import (
-    Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
+    Tournament, TournamentStatus, TournamentType, TournamentParticipant, TournamentPairing,
 )
 from chess_api.models.rating import ChildTempoRating
 
 __all__ = [
-    "Tournament", "TournamentStatus", "TournamentParticipant", "TournamentPairing",
+    "Tournament", "TournamentStatus", "TournamentType", "TournamentParticipant", "TournamentPairing",
     "ChildTempoRating",
     "AppSettings",
     "ChildPracticeResult",

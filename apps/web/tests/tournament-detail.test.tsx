@@ -38,6 +38,8 @@ function baseDetail(overrides: Record<string, unknown> = {}) {
     base_ms: 300000, increment_ms: 0, status: 'active', joined: true, rated: false, tempo: null,
     description: null, start_fen: null, winning_streak_bonus: true, participant_count: 1,
     can_delete: true,
+    // Madde 2026-09-10 (Turnuva Türü / Berserk): varsayılan Arena.
+    tournament_type: 'arena', rounds_total: null, current_round: null, berserk_enabled: false,
     standings: [standingRow()],
     my_pairing: null,
     recent_pairings: [],
@@ -70,7 +72,7 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
   it('WS "matched" mesajı gelince /play/online/{gameId}\'e tournamentId ile yönlendirir', async () => {
     await renderPage(baseDetail({ joined: true, my_pairing: null }));
     act(() => wsHandler!({ type: 'matched', game_id: 55, color: 'black' }));
-    expect(push).toHaveBeenCalledWith('/play/online/55?color=black&tournamentId=1');
+    expect(push).toHaveBeenCalledWith('/play/online/55?color=black&tournamentId=1&berserk=0');
   });
 
   it('zaten aktif bir eşleşmesi varsa kuyruğa GİRMEZ, "Maça Devam Et" gösterir', async () => {
@@ -81,7 +83,25 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
     expect(lastWsUrl).toBeNull();
     expect(screen.getByText(/Ayşe/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Maça Devam Et' }));
-    expect(push).toHaveBeenCalledWith('/play/online/77?color=white&tournamentId=1');
+    expect(push).toHaveBeenCalledWith('/play/online/77?color=white&tournamentId=1&berserk=0');
+  });
+
+  it('Madde 2026-09-10: arena + berserk_enabled + Hızlı tempoda berserk=1 taşınır', async () => {
+    await renderPage(baseDetail({
+      joined: true, berserk_enabled: true, tempo: 'Hızlı',
+      my_pairing: { id: 9, opponent_id: 2, opponent_name: 'Ayşe', my_color: 'white', game_id: 77 },
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Maça Devam Et' }));
+    expect(push).toHaveBeenCalledWith('/play/online/77?color=white&tournamentId=1&berserk=1');
+  });
+
+  it('Klasik tempoda berserk_enabled=true olsa bile berserk=0 taşınır', async () => {
+    await renderPage(baseDetail({
+      joined: true, berserk_enabled: true, tempo: 'Klasik',
+      my_pairing: { id: 9, opponent_id: 2, opponent_name: 'Ayşe', my_color: 'white', game_id: 77 },
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Maça Devam Et' }));
+    expect(push).toHaveBeenCalledWith('/play/online/77?color=white&tournamentId=1&berserk=0');
   });
 
   it('sıralamada 2+ galibiyet serisi 🔥 ile gösterilir', async () => {
@@ -153,6 +173,48 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
     it('turnuva İLK AÇILIŞTA zaten bitmişse bildirim OTOMATİK açılmaz (geçiş yok)', async () => {
       await renderPage(baseDetail({ status: 'finished' }));
       expect(screen.queryByText(/Tamamlanmıştır/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Madde 2026-09-10: İsviçre turnuvası görünümü', () => {
+    it('katılmış + eşleşmesi yoksa "Tur N/Toplam bitmesi bekleniyor" gösterir, kuyruğa BAĞLANMAZ', async () => {
+      await renderPage(baseDetail({
+        tournament_type: 'swiss', rounds_total: 4, current_round: 2,
+        joined: true, my_pairing: null,
+      }));
+      expect(screen.getByText(/Tur 2\/4 bitmesi bekleniyor\./)).toBeInTheDocument();
+      expect(lastWsUrl).toBeNull();
+    });
+
+    it('footer\'da "Kalan Süre" yerine "Tur N/Toplam" gösterilir', async () => {
+      await renderPage(baseDetail({
+        tournament_type: 'swiss', rounds_total: 4, current_round: 2, joined: true, my_pairing: null,
+      }));
+      expect(screen.getByText('Tur 2/4')).toBeInTheDocument();
+    });
+
+    it('1. tur başladıktan sonra katılmamış sporcuya KATIL butonu GÖSTERİLMEZ', async () => {
+      await renderPage(baseDetail({
+        tournament_type: 'swiss', rounds_total: 4, current_round: 1, joined: false,
+      }));
+      expect(screen.queryByRole('button', { name: 'KATIL' })).not.toBeInTheDocument();
+      expect(screen.getByText(/Turnuva başladı, katılım kapandı\./)).toBeInTheDocument();
+    });
+
+    it('henüz 1. tur başlamadıysa (current_round=0) katılmamış sporcuya KATIL gösterilir', async () => {
+      await renderPage(baseDetail({
+        tournament_type: 'swiss', rounds_total: 4, current_round: 0, joined: false, status: 'upcoming',
+      }));
+      expect(screen.getByRole('button', { name: 'KATIL' })).toBeInTheDocument();
+    });
+
+    it('eşleşmesi varsa Arena\'dakiyle AYNI şekilde "Maça Devam Et" gösterir', async () => {
+      await renderPage(baseDetail({
+        tournament_type: 'swiss', rounds_total: 4, current_round: 1, joined: true,
+        my_pairing: { id: 9, opponent_id: 2, opponent_name: 'Ayşe', my_color: 'white', game_id: 77 },
+      }));
+      expect(lastWsUrl).toBeNull();
+      expect(screen.getByRole('button', { name: 'Maça Devam Et' })).toBeInTheDocument();
     });
   });
 
