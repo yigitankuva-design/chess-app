@@ -26,7 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from chess_api.models import Tournament, TournamentParticipant, TournamentPairing, TournamentStatus
-from chess_api.services.tournaments import _apply_arena_points
+from chess_api.services.tournaments import _apply_swiss_points
 
 CreateGame = Callable[[int, int], Awaitable[int]]
 
@@ -120,8 +120,10 @@ async def _start_round(
     pairings, bye_child_id = generate_round_pairings(participants, past_pairings)
 
     if bye_child_id is not None:
+        # Madde 2026-09-XX: bay artık klasik İsviçre ölçeğinde (1.0 — gerçek
+        # bir galibiyetle AYNI, fazlası değil), Arena'nın 2/1/0'ı değil.
         bye_p = next(p for p in participants if p.child_id == bye_child_id)
-        _apply_arena_points(bye_p, is_win=True, is_draw=False, streak_bonus=tournament.winning_streak_bonus)
+        _apply_swiss_points(bye_p, is_win=True, is_draw=False)
         bye_p.bye_count += 1
 
     for pr in pairings:

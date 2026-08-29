@@ -168,7 +168,10 @@ async def test_son_turdan_sonra_turnuva_biter(db):
 
 
 @pytest.mark.asyncio
-async def test_bay_alan_otomatik_2_puan_kazanir(db):
+async def test_bay_alan_otomatik_1_puan_kazanir(db):
+    """Madde 2026-09-XX: bay klasik İsviçre ölçeğinde (1.0) puanlanır —
+    Arena'nın 2/1/0'ı DEĞİL (bkz. services/tournaments.py::_apply_swiss_points,
+    services/swiss.py::_start_round artık _apply_arena_points ÇAĞIRMIYOR)."""
     t = Tournament(
         name="X", created_by_user_id=1, tournament_type=TournamentType.swiss,
         status=TournamentStatus.upcoming, starts_at=datetime.utcnow() - timedelta(minutes=1),
@@ -189,7 +192,7 @@ async def test_bay_alan_otomatik_2_puan_kazanir(db):
     part = (await db.execute(
         select(TournamentParticipant).where(TournamentParticipant.tournament_id == t.id)
     )).scalar_one()
-    assert part.score == 2.0
+    assert part.score == 1.0
     assert part.bye_count == 1
     pairings = (await db.execute(
         select(TournamentPairing).where(TournamentPairing.tournament_id == t.id)

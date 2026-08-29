@@ -7,7 +7,9 @@ from chess_api.models import (
     Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
 )
 from chess_api.services.jwt import encode_token
-from chess_api.services.tournaments import finalize_tournament_pairing, compute_sonneborn_berger
+from chess_api.services.tournaments import (
+    finalize_tournament_pairing, compute_sonneborn_berger, _apply_swiss_points,
+)
 from chess_api.services.child_deletion import delete_child_cascade
 from chess_api.schemas.tournament import TournamentCreateRequest
 
@@ -932,6 +934,94 @@ async def test_isvicre_odul_ve_berserk_zorla_kapali(client, db):
     body = r.json()
     assert body["winning_streak_bonus"] is False
     assert body["berserk_enabled"] is False
+
+
+def test_isvicre_puanlama_klasik_olcek():
+    """Madde 2026-09-XX: İsviçre ARTIK Arena'nın 2/1/0 ölçeğini kullanmıyor —
+    kendi klasik turnuva satranç ölçeği (galibiyet=1, beraberlik=0,5,
+    kayıp=0) var (bkz. services/tournaments.py::_apply_swiss_points). Rapor
+    bu 'Arena mekaniği İsviçre'ye sızmış' riskini flag etmişti."""
+    p_win = TournamentParticipant(id=1, tournament_id=1, child_id=1, score=0.0, current_streak=0)
+    p_draw = TournamentParticipant(id=2, tournament_id=1, child_id=2, score=0.0, current_streak=0)
+    p_loss = TournamentParticipant(id=3, tournament_id=1, child_id=3, score=0.0, current_streak=0)
+    _apply_swiss_points(p_win, is_win=True, is_draw=False)
+    _apply_swiss_points(p_draw, is_win=False, is_draw=True)
+    _apply_swiss_points(p_loss, is_win=False, is_draw=False)
+    assert p_win.score == 1.0
+    assert p_draw.score == 0.5
+    assert p_loss.score == 0.0
+
+
+@pytest.mark.asyncio
+async def test_isvicre_mac_bitince_klasik_puan_verir(client, db, db_engine, monkeypatch):
+    """Madde 2026-09-XX: gerçek bir İsviçre maçı bitince klasik ölçekte
+    (1/0,5/0) puanlanır — Arena'nın 2/1/0'ı DEĞİL. finalize_tournament_pairing
+    artık tournament_type'a göre dallanıyor (bkz. services/tournaments.py)."""
+    _patch_game_creation(db_engine, monkeypatch)
+    _, teacher_id = await _teacher(client, "tsw7@t.com")
+    parent_id = await _parent_id(client, "psw7@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    joiner = await _add_child(db, "B", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
+        "base_ms": 300000, "increment_ms": 0,
+    })
+    tid = r.json()["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(joiner.id))
+
+    t = await db.get(Tournament, tid)
+    t.starts_at = datetime.utcnow() - timedelta(minutes=1)
+    await db.commit()
+    await client.get(f"/tournaments/{tid}", headers=_child_headers(creator.id))  # 1. tur üretilir
+
+    pairing = (await db.execute(
+        select(TournamentPairing).where(TournamentPairing.tournament_id == tid)
+    )).scalar_one()
+    game = await db.get(Game, pairing.game_id)
+    game.result = GameResult.white_wins
+    await finalize_tournament_pairing(db, game)
+    await db.commit()
+
+    parts = (await db.execute(
+        select(TournamentParticipant).where(TournamentParticipant.tournament_id == tid)
+    )).scalars().all()
+    scores = {p.child_id: p.score for p in parts}
+    assert scores[pairing.white_child_id] == 1.0
+    assert scores[pairing.black_child_id] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_isvicre_bay_klasik_1_puan_verir(client, db, db_engine, monkeypatch):
+    """Madde 2026-09-XX: bay (rakipsiz kalan) klasik ölçekte 1.0 puan alır —
+    gerçek bir galibiyetten FAZLA değil (rapordaki 'bay Arena ölçeğinde 2
+    puan alıyor' riski artık yok — bye artık _apply_swiss_points çağırıyor,
+    _apply_arena_points değil)."""
+    _patch_game_creation(db_engine, monkeypatch)
+    _, teacher_id = await _teacher(client, "tsw8@t.com")
+    parent_id = await _parent_id(client, "psw8@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    b = await _add_child(db, "B", teacher_id, parent_id)
+    c = await _add_child(db, "C", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
+        "base_ms": 300000, "increment_ms": 0,
+    })
+    tid = r.json()["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(c.id))
+
+    t = await db.get(Tournament, tid)
+    t.starts_at = datetime.utcnow() - timedelta(minutes=1)
+    await db.commit()
+    await client.get(f"/tournaments/{tid}", headers=_child_headers(creator.id))  # 1. tur (3 kişi: 1 bay)
+
+    parts = (await db.execute(
+        select(TournamentParticipant).where(TournamentParticipant.tournament_id == tid)
+    )).scalars().all()
+    bye_p = next(p for p in parts if p.bye_count == 1)
+    assert bye_p.score == 1.0
 
 
 @pytest.mark.asyncio

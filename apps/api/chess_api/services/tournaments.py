@@ -10,7 +10,9 @@ ANINDA eslesir — sabit tur YOK). Bu dosyada:
 - turnuva suresi dolunca hala suren maclari iptal eden
   (`_finalize_expired_games`, madde 2026-09-09 (6)),
 - bir mac bitince turnuva puanini guncelleyen TEK cagri noktasi
-  (`finalize_tournament_pairing`, Lichess'in 2/1/0 + seri katlama kurali),
+  (`finalize_tournament_pairing`, turnuva turune gore dallanir: Arena
+  Lichess'in 2/1/0 + seri katlama kurali, Isvicre klasik 1/0,5/0 olcegi
+  — bkz. _apply_arena_points / _apply_swiss_points),
 - siralama esitliginde kullanilan Sonneborn-Berger ("averaj") hesabi
 kalir.
 """
@@ -18,7 +20,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.models import (
-    Game, GameType, GameStatus, Tournament, TournamentStatus,
+    Game, GameType, GameStatus, Tournament, TournamentStatus, TournamentType,
     TournamentPairing, TournamentParticipant,
 )
 from chess_api.services.game_room import get_room
@@ -109,11 +111,28 @@ def _apply_arena_points(
     participant.score += points
 
 
+def _apply_swiss_points(participant: TournamentParticipant, *, is_win: bool, is_draw: bool) -> None:
+    """Madde 2026-09-XX: İsviçre KENDİ puanlama fonksiyonuna ayrıldı — klasik
+    turnuva satranç ölçeği (galibiyet=1, beraberlik=0,5, kayıp=0), Arena'nın
+    2/1/0 ölçeğiyle KARIŞTIRILMAZ. Seri katlaması ve Berserk zaten İsviçre'de
+    hiç kullanılmıyor (Zafer'in kararı, bkz. schemas/tournament.py) — bu
+    fonksiyonun onlar için parametresi bile yok. `current_streak` yine de
+    sayılır (ileride açılırsa diye) ama hiçbir puana etkisi olmaz.
+
+    Bay da (rakipsiz kalan katılımcı) BU fonksiyonla, is_win=True olarak
+    çağrılır — gerçek bir galibiyetle AYNI (1.0) puanı verir, fazlasını
+    değil (bkz. services/swiss.py::_start_round)."""
+    points = 1.0 if is_win else (0.5 if is_draw else 0.0)
+    participant.current_streak = participant.current_streak + 1 if is_win else 0
+    participant.score += points
+
+
 async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
     """Insan-insan bir mac bitince (checkmate/pat/terk/bayrak/beraberlik —
     TUMU icin TEK cagri noktasi) — eger bu mac bir turnuva eslesmesine
     baglıysa, sonucu esleme satirina yazar ve iki tarafin puanini/serisini
-    Lichess Arena kuralina gore gunceller.
+    gunceller: Arena Lichess kuralina gore (2/1/0 + seri + berserk), Isvicre
+    klasik turnuva olcegine gore (1/0,5/0 — bkz. _apply_swiss_points).
 
     Bagli degilse (sıradan Arkadasla Oyna maci) HICBIR SEY yapmaz.
     """
@@ -129,6 +148,7 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
 
     tournament = await db.get(Tournament, pairing.tournament_id)
     streak_bonus = tournament.winning_streak_bonus if tournament else True
+    is_swiss = tournament is not None and tournament.tournament_type == TournamentType.swiss
 
     participants = (await db.execute(
         select(TournamentParticipant).where(
@@ -144,15 +164,21 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
     white_p = by_child.get(pairing.white_child_id)
     black_p = by_child.get(pairing.black_child_id)
     if white_p is not None:
-        _apply_arena_points(
-            white_p, is_win=white_wins and not is_draw, is_draw=is_draw,
-            streak_bonus=streak_bonus, berserk_bonus=pairing.white_berserked,
-        )
+        if is_swiss:
+            _apply_swiss_points(white_p, is_win=white_wins and not is_draw, is_draw=is_draw)
+        else:
+            _apply_arena_points(
+                white_p, is_win=white_wins and not is_draw, is_draw=is_draw,
+                streak_bonus=streak_bonus, berserk_bonus=pairing.white_berserked,
+            )
     if black_p is not None:
-        _apply_arena_points(
-            black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw,
-            streak_bonus=streak_bonus, berserk_bonus=pairing.black_berserked,
-        )
+        if is_swiss:
+            _apply_swiss_points(black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw)
+        else:
+            _apply_arena_points(
+                black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw,
+                streak_bonus=streak_bonus, berserk_bonus=pairing.black_berserked,
+            )
 
 
 def compute_sonneborn_berger(
