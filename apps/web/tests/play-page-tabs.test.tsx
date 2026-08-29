@@ -31,7 +31,7 @@ describe('/play — 4 sekme (madde a)', () => {
     expect(screen.getByText('Arkadaşla Oyna')).toBeInTheDocument();
     expect(screen.getByText('Bota Karşı Oyna')).toBeInTheDocument();
     expect(screen.getByText('Açılışı Pratiği Yap')).toBeInTheDocument();
-    expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
+    expect(screen.getByText('Turnuva Girişi')).toBeInTheDocument();
   });
 
   it('Bota Karşı Oyna seçilince kriter ekranı açılır', () => {
@@ -47,9 +47,9 @@ describe('/play — 4 sekme (madde a)', () => {
     expect(screen.getByTestId('offer-board')).toBeInTheDocument();
   });
 
-  it('Turnuvaya Katıl seçilince 2 alt sekme (Turnuvaya Katıl/Turnuva Oluştur) açılır', () => {
+  it('Turnuva Girişi seçilince 2 alt sekme (Turnuvaya Katıl/Turnuva Oluştur) açılır', () => {
     render(<PlayPage />);
-    fireEvent.click(screen.getByText('Turnuvaya Katıl'));
+    fireEvent.click(screen.getByText('Turnuva Girişi'));
     expect(screen.getByText('Turnuva Oluştur')).toBeInTheDocument();
     expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
   });
@@ -57,7 +57,7 @@ describe('/play — 4 sekme (madde a)', () => {
   it('Turnuva alt sekmesi "Turnuvaya Katıl" lobi sayfasına yönlendirir', () => {
     push.mockClear();
     render(<PlayPage />);
-    fireEvent.click(screen.getByText('Turnuvaya Katıl'));
+    fireEvent.click(screen.getByText('Turnuva Girişi'));
     fireEvent.click(screen.getByText('Turnuvaya Katıl'));
     expect(push).toHaveBeenCalledWith('/play/tournament/lobby');
   });
@@ -65,7 +65,7 @@ describe('/play — 4 sekme (madde a)', () => {
   it('Turnuva alt sekmesi "Turnuva Oluştur" oluşturma sayfasına yönlendirir', () => {
     push.mockClear();
     render(<PlayPage />);
-    fireEvent.click(screen.getByText('Turnuvaya Katıl'));
+    fireEvent.click(screen.getByText('Turnuva Girişi'));
     fireEvent.click(screen.getByText('Turnuva Oluştur'));
     expect(push).toHaveBeenCalledWith('/play/tournament/create');
   });

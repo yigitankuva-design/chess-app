@@ -32,7 +32,7 @@ vi.mock('@/lib/practice/practiceApi', () => ({ fetchLessonScores: async () => nu
 
 import ChildHomePage from '@/app/(child)/home/page';
 
-const MODES = ['Arkadaşla Oyna', 'Bota Karşı Oyna', 'Turnuvaya Katıl'];
+const MODES = ['Arkadaşla Oyna', 'Bota Karşı Oyna', 'Turnuva Girişi'];
 
 function openPlayTab() {
   render(<ChildHomePage />);
@@ -64,9 +64,9 @@ describe('Ana sayfa — Maç Yap sekmesi 3 maç türü', () => {
     expect(screen.queryByText('Açılış Pratiği Yap')).not.toBeInTheDocument();
   });
 
-  it('Turnuvaya Katıl turnuva akışına götürür', () => {
+  it('Turnuva Girişi turnuva akışına götürür', () => {
     openPlayTab();
-    expect(screen.getByText('Turnuvaya Katıl').closest('a')).toHaveAttribute('href', '/play?mode=tournament');
+    expect(screen.getByText('Turnuva Girişi').closest('a')).toHaveAttribute('href', '/play?mode=tournament');
   });
 
   it('Bota Karşı Oyna sayfa değiştirmeden kriter seçimini açar', () => {

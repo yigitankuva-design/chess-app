@@ -81,38 +81,27 @@ async def list_tournaments(
     child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
-    """Sporcunun görebileceği turnuvalar: (a) hâlâ hocasına bağlı olduğu
-    turnuvalar, (b) hocası yoksa/olsa da VELİSİNİN adına kayıtlı turnuvalar
-    (madde 2026-09-08 — hocasız sporcu da turnuva oluşturabilir), (c) daha
-    önce katıldığı — hocası sonradan değişse bile zaten katıldığı turnuva
-    görünmeye devam eder (madde: mimari inceleme)."""
+    """Madde 2026-09-08 (1): TÜM turnuvalar TÜM sporculara açık — Lichess'te
+    olduğu gibi açık lobi (uygulamaya giren herkes oluşturulmuş turnuvaları
+    görebilir). Hoca/veli gruplama SADECE bir turnuvayı SİLME yetkisinde
+    kullanılır (bkz. _owned_tournament) — görünürlükte artık hiç kullanılmaz."""
     joined_ids = set((await db.execute(
         select(TournamentParticipant.tournament_id).where(TournamentParticipant.child_id == child.id)
     )).scalars().all())
 
-    visible_ids: set[int] = set(joined_ids)
-    if child.teacher_user_id is not None:
-        by_teacher = (await db.execute(
-            select(Tournament.id).where(Tournament.created_by_user_id == child.teacher_user_id)
-        )).scalars().all()
-        visible_ids |= set(by_teacher)
-    by_parent = (await db.execute(
-        select(Tournament.id).where(Tournament.created_by_user_id == child.parent_user_id)
-    )).scalars().all()
-    visible_ids |= set(by_parent)
-
-    if not visible_ids:
-        return []
     rows = (await db.execute(
-        select(Tournament).where(Tournament.id.in_(visible_ids)).order_by(Tournament.created_at.desc())
+        select(Tournament).order_by(Tournament.created_at.desc())
     )).scalars().all()
+    if not rows:
+        return []
     for t in rows:
         await _sync_status(db, t)
 
     # Lobi tablosundaki "Katılımcı Sayısı" sütunu için (2026-09-07).
+    all_ids = [t.id for t in rows]
     counts = dict((await db.execute(
         select(TournamentParticipant.tournament_id, func.count(TournamentParticipant.id))
-        .where(TournamentParticipant.tournament_id.in_(visible_ids))
+        .where(TournamentParticipant.tournament_id.in_(all_ids))
         .group_by(TournamentParticipant.tournament_id)
     )).all())
 
@@ -161,16 +150,10 @@ async def _owned_tournament(db: AsyncSession, tournament_id: int, child: ChildPr
 
 
 async def _accessible_tournament(db: AsyncSession, tournament_id: int, child: ChildProfile) -> Tournament:
+    """Madde 2026-09-08 (1): açık lobi — herhangi bir turnuvanın detayına
+    herhangi bir sporcu bakabilir (grup kısıtı yok, sadece var olmalı)."""
     t = await db.get(Tournament, tournament_id)
     if not t:
-        raise HTTPException(status_code=404, detail="Tournament not found")
-    is_participant = (await db.execute(
-        select(TournamentParticipant.id).where(
-            TournamentParticipant.tournament_id == tournament_id,
-            TournamentParticipant.child_id == child.id,
-        )
-    )).first() is not None
-    if not is_participant and not _in_same_group(child, t.created_by_user_id):
         raise HTTPException(status_code=404, detail="Tournament not found")
     return t
 
@@ -181,8 +164,9 @@ async def join_tournament(
     child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
+    # Madde 2026-09-08 (1): açık lobi — grup kısıtı yok, herkes katılabilir.
     t = await db.get(Tournament, tournament_id)
-    if not t or not _in_same_group(child, t.created_by_user_id):
+    if not t:
         raise HTTPException(status_code=404, detail="Tournament not found")
     await _sync_status(db, t)
     # Lichess Arena: devam eden bir turnuvaya sonradan katilmak serbest —

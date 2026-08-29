@@ -24,7 +24,7 @@ const MODE_CARDS: { mode: Mode; emoji: string; title: string; subtitle: string }
   { mode: 'friend',     emoji: '🤝', title: 'Arkadaşla Oyna',     subtitle: 'Aktif sporcuya teklif gönder' },
   { mode: 'bot',        emoji: '🤖', title: 'Bota Karşı Oyna',    subtitle: 'Bilgisayara karşı maç' },
   { mode: 'opening',    emoji: '📖', title: 'Açılışı Pratiği Yap', subtitle: 'Seçtiğin açılıştan başla' },
-  { mode: 'tournament', emoji: '🏆', title: 'Turnuvaya Katıl',    subtitle: 'Çok oyunculu etkinlik' },
+  { mode: 'tournament', emoji: '🏆', title: 'Turnuva Girişi',     subtitle: 'Çok oyunculu etkinlik' },
 ];
 
 const ChevronRight = () => (
@@ -213,23 +213,20 @@ function PlayInner() {
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
         <p className="font-semibold text-sm">🏆 Turnuva</p>
+        {/* Madde 2026-09-08 (3): ikon ve sondaki ok işareti kaldırıldı — sade kart. */}
         <button type="button" onClick={() => router.push('/play/tournament/lobby')}
           className="t-card-i w-full flex items-center gap-4 px-4 py-4 text-left">
-          <span className="text-2xl">🔎</span>
           <div className="flex-1">
             <p className="font-semibold text-sm">Turnuvaya Katıl</p>
             <p className="text-xs t-muted mt-0.5">Devam eden turnuvaları gör, katıl</p>
           </div>
-          <ChevronRight />
         </button>
         <button type="button" onClick={() => router.push('/play/tournament/create')}
           className="t-card-i w-full flex items-center gap-4 px-4 py-4 text-left">
-          <span className="text-2xl">➕</span>
           <div className="flex-1">
             <p className="font-semibold text-sm">Turnuva Oluştur</p>
             <p className="text-xs t-muted mt-0.5">Kendi turnuvanı başlat</p>
           </div>
-          <ChevronRight />
         </button>
       </main>
     );

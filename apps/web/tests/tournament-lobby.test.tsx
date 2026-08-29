@@ -51,7 +51,7 @@ describe('Turnuva Lobisi — /play/tournament/lobby', () => {
     await waitFor(() => screen.getByText('Yaz Turnuvası'));
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
     expect(headers).toEqual([
-      'Saat', 'Turnuva İsmi', 'Tempo', 'Toplam Süre', 'Kalan Süre', 'Katılımcı Sayısı', 'Katılım İsteği',
+      'Katılım isteği', 'Saat', 'Turnuva ismi', 'Tempo', 'Toplam süre', 'Kalan süre', 'Katılımcı sayısı',
     ]);
   });
 
@@ -133,7 +133,7 @@ describe('Turnuva Lobisi — /play/tournament/lobby', () => {
       render(<TournamentLobbyPage />);
       await waitFor(() => screen.getByText('Henüz Başlamadı'));
       const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
-      expect(headers).not.toContain('Kalan Süre');
+      expect(headers).not.toContain('Kalan süre');
       expect(screen.getByRole('button', { name: 'Katıl' })).toBeInTheDocument();
     });
 

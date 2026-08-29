@@ -48,29 +48,23 @@ function TournamentTable({ rows, showRemaining, actionColumnLabel, mode, busyId,
     <div className="overflow-x-auto rounded-lg">
       <table className="w-full text-sm" style={{ borderCollapse: 'collapse', minWidth: 640 }}>
         <thead>
-          <tr className="text-left">
-            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Saat</th>
-            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Turnuva İsmi</th>
-            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Tempo</th>
-            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Toplam Süre</th>
+          {/* Madde 2026-09-08 (4b): başlıklar ortalı, sadece baş harf büyük. */}
+          <tr className="text-center">
+            <th className="px-3 py-2 text-xs font-semibold t-muted tracking-wide">{actionColumnLabel}</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted tracking-wide">Saat</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted tracking-wide">Turnuva ismi</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted tracking-wide">Tempo</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted tracking-wide">Toplam süre</th>
             {showRemaining && (
-              <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Kalan Süre</th>
+              <th className="px-3 py-2 text-xs font-semibold t-muted tracking-wide">Kalan süre</th>
             )}
-            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">Katılımcı Sayısı</th>
-            <th className="px-3 py-2 text-xs font-semibold t-muted uppercase tracking-wide">{actionColumnLabel}</th>
+            <th className="px-3 py-2 text-xs font-semibold t-muted tracking-wide">Katılımcı sayısı</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((t, i) => (
             <tr key={t.id} style={{ ...rowStyle, borderTop: i > 0 ? '1px solid rgba(255,255,255,0.12)' : undefined }}>
-              <td className="px-3 py-3">{formatTime(t.starts_at)}</td>
-              <td className="px-3 py-3 font-semibold">{t.name}</td>
-              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatTempo(t.base_ms)}</td>
-              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatDuration(t.duration_minutes)}</td>
-              {showRemaining && (
-                <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatRemaining(t.seconds_remaining)}</td>
-              )}
-              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{t.participant_count}</td>
+              {/* Madde 2026-09-08 (4a): aksiyon sütunu tablonun BAŞINA taşındı. */}
               <td className="px-3 py-3">
                 {mode === 'finished' ? (
                   <button type="button" onClick={() => onOpen(t.id)}
@@ -92,6 +86,14 @@ function TournamentTable({ rows, showRemaining, actionColumnLabel, mode, busyId,
                   </button>
                 )}
               </td>
+              <td className="px-3 py-3">{formatTime(t.starts_at)}</td>
+              <td className="px-3 py-3 font-semibold">{t.name}</td>
+              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatTempo(t.base_ms)}</td>
+              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatDuration(t.duration_minutes)}</td>
+              {showRemaining && (
+                <td className="px-3 py-3" style={{ opacity: 0.8 }}>{formatRemaining(t.seconds_remaining)}</td>
+              )}
+              <td className="px-3 py-3" style={{ opacity: 0.8 }}>{t.participant_count}</td>
             </tr>
           ))}
         </tbody>
@@ -174,14 +176,14 @@ export default function TournamentLobbyPage() {
       ) : (
         <>
           {active.length > 0 && (
-            <TournamentTable rows={active} showRemaining actionColumnLabel="Katılım İsteği"
+            <TournamentTable rows={active} showRemaining actionColumnLabel="Katılım isteği"
               mode="joinable" busyId={busyId} onJoin={join} onOpen={open} />
           )}
 
           {upcoming.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-base font-bold" style={{ color: 'var(--t-text)' }}>Yaklaşan Turnuvalar</h2>
-              <TournamentTable rows={upcoming} showRemaining={false} actionColumnLabel="Katılım İsteği"
+              <TournamentTable rows={upcoming} showRemaining={false} actionColumnLabel="Katılım isteği"
                 mode="joinable" busyId={busyId} onJoin={join} onOpen={open} />
             </div>
           )}

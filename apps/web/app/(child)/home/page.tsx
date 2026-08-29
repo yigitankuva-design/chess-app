@@ -521,13 +521,13 @@ export default function ChildHomePage() {
 
             <VerticalDivider />
 
-            {/* Turnuvaya Katıl */}
+            {/* Turnuva Girişi (madde 2026-09-08 (2): eski adı "Turnuvaya Katıl" idi). */}
             <Link href="/play?mode=tournament" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
               <span className="flex items-center justify-center flex-shrink-0"
                 style={{ ...raised(999, 4), width: 44, height: 44, color: 'var(--t-text-1)' }}>
                 <IconTrophy s={20} />
               </span>
-              <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.play }}>Turnuvaya Katıl</span>
+              <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.play }}>Turnuva Girişi</span>
             </Link>
           </div>
         )}

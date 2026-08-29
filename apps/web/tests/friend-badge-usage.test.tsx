@@ -61,6 +61,6 @@ describe('/play — Arkadaşla Oyna rozeti', () => {
     expect(screen.getByText('Arkadaşla Oyna')).toBeInTheDocument();
     expect(screen.getByText('Bota Karşı Oyna')).toBeInTheDocument();
     expect(screen.getByText('Açılışı Pratiği Yap')).toBeInTheDocument();
-    expect(screen.getByText('Turnuvaya Katıl')).toBeInTheDocument();
+    expect(screen.getByText('Turnuva Girişi')).toBeInTheDocument();
   });
 });

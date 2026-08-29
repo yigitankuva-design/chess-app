@@ -206,13 +206,10 @@ async def test_hocaya_bagli_olmayan_sporcu_da_turnuva_olusturabilir(client, db):
 @pytest.mark.asyncio
 async def test_hocasiz_sporcunun_turnuvasini_ayni_velinin_diger_cocugu_gorur(client, db):
     """Hocasız sporcunun oluşturduğu turnuva, AYNI VELİNİN diğer çocuğuna
-    (kardeşine) da görünür ve katılabilir olmalı — farklı velinin çocuğuna
-    GÖRÜNMEMELİ."""
+    (kardeşine) da görünür ve katılabilir olmalı."""
     parent_id = await _parent_id(client, "psib@t.com")
     creator = await _add_child(db, "Abla", None, parent_id)
     sibling = await _add_child(db, "Kardeş", None, parent_id)
-    other_parent_id = await _parent_id(client, "pother@t.com")
-    stranger = await _add_child(db, "Yabancı", None, other_parent_id)
 
     created = await _create_tournament(client, creator.id, name="Kardeş Turnuvası")
 
@@ -223,23 +220,28 @@ async def test_hocasiz_sporcunun_turnuvasini_ayni_velinin_diger_cocugu_gorur(cli
     r_join = await client.post(f"/tournaments/{created['id']}/join", headers=_child_headers(sibling.id))
     assert r_join.status_code == 201
 
-    r_stranger = await client.get("/tournaments", headers=_child_headers(stranger.id))
-    assert r_stranger.json() == []
-    r_stranger_get = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(stranger.id))
-    assert r_stranger_get.status_code == 404
-
 
 @pytest.mark.asyncio
-async def test_baska_hocanin_sporcusu_turnuvayi_goremez(client, db):
+async def test_acik_lobi_baska_hocanin_sporcusu_da_turnuvayi_gorur_ve_katilir(client, db):
+    """Madde 2026-09-08 (1): turnuvalar artık TAMAMEN AÇIK lobi — hoca/veli
+    grubu farklı olsa bile herkes birbirinin turnuvasını görüp katılabilir
+    (Lichess'teki gibi). Yalnızca SİLME yetkisi hâlâ gruba göre kısıtlı
+    (bkz. test_baska_hocanin_sporcusu_silemez)."""
     _, teacher1_id = await _teacher(client, "t2a@t.com")
     _, teacher2_id = await _teacher(client, "t2b@t.com")
     parent_id = await _parent_id(client, "p2@t.com")
     creator = await _add_child(db, "A", teacher1_id, parent_id)
     outsider = await _add_child(db, "B", teacher2_id, parent_id)
 
-    created = await _create_tournament(client, creator.id, name="Gizli")
+    created = await _create_tournament(client, creator.id, name="Herkese Açık")
     r = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(outsider.id))
-    assert r.status_code == 404
+    assert r.status_code == 200
+
+    r_list = await client.get("/tournaments", headers=_child_headers(outsider.id))
+    assert any(t["id"] == created["id"] for t in r_list.json())
+
+    r_join = await client.post(f"/tournaments/{created['id']}/join", headers=_child_headers(outsider.id))
+    assert r_join.status_code == 201
 
 
 @pytest.mark.asyncio
