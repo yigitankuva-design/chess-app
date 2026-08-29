@@ -44,7 +44,7 @@ describe('Admin içerik sayfası — düzey açıklaması (madde 2026-09-05 (1))
     fireEvent.click(screen.getByText('+ Açıklama Ekle'));
     fireEvent.click(screen.getByText('Önerilen açıklamayı kullan'));
     const textarea = screen.getByPlaceholderText(/Bu düzey kimin için uygun/) as HTMLTextAreaElement;
-    expect(textarea.value).toContain('ELO puan aralığı 0-399');
+    expect(textarea.value).toContain('Puan Aralığı:0 – 399');
   });
 
   it('Kaydet ile PATCH /admin/modules/1 açıklamayı gönderir', async () => {

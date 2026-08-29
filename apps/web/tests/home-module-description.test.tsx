@@ -57,11 +57,20 @@ describe('Ana sayfa — Dersler düzey açıklaması (madde 2026-09-05 (1), gün
     expect(screen.getByText('(ELO 0-399, yeni başlayanlar için.)')).toBeInTheDocument();
   });
 
-  it('3. satırda konu özeti (topics) gösterilir', async () => {
+  it('3. satırda konu özeti (topics) PARANTEZ İÇİNDE VE İTALİK gösterilir (görsel: 2026-09-08)', async () => {
     render(<HomePage />);
     fireEvent.click(screen.getByText('Dersler'));
     await waitFor(() => screen.getByText('Temel Düzey'));
-    expect(screen.getByText('Satranç Tahtası, Taşlar ve Temel Kurallar')).toBeInTheDocument();
+    const el = screen.getByText('(Satranç Tahtası, Taşlar ve Temel Kurallar)');
+    expect(el).toBeInTheDocument();
+    expect(el.className).toContain('italic');
+  });
+
+  it('düzey adı mavi (Dersler marka rengi) gösterilir (görsel: 2026-09-08)', async () => {
+    render(<HomePage />);
+    fireEvent.click(screen.getByText('Dersler'));
+    const label = await screen.findByText('Temel Düzey');
+    expect(label.style.color).toBe('#38bdf8');
   });
 
   it('açıklaması olmayan düzeyde hiçbir açıklama satırı gösterilmez', async () => {

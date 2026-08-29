@@ -555,18 +555,20 @@ export default function ChildHomePage() {
                     label={lv.name}
                     active={levelOpen}
                     size={44}
+                    tint={FEATURE_COLORS.lessons}
                     onClick={() => toggleLevel(lv.id)}
                   />
-                  {/* Madde 2026-09-07 (2): başlık 3 satır — isim (yukarıda) + (açıklama,
-                      ELO/yaş — admin'den girilir) + konu özeti (admin'den girilir).
-                      Numaralandırma (1./2./3./4.) kaldırıldı. */}
+                  {/* Madde 2026-09-07 (2), gorsel guncelleme 2026-09-08: baslik 3
+                      satir — isim (yukarida, mavi) + (aciklama — duz yazi, parantez
+                      icinde) + (konu ozeti — italik, parantez icinde). Ikisi de
+                      admin'den girilir. Numaralandirma (1./2./3./4.) kaldirildi. */}
                   {(lv.description || lv.topics) && (
                     <div className="pl-14 -mt-1 mb-1.5">
                       {lv.description && (
                         <p className="text-xs t-muted leading-snug">({lv.description})</p>
                       )}
                       {lv.topics && (
-                        <p className="text-xs t-muted leading-snug">{lv.topics}</p>
+                        <p className="text-xs t-muted leading-snug italic">({lv.topics})</p>
                       )}
                     </div>
                   )}

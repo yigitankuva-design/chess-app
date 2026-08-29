@@ -1,18 +1,16 @@
 /**
- * Madde 2026-09-05 (1): 4 sabit düzeyin (Temel/Başlangıç/Orta/İleri Düzey)
- * ELO bandı + yaş/özellik tanımları — Zafer hocanın verdiği metinler.
- * Modül adına TAM eşleşme ile kullanılır (admin/content sayfasındaki
- * "Önerilen açıklamayı kullan" butonu); eşleşme yoksa buton gösterilmez —
- * hiçbir şey uydurulmaz/varsayılmaz.
+ * Madde 2026-09-05 (1), güncelleme 2026-09-08 (görsel): 4 sabit düzeyin
+ * (Temel/Başlangıç/Orta/İleri Düzey) tanımları — Zafer hocanın verdiği
+ * metinler. Modül adına TAM eşleşme ile kullanılır (admin/content
+ * sayfasındaki "Önerilen açıklamayı kullan" butonu); eşleşme yoksa buton
+ * gösterilmez — hiçbir şey uydurulmaz/varsayılmaz. Temel Düzey/Başlangıç
+ * Düzeyi metinleri Zafer'in gönderdiği görseldeki TAM metinle güncellendi
+ * (2026-09-08) — Orta/İleri Düzey için henüz yeni metin verilmedi, eski
+ * metin duruyor.
  */
 export const DEFAULT_LEVEL_DESCRIPTIONS: Record<string, string> = {
-  'Temel Düzey':
-    'ELO puan aralığı 0-399 arasıdır ve satranca yeni başlamıştır. Temel kuralları '
-    + 'bilmemektedir. Okul öncesi yaş grubunu (4-5-6 yaş) belirtir.',
-  'Başlangıç Düzeyi':
-    'ELO puan aralığı 400-999 arasıdır ve temel kuralları bilir, basit düzeyde '
-    + 'taktiksel bilgisi vardır, düzenli maç yapmaya başlamıştır. Stratejik '
-    + 'düşünmeye basit düzeyde başlamıştır.',
+  'Temel Düzey': 'Anasınıfı Düzeyi, Temel Kuralları Öğrenme Evresinde / Puan Aralığı:0 – 399',
+  'Başlangıç Düzeyi': 'Temel Kuralları Bilir, Taktiksel Gelişim Evresinde / Puan Aralığı:400 – 999',
   'Orta Düzey':
     'ELO puan aralığı 1000-1599 arasıdır ve taktiksel olarak daha iyidir, '
     + 'stratejik düşünmesi daha iyidir, konumsal oyun oynamaya adım atmıştır. '
@@ -30,13 +28,14 @@ export function suggestedLevelDescription(moduleName: string): string | null {
 }
 
 /**
- * Madde 2026-09-07 (2): başlığın 3. satırı — düzeyde işlenen konuların kısa
- * özeti. Zafer'in verdiği TEK örnek Temel Düzey için — diğer düzeyler için
- * henüz metin verilmedi, o yüzden burada YOK (hiçbir şey uydurulmaz, KURAL #1).
- * Zafer diğer düzeyler için metin verince buraya eklenir.
+ * Madde 2026-09-07 (2), güncelleme 2026-09-08 (görsel): başlığın 3. satırı —
+ * düzeyde işlenen konuların kısa özeti. Zafer'in verdiği örnekler Temel
+ * Düzey ve Başlangıç Düzeyi için — Orta/İleri Düzey için henüz metin
+ * verilmedi, o yüzden burada YOK (hiçbir şey uydurulmaz, KURAL #1).
  */
 export const DEFAULT_LEVEL_TOPICS: Record<string, string> = {
   'Temel Düzey': 'Satranç Tahtası, Taşlar ve Temel Kurallar',
+  'Başlangıç Düzeyi': 'Temel taktikler ve oyun prensipleri',
 };
 
 /** Modül adı bilinen bir düzeyle TAM eşleşirse önerilen konu özetini döner;
