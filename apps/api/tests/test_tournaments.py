@@ -187,13 +187,46 @@ async def test_detay_joined_alani_katilmayan_icin_false_doner(client, db):
 
 
 @pytest.mark.asyncio
-async def test_hocaya_bagli_olmayan_sporcu_turnuva_olusturamaz(client, db):
+async def test_hocaya_bagli_olmayan_sporcu_da_turnuva_olusturabilir(client, db):
+    """Madde 2026-09-08: hocaya bağlı olmayan sporcu ARTIK engellenmiyor —
+    turnuva bu durumda velisinin adına kaydedilir (kardeşler görüp katılabilsin)."""
     parent_id = await _parent_id(client, "pnone@t.com")
     lonely = await _add_child(db, "Bagsiz", None, parent_id)
     r = await client.post("/tournaments", headers=_child_headers(lonely.id),
                           json={"name": "X", "starts_at": datetime.utcnow().isoformat(),
                                 "duration_minutes": 30})
-    assert r.status_code == 400
+    assert r.status_code == 201, r.text
+    assert r.json()["joined"] is True
+
+    # Kendisi listede görebiliyor mu?
+    r2 = await client.get("/tournaments", headers=_child_headers(lonely.id))
+    assert len(r2.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_hocasiz_sporcunun_turnuvasini_ayni_velinin_diger_cocugu_gorur(client, db):
+    """Hocasız sporcunun oluşturduğu turnuva, AYNI VELİNİN diğer çocuğuna
+    (kardeşine) da görünür ve katılabilir olmalı — farklı velinin çocuğuna
+    GÖRÜNMEMELİ."""
+    parent_id = await _parent_id(client, "psib@t.com")
+    creator = await _add_child(db, "Abla", None, parent_id)
+    sibling = await _add_child(db, "Kardeş", None, parent_id)
+    other_parent_id = await _parent_id(client, "pother@t.com")
+    stranger = await _add_child(db, "Yabancı", None, other_parent_id)
+
+    created = await _create_tournament(client, creator.id, name="Kardeş Turnuvası")
+
+    r = await client.get("/tournaments", headers=_child_headers(sibling.id))
+    assert len(r.json()) == 1
+    assert r.json()[0]["name"] == "Kardeş Turnuvası"
+
+    r_join = await client.post(f"/tournaments/{created['id']}/join", headers=_child_headers(sibling.id))
+    assert r_join.status_code == 201
+
+    r_stranger = await client.get("/tournaments", headers=_child_headers(stranger.id))
+    assert r_stranger.json() == []
+    r_stranger_get = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(stranger.id))
+    assert r_stranger_get.status_code == 404
 
 
 @pytest.mark.asyncio

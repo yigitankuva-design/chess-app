@@ -18,6 +18,24 @@ router = APIRouter(tags=["tournaments"])
 RECENT_PAIRINGS_LIMIT = 50
 
 
+def _group_owner_id(child: ChildProfile) -> int:
+    """Turnuvanın kaydedileceği "grup" kimliği. Madde 2026-09-08: hocaya
+    BAĞLI OLMAYAN sporcu da turnuva oluşturabilsin — hocası varsa turnuva
+    hocanın adına (sınıf arkadaşları görsün diye), yoksa VELİSİNİN adına
+    kaydedilir (en azından kendi/kardeşleri görüp katılabilsin, tamamen
+    engellenmez)."""
+    return child.teacher_user_id if child.teacher_user_id is not None else child.parent_user_id
+
+
+def _in_same_group(child: ChildProfile, created_by_user_id: int) -> bool:
+    """Bu turnuva child'ın GÖREBİLECEĞİ/yönetebileceği gruba mı ait —
+    hocası eşleşiyorsa (varsa) VEYA velisi eşleşiyorsa (hocasız turnuvalar,
+    ör. kardeşler) True."""
+    if child.teacher_user_id is not None and created_by_user_id == child.teacher_user_id:
+        return True
+    return created_by_user_id == child.parent_user_id
+
+
 def _ends_at(t: Tournament) -> datetime:
     return t.starts_at + timedelta(minutes=t.duration_minutes)
 
@@ -64,8 +82,10 @@ async def list_tournaments(
     db: AsyncSession = Depends(get_db),
 ):
     """Sporcunun görebileceği turnuvalar: (a) hâlâ hocasına bağlı olduğu
-    turnuvalar, (b) daha önce katıldığı — hocası sonradan değişse bile
-    zaten katıldığı turnuva görünmeye devam eder (madde: mimari inceleme)."""
+    turnuvalar, (b) hocası yoksa/olsa da VELİSİNİN adına kayıtlı turnuvalar
+    (madde 2026-09-08 — hocasız sporcu da turnuva oluşturabilir), (c) daha
+    önce katıldığı — hocası sonradan değişse bile zaten katıldığı turnuva
+    görünmeye devam eder (madde: mimari inceleme)."""
     joined_ids = set((await db.execute(
         select(TournamentParticipant.tournament_id).where(TournamentParticipant.child_id == child.id)
     )).scalars().all())
@@ -76,6 +96,10 @@ async def list_tournaments(
             select(Tournament.id).where(Tournament.created_by_user_id == child.teacher_user_id)
         )).scalars().all()
         visible_ids |= set(by_teacher)
+    by_parent = (await db.execute(
+        select(Tournament.id).where(Tournament.created_by_user_id == child.parent_user_id)
+    )).scalars().all()
+    visible_ids |= set(by_parent)
 
     if not visible_ids:
         return []
@@ -106,11 +130,11 @@ async def create_tournament(
 ):
     """Sporcu kendi turnuvasını oluşturur — hocasına bağlı diğer sporcular da
     görebilsin diye turnuva hocanın (created_by_user_id) adına kaydedilir.
-    Oluşturan sporcu otomatik katılımcı olur (Lichess'te de öyle)."""
-    if child.teacher_user_id is None:
-        raise HTTPException(status_code=400, detail="Bir hocaya bağlı değilsin")
+    Madde 2026-09-08: hocaya bağlı OLMAYAN sporcu da engellenmez — bu durumda
+    turnuva velisinin adına kaydedilir (bkz. _group_owner_id). Oluşturan
+    sporcu otomatik katılımcı olur (Lichess'te de öyle)."""
     t = Tournament(
-        name=payload.name, created_by_user_id=child.teacher_user_id,
+        name=payload.name, created_by_user_id=_group_owner_id(child),
         starts_at=payload.starts_at, duration_minutes=payload.duration_minutes,
         base_ms=payload.base_ms, increment_ms=payload.increment_ms,
         rated=payload.rated,
@@ -128,9 +152,10 @@ async def create_tournament(
 
 
 async def _owned_tournament(db: AsyncSession, tournament_id: int, child: ChildProfile) -> Tournament:
-    """Yönetim uçları (sil) için — turnuva child'ın hocasına ait olmalı."""
+    """Yönetim uçları (sil) için — turnuva child'ın grubuna (hocasına veya
+    hocası yoksa velisine) ait olmalı."""
     t = await db.get(Tournament, tournament_id)
-    if not t or t.created_by_user_id != child.teacher_user_id:
+    if not t or not _in_same_group(child, t.created_by_user_id):
         raise HTTPException(status_code=404, detail="Tournament not found")
     return t
 
@@ -145,7 +170,7 @@ async def _accessible_tournament(db: AsyncSession, tournament_id: int, child: Ch
             TournamentParticipant.child_id == child.id,
         )
     )).first() is not None
-    if not is_participant and t.created_by_user_id != child.teacher_user_id:
+    if not is_participant and not _in_same_group(child, t.created_by_user_id):
         raise HTTPException(status_code=404, detail="Tournament not found")
     return t
 
@@ -157,7 +182,7 @@ async def join_tournament(
     db: AsyncSession = Depends(get_db),
 ):
     t = await db.get(Tournament, tournament_id)
-    if not t or t.created_by_user_id != child.teacher_user_id:
+    if not t or not _in_same_group(child, t.created_by_user_id):
         raise HTTPException(status_code=404, detail="Tournament not found")
     await _sync_status(db, t)
     # Lichess Arena: devam eden bir turnuvaya sonradan katilmak serbest —
