@@ -225,8 +225,9 @@ async def test_hocasiz_sporcunun_turnuvasini_ayni_velinin_diger_cocugu_gorur(cli
 async def test_acik_lobi_baska_hocanin_sporcusu_da_turnuvayi_gorur_ve_katilir(client, db):
     """Madde 2026-09-08 (1): turnuvalar artık TAMAMEN AÇIK lobi — hoca/veli
     grubu farklı olsa bile herkes birbirinin turnuvasını görüp katılabilir
-    (Lichess'teki gibi). Yalnızca SİLME yetkisi hâlâ gruba göre kısıtlı
-    (bkz. test_baska_hocanin_sporcusu_silemez)."""
+    (Lichess'teki gibi). Yalnızca SİLME yetkisi hâlâ kısıtlı — madde
+    2026-09-09 (4)'ten itibaren SADECE oluşturan sporcuya ait (bkz.
+    test_baska_hocanin_sporcusu_silemez, test_ayni_hocanin_baska_sporcusu_artik_silemez)."""
     _, teacher1_id = await _teacher(client, "t2a@t.com")
     _, teacher2_id = await _teacher(client, "t2b@t.com")
     parent_id = await _parent_id(client, "p2@t.com")
@@ -252,23 +253,76 @@ async def test_baska_hocanin_sporcusu_silemez(client, db):
     creator = await _add_child(db, "A", teacher1_id, parent_id)
     outsider = await _add_child(db, "B", teacher2_id, parent_id)
 
-    created = await _create_tournament(client, creator.id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    created = await _create_tournament(client, creator.id, starts_at=future)
     r = await client.delete(f"/tournaments/{created['id']}", headers=_child_headers(outsider.id))
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_ayni_hocanin_baska_sporcusu_silebilir(client, db):
-    """Turnuvayı kim oluşturduysa değil, aynı hocaya bağlı HERHANGİ bir
-    sporcu silebilir (küçük, güvenilir grup)."""
+async def test_ayni_hocanin_baska_sporcusu_artik_silemez(client, db):
+    """Madde 2026-09-09 (4): silme yetkisi ARTIK sadece turnuvayı OLUŞTURAN
+    sporcuya ait — aynı hocaya bağlı BAŞKA bir sporcu (eski davranışın
+    aksine) silemez."""
     _, teacher_id = await _teacher(client, "t2e@t.com")
     parent_id = await _parent_id(client, "p2e@t.com")
     creator = await _add_child(db, "A", teacher_id, parent_id)
     classmate = await _add_child(db, "B", teacher_id, parent_id)
 
-    created = await _create_tournament(client, creator.id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    created = await _create_tournament(client, creator.id, starts_at=future)
     r = await client.delete(f"/tournaments/{created['id']}", headers=_child_headers(classmate.id))
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_olusturan_sporcu_baslamadan_once_silebilir(client, db):
+    _, teacher_id = await _teacher(client, "t2f@t.com")
+    parent_id = await _parent_id(client, "p2f@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    created = await _create_tournament(client, creator.id, starts_at=future)
+    assert created["status"] == "upcoming"
+    r = await client.delete(f"/tournaments/{created['id']}", headers=_child_headers(creator.id))
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_baslamis_turnuva_olusturan_tarafindan_bile_silinemez(client, db):
+    """Madde 2026-09-09 (4): "turnuva başladıktan sonra silme işlemi olmasın" —
+    oluşturan sporcu bile artık silemez."""
+    _, teacher_id = await _teacher(client, "t2g@t.com")
+    parent_id = await _parent_id(client, "p2g@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+
+    created = await _create_tournament(client, creator.id)  # starts_at=simdi -> active
+    assert created["status"] == "active"
+    r = await client.delete(f"/tournaments/{created['id']}", headers=_child_headers(creator.id))
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_can_delete_alani_sadece_olusturan_ve_baslamadan_once_true(client, db):
+    _, teacher_id = await _teacher(client, "t2h@t.com")
+    parent_id = await _parent_id(client, "p2h@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    classmate = await _add_child(db, "B", teacher_id, parent_id)
+
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    created = await _create_tournament(client, creator.id, starts_at=future)
+
+    r_creator = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(creator.id))
+    assert r_creator.json()["can_delete"] is True
+    r_classmate = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(classmate.id))
+    assert r_classmate.json()["can_delete"] is False
+
+    # Başlayınca oluşturan için de False olmalı.
+    t = await db.get(Tournament, created["id"])
+    t.starts_at = datetime.utcnow() - timedelta(minutes=1)
+    await db.commit()
+    r_after_start = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(creator.id))
+    assert r_after_start.json()["can_delete"] is False
 
 
 @pytest.mark.asyncio
@@ -381,6 +435,160 @@ async def test_katilmamis_sporcu_cikinca_hata_vermez(client, db):
 
 
 @pytest.mark.asyncio
+async def test_cekilen_sporcunun_rakibinin_averaji_etkilenmez(client, db):
+    """Madde 2026-09-09 (5): B, C'yi yenip puan topladıktan sonra A'ya
+    kaybedip turnuvadan çekilirse — A'nın Sonneborn-Berger'ı B'nin
+    DONDURULMUŞ puanını (0 değil, gerçek puanını) görmeye devam etmeli."""
+    _, teacher_id = await _teacher(client, "t9d@t.com")
+    parent_id = await _parent_id(client, "p9d@t.com")
+    a = await _add_child(db, "A", teacher_id, parent_id)
+    b = await _add_child(db, "B", teacher_id, parent_id)
+    c = await _add_child(db, "C", teacher_id, parent_id)
+    created = await _create_tournament(client, a.id, name="SB Testi")
+    tid = created["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(c.id))
+
+    async def _play(white, black, result):
+        game = Game(type=GameType.human, status=GameStatus.finished,
+                   white_child_id=white, black_child_id=black, result=GameResult(result))
+        db.add(game)
+        await db.commit()
+        await db.refresh(game)
+        pairing = TournamentPairing(tournament_id=tid, white_child_id=white,
+                                    black_child_id=black, game_id=game.id)
+        db.add(pairing)
+        await db.commit()
+        await finalize_tournament_pairing(db, game)
+        await db.commit()
+
+    await _play(b.id, c.id, "1-0")   # B: +2 puan (2.0)
+    await _play(a.id, b.id, "1-0")   # A: +2 puan; B kaybetti, puanı değişmez
+
+    r_leave = await client.post(f"/tournaments/{tid}/leave", headers=_child_headers(b.id))
+    assert r_leave.status_code == 200
+
+    r = await client.get(f"/tournaments/{tid}", headers=_child_headers(a.id))
+    rows = {row["child_id"]: row for row in r.json()["standings"]}
+    assert b.id not in rows  # B artık GÖRÜNÜM listesinde yok
+    assert rows[a.id]["sb"] == 2.0  # B'nin (2.0) DONDURULMUŞ puanı sayıldı, 0 değil
+
+
+@pytest.mark.asyncio
+async def test_cekilen_sporcu_tekrar_katilinca_dondurulmus_puani_korunur(client, db):
+    """Çekilen sporcu tekrar katılırsa satır SİLİNMEDİĞİ için puanı/serisi
+    AYNEN kalır (sıfırlanmaz) — sadece left_at temizlenir."""
+    _, teacher_id = await _teacher(client, "t9e@t.com")
+    parent_id = await _parent_id(client, "p9e@t.com")
+    a = await _add_child(db, "A", teacher_id, parent_id)
+    b = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, a.id)
+    tid = created["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
+
+    game = Game(type=GameType.human, status=GameStatus.finished,
+               white_child_id=b.id, black_child_id=a.id, result=GameResult.white_wins)
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+    pairing = TournamentPairing(tournament_id=tid, white_child_id=b.id,
+                                black_child_id=a.id, game_id=game.id)
+    db.add(pairing)
+    await db.commit()
+    await finalize_tournament_pairing(db, game)
+    await db.commit()  # B: 2.0 puan
+
+    await client.post(f"/tournaments/{tid}/leave", headers=_child_headers(b.id))
+    r_rejoin = await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
+    assert r_rejoin.status_code == 201
+
+    r = await client.get(f"/tournaments/{tid}", headers=_child_headers(a.id))
+    rows = {row["child_id"]: row for row in r.json()["standings"]}
+    assert rows[b.id]["score"] == 2.0  # sıfırlanmadı, geri döndü
+    assert b.id in rows  # görünüm listesine geri döndü
+
+
+@pytest.mark.asyncio
+async def test_turnuva_suresi_dolunca_suren_maclar_iptal_olur(client, db):
+    """Madde 2026-09-09 (6): turnuva süresi dolunca hâlâ SÜREN maçlar otomatik
+    biter (GameStatus.aborted), TournamentPairing.result='void' olur ve
+    sıralamayı/oynanan-oyun sayısını ETKİLEMEZ."""
+    _, teacher_id = await _teacher(client, "t9f@t.com")
+    parent_id = await _parent_id(client, "p9f@t.com")
+    a = await _add_child(db, "A", teacher_id, parent_id)
+    b = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, a.id, duration_minutes=5)
+    tid = created["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
+
+    game = Game(type=GameType.human, status=GameStatus.active,
+               white_child_id=a.id, black_child_id=b.id)
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+    pairing = TournamentPairing(tournament_id=tid, white_child_id=a.id,
+                                black_child_id=b.id, game_id=game.id)
+    db.add(pairing)
+    await db.commit()
+
+    t = await db.get(Tournament, tid)
+    t.starts_at = datetime.utcnow() - timedelta(minutes=10)  # süre geçmiş
+    await db.commit()
+
+    r = await client.get(f"/tournaments/{tid}", headers=_child_headers(a.id))
+    body = r.json()
+    assert body["status"] == "finished"
+
+    await db.refresh(game)
+    await db.refresh(pairing)
+    assert game.status == GameStatus.aborted
+    assert pairing.result == "void"
+
+    rows = {row["child_id"]: row for row in body["standings"]}
+    assert rows[a.id]["score"] == 0.0
+    assert rows[b.id]["score"] == 0.0
+    assert rows[a.id]["games_played"] == 0
+    assert rows[b.id]["games_played"] == 0
+
+
+@pytest.mark.asyncio
+async def test_standings_oynanan_oyun_ve_kazanma_orani_hesaplanir(client, db):
+    """Madde 2026-09-09 (6): turnuva bitiş bildirimindeki "Oynanmış oyunlar"/
+    "Kazanma oranı" alanları — void/devam eden eşleşmeler sayılmaz."""
+    _, teacher_id = await _teacher(client, "t9h@t.com")
+    parent_id = await _parent_id(client, "p9h@t.com")
+    a = await _add_child(db, "A", teacher_id, parent_id)
+    b = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, a.id)
+    tid = created["id"]
+    await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
+
+    async def _play(white, black, result):
+        game = Game(type=GameType.human, status=GameStatus.finished,
+                   white_child_id=white, black_child_id=black, result=GameResult(result))
+        db.add(game)
+        await db.commit()
+        await db.refresh(game)
+        pairing = TournamentPairing(tournament_id=tid, white_child_id=white,
+                                    black_child_id=black, game_id=game.id)
+        db.add(pairing)
+        await db.commit()
+        await finalize_tournament_pairing(db, game)
+        await db.commit()
+
+    await _play(a.id, b.id, "1-0")
+    await _play(b.id, a.id, "1-0")
+    await _play(a.id, b.id, "1/2-1/2")
+
+    r = await client.get(f"/tournaments/{tid}", headers=_child_headers(a.id))
+    rows = {row["child_id"]: row for row in r.json()["standings"]}
+    assert rows[a.id]["games_played"] == 3
+    assert rows[a.id]["win_rate"] == 33  # 1 galibiyet / 3 oyun -> %33
+    assert rows[b.id]["games_played"] == 3
+    assert rows[b.id]["win_rate"] == 33
+
+
+@pytest.mark.asyncio
 async def test_detay_participant_count_dondurur(client, db):
     """Detay sayfası footer'ı ('Toplam Kişi Sayısı') için GET /tournaments/{id}
     de listeleme ucundaki gibi participant_count döndürmeli."""
@@ -400,7 +608,9 @@ async def test_turnuva_silinebilir(client, db):
     _, teacher_id = await _teacher(client, "t8b@t.com")
     parent_id = await _parent_id(client, "p8b@t.com")
     creator = await _add_child(db, "A", teacher_id, parent_id)
-    created = await _create_tournament(client, creator.id)
+    # Madde 2026-09-09 (4): silme SADECE başlamadan önce mümkün.
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    created = await _create_tournament(client, creator.id, starts_at=future)
 
     r = await client.delete(f"/tournaments/{created['id']}", headers=_child_headers(creator.id))
     assert r.status_code == 200
@@ -666,3 +876,16 @@ def test_sonneborn_berger_hesaplanir():
     assert sb[2] == 1.0
     # p3: p1'le berabere (+4.0/2=2.0) + p2'ye kaybetti (+0) = 2.0
     assert sb[3] == 2.0
+
+
+def test_sonneborn_berger_void_esleme_sayilmaz():
+    """Madde 2026-09-09 (2/6): iptal edilmiş (result="void" — 15sn'de hamle
+    yok VEYA turnuva süresi doldu) eşleşme SB'yi HİÇ etkilememeli."""
+    p1 = TournamentParticipant(id=1, tournament_id=1, child_id=1, score=4.0)
+    p2 = TournamentParticipant(id=2, tournament_id=1, child_id=2, score=2.0)
+    pairings = [
+        TournamentPairing(tournament_id=1, white_child_id=1, black_child_id=2, result="void"),
+    ]
+    sb = compute_sonneborn_berger([p1, p2], pairings)
+    assert sb[1] == 0.0
+    assert sb[2] == 0.0

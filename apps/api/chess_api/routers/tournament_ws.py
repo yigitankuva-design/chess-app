@@ -3,6 +3,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy import select
 from chess_api.database import get_session_factory
 from chess_api.services.arena_matchmaking import find_arena_opponent, leave_arena_queue
+from chess_api.services.tournaments import sync_tournament_status
 from chess_api.routers.live_game import _child_id_from_token, _create_human_game
 from chess_api.models import Tournament, TournamentStatus, TournamentParticipant, TournamentPairing
 
@@ -49,7 +50,15 @@ async def tournament_queue_ws(websocket: WebSocket, tournament_id: int, token: s
 
     async with get_session_factory()() as db:
         t = await db.get(Tournament, tournament_id)
-        if not t or t.status == TournamentStatus.finished:
+        if not t:
+            await websocket.send_json({"type": "error", "message": "not_active"})
+            await websocket.close(code=4404)
+            return
+        # Lazy senkron: DB'de hâlâ "active" görünse bile süresi gerçekte
+        # dolmuş olabilir (madde 2026-09-09 (6)) — burada da tetiklenir,
+        # yoksa süresi dolmuş turnuvaya kuyruğa girilebilirdi.
+        await sync_tournament_status(db, t)
+        if t.status == TournamentStatus.finished:
             await websocket.send_json({"type": "error", "message": "not_active"})
             await websocket.close(code=4404)
             return
@@ -57,6 +66,7 @@ async def tournament_queue_ws(websocket: WebSocket, tournament_id: int, token: s
             select(TournamentParticipant).where(
                 TournamentParticipant.tournament_id == tournament_id,
                 TournamentParticipant.child_id == child_id,
+                TournamentParticipant.left_at.is_(None),
             )
         )).scalar_one_or_none()
         if participant is None:

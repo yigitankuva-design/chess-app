@@ -6,7 +6,11 @@ import { LiveGame } from '@/components/LiveGame';
 function LiveGameContent({ gameId }: { gameId: string }) {
   const sp = useSearchParams();
   const color = (sp.get('color') === 'black' ? 'black' : 'white') as 'white' | 'black';
-  return <LiveGame gameId={Number(gameId)} myColor={color} />;
+  // Madde 2026-09-09 (2/3): turnuva maçından gelindiyse tournamentId taşınır —
+  // LiveGame bunu görünce "Turnuvaya Geri Dön" davranışına geçer.
+  const tRaw = sp.get('tournamentId');
+  const tournamentId = tRaw ? Number(tRaw) : undefined;
+  return <LiveGame gameId={Number(gameId)} myColor={color} tournamentId={tournamentId} />;
 }
 
 export default function OnlineGamePage({ params }: { params: Promise<{ gameId: string }> }) {

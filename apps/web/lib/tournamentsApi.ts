@@ -50,6 +50,11 @@ export interface TournamentStandingRow {
   streak: number;
   rating: number | null;
   title: string | null;
+  /** Madde 2026-09-09 (6): turnuva bitiş bildirimi (ilk 3) için — void/devam
+   *  eden eşleşmeler sayılmaz. */
+  games_played: number;
+  /** Yüzde (0-100), games_played=0 ise null. */
+  win_rate: number | null;
 }
 
 export interface MyActivePairing {
@@ -65,6 +70,9 @@ export interface TournamentDetail extends TournamentSummary {
   /** Şu an süren (henüz sonuçlanmamış) eşleşmen — round kavramı yok. */
   my_pairing: MyActivePairing | null;
   recent_pairings: TournamentPairingRow[];
+  /** Madde 2026-09-09 (4): "Turnuvayı Sil" SADECE oluşturana VE SADECE
+   *  turnuva henüz başlamadıysa true. */
+  can_delete: boolean;
 }
 
 function authHeaders(): HeadersInit {

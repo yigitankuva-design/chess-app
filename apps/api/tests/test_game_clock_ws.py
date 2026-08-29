@@ -27,7 +27,11 @@ async def clock_env(db_engine, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_tempolu_mac_saat_alanlariyla_acilir(clock_env):
-    """5+3 secilirse mac 300000 ms ve 3000 ms artirimla baslar."""
+    """5+3 secilirse mac 300000 ms ve 3000 ms artirimla baslar.
+
+    Madde 2026-09-09 (1): last_clock_at ARTIK BASTAN BOS — saat ilk hamleye
+    kadar hic islemez (15sn ilk-hamle bekleme penceresinde sure azalmasin
+    diye). Bkz. test_saat_ilk_hamleye_kadar_islemez_ilk_hamlede_baslar."""
     from chess_api.routers.live_game import _create_human_game
 
     gid = await _create_human_game(1, 2, base_ms=300_000, increment_ms=3_000)
@@ -37,7 +41,7 @@ async def test_tempolu_mac_saat_alanlariyla_acilir(clock_env):
         assert g.increment_ms == 3_000
         assert g.white_ms == 300_000
         assert g.black_ms == 300_000
-        assert g.last_clock_at is not None
+        assert g.last_clock_at is None
 
 
 @pytest.mark.asyncio
@@ -51,6 +55,35 @@ async def test_temposuz_mac_saatsiz_acilir(clock_env):
         assert g.base_ms is None
         assert g.white_ms is None
         assert g.last_clock_at is None
+
+
+@pytest.mark.asyncio
+async def test_saat_ilk_hamleye_kadar_islemez_ilk_hamlede_baslar(clock_env):
+    """Madde 2026-09-09 (1): oyuncular eşleşince verilen ilk-hamle bekleme
+    penceresinde (bkz. FIRST_MOVE_TIMEOUT_SECONDS) süre HİÇ azalmaz — saat
+    tam ilk hamlede, sıfırdan başlar (o hamleye kadar geçen gerçek süre
+    SAYILMAZ). İkinci hamleden itibaren saat NORMAL işler."""
+    from datetime import datetime, timedelta
+    from chess_api.routers.live_game import _create_human_game, _apply_clock_on_move
+
+    gid = await _create_human_game(1, 2, base_ms=300_000, increment_ms=0)
+    async with clock_env() as db:
+        g = await db.get(Game, gid)
+        assert g.last_clock_at is None  # bekleme penceresi: saat henüz YOK
+
+        # İlk hamle: gerçek geçen süre kaç saniye olursa olsun düşülmemeli.
+        flagged = await _apply_clock_on_move(db, g, white_to_move=True)
+        assert flagged is False
+        assert g.white_ms == 300_000
+        assert g.black_ms == 300_000
+        assert g.last_clock_at is not None  # artık işliyor
+
+        # İkinci hamle (siyahınki) — saat artık NORMAL işler.
+        g.last_clock_at = datetime.utcnow() - timedelta(seconds=5)
+        await db.commit()
+        flagged2 = await _apply_clock_on_move(db, g, white_to_move=False)
+        assert flagged2 is False
+        assert g.black_ms is not None and g.black_ms < 300_000
 
 
 @pytest.mark.asyncio

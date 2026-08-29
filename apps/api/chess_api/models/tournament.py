@@ -17,6 +17,14 @@ class Tournament(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    # Madde 2026-09-09 (4): silme yetkisi artık SADECE bu sporcuya ait —
+    # created_by_user_id (hoca/veli grubu) görünürlük/gruplama içindi, kimin
+    # SİLEBİLECEĞİNİ artık bu alan belirler. Eski turnuvalarda NULL (zaten
+    # başlamış/bitmiş oldukları için yeni "başlamadan önce" kuralına takılıp
+    # öyle de silinemezler).
+    created_by_child_id: Mapped[int | None] = mapped_column(
+        ForeignKey("child_profiles.id"), nullable=True, index=True,
+    )
     base_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     increment_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Madde 6 (2026-08-20): Puanli turnuvada maclar Performans Puanini
@@ -58,6 +66,10 @@ class TournamentParticipant(Base):
     # beraberlik/kayip sifirlar.
     current_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Madde 2026-09-09 (5): "çekilme" satırı SİLMEZ, bu alanı doldurur —
+    # rakiplerinin Sonneborn-Berger hesabı çekilenin dondurulmuş puanını
+    # görmeye devam eder (bkz. services/tournaments.py). NULL = hâlâ katılımcı.
+    left_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class TournamentPairing(Base):

@@ -26,7 +26,7 @@ from chess_api.services.offer_sides import resolve_sides
 from chess_api.services.clock import ClockState, apply_move, is_flagged
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
-    Game, GameMove, GameType, GameStatus, GameResult, ChildProfile,
+    Game, GameMove, GameType, GameStatus, GameResult, ChildProfile, TournamentPairing,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +68,11 @@ async def _create_human_game(white_child_id: int, black_child_id: int,
     cagiranlar (kuyruk akisi) aynen calisir — saatsiz mac acilir. rated=True
     ise mac bitince Performans Puani degisir (bkz. services/rating.py) —
     yalnizca 9 sabit tempodan birine tam eslesirse (services/tempo.py).
+
+    Madde 2026-09-09 (1): last_clock_at BAŞTAN BOŞ bırakılır — saat ilk
+    hamleye kadar HİÇ işlemez (FIRST_MOVE_TIMEOUT_SECONDS bekleme
+    penceresinde süre azalmaz). _apply_clock_on_move ilk hamlede saati
+    kendisi başlatır (bkz. o fonksiyonun docstring'i).
     """
     async with get_session_factory()() as db:
         game = Game(
@@ -79,7 +84,7 @@ async def _create_human_game(white_child_id: int, black_child_id: int,
             increment_ms=increment_ms,
             white_ms=base_ms,
             black_ms=base_ms,
-            last_clock_at=datetime.utcnow() if base_ms is not None else None,
+            last_clock_at=None,
             start_fen=start_fen,
             rated=rated,
         )
@@ -120,7 +125,16 @@ async def _apply_clock_on_move(db, game: Game, white_to_move: bool) -> bool:
     """Hamlede saati isler. Sure bittiyse True doner (hamle islenmemeli).
 
     Saatsiz macta hicbir sey yapmaz ve False doner.
+
+    Madde 2026-09-09 (1): last_clock_at HENÜZ boşsa (saatli mac ama ilk hamle
+    henüz yapılmadı) bu ÇAĞRI saati BAŞLATIR — geçen süre SAYILMAZ (elapsed=0),
+    sadece "artık işliyor" işaretlenir. Oyuncuların süresi tam bu anda, ilk
+    hamlede başlar (bekleme penceresinde hiç azalmamış olur).
     """
+    if game.base_ms is not None and game.last_clock_at is None:
+        game.last_clock_at = datetime.utcnow()
+        await db.commit()
+        return False
     st = _clock_state(game)
     if st is None:
         return False
@@ -221,6 +235,18 @@ async def _start_first_move_timer(game_id: int, room) -> None:
                 if ply != 1:
                     return  # ilk hamle zaten yapilmis, iptal gerekmez
                 game.status = GameStatus.aborted
+                # Madde 2026-09-09 (2): bu bir turnuva eslesmesiyse, eslesme
+                # de "void" olur — sporcu bir daha bu esleşmeyi "surüyor"
+                # sanip kuyruga giremesin diye (bkz. _my_active_pairing).
+                # Puan/seri değişikliği UYGULANMAZ (madde 5/6 ile aynı ilke).
+                pairing = (await db.execute(
+                    select(TournamentPairing).where(
+                        TournamentPairing.game_id == game_id,
+                        TournamentPairing.result.is_(None),
+                    )
+                )).scalar_one_or_none()
+                if pairing is not None:
+                    pairing.result = "void"
                 await db.commit()
             await room.broadcast({
                 "type": "game_aborted", "reason": "first_move_timeout",

@@ -1,11 +1,74 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTournament, joinTournament, leaveTournament, deleteTournament } from '@/lib/tournamentsApi';
-import type { TournamentDetail } from '@/lib/tournamentsApi';
+import type { TournamentDetail, TournamentStandingRow } from '@/lib/tournamentsApi';
 import { formatPlayerLabel } from '@/lib/play/titles';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
 import { getToken } from '@/lib/auth-storage';
+
+/** Madde 2026-09-09 (6): turnuva bitince ilk 3'ün bilgilerini gösteren podyum
+ *  bildirimi — Zafer'in gönderdiği görsele göre (madalya renkleri, "N."
+ *  rozeti, Performans/Oynanmış oyunlar/Kazanma oranı). */
+const PODIUM_STYLE: Record<number, { medal: string; size: number; color: string }> = {
+  0: { medal: '🥇', size: 64, color: '#facc15' },
+  1: { medal: '🥈', size: 52, color: '#cbd5e1' },
+  2: { medal: '🥉', size: 52, color: '#fb923c' },
+};
+// Podyumda 1. ortada, 2. solda, 3. sağda görünsün (görseldeki yerleşim).
+const PODIUM_ORDER = [1, 0, 2];
+
+function TournamentFinishedModal({ name, top3, onClose }: {
+  name: string; top3: TournamentStandingRow[]; onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog" aria-label="Turnuva tamamlandı"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50, display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)', padding: '1rem',
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="t-card-i"
+        style={{ maxWidth: 480, width: '100%', padding: '1.5rem', textAlign: 'center' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="font-bold text-lg" style={{ marginBottom: '1.25rem' }}>
+          {name} Tamamlanmıştır.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.75rem' }}>
+          {PODIUM_ORDER.filter((i) => top3[i]).map((i) => {
+            const row = top3[i];
+            const style = PODIUM_STYLE[i];
+            return (
+              <div key={row.child_id} style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: style.size, lineHeight: 1 }} aria-hidden="true">{style.medal}</div>
+                <p className="text-xs font-bold" style={{ color: style.color }}>{i + 1}.</p>
+                <p className="font-semibold text-sm truncate">
+                  {formatPlayerLabel(row.display_name ?? 'Sporcu', row.rating, row.title)}
+                </p>
+                <p className="text-xs t-muted" style={{ marginTop: '0.4rem' }}>
+                  Performans {row.rating ?? '—'}
+                </p>
+                <p className="text-xs t-muted">Oynanmış oyunlar {row.games_played}</p>
+                <p className="text-xs t-muted">
+                  Kazanma oranı {row.win_rate != null ? `${row.win_rate}%` : '—'}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        <button type="button" onClick={onClose} className="t-btn px-4 py-2 text-sm w-full"
+          style={{ marginTop: '1.25rem' }}>
+          Kapat
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /** Madde 2026-09-09 (5): sıralama tablosu sayfalanır — Zafer'in gönderdiği
  *  görseldeki footer'da "1/10 - 256 Kişi" örneği bunu gösteriyor. */
@@ -31,12 +94,25 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
   const [queueStatus, setQueueStatus] = useState<'idle' | 'connecting' | 'waiting' | 'timeout'>('idle');
   const [retryKey, setRetryKey] = useState(0);
   const [page, setPage] = useState(1);
+  const [showFinishedModal, setShowFinishedModal] = useState(false);
+  /** Madde 2026-09-09 (6): bildirim SADECE geçişte (active/upcoming ->
+   *  finished) gösterilsin — sayfaya SONRADAN gelen (zaten bitmiş turnuvayı
+   *  ilk kez açan) sporcuya otomatik açılmasın. */
+  const prevStatusRef = useRef<TournamentDetail['status'] | null>(null);
 
   const refresh = useCallback(async () => {
     const d = await getTournament(tournamentId);
     setDetail(d);
     if (d) setSecondsLeft(d.seconds_remaining);
   }, [tournamentId]);
+
+  useEffect(() => {
+    if (!detail) return;
+    if (prevStatusRef.current && prevStatusRef.current !== 'finished' && detail.status === 'finished') {
+      setShowFinishedModal(true);
+    }
+    prevStatusRef.current = detail.status;
+  }, [detail]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -63,7 +139,7 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
     const m = data as { type?: string; game_id?: number; color?: string };
     if (m?.type === 'waiting') setQueueStatus('waiting');
     else if (m?.type === 'matched' && m.game_id != null) {
-      router.push(`/play/online/${m.game_id}?color=${m.color}`);
+      router.push(`/play/online/${m.game_id}?color=${m.color}&tournamentId=${tournamentId}`);
     } else if (m?.type === 'timeout') setQueueStatus('timeout');
   });
 
@@ -167,7 +243,9 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
           detail.my_pairing ? (
             <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--t-border)' }}>
               <button type="button"
-                onClick={() => router.push(`/play/online/${detail.my_pairing!.game_id}?color=${detail.my_pairing!.my_color}`)}
+                onClick={() => router.push(
+                  `/play/online/${detail.my_pairing!.game_id}?color=${detail.my_pairing!.my_color}&tournamentId=${tournamentId}`,
+                )}
                 className="t-btn px-4 py-2.5 text-sm w-full">
                 Maça Devam Et
               </button>
@@ -238,10 +316,21 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
         </div>
       </div>
 
-      <button type="button" disabled={busy} onClick={remove}
-        className="t-btn-ghost text-xs px-3 py-1.5" style={{ color: '#f87171' }}>
-        Turnuvayı Sil
-      </button>
+      {/* Madde 2026-09-09 (4): SADECE oluşturan VE SADECE henüz başlamadıysa. */}
+      {detail.can_delete && (
+        <button type="button" disabled={busy} onClick={remove}
+          className="t-btn-ghost text-xs px-3 py-1.5" style={{ color: '#f87171' }}>
+          Turnuvayı Sil
+        </button>
+      )}
+
+      {showFinishedModal && (
+        <TournamentFinishedModal
+          name={detail.name}
+          top3={detail.standings.slice(0, 3)}
+          onClose={() => setShowFinishedModal(false)}
+        />
+      )}
     </main>
   );
 }

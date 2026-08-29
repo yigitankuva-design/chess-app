@@ -23,7 +23,11 @@ function mockFetchOnce(data: unknown, ok = true) {
 }
 
 function standingRow(overrides: Record<string, unknown> = {}) {
-  return { child_id: 1, display_name: 'Ali', score: 4, sb: 2.5, streak: 2, rating: null, title: null, ...overrides };
+  return {
+    child_id: 1, display_name: 'Ali', score: 4, sb: 2.5, streak: 2, rating: null, title: null,
+    games_played: 5, win_rate: 60,
+    ...overrides,
+  };
 }
 
 function baseDetail(overrides: Record<string, unknown> = {}) {
@@ -33,6 +37,7 @@ function baseDetail(overrides: Record<string, unknown> = {}) {
     ends_at: new Date().toISOString(), seconds_remaining: 1800,
     base_ms: 300000, increment_ms: 0, status: 'active', joined: true, rated: false, tempo: null,
     description: null, start_fen: null, winning_streak_bonus: true, participant_count: 1,
+    can_delete: true,
     standings: [standingRow()],
     my_pairing: null,
     recent_pairings: [],
@@ -62,10 +67,10 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
     expect(screen.getByText(/Hazır Ol! Eşleşme Yapılıyor/)).toBeInTheDocument();
   });
 
-  it('WS "matched" mesajı gelince /play/online/{gameId}\'e yönlendirir', async () => {
+  it('WS "matched" mesajı gelince /play/online/{gameId}\'e tournamentId ile yönlendirir', async () => {
     await renderPage(baseDetail({ joined: true, my_pairing: null }));
     act(() => wsHandler!({ type: 'matched', game_id: 55, color: 'black' }));
-    expect(push).toHaveBeenCalledWith('/play/online/55?color=black');
+    expect(push).toHaveBeenCalledWith('/play/online/55?color=black&tournamentId=1');
   });
 
   it('zaten aktif bir eşleşmesi varsa kuyruğa GİRMEZ, "Maça Devam Et" gösterir', async () => {
@@ -76,7 +81,7 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
     expect(lastWsUrl).toBeNull();
     expect(screen.getByText(/Ayşe/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Maça Devam Et' }));
-    expect(push).toHaveBeenCalledWith('/play/online/77?color=white');
+    expect(push).toHaveBeenCalledWith('/play/online/77?color=white&tournamentId=1');
   });
 
   it('sıralamada 2+ galibiyet serisi 🔥 ile gösterilir', async () => {
@@ -98,6 +103,57 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
     await waitFor(() => screen.getByRole('button', { name: 'Turnuvayı Sil' }));
     fireEvent.click(screen.getByRole('button', { name: 'Turnuvayı Sil' }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/play/tournament/lobby'));
+  });
+
+  describe('Madde 2026-09-09 (4): "Turnuvayı Sil" sadece oluşturana ve başlamadan önce', () => {
+    it('can_delete=false ise "Turnuvayı Sil" HİÇ gösterilmez', async () => {
+      await renderPage(baseDetail({ can_delete: false }));
+      expect(screen.queryByRole('button', { name: 'Turnuvayı Sil' })).not.toBeInTheDocument();
+    });
+
+    it('can_delete=true ise gösterilir (regresyon)', async () => {
+      await renderPage(baseDetail({ can_delete: true }));
+      expect(screen.getByRole('button', { name: 'Turnuvayı Sil' })).toBeInTheDocument();
+    });
+  });
+
+  describe('Madde 2026-09-09 (6): turnuva bitiş bildirimi (podyum)', () => {
+    it('aktiften bitmişe GEÇİŞTE ilk 3\'ün bilgileriyle bildirim açılır, "Kapat" kapatır', async () => {
+      const standings = [
+        standingRow({ child_id: 1, display_name: 'Bir', score: 10, rating: 2607, title: 'NM', games_played: 15, win_rate: 93 }),
+        standingRow({ child_id: 2, display_name: 'İki', score: 8, rating: 2770, title: 'CM', games_played: 14, win_rate: 87 }),
+        standingRow({ child_id: 3, display_name: 'Üç', score: 6, rating: 2611, title: null, games_played: 13, win_rate: 92 }),
+      ];
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(mockFetchOnce(baseDetail({ status: 'active', standings })))
+        .mockResolvedValueOnce(mockFetchOnce(baseDetail({ status: 'finished', standings })));
+      global.fetch = fetchMock;
+
+      vi.useFakeTimers();
+      try {
+        render(<TournamentDetailView tournamentId={1} />);
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); }); // ilk yükleme (active)
+        expect(screen.getByText(/Yaz Turnuvası/)).toBeInTheDocument();
+        expect(screen.queryByText(/Tamamlanmıştır/)).not.toBeInTheDocument();
+
+        // 10sn'lik periyodik yenileme — ikinci fetch "finished" döner, GEÇİŞ tetiklenir.
+        await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+        expect(screen.getByText('Yaz Turnuvası Tamamlanmıştır.')).toBeInTheDocument();
+        expect(screen.getByText('Performans 2607')).toBeInTheDocument();
+        expect(screen.getByText('Oynanmış oyunlar 15')).toBeInTheDocument();
+        expect(screen.getByText('Kazanma oranı 93%')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Kapat' }));
+        expect(screen.queryByText(/Tamamlanmıştır/)).not.toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('turnuva İLK AÇILIŞTA zaten bitmişse bildirim OTOMATİK açılmaz (geçiş yok)', async () => {
+      await renderPage(baseDetail({ status: 'finished' }));
+      expect(screen.queryByText(/Tamamlanmıştır/)).not.toBeInTheDocument();
+    });
   });
 
   describe('Madde 2026-09-09 (5): KATIL/ÇEKİL ve sayfalanan sıralama', () => {

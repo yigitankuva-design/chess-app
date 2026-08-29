@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, delete, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from chess_api.database import get_db
@@ -9,13 +9,18 @@ from chess_api.models import (
     ChildProfile, Tournament, TournamentStatus, TournamentParticipant, TournamentPairing,
 )
 from chess_api.schemas.tournament import TournamentCreateRequest
-from chess_api.services.tournaments import compute_sonneborn_berger
+from chess_api.services.tournaments import (
+    compute_sonneborn_berger, sync_tournament_status, _ends_at,
+)
 from chess_api.services.tempo import tempo_category
 from chess_api.services.rating import get_rating_or_default, title_for_rating
 
 router = APIRouter(tags=["tournaments"])
 
 RECENT_PAIRINGS_LIMIT = 50
+# Madde 2026-09-09: turnuva durum geçişi + süre-dolunca-iptal mantığı artık
+# services/tournaments.py'de (routers/tournament_ws.py de kullanabilsin diye).
+_sync_status = sync_tournament_status
 
 
 def _group_owner_id(child: ChildProfile) -> int:
@@ -25,38 +30,6 @@ def _group_owner_id(child: ChildProfile) -> int:
     kaydedilir (en azından kendi/kardeşleri görüp katılabilsin, tamamen
     engellenmez)."""
     return child.teacher_user_id if child.teacher_user_id is not None else child.parent_user_id
-
-
-def _in_same_group(child: ChildProfile, created_by_user_id: int) -> bool:
-    """Bu turnuva child'ın GÖREBİLECEĞİ/yönetebileceği gruba mı ait —
-    hocası eşleşiyorsa (varsa) VEYA velisi eşleşiyorsa (hocasız turnuvalar,
-    ör. kardeşler) True."""
-    if child.teacher_user_id is not None and created_by_user_id == child.teacher_user_id:
-        return True
-    return created_by_user_id == child.parent_user_id
-
-
-def _ends_at(t: Tournament) -> datetime:
-    return t.starts_at + timedelta(minutes=t.duration_minutes)
-
-
-async def _sync_status(db: AsyncSession, t: Tournament) -> None:
-    """Lazy durum gecisi (upcoming->active->finished) — arka planda cron/
-    scheduler YOK (madde: mimari kisit). Her list/get cagrisinda 'now' ile
-    starts_at/ends_at karsilastirilip gerekirse aninda guncellenir."""
-    now = datetime.utcnow()
-    changed = False
-    if t.status == TournamentStatus.upcoming and now >= t.starts_at:
-        t.status = TournamentStatus.active
-        t.started_at = t.starts_at
-        changed = True
-    if t.status == TournamentStatus.active and now >= _ends_at(t):
-        t.status = TournamentStatus.finished
-        t.finished_at = _ends_at(t)
-        changed = True
-    if changed:
-        await db.commit()
-        await db.refresh(t)
 
 
 def _tournament_out(t: Tournament) -> dict:
@@ -85,8 +58,14 @@ async def list_tournaments(
     olduğu gibi açık lobi (uygulamaya giren herkes oluşturulmuş turnuvaları
     görebilir). Hoca/veli gruplama SADECE bir turnuvayı SİLME yetkisinde
     kullanılır (bkz. _owned_tournament) — görünürlükte artık hiç kullanılmaz."""
+    # Madde 2026-09-09 (5): çekilmiş (left_at dolu) katılım artık listede/
+    # sayaçta SAYILMAZ — satır silinmiyor (SB hesabı görsün diye) ama
+    # "katıldım" durumu ve katılımcı sayısı bunu görmezden gelir.
     joined_ids = set((await db.execute(
-        select(TournamentParticipant.tournament_id).where(TournamentParticipant.child_id == child.id)
+        select(TournamentParticipant.tournament_id).where(
+            TournamentParticipant.child_id == child.id,
+            TournamentParticipant.left_at.is_(None),
+        )
     )).scalars().all())
 
     rows = (await db.execute(
@@ -101,7 +80,10 @@ async def list_tournaments(
     all_ids = [t.id for t in rows]
     counts = dict((await db.execute(
         select(TournamentParticipant.tournament_id, func.count(TournamentParticipant.id))
-        .where(TournamentParticipant.tournament_id.in_(all_ids))
+        .where(
+            TournamentParticipant.tournament_id.in_(all_ids),
+            TournamentParticipant.left_at.is_(None),
+        )
         .group_by(TournamentParticipant.tournament_id)
     )).all())
 
@@ -121,9 +103,14 @@ async def create_tournament(
     görebilsin diye turnuva hocanın (created_by_user_id) adına kaydedilir.
     Madde 2026-09-08: hocaya bağlı OLMAYAN sporcu da engellenmez — bu durumda
     turnuva velisinin adına kaydedilir (bkz. _group_owner_id). Oluşturan
-    sporcu otomatik katılımcı olur (Lichess'te de öyle)."""
+    sporcu otomatik katılımcı olur (Lichess'te de öyle).
+
+    Madde 2026-09-09 (4): created_by_child_id AYRICA kaydedilir — silme
+    yetkisi artık SADECE bu sporcuya ait (created_by_user_id hoca/veli
+    grubu içindir, o artık silme yetkisinde kullanılmıyor)."""
     t = Tournament(
         name=payload.name, created_by_user_id=_group_owner_id(child),
+        created_by_child_id=child.id,
         starts_at=payload.starts_at, duration_minutes=payload.duration_minutes,
         base_ms=payload.base_ms, increment_ms=payload.increment_ms,
         rated=payload.rated,
@@ -141,10 +128,11 @@ async def create_tournament(
 
 
 async def _owned_tournament(db: AsyncSession, tournament_id: int, child: ChildProfile) -> Tournament:
-    """Yönetim uçları (sil) için — turnuva child'ın grubuna (hocasına veya
-    hocası yoksa velisine) ait olmalı."""
+    """Silme ucu icin — Madde 2026-09-09 (4): yetki artik SADECE turnuvayi
+    OLUŞTURAN sporcuya ait (hoca/veli grubundaki BAŞKA sporcular ARTIK
+    silemez — eski _in_same_group kuralindan DAHA SIKI)."""
     t = await db.get(Tournament, tournament_id)
-    if not t or not _in_same_group(child, t.created_by_user_id):
+    if not t or t.created_by_child_id != child.id:
         raise HTTPException(status_code=404, detail="Tournament not found")
     return t
 
@@ -179,10 +167,15 @@ async def join_tournament(
             TournamentParticipant.child_id == child.id,
         )
     )).scalar_one_or_none()
-    if existing:
-        return {"joined": True}
-    db.add(TournamentParticipant(tournament_id=tournament_id, child_id=child.id))
-    await db.commit()
+    if existing is None:
+        db.add(TournamentParticipant(tournament_id=tournament_id, child_id=child.id))
+        await db.commit()
+    elif existing.left_at is not None:
+        # Madde 2026-09-09 (5): daha önce çekilmiş — satır SİLİNMEDİĞİ için
+        # (bkz. leave_tournament) burada sadece "geri döndü" işaretlenir,
+        # dondurulmuş puanı/serisi AYNEN kalır (sıfırlanmaz).
+        existing.left_at = None
+        await db.commit()
     return {"joined": True}
 
 
@@ -193,28 +186,61 @@ async def leave_tournament(
     db: AsyncSession = Depends(get_db),
 ):
     """Madde 2026-09-09 (5): sporcu istediği zaman turnuvadan çıkabilir —
-    katılım kaydı silinir, sıralamadan düşer ve bir daha eşleştirilmez.
-    Sürmekte olan maçı ETKİLENMEZ (TournamentPairing çocuk id'sine bakar,
-    katılım kaydına değil) — sadece bitirilir, ondan sonra eşleşmez."""
+    katılım kaydı SİLİNMEZ (left_at doldurulur): ismi sıralama GÖRÜNÜMÜNDEN
+    çıkar ve bir daha eşleştirilmez, ama puanı DB'de kalır ki rakiplerinin
+    Sonneborn-Berger hesabı olumsuz etkilenmesin (bkz. compute_sonneborn_berger,
+    services/tournaments.py). Sürmekte olan maçı ETKİLENMEZ — sadece bitirilir,
+    ondan sonra eşleşmez."""
     t = await db.get(Tournament, tournament_id)
     if not t:
         raise HTTPException(status_code=404, detail="Tournament not found")
-    await db.execute(delete(TournamentParticipant).where(
-        TournamentParticipant.tournament_id == tournament_id,
-        TournamentParticipant.child_id == child.id,
-    ))
+    await db.execute(
+        update(TournamentParticipant)
+        .where(
+            TournamentParticipant.tournament_id == tournament_id,
+            TournamentParticipant.child_id == child.id,
+            TournamentParticipant.left_at.is_(None),
+        )
+        .values(left_at=datetime.utcnow())
+    )
     await db.commit()
     return {"joined": False}
 
 
+def _games_stats(pairings: list[TournamentPairing]) -> dict[int, tuple[int, int]]:
+    """child_id -> (oynanmış oyun sayısı, galibiyet sayısı) — madde 2026-09-09
+    (6), turnuva bitiş bildirimindeki "Oynanmış oyunlar"/"Kazanma oranı" için.
+    None (hâlâ sürüyor) ve "void" (iptal edildi) eşleşmeler SAYILMAZ."""
+    stats: dict[int, tuple[int, int]] = {}
+
+    def _bump(child_id: int, win: bool) -> None:
+        games, wins = stats.get(child_id, (0, 0))
+        stats[child_id] = (games + 1, wins + (1 if win else 0))
+
+    for pairing in pairings:
+        if pairing.result is None or pairing.result == "void":
+            continue
+        white_wins = pairing.result == "1-0"
+        black_wins = pairing.result == "0-1"
+        _bump(pairing.white_child_id, white_wins)
+        _bump(pairing.black_child_id, black_wins)
+    return stats
+
+
 async def _standings(db: AsyncSession, tournament_id: int, tempo: str | None = None) -> list[dict]:
-    participants = (await db.execute(
+    # TÜM katılımcılar (çekilmiş dahil) — Sonneborn-Berger'ın çekilenlerin
+    # dondurulmuş puanını görmesi için (madde 2026-09-09 (5)).
+    all_participants = (await db.execute(
         select(TournamentParticipant).where(TournamentParticipant.tournament_id == tournament_id)
     )).scalars().all()
     pairings = (await db.execute(
         select(TournamentPairing).where(TournamentPairing.tournament_id == tournament_id)
     )).scalars().all()
-    sb_map = compute_sonneborn_berger(participants, pairings)
+    sb_map = compute_sonneborn_berger(all_participants, pairings)
+    games_stats = _games_stats(pairings)
+
+    # GÖRÜNÜM listesi: çekilenler (left_at dolu) sıralamadan düşer.
+    participants = [p for p in all_participants if p.left_at is None]
 
     names: dict[int, str] = {}
     child_ids = [p.child_id for p in participants]
@@ -230,11 +256,14 @@ async def _standings(db: AsyncSession, tournament_id: int, tempo: str | None = N
         if tempo:
             rating = await get_rating_or_default(db, p.child_id, tempo)
             title = title_for_rating(rating)
+        games_played, wins = games_stats.get(p.child_id, (0, 0))
+        win_rate = round(wins / games_played * 100) if games_played > 0 else None
         out.append({
             "child_id": p.child_id, "display_name": names.get(p.child_id),
             "score": p.score, "sb": sb_map.get(p.child_id, 0.0),
             "streak": p.current_streak,
             "rating": rating, "title": title,
+            "games_played": games_played, "win_rate": win_rate,
         })
     out.sort(key=lambda d: (-d["score"], -d["sb"], d["child_id"]))
     return out
@@ -295,18 +324,24 @@ async def get_tournament(
         select(TournamentParticipant.id).where(
             TournamentParticipant.tournament_id == tournament_id,
             TournamentParticipant.child_id == child.id,
+            TournamentParticipant.left_at.is_(None),
         )
     )).first() is not None
-    # Detay sayfasi footer'i icin ("Toplam Kisi Sayisi", 2026-09-09 madde 5).
+    # Detay sayfasi footer'i icin ("Toplam Kisi Sayisi", 2026-09-09 madde 5)
+    # — çekilenler sayılmaz.
     participant_count = (await db.execute(
         select(func.count(TournamentParticipant.id)).where(
             TournamentParticipant.tournament_id == tournament_id,
+            TournamentParticipant.left_at.is_(None),
         )
     )).scalar_one()
     return {
         **_tournament_out(t),
         "joined": joined,
         "participant_count": participant_count,
+        # Madde 2026-09-09 (4): "Turnuvayı Sil" SADECE oluşturana VE SADECE
+        # henüz başlamadıysa gösterilsin.
+        "can_delete": t.created_by_child_id == child.id and t.status == TournamentStatus.upcoming,
         "standings": await _standings(db, tournament_id, tempo),
         "my_pairing": await _my_active_pairing(db, tournament_id, child.id),
         "recent_pairings": await _recent_pairings(db, tournament_id),
@@ -319,7 +354,13 @@ async def delete_tournament(
     child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
+    """Madde 2026-09-09 (4): yalnızca OLUŞTURAN sporcu (bkz. _owned_tournament)
+    VE yalnızca turnuva HENÜZ BAŞLAMADIYSA silebilir — başladıktan sonra
+    (active/finished) silme işlemi YOK."""
     t = await _owned_tournament(db, tournament_id, child)
+    await _sync_status(db, t)
+    if t.status != TournamentStatus.upcoming:
+        raise HTTPException(status_code=400, detail="Başlamış bir turnuva silinemez")
     await db.execute(delete(TournamentPairing).where(TournamentPairing.tournament_id == tournament_id))
     await db.execute(delete(TournamentParticipant).where(TournamentParticipant.tournament_id == tournament_id))
     await db.delete(t)

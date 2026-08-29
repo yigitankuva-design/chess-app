@@ -1,6 +1,9 @@
 import asyncio
 import pytest
-from chess_api.models import Game, GameType, GameStatus, GameMove
+from datetime import datetime
+from chess_api.models import (
+    Game, GameType, GameStatus, GameMove, Tournament, TournamentStatus, TournamentPairing,
+)
 from chess_api.routers.live_game import _start_first_move_timer
 from chess_api.services.game_room import get_room, _reset_for_tests
 
@@ -111,6 +114,39 @@ async def test_bitmis_mac_icin_iptal_calismaz(db, monkeypatch):
     await db.refresh(game)
     assert game.status == GameStatus.finished  # aborted'a DEGISMEDI
     assert not any(m.get("type") == "game_aborted" for m in white.messages + black.messages)
+
+
+@pytest.mark.asyncio
+async def test_turnuva_maci_zaman_asiminda_eslesme_de_void_olur(db, monkeypatch):
+    """Madde 2026-09-09 (2): iptal edilen mac bir turnuva eşleşmesiyse,
+    TournamentPairing.result de "void" olur — yoksa _my_active_pairing bu
+    eşleşmeyi hâlâ "sürüyor" sanıp sporcuyu tekrar kuyruğa giremez bırakır."""
+    _reset_for_tests()
+    game = await _make_game(db)
+    t = Tournament(name="X", created_by_user_id=1, status=TournamentStatus.active,
+                   starts_at=datetime.utcnow(), duration_minutes=60)
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    pairing = TournamentPairing(tournament_id=t.id, white_child_id=1,
+                                black_child_id=2, game_id=game.id)
+    db.add(pairing)
+    await db.commit()
+
+    monkeypatch.setattr("chess_api.routers.live_game.get_session_factory",
+                        lambda: (lambda: _SessionCtx(db)))
+    monkeypatch.setattr("chess_api.routers.live_game.FIRST_MOVE_TIMEOUT_SECONDS", 0.05)
+    room = get_room(game.id)
+    room.join(1, FakeSender())
+    room.join(2, FakeSender())
+
+    await _start_first_move_timer(game.id, room)
+    await asyncio.sleep(0.15)
+
+    await db.refresh(game)
+    await db.refresh(pairing)
+    assert game.status == GameStatus.aborted
+    assert pairing.result == "void"
 
 
 @pytest.mark.asyncio

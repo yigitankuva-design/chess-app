@@ -23,7 +23,14 @@ import { HistoryBanner } from '@/components/play/HistoryBanner';
 import { resolvePremove } from '@/lib/play/premove';
 import type { Premove } from '@/lib/play/premove';
 
-interface Props { gameId: number; myColor: 'white' | 'black'; }
+interface Props {
+  gameId: number;
+  myColor: 'white' | 'black';
+  /** Madde 2026-09-09 (2/3): bu maç bir turnuva eşleşmesiyse turnuvanın id'si
+   *  — verilirse "Tekrar Oyna" yerine "Turnuvaya Geri Dön" gösterilir VE
+   *  maç iptal olursa (game_aborted) otomatik turnuva sayfasına dönülür. */
+  tournamentId?: number;
+}
 
 /** Backend'deki FIRST_MOVE_TIMEOUT_SECONDS ile AYNI (madde 4) — yalnızca
  *  görsel geri sayım için; gerçek iptal kararı sunucuda verilir. */
@@ -39,7 +46,7 @@ function outcomeFor(result: string | undefined, myColor: 'white' | 'black'): Pra
   return null;
 }
 
-export function LiveGame({ gameId, myColor }: Props) {
+export function LiveGame({ gameId, myColor, tournamentId }: Props) {
   const router = useRouter();
   const { hideNotation } = useBoardNotation();
   const chessRef = useRef(new Chess());
@@ -209,8 +216,16 @@ export function LiveGame({ gameId, myColor }: Props) {
       setRawResult(msg.result);
       setInfo(msg.by_resign ? 'Maç terk edildi.' : '');
     } else if (t === 'game_aborted') {
-      // Madde 4: sunucu 10sn'de ilk hamle gelmediğine karar verdi, mac iptal.
+      // Madde 4: sunucu 15sn'de ilk hamle gelmediğine karar verdi, mac iptal.
       setFirstMoveCountdown(null);
+      // Madde 2026-09-09 (2/6): turnuva maçıysa (no_start VEYA turnuva süresi
+      // dolduysa) OTOMATİK olarak turnuva sayfasına dönülür — sporcu orada
+      // yeni eşleşmeyi bekler. Bilgi mesajı göstermeye gerek yok, sayfa zaten
+      // değişiyor.
+      if (tournamentId != null) {
+        router.push(`/play/tournament/${tournamentId}`);
+        return;
+      }
       setStatus('over');
       setInfo(`İlk hamle ${FIRST_MOVE_TIMEOUT_SECONDS} saniye içinde yapılmadığı için maç iptal edildi.`);
     } else if (t === 'opponent_disconnected') {
@@ -263,15 +278,18 @@ export function LiveGame({ gameId, myColor }: Props) {
 
   // YEREL geri sayim SADECE GORSELDIR. Gercek sure sunucuda; her hamlede
   // gelen 'clock' mesaji bu degerin uzerine yazar.
+  // Madde 2026-09-09 (1): ilk hamle beklenirken (firstMoveCountdown !== null)
+  // YEREL sayaç da durur — sunucu zaten bu pencerede saati işletmiyor
+  // (bkz. _apply_clock_on_move), ekran da bunu yansıtmalı.
   const clockless = whiteMs === null || blackMs === null;
   useEffect(() => {
-    if (clockless || status !== 'active') return;
+    if (clockless || status !== 'active' || firstMoveCountdown !== null) return;
     const id = setInterval(() => {
       if (whiteToMove) setWhiteMs((v) => (v === null ? v : Math.max(0, v - 100)));
       else setBlackMs((v) => (v === null ? v : Math.max(0, v - 100)));
     }, 100);
     return () => clearInterval(id);
-  }, [whiteToMove, clockless, status]);
+  }, [whiteToMove, clockless, status, firstMoveCountdown]);
 
   // 'flag' YALNIZCA sira RAKIPTEYKEN ve onun saati bitince gonderilir.
   // Kimse kendi yenilgisini bildirmez. Bir kez gonderilir.
@@ -373,7 +391,16 @@ export function LiveGame({ gameId, myColor }: Props) {
       },
       enabled: status === 'active',
     },
-    {
+    // Madde 2026-09-09 (3): turnuva maçında "Tekrar Oyna" (rakiple teklif/
+    // kabul pazarlığı) ANLAMSIZ — Arena zaten bir SONRAKİ rakiple otomatik
+    // eşleştirir. Bu yüzden turnuva maçında kart "Turnuvaya Geri Dön" olur:
+    // teklif YOK, doğrudan sıralama sayfasına döner, sporcu orada bekler.
+    tournamentId != null ? {
+      icon: '🏆',
+      label: 'Turnuvaya Geri Dön',
+      onClick: () => router.push(`/play/tournament/${tournamentId}`),
+      enabled: status === 'over',
+    } : {
       icon: '🔁',
       label: 'Tekrar Oyna',
       onClick: () => { send({ type: 'rematch_offer' }); setRematchOffered(true); },
