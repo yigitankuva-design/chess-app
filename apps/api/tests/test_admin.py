@@ -184,6 +184,33 @@ async def test_admin_module_topics_roundtrips(client):
 
 
 @pytest.mark.asyncio
+async def test_admin_module_tab_kopyala_yapistir_temizlenir(client):
+    """BUG FIX (2026-09-08): Zafer bir tablodan kopyala-yapıştır yaparken
+    "isim" alanına TAB karakteriyle isim+açıklama birleşik yapıştırmıştı
+    (ör. "Temel Düzey\\t(Anasınıfı...)") — başlık tek karışık satır olarak
+    görünmeye başladı (bkz. modules.topics migration ModuleFieldsDataFix).
+    Artık name/description/topics'teki tab/satır sonu tek boşluğa çevrilip
+    kırpılıyor, bu hata BİR DAHA sessizce oluşamaz."""
+    ttok = await _teacher_token(client, email="ttab@t.com")
+    h = {"Authorization": f"Bearer {ttok}"}
+
+    r = await client.post("/admin/modules", headers=h, json={
+        "name": "Temel Düzey\t(Anasınıfı Düzeyi, Puan Aralığı:0 – 399)",
+        "description": "  Satranç Tahtası,\ttaşlar  ve\ntemel kurallar  ",
+        "icon": "default",
+    })
+    assert r.status_code == 201
+    body = r.json()
+    assert body["name"] == "Temel Düzey (Anasınıfı Düzeyi, Puan Aralığı:0 – 399)"
+    assert body["description"] == "Satranç Tahtası, taşlar ve temel kurallar"
+
+    r2 = await client.patch(f"/admin/modules/{body['id']}", headers=h,
+                            json={"topics": "Konu\tbir\nKonu iki"})
+    assert r2.status_code == 200
+    assert r2.json()["topics"] == "Konu bir Konu iki"
+
+
+@pytest.mark.asyncio
 async def test_admin_cannot_delete_teacher(client):
     ttok = await _teacher_token(client, email="t5@t.com")
     # Başka bir teacher hedefle

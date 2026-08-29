@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from chess_api.models.user import UserRole
 
 
@@ -161,11 +161,30 @@ class ContentImportResult(BaseModel):
     steps_created: int
 
 
+def _strip_control_chars(v: str | None) -> str | None:
+    """BUG FIX (2026-09-08): Zafer bir tablodan kopyala-yapıştır yaparken
+    "isim" alanına TAB karakteriyle birleşik isim+açıklama yapıştırmıştı
+    (ör. "Temel Düzey\\t(...)") — başlık tek karışık satır olarak görünmeye
+    başladı. Tab/satır sonu karakterleri artık tek boşluğa çevrilip
+    (name/description/topics'te) baştan/sondan kırpılıyor; kopyala-yapıştır
+    kazası bir daha SESSİZCE veriye karışmaz."""
+    if v is None:
+        return None
+    return " ".join(v.split())
+
+
 class ModuleCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = ""
     topics: str | None = None
     icon: str = "default"
+
+    @field_validator("name", "description", "topics", mode="before")
+    @classmethod
+    def _clean(cls, v: str | None) -> str | None:
+        # mode="before": min_length/max_length kirpilmis DEGERE gore
+        # dogrulansin diye kisitlardan ONCE calisir.
+        return _strip_control_chars(v)
 
 
 class ModuleUpdateRequest(BaseModel):
@@ -173,6 +192,13 @@ class ModuleUpdateRequest(BaseModel):
     description: str | None = None
     topics: str | None = None
     icon: str | None = None
+
+    @field_validator("name", "description", "topics", mode="before")
+    @classmethod
+    def _clean(cls, v: str | None) -> str | None:
+        # mode="before": min_length/max_length kirpilmis DEGERE gore
+        # dogrulansin diye kisitlardan ONCE calisir.
+        return _strip_control_chars(v)
 
 
 class ReorderRequest(BaseModel):
