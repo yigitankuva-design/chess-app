@@ -42,7 +42,11 @@ class TournamentCreateRequest(BaseModel):
     winning_streak_bonus: bool = True
     # Madde 2026-09-10 ("Turnuva Türü" / "Berserk" kartları):
     tournament_type: Literal["arena", "swiss"] = "arena"
-    # İsviçre'de ZORUNLU (2-15 tur), arena'da kullanılmaz (None'a zorlanır).
+    # Madde 2026-09-XX: artık sporcu SEÇMİYOR — İsviçre'de katılım kapanıp
+    # 1. tur üretilirken katılımcı sayısına göre OTOMATİK hesaplanır (bkz.
+    # services/swiss.py::_start_round). Burada gönderilen değer (varsa) HER
+    # ZAMAN yok sayılır (_type_specific_fields None'a zorlar) — client'in
+    # eski/hatalı bir değer göndermesi turnuvayı bozmasın diye.
     rounds_total: int | None = Field(default=None, ge=2, le=15)
     # SADECE arena + Yıldırım/Hızlı tempoda gerçekten etkin olur (kontrol
     # routers/live_game.py::_handle_berserk'te) — burada sadece tercih.
@@ -53,11 +57,18 @@ class TournamentCreateRequest(BaseModel):
         """Arena ve İsviçre'nin süre/tur alanları KARŞILIKLI DIŞLAR —
         birinin zorunlu olduğu yerde diğeri anlamsız, o yüzden sessizce
         None'a zorlanır (yanlışlıkla ikisi birden gönderilirse DB'de tutarsız
-        kalmasın)."""
+        kalmasın).
+
+        Madde 2026-09-XX: İsviçre'de "Galibiyet Ödülü" (seri katlaması) ve
+        "Berserk" hiç kullanılmıyor — Zafer'in kararı. Client ne gönderirse
+        göndersin (ör. eski bir ekran/yanlış payload) burada zorla False'a
+        çekilir; sadece frontend'in devre dışı bırakması yetmez, backend de
+        bağımsız olarak garanti eder."""
         if self.tournament_type == "swiss":
-            if self.rounds_total is None:
-                raise ValueError("İsviçre turnuvasında tur sayısı zorunludur")
             self.duration_minutes = None
+            self.rounds_total = None
+            self.winning_streak_bonus = False
+            self.berserk_enabled = False
         else:
             if self.duration_minutes is None:
                 raise ValueError("Turnuva süresi zorunludur")

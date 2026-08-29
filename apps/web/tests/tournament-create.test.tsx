@@ -27,18 +27,17 @@ function mockFetchOnce(data: unknown, ok = true) {
 describe('Turnuva Oluştur — /play/tournament/create', () => {
   beforeEach(() => { push.mockClear(); });
 
-  it('8 kutu (Zafer\'in görseline göre 5 satır) da render edilir', () => {
+  it('11 kutu (Zafer\'in ikinci görseline göre 6 satır) da render edilir', () => {
     render(<TournamentCreatePage />);
     expect(screen.getByLabelText('Turnuva ismi')).toBeInTheDocument();
     expect(screen.getByLabelText('Turnuva süresi')).toBeInTheDocument();
     expect(screen.getByLabelText('Başlangıç tarihi')).toBeInTheDocument();
     expect(screen.getByLabelText('Başlangıç saati')).toBeInTheDocument();
-    expect(screen.getByLabelText('Turnuva ile ilgili açıklama')).toBeInTheDocument();
-    expect(screen.getByLabelText('Maç başı süre')).toBeInTheDocument();
-    expect(screen.getByLabelText('Başlangıç konumu')).toBeInTheDocument();
+    expect(screen.getByLabelText('Turnuva ile ilgili turnuva kurucusunun açıklamaları')).toBeInTheDocument();
+    expect(screen.getByLabelText('Maç süresi (tempo)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Başlangıç konumu/FEN')).toBeInTheDocument();
     expect(screen.getByLabelText('Puan durumu')).toBeInTheDocument();
     expect(screen.getByLabelText('Galibiyet ödülü')).toBeInTheDocument();
-    // Madde 2026-09-10: yeni 2 kart.
     expect(screen.getByLabelText('Turnuva türü')).toBeInTheDocument();
     expect(screen.getByLabelText('Berserk')).toBeInTheDocument();
   });
@@ -46,7 +45,7 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
   it('admin varsayılanları baştan seçili gelir (60 dk, 10+0, Puanlı, Ödül Olsun)', () => {
     render(<TournamentCreatePage />);
     expect(screen.getByLabelText('Turnuva süresi')).toHaveValue('60');
-    expect(screen.getByLabelText('Maç başı süre')).toHaveValue('10+0');
+    expect(screen.getByLabelText('Maç süresi (tempo)')).toHaveValue('10+0');
     expect(screen.getByLabelText('Puan durumu')).toHaveValue('rated');
     expect(screen.getByLabelText('Galibiyet ödülü')).toHaveValue('on');
   });
@@ -76,8 +75,8 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
     fireEvent.change(screen.getByLabelText('Turnuva süresi'), { target: { value: '30' } });
     fireEvent.change(screen.getByLabelText('Başlangıç tarihi'), { target: { value: '2026-10-05' } });
     fireEvent.change(screen.getByLabelText('Başlangıç saati'), { target: { value: '14:30' } });
-    fireEvent.change(screen.getByLabelText('Turnuva ile ilgili açıklama'), { target: { value: 'Açıklama metni' } });
-    fireEvent.change(screen.getByLabelText('Başlangıç konumu'), {
+    fireEvent.change(screen.getByLabelText('Turnuva ile ilgili turnuva kurucusunun açıklamaları'), { target: { value: 'Açıklama metni' } });
+    fireEvent.change(screen.getByLabelText('Başlangıç konumu/FEN'), {
       target: { value: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2' },
     });
     fireEvent.change(screen.getByLabelText('Puan durumu'), { target: { value: 'unrated' } });
@@ -137,47 +136,55 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
     await waitFor(() => expect(screen.getByText('Value error, geçersiz tarih')).toBeInTheDocument());
   });
 
-  describe('Madde 2026-09-10: Turnuva Türü (Arena/İsviçre) + Berserk', () => {
-    it('İsviçre seçilince "Turnuva süresi" yerine "Tur sayısı" gelir, Berserk kartı kaybolur', () => {
+  describe('Madde 2026-09-XX: İsviçre seçilince Tur Sayısı/Galibiyet Ödülü/Berserk kapanır', () => {
+    it('İsviçre seçilince "Turnuva süresi" yerine "Tur sayısı" gelir, kutu kapalıdır ve sabit yazı gösterir', () => {
       render(<TournamentCreatePage />);
       fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
       expect(screen.queryByLabelText('Turnuva süresi')).not.toBeInTheDocument();
-      expect(screen.getByLabelText('Tur sayısı')).toBeInTheDocument();
-      expect(screen.queryByLabelText('Berserk')).not.toBeInTheDocument();
+      const roundsField = screen.getByLabelText('Tur sayısı');
+      expect(roundsField).toBeInTheDocument();
+      expect(roundsField).toBeDisabled();
+      expect(roundsField).toHaveValue('Katılımcıya Göre Değişir');
     });
 
-    it('Tur sayısı dropdown\'ında 2-15 arası bulunur', () => {
+    it('İsviçre seçilince Galibiyet Ödülü ve Berserk kartları KAPALI olur, seçim yapılamaz (kaybolmazlar)', () => {
       render(<TournamentCreatePage />);
       fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
-      const select = screen.getByLabelText('Tur sayısı') as HTMLSelectElement;
-      const values = Array.from(select.options).map((o) => o.value);
-      expect(values).toEqual(['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']);
+      const streak = screen.getByLabelText('Galibiyet ödülü');
+      const berserk = screen.getByLabelText('Berserk');
+      expect(streak).toBeDisabled();
+      expect(streak).toHaveValue('off');
+      expect(berserk).toBeDisabled();
+      expect(berserk).toHaveValue('off');
     });
 
-    it('Klasik tempo seçilince (Arena kalsa bile) Berserk kartı kaybolur', () => {
+    it('Klasik tempo seçilince (Arena kalsa bile) Berserk kartı KAPALI olur, kaybolmaz', () => {
       render(<TournamentCreatePage />);
-      fireEvent.change(screen.getByLabelText('Maç başı süre'), { target: { value: '30+0' } });
-      expect(screen.queryByLabelText('Berserk')).not.toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Maç süresi (tempo)'), { target: { value: '30+0' } });
+      const berserk = screen.getByLabelText('Berserk');
+      expect(berserk).toBeInTheDocument();
+      expect(berserk).toBeDisabled();
+      expect(berserk).toHaveValue('off');
     });
 
-    it('İsviçre turnuvası oluşturulunca duration_minutes null, rounds_total ve tournament_type doğru gönderilir', async () => {
+    it('İsviçre turnuvası oluşturulunca duration_minutes/rounds_total null, galibiyet ödülü/berserk false gönderilir', async () => {
       const fetchMock = vi.fn().mockResolvedValue(mockFetchOnce({ id: 44, name: 'İsviçre' }));
       global.fetch = fetchMock;
       render(<TournamentCreatePage />);
       fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'İsviçre' } });
       fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
-      fireEvent.change(screen.getByLabelText('Tur sayısı'), { target: { value: '7' } });
       fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalled());
       const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
       expect(body.tournament_type).toBe('swiss');
-      expect(body.rounds_total).toBe(7);
+      expect(body.rounds_total).toBeNull();
       expect(body.duration_minutes).toBeNull();
+      expect(body.winning_streak_bonus).toBe(false);
       expect(body.berserk_enabled).toBe(false);
     });
 
-    it('Berserk "Olsun" seçilince payload\'da berserk_enabled=true gönderilir', async () => {
+    it('Berserk "Olsun" seçilince payload\'da berserk_enabled=true gönderilir (Arena + Yıldırım/Hızlı)', async () => {
       const fetchMock = vi.fn().mockResolvedValue(mockFetchOnce({ id: 45, name: 'Berserkli' }));
       global.fetch = fetchMock;
       render(<TournamentCreatePage />);

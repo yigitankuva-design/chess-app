@@ -16,6 +16,7 @@ _create_human_game'i SARAR) — services routers'a bağımlı OLMASIN diye
 (arena_matchmaking.find_arena_opponent'taki AYNI bağımlılık-tersine-çevirme
 deseni).
 """
+import math
 import random
 from dataclasses import dataclass
 from datetime import datetime
@@ -79,6 +80,14 @@ def generate_round_pairings(
     return pairings, bye_child_id
 
 
+def compute_rounds_total(participant_count: int) -> int:
+    """Madde 2026-09-XX: sporcu artık tur sayısını SEÇMİYOR — 1. tur
+    üretilirken (katılım kapanınca) o anki katılımcı sayısına göre otomatik
+    hesaplanır. Standart İsviçre kuralı: yukarı yuvarlanmış log2(katılımcı
+    sayısı) — 3-4 kişi→2 tur, 5-8 kişi→3 tur, 9-16 kişi→4 tur, vb."""
+    return max(1, math.ceil(math.log2(max(participant_count, 1))))
+
+
 async def _start_round(
     db: AsyncSession, tournament: Tournament, round_number: int, create_game: CreateGame,
 ) -> None:
@@ -101,6 +110,12 @@ async def _start_round(
         tournament.finished_at = datetime.utcnow()
         await db.commit()
         return
+
+    if tournament.rounds_total is None:
+        # Madde 2026-09-XX: katılım burada (1. tur üretilirken) kapandığı
+        # için katılımcı sayısı artık KESİN — tur sayısı şimdi hesaplanıp
+        # dondurulur (sonraki turlarda bir daha DEĞİŞMEZ, guard is None).
+        tournament.rounds_total = compute_rounds_total(len(participants))
 
     pairings, bye_child_id = generate_round_pairings(participants, past_pairings)
 

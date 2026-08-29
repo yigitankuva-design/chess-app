@@ -891,11 +891,11 @@ def test_sonneborn_berger_hesaplanir():
 
 @pytest.mark.asyncio
 async def test_isvicre_turnuva_olusturulabilir(client, db):
-    """Madde 2026-09-10: tournament_type='swiss' + rounds_total ile turnuva
-    oluşturulabilir; duration_minutes None olur (İsviçre'de anlamsız).
-    starts_at GELECEKTE verilir — "simdi" verilirse (Arena'da olduğu gibi)
-    turnuva ANINDA aktifleşip 1. turu üretir (bkz. test_..._basladiktan_sonra),
-    bu test SADECE oluşturma yanıtının alanlarını doğruluyor."""
+    """Madde 2026-09-XX: tur sayısı artık sporcu tarafından GÖNDERİLMİYOR —
+    duration_minutes None olur (İsviçre'de anlamsız), rounds_total da
+    oluşturma anında None kalır (katılım kapanınca otomatik hesaplanır, bkz.
+    test_isvicre_tur_sayisi_katilimciya_gore_hesaplanir). Client eski bir
+    ekrandan rounds_total=5 gönderse bile yok sayılır (_type_specific_fields)."""
     _, teacher_id = await _teacher(client, "tsw1@t.com")
     parent_id = await _parent_id(client, "psw1@t.com")
     creator = await _add_child(db, "A", teacher_id, parent_id)
@@ -908,21 +908,30 @@ async def test_isvicre_turnuva_olusturulabilir(client, db):
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["tournament_type"] == "swiss"
-    assert body["rounds_total"] == 5
+    assert body["rounds_total"] is None
     assert body["current_round"] == 0
     assert body["duration_minutes"] is None
     assert body["ends_at"] is None
 
 
 @pytest.mark.asyncio
-async def test_isvicre_tur_sayisi_olmadan_olusturulamaz(client, db):
+async def test_isvicre_odul_ve_berserk_zorla_kapali(client, db):
+    """Madde 2026-09-XX: İsviçre'de Galibiyet Ödülü (seri katlaması) ve
+    Berserk hiç kullanılmaz — client True gönderse bile backend zorla
+    False'a çeker (frontend'in devre dışı bırakmasına güvenilmez)."""
     _, teacher_id = await _teacher(client, "tsw2@t.com")
     parent_id = await _parent_id(client, "psw2@t.com")
     creator = await _add_child(db, "A", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
-        "name": "X", "starts_at": datetime.utcnow().isoformat(), "tournament_type": "swiss",
+        "name": "X", "starts_at": future, "tournament_type": "swiss",
+        "base_ms": 300000, "increment_ms": 2000,
+        "winning_streak_bonus": True, "berserk_enabled": True,
     })
-    assert r.status_code == 422
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["winning_streak_bonus"] is False
+    assert body["berserk_enabled"] is False
 
 
 @pytest.mark.asyncio
@@ -950,8 +959,7 @@ async def test_isvicre_1_tur_basladiktan_sonra_katilim_kapanir(client, db, db_en
     latecomer = await _add_child(db, "D", teacher_id, parent_id)
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
-        "name": "İsviçre", "starts_at": future,
-        "tournament_type": "swiss", "rounds_total": 3,
+        "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
         "base_ms": 300000, "increment_ms": 0,
     })
     tid = r.json()["id"]
@@ -964,11 +972,43 @@ async def test_isvicre_1_tur_basladiktan_sonra_katilim_kapanir(client, db, db_en
 
     # GET tetikler -> 1. tur üretilir (3 kişi: 1 bay + 1 gerçek eşleşme,
     # eşleşme henüz sonuçlanmadığı için tur ASILI kalır, current_round=1).
+    # rounds_total da bu anda otomatik hesaplanır: ceil(log2(3)) = 2.
     r_get = await client.get(f"/tournaments/{tid}", headers=_child_headers(creator.id))
     assert r_get.json()["current_round"] == 1
+    assert r_get.json()["rounds_total"] == 2
 
     r_join = await client.post(f"/tournaments/{tid}/join", headers=_child_headers(latecomer.id))
     assert r_join.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_isvicre_tur_sayisi_katilimciya_gore_hesaplanir(client, db, db_engine, monkeypatch):
+    """Madde 2026-09-XX: tur sayısı artık sporcu seçmiyor — 1. tur üretilirken
+    (katılım kapanınca) o anki katılımcı sayısına göre standart İsviçre
+    kuralıyla (yukarı yuvarlanmış log2) otomatik hesaplanır. 5 katılımcı
+    (creator + 4 katılan) → ceil(log2(5)) = 3 tur."""
+    _patch_game_creation(db_engine, monkeypatch)
+    _, teacher_id = await _teacher(client, "tsw6@t.com")
+    parent_id = await _parent_id(client, "psw6@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    others = [await _add_child(db, f"P{i}", teacher_id, parent_id) for i in range(4)]
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
+        "base_ms": 300000, "increment_ms": 0,
+    })
+    tid = r.json()["id"]
+    assert r.json()["rounds_total"] is None  # oluşturma anında henüz belirsiz
+    for o in others:
+        await client.post(f"/tournaments/{tid}/join", headers=_child_headers(o.id))
+
+    t = await db.get(Tournament, tid)
+    t.starts_at = datetime.utcnow() - timedelta(minutes=1)
+    await db.commit()
+
+    r_get = await client.get(f"/tournaments/{tid}", headers=_child_headers(creator.id))
+    assert r_get.json()["current_round"] == 1
+    assert r_get.json()["rounds_total"] == 3
 
 
 @pytest.mark.asyncio
@@ -980,8 +1020,7 @@ async def test_recent_pairings_round_number_dondurur(client, db, db_engine, monk
     joiner = await _add_child(db, "B", teacher_id, parent_id)
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
-        "name": "İsviçre", "starts_at": future,
-        "tournament_type": "swiss", "rounds_total": 3,
+        "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
         "base_ms": 300000, "increment_ms": 0,
     })
     tid = r.json()["id"]

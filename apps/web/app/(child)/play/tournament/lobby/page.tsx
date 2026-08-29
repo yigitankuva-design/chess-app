@@ -21,9 +21,14 @@ function formatTempo(baseMs: number | null): string {
 }
 
 /** Madde 2026-09-10: İsviçre'de duration_minutes NULL (bitiş tur sayısına
- *  bağlı, süreye değil) — "X tur" gösterilir, arena'da eskisi gibi süre. */
+ *  bağlı, süreye değil) — "X tur" gösterilir, arena'da eskisi gibi süre.
+ *  Madde 2026-09-XX: rounds_total artık turnuva başlayıp katılım kapanana
+ *  kadar (normal durumda) null kalır — "?" yerine bunu açıklayan bir metin
+ *  gösterilir. */
 function formatDuration(t: TournamentSummary): string {
-  if (t.tournament_type === 'swiss') return `${t.rounds_total ?? '?'} tur`;
+  if (t.tournament_type === 'swiss') {
+    return t.rounds_total != null ? `${t.rounds_total} tur` : 'Katılımcıya göre';
+  }
   const minutes = t.duration_minutes ?? 0;
   if (minutes < 60) return `${minutes} dk`;
   const h = Math.floor(minutes / 60);

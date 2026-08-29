@@ -223,8 +223,10 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
 
   // Madde 2026-09-10: İsviçre'de "Kalan Süre" kutusu anlamsız (bitiş tur
   // sayısına bağlı) — yerine "Tur N/Toplam" gösterilir (aynı footer kutusu).
+  // Madde 2026-09-XX: rounds_total turnuva başlayana kadar (normal durumda)
+  // null'dır — o ana kadar "Katılımcıya göre" gösterilir, "?" yerine.
   const remainingLabel = isSwiss
-    ? `Tur ${detail.current_round ?? 0}/${detail.rounds_total ?? '?'}`
+    ? (detail.rounds_total != null ? `Tur ${detail.current_round ?? 0}/${detail.rounds_total}` : 'Katılımcıya göre')
     : detail.status === 'active' ? formatCountdown(secondsLeft)
     : detail.status === 'upcoming' ? '--:--' : '0:00';
 

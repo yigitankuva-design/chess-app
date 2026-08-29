@@ -12,11 +12,6 @@ const DURATIONS = [
   150, 180, 210, 240, 270, 300, 330, 360, 420, 480, 540, 600, 660, 720,
 ];
 
-/** Madde 2026-09-10: İsviçre turnuvasında tur sayısı (eski sabit-tur
- *  sisteminin varsayılanıyla AYNI aralık — bkz. eski TournamentArena
- *  migration'ının downgrade'indeki server_default=4). */
-const ROUNDS_OPTIONS = Array.from({ length: 14 }, (_, i) => i + 2); // 2..15
-
 const inputStyle: React.CSSProperties = {
   border: '1px solid var(--t-border)', background: 'var(--t-surface)', color: 'var(--t-text)',
 };
@@ -35,9 +30,23 @@ function nowTimeValue(): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-/** "Turnuva Oluştur" — Zafer'in gönderdiği görsele göre 5 satır/8 kutu:
- *  İsim+Süre / Başlangıç Tarihi+Saati / Açıklama / Tempo+Başlangıç Konumu /
- *  Puan Durumu+Galibiyet Ödülü (2026-09-06). */
+/** "Turnuva Oluştur" — Zafer'in gönderdiği ikinci görsele göre yeniden
+ *  düzenlendi (madde 2026-09-XX): Turnuva İsmi+Türü üstte (ayırıcı çizgiyle),
+ *  ardından Süre/Tur Sayısı+Tempo, Tarih+Saat, Konum+Puan Durumu, Galibiyet
+ *  Ödülü+Berserk, en altta Açıklama.
+ *
+ *  İsviçre seçilince 3 kart KAPANIR (disabled, sporcu seçim yapamaz):
+ *  - "Tur Sayısı": artık sporcu SEÇMİYOR — katılım kapanınca (1. tur
+ *    üretilirken) katılımcı sayısına göre backend'de otomatik hesaplanır
+ *    (bkz. services/swiss.py::compute_rounds_total). Kutuda sabit
+ *    "Katılımcıya Göre Değişir" yazar.
+ *  - "Galibiyet Ödülü" ve "Berserk": İsviçre'de HİÇ kullanılmıyor (Zafer'in
+ *    kararı) — "Olmasın" değerinde donuk kalır. Backend da bunu ayrıca
+ *    zorluyor (schemas/tournament.py::_type_specific_fields), frontend'in
+ *    devre dışı bırakmasına güvenilmiyor.
+ *
+ *  Berserk'in ayrıca eski tempo kısıtı (SADECE Yıldırım/Hızlı, Klasik'te
+ *  yok) da duruyor — Klasik tempoda Arena'da bile kapalı/donuk görünür. */
 export default function TournamentCreatePage() {
   const router = useRouter();
   const { settings } = useSettings();
@@ -55,16 +64,15 @@ export default function TournamentCreatePage() {
   const [startFen, setStartFen] = useState('');
   const [rated, setRated] = useState(defaults.rated);
   const [winningStreakBonus, setWinningStreakBonus] = useState(true);
-  // Madde 2026-09-10: "Turnuva Türü" (Arena/İsviçre) + "Berserk".
   const [tournamentType, setTournamentType] = useState<'arena' | 'swiss'>('arena');
-  const [roundsTotal, setRoundsTotal] = useState(4);
   const [berserkEnabled, setBerserkEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const isSwiss = tournamentType === 'swiss';
   // Berserk SADECE arena + Yıldırım/Hızlı tempoda anlamlı (services/tempo.py
-  // ile AYNI 3 kategori) — İsviçre'de veya Klasik'te kart hiç gösterilmez.
+  // ile AYNI 3 kategori) — İsviçre'de veya Klasik'te kart KAPALI (disabled)
+  // gösterilir, artık görselden hiç kaybolmaz (madde 2026-09-XX).
   const tempoCat = tc ? tempoCategoryOfLabel(tc.label) : '';
   const berserkAllowed = !isSwiss && (tempoCat === 'Yıldırım' || tempoCat === 'Hızlı');
 
@@ -82,9 +90,14 @@ export default function TournamentCreatePage() {
       rated,
       description: description.trim() || null,
       start_fen: startFen.trim() || null,
-      winning_streak_bonus: winningStreakBonus,
+      // İsviçre'de kullanılmaz — kart kapalıyken ekranda görünen "Olmasın"
+      // ile TUTARLI olsun diye gönderilen değer de burada zorlanır (backend
+      // ayrıca kendi başına da zorluyor, bkz. yukarıdaki yorum).
+      winning_streak_bonus: isSwiss ? false : winningStreakBonus,
       tournament_type: tournamentType,
-      rounds_total: isSwiss ? roundsTotal : null,
+      // Tur sayısı artık sporcu tarafından seçilmiyor — backend katılım
+      // kapanınca otomatik hesaplar (bkz. services/swiss.py).
+      rounds_total: null,
       berserk_enabled: berserkAllowed && berserkEnabled,
     });
     setBusy(false);
@@ -96,12 +109,13 @@ export default function TournamentCreatePage() {
   // CSS'i kaldırıldı (yoksa aşağıdaki string'ler ne yazılırsa yazılsın
   // görsel olarak hep BÜYÜK HARF görünürdü).
   const labelCls = 'text-xs font-semibold t-muted tracking-wide block mb-1.5';
+  const disabledSelectCls = 'w-full px-3 py-3 rounded-xl text-sm disabled:opacity-40';
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
       <p className="font-semibold text-sm">➕ Turnuva Oluştur</p>
 
-      {/* Satır 1: Turnuva İsmi + Turnuvanın Toplam Süresi */}
+      {/* Satır 1: Turnuva İsmi + Turnuva Türü */}
       <div className="grid gap-3" style={{ gridTemplateColumns: '1.6fr 1fr' }}>
         <div>
           <label htmlFor="t-name" className={labelCls}>Turnuva ismi</label>
@@ -110,14 +124,27 @@ export default function TournamentCreatePage() {
             className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
         </div>
         <div>
+          <label htmlFor="t-type" className={labelCls}>Turnuva türü</label>
+          <select id="t-type" value={tournamentType}
+            onChange={(e) => setTournamentType(e.target.value === 'swiss' ? 'swiss' : 'arena')}
+            className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
+            <option value="arena">Arena Turnuvası</option>
+            <option value="swiss">İsviçre Turnuvası</option>
+          </select>
+        </div>
+      </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--t-border)' }} />
+
+      {/* Satır 2: Turnuva Süresi/Tur Sayısı + Maç Süresi (Tempo) */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
           <label htmlFor="t-duration" className={labelCls}>
             {isSwiss ? 'Tur sayısı' : 'Turnuva süresi'}
           </label>
           {isSwiss ? (
-            <select id="t-duration" value={roundsTotal} onChange={(e) => setRoundsTotal(Number(e.target.value))}
-              className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
-              {ROUNDS_OPTIONS.map((n) => <option key={n} value={n}>{n} tur</option>)}
-            </select>
+            <input id="t-duration" disabled readOnly value="Katılımcıya Göre Değişir"
+              className="w-full px-4 py-3 rounded-xl text-sm disabled:opacity-40" style={inputStyle} />
           ) : (
             <select id="t-duration" value={duration} onChange={(e) => setDuration(Number(e.target.value))}
               className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
@@ -125,9 +152,21 @@ export default function TournamentCreatePage() {
             </select>
           )}
         </div>
+        <div>
+          <label htmlFor="t-tempo" className={labelCls}>Maç süresi (tempo)</label>
+          <select id="t-tempo" value={tc?.label ?? ''}
+            onChange={(e) => setTc(timeGroups.flatMap((g) => g.items).find((i) => i.label === e.target.value) ?? null)}
+            className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
+            {timeGroups.map((g) => (
+              <optgroup key={g.cat} label={`${g.emoji} ${g.cat}`}>
+                {g.items.map((item) => <option key={item.label} value={item.label}>{item.label}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Satır 2: Turnuva Başlangıç Tarihi + Turnuvanın Başlangıç Saati */}
+      {/* Satır 3: Başlangıç Tarihi + Başlangıç Saati */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="t-date" className={labelCls}>Başlangıç tarihi</label>
@@ -141,39 +180,14 @@ export default function TournamentCreatePage() {
         </div>
       </div>
 
-      {/* Satır 3: Turnuva İle İlgili Açıklama */}
-      <div>
-        <label htmlFor="t-desc" className={labelCls}>Turnuva ile ilgili açıklama</label>
-        <textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)}
-          placeholder="Turnuva hakkında sporculara göstermek istediğin bir not (opsiyonel)"
-          rows={3}
-          className="w-full px-4 py-3 rounded-xl text-sm resize-none" style={inputStyle} />
-      </div>
-
-      {/* Satır 4: Tempo + Başlangıç Konumu */}
+      {/* Satır 4: Başlangıç Konumu/FEN + Puan Durumu */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="t-tempo" className={labelCls}>Maç başı süre</label>
-          <select id="t-tempo" value={tc?.label ?? ''}
-            onChange={(e) => setTc(timeGroups.flatMap((g) => g.items).find((i) => i.label === e.target.value) ?? null)}
-            className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
-            {timeGroups.map((g) => (
-              <optgroup key={g.cat} label={`${g.emoji} ${g.cat}`}>
-                {g.items.map((item) => <option key={item.label} value={item.label}>{item.label}</option>)}
-              </optgroup>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="t-fen" className={labelCls}>Başlangıç konumu</label>
+          <label htmlFor="t-fen" className={labelCls}>Başlangıç konumu/FEN</label>
           <input id="t-fen" value={startFen} onChange={(e) => setStartFen(e.target.value)}
             placeholder="Boş = standart başlangıç, veya FEN yapıştır"
             className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
         </div>
-      </div>
-
-      {/* Satır 5: Puan Durumu + Galibiyet Ödülü */}
-      <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="t-rated" className={labelCls}>Puan durumu</label>
           <select id="t-rated" value={rated ? 'rated' : 'unrated'} onChange={(e) => setRated(e.target.value === 'rated')}
@@ -182,40 +196,41 @@ export default function TournamentCreatePage() {
             <option value="unrated">Puansız</option>
           </select>
         </div>
+      </div>
+
+      {/* Satır 5: Galibiyet Ödülü + Berserk — ikisi de İsviçre'de KAPALI
+          (disabled, "Olmasın" donuk); Berserk ayrıca Klasik tempoda da
+          kapalı (eski kısıt, madde 2026-09-10'dan değişmedi). */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="t-streak" className={labelCls}>Galibiyet ödülü</label>
-          <select id="t-streak" value={winningStreakBonus ? 'on' : 'off'}
+          <select id="t-streak" value={isSwiss ? 'off' : (winningStreakBonus ? 'on' : 'off')}
             onChange={(e) => setWinningStreakBonus(e.target.value === 'on')}
-            className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
+            disabled={isSwiss}
+            className={disabledSelectCls} style={inputStyle}>
             <option value="on">Ödül Olsun</option>
             <option value="off">Ödül Olmasın</option>
           </select>
         </div>
-      </div>
-
-      {/* Satır 6 (madde 2026-09-10): Turnuva Türü + Berserk — Berserk kartı
-          SADECE arena + Yıldırım/Hızlı tempoda görünür. */}
-      <div className={berserkAllowed ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3'}>
         <div>
-          <label htmlFor="t-type" className={labelCls}>Turnuva türü</label>
-          <select id="t-type" value={tournamentType}
-            onChange={(e) => setTournamentType(e.target.value === 'swiss' ? 'swiss' : 'arena')}
-            className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
-            <option value="arena">Arena Turnuvası</option>
-            <option value="swiss">İsviçre Turnuvası</option>
+          <label htmlFor="t-berserk" className={labelCls}>Berserk</label>
+          <select id="t-berserk" value={berserkAllowed ? (berserkEnabled ? 'on' : 'off') : 'off'}
+            onChange={(e) => setBerserkEnabled(e.target.value === 'on')}
+            disabled={!berserkAllowed}
+            className={disabledSelectCls} style={inputStyle}>
+            <option value="on">Olsun</option>
+            <option value="off">Olmasın</option>
           </select>
         </div>
-        {berserkAllowed && (
-          <div>
-            <label htmlFor="t-berserk" className={labelCls}>Berserk</label>
-            <select id="t-berserk" value={berserkEnabled ? 'on' : 'off'}
-              onChange={(e) => setBerserkEnabled(e.target.value === 'on')}
-              className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
-              <option value="on">Olsun</option>
-              <option value="off">Olmasın</option>
-            </select>
-          </div>
-        )}
+      </div>
+
+      {/* Satır 6: Turnuva İle İlgili Turnuva Kurucusunun Açıklamaları */}
+      <div>
+        <label htmlFor="t-desc" className={labelCls}>Turnuva ile ilgili turnuva kurucusunun açıklamaları</label>
+        <textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)}
+          placeholder="Turnuva hakkında sporculara göstermek istediğin bir not (opsiyonel)"
+          rows={5}
+          className="w-full px-4 py-3 rounded-xl text-sm resize-none" style={inputStyle} />
       </div>
 
       {msg && <p className="text-sm" style={{ color: 'var(--t-accent)' }}>{msg}</p>}
