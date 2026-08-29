@@ -22,14 +22,18 @@ function mockFetchOnce(data: unknown, ok = true) {
   return { ok, json: async () => data } as Response;
 }
 
+function standingRow(overrides: Record<string, unknown> = {}) {
+  return { child_id: 1, display_name: 'Ali', score: 4, sb: 2.5, streak: 2, rating: null, title: null, ...overrides };
+}
+
 function baseDetail(overrides: Record<string, unknown> = {}) {
   return {
     id: 1, name: 'Yaz Turnuvası',
     starts_at: new Date().toISOString(), duration_minutes: 60,
     ends_at: new Date().toISOString(), seconds_remaining: 1800,
     base_ms: 300000, increment_ms: 0, status: 'active', joined: true, rated: false, tempo: null,
-    description: null, start_fen: null, winning_streak_bonus: true,
-    standings: [{ child_id: 1, display_name: 'Ali', score: 4, sb: 2.5, streak: 2, rating: null, title: null }],
+    description: null, start_fen: null, winning_streak_bonus: true, participant_count: 1,
+    standings: [standingRow()],
     my_pairing: null,
     recent_pairings: [],
     ...overrides,
@@ -46,16 +50,16 @@ async function renderPage(detail: unknown) {
 describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
   beforeEach(() => { push.mockClear(); wsHandler = null; lastWsUrl = null; });
 
-  it('katılmamış sporcuya "Turnuvaya Katıl" butonu gösterir, kuyruğa bağlanmaz', async () => {
+  it('katılmamış sporcuya "KATIL" butonu gösterir, kuyruğa bağlanmaz', async () => {
     await renderPage(baseDetail({ joined: false }));
-    expect(screen.getByRole('button', { name: 'Turnuvaya Katıl' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'KATIL' })).toBeInTheDocument();
     expect(lastWsUrl).toBeNull();
   });
 
-  it('katılmış ve aktif ama eşleşmesi yoksa kuyruğa bağlanır ("Rakip aranıyor")', async () => {
+  it('katılmış ve aktif ama eşleşmesi yoksa kuyruğa bağlanır ve durum şeridi "Hazır Ol! Eşleşme Yapılıyor" gösterir', async () => {
     await renderPage(baseDetail({ joined: true, my_pairing: null }));
     expect(lastWsUrl).toContain('/ws/tournament/1/queue');
-    expect(screen.getByText(/Rakip aranıyor/)).toBeInTheDocument();
+    expect(screen.getByText(/Hazır Ol! Eşleşme Yapılıyor/)).toBeInTheDocument();
   });
 
   it('WS "matched" mesajı gelince /play/online/{gameId}\'e yönlendirir', async () => {
@@ -94,5 +98,49 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
     await waitFor(() => screen.getByRole('button', { name: 'Turnuvayı Sil' }));
     fireEvent.click(screen.getByRole('button', { name: 'Turnuvayı Sil' }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/play/tournament/lobby'));
+  });
+
+  describe('Madde 2026-09-09 (5): KATIL/ÇEKİL ve sayfalanan sıralama', () => {
+    it('katılan sporcuya "ÇEKİL" gösterilir, tıklayınca turnuvadan çıkar', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(mockFetchOnce(baseDetail({ joined: true })))
+        .mockResolvedValueOnce(mockFetchOnce({ joined: false }))
+        .mockResolvedValueOnce(mockFetchOnce(baseDetail({ joined: false })));
+      global.fetch = fetchMock;
+      render(<TournamentDetailView tournamentId={1} />);
+      await waitFor(() => screen.getByRole('button', { name: 'ÇEKİL' }));
+      fireEvent.click(screen.getByRole('button', { name: 'ÇEKİL' }));
+      await waitFor(() => expect(fetchMock.mock.calls[1][0]).toContain('/tournaments/1/leave'));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'KATIL' })).toBeInTheDocument());
+    });
+
+    it('katılımcı listesi 20\'den fazlaysa sayfalanır, gezinme düğmeleri çalışır', async () => {
+      const standings = Array.from({ length: 25 }, (_, i) =>
+        standingRow({ child_id: i + 1, display_name: `Sporcu${i + 1}`, score: 25 - i, streak: 0 }));
+      await renderPage(baseDetail({ standings, participant_count: 25 }));
+
+      expect(screen.getByText('1/2 - 25 Kişi')).toBeInTheDocument();
+      expect(screen.getByText('Sporcu1')).toBeInTheDocument();
+      expect(screen.queryByText('Sporcu21')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Önceki sayfa' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'İlk sayfa' })).toBeDisabled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sonraki sayfa' }));
+      expect(screen.getByText('2/2 - 25 Kişi')).toBeInTheDocument();
+      expect(screen.getByText('Sporcu21')).toBeInTheDocument();
+      expect(screen.queryByText('Sporcu1')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sonraki sayfa' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Son sayfa' })).toBeDisabled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'İlk sayfa' }));
+      expect(screen.getByText('1/2 - 25 Kişi')).toBeInTheDocument();
+    });
+
+    it('20 veya daha az katılımcıda sayfalama tek sayfa gösterir, düğmeler pasif', async () => {
+      await renderPage(baseDetail());
+      expect(screen.getByText('1/1 - 1 Kişi')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sonraki sayfa' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Son sayfa' })).toBeDisabled();
+    });
   });
 });

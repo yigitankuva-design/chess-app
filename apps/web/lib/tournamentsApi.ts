@@ -103,6 +103,18 @@ export async function joinTournament(id: number): Promise<boolean> {
   }
 }
 
+/** Madde 2026-09-09 (5): sporcu istediği zaman turnuvadan çıkabilsin. */
+export async function leaveTournament(id: number): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/tournaments/${id}/leave`, {
+      method: 'POST', headers: authHeaders(),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface TournamentCreatePayload {
   name: string;
   starts_at: string;          // ISO tarih-saat

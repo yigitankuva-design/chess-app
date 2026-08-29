@@ -1,24 +1,15 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTournament, joinTournament, deleteTournament } from '@/lib/tournamentsApi';
+import { getTournament, joinTournament, leaveTournament, deleteTournament } from '@/lib/tournamentsApi';
 import type { TournamentDetail } from '@/lib/tournamentsApi';
 import { formatPlayerLabel } from '@/lib/play/titles';
 import { useWebSocket, wsBase } from '@/lib/hooks/use-websocket';
 import { getToken } from '@/lib/auth-storage';
 
-const STATUS_LABEL: Record<TournamentDetail['status'], string> = {
-  upcoming: 'Başlamadı',
-  active: 'Devam ediyor',
-  finished: 'Bitti',
-};
-
-function tempoLabel(baseMs: number | null, incrementMs: number | null): string {
-  if (baseMs == null) return 'Süresiz';
-  const min = Math.round(baseMs / 60000);
-  const inc = incrementMs ? Math.round(incrementMs / 1000) : 0;
-  return `${min}+${inc}`;
-}
+/** Madde 2026-09-09 (5): sıralama tablosu sayfalanır — Zafer'in gönderdiği
+ *  görseldeki footer'da "1/10 - 256 Kişi" örneği bunu gösteriyor. */
+const STANDINGS_PAGE_SIZE = 20;
 
 function formatCountdown(totalSeconds: number): string {
   const clamped = Math.max(0, totalSeconds);
@@ -39,6 +30,7 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
   const [msg, setMsg] = useState<string | null>(null);
   const [queueStatus, setQueueStatus] = useState<'idle' | 'connecting' | 'waiting' | 'timeout'>('idle');
   const [retryKey, setRetryKey] = useState(0);
+  const [page, setPage] = useState(1);
 
   const refresh = useCallback(async () => {
     const d = await getTournament(tournamentId);
@@ -79,11 +71,23 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
     setQueueStatus(wsUrl ? 'connecting' : 'idle');
   }, [wsUrl]);
 
+  // Sayfa numarası, katılımcı listesi her yenilendiğinde (ör. biri turnuvadan
+  // çıkınca sayfa sayısı azalabilir) geçerli aralığa sığdırılır.
+  useEffect(() => { setPage(1); }, [tournamentId]);
+
   async function join() {
     setBusy(true); setMsg(null);
     const ok = await joinTournament(tournamentId);
     setBusy(false);
     if (!ok) { setMsg('Katılamadın, tekrar dene.'); return; }
+    await refresh();
+  }
+
+  async function leave() {
+    setBusy(true); setMsg(null);
+    const ok = await leaveTournament(tournamentId);
+    setBusy(false);
+    if (!ok) { setMsg('Çıkış yapılamadı, tekrar dene.'); return; }
     await refresh();
   }
 
@@ -103,83 +107,135 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
     );
   }
 
+  const totalPages = Math.max(1, Math.ceil(detail.standings.length / STANDINGS_PAGE_SIZE));
+  const activePage = Math.min(page, totalPages);
+  const pageRows = detail.standings.slice(
+    (activePage - 1) * STANDINGS_PAGE_SIZE, activePage * STANDINGS_PAGE_SIZE,
+  );
+
+  /** Üst şeritteki tek satırlık durum mesajı — Zafer'in görseldeki
+   *  "Hazır Ol! Eşleşme Yapılıyor" örneğiyle AYNI dil. */
+  function statusText(): string {
+    if (detail!.status === 'finished') return 'Turnuva sona erdi.';
+    if (!detail!.joined) {
+      return detail!.status === 'upcoming'
+        ? `${new Date(detail!.starts_at).toLocaleString('tr-TR')} tarihinde başlayacak.`
+        : 'Turnuva devam ediyor, katılabilirsin.';
+    }
+    if (detail!.status === 'upcoming') return 'Turnuva başlayınca eşleşme yapılacak.';
+    if (detail!.my_pairing) return `${detail!.my_pairing.opponent_name ?? 'Sporcu'} ile maçın sürüyor.`;
+    if (queueStatus === 'timeout') return 'Şu an rakip yok.';
+    return 'Hazır Ol! Eşleşme Yapılıyor';
+  }
+
+  const remainingLabel = detail.status === 'active' ? formatCountdown(secondsLeft)
+    : detail.status === 'upcoming' ? '--:--' : '0:00';
+
   return (
-    <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-      <div className="t-card-i p-4 space-y-1">
-        <p className="font-bold text-sm">🏆 {detail.name}</p>
-        <p className="text-xs t-muted">
-          {STATUS_LABEL[detail.status]} · {detail.duration_minutes} dk · {tempoLabel(detail.base_ms, detail.increment_ms)}
-          {detail.rated && <> · 🏆 Puanlı</>}
-        </p>
-        {detail.status === 'active' && (
-          <p className="text-2xl font-bold" style={{ color: 'var(--t-accent)' }}>{formatCountdown(secondsLeft)}</p>
-        )}
-        {detail.status === 'upcoming' && (
-          <p className="text-sm t-muted">
-            {new Date(detail.starts_at).toLocaleString('tr-TR')} tarihinde başlayacak.
-          </p>
-        )}
-      </div>
-
-      {!detail.joined && detail.status !== 'finished' && (
-        <button type="button" disabled={busy} onClick={join} className="t-btn px-4 py-2.5 text-sm w-full">
-          {busy ? 'Katılıyor...' : 'Turnuvaya Katıl'}
-        </button>
-      )}
-
-      {detail.joined && detail.status === 'active' && (
-        detail.my_pairing ? (
-          <div className="t-card-i p-4 space-y-2">
-            <p className="text-sm">
-              Rakibin: <span className="font-semibold">{detail.my_pairing.opponent_name ?? 'Sporcu'}</span>{' '}
-              ({detail.my_pairing.my_color === 'white' ? 'Beyaz' : 'Siyah'} oynuyorsun)
-            </p>
-            <button type="button"
-              onClick={() => router.push(`/play/online/${detail.my_pairing!.game_id}?color=${detail.my_pairing!.my_color}`)}
-              className="t-btn px-4 py-2.5 text-sm w-full">
-              Maça Devam Et
+    <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-3">
+      <div className="t-card-i overflow-hidden">
+        {/* Madde 2026-09-09 (5), görsel satır 1: Turnuva İsmi + Katılım Durumu.
+            Sporcu katılınca "KATIL" yerine "ÇEKİL" görünür, istediği an çıkabilir. */}
+        <div className="flex items-center justify-between gap-3 px-4 py-3"
+          style={{ borderBottom: '1px solid var(--t-border)' }}>
+          <p className="font-bold text-base truncate">🏆 {detail.name}</p>
+          {detail.joined ? (
+            <button type="button" disabled={busy} onClick={leave}
+              className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50 flex-shrink-0"
+              style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171' }}>
+              {busy ? '...' : 'ÇEKİL'}
             </button>
-          </div>
-        ) : (
-          <div className="t-card-i p-4 text-center space-y-2">
-            {queueStatus === 'timeout' ? (
-              <>
-                <p className="text-sm t-muted">Şu an rakip yok.</p>
-                <button type="button" onClick={() => setRetryKey((k) => k + 1)} className="t-btn-ghost px-4 py-2 text-sm">
-                  Tekrar Dene
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="text-3xl animate-pulse">⏳</div>
-                <p className="text-sm t-muted">Rakip aranıyor...</p>
-              </>
-            )}
-          </div>
-        )
-      )}
+          ) : detail.status !== 'finished' ? (
+            <button type="button" disabled={busy} onClick={join}
+              className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50 flex-shrink-0"
+              style={{ background: 'var(--t-accent)', color: '#fff' }}>
+              {busy ? '...' : 'KATIL'}
+            </button>
+          ) : null}
+        </div>
 
-      {msg && <p className="text-sm" style={{ color: 'var(--t-accent)' }}>{msg}</p>}
+        {/* Görsel satır 2: durum şeridi ("Hazır Ol! Eşleşme Yapılıyor" vb.). */}
+        <div className="px-4 py-2.5 text-center text-sm font-semibold"
+          style={{ background: 'rgba(255,255,255,0.06)', borderBottom: '1px solid var(--t-border)' }}>
+          {(queueStatus === 'connecting' || queueStatus === 'waiting') && (
+            <span className="inline-block mr-1.5 animate-pulse">⏳</span>
+          )}
+          {statusText()}
+        </div>
 
-      <div className="t-card-i p-4">
-        <p className="text-xs font-semibold t-muted uppercase tracking-wide mb-2">Sıralama</p>
-        {detail.standings.length === 0 ? (
-          <p className="text-sm t-muted">Henüz katılımcı yok.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {detail.standings.map((row, i) => (
-              <div key={row.child_id} className="flex items-center gap-3 text-sm">
-                <span className="t-muted w-5 text-right">{i + 1}.</span>
-                <span className="flex-1">
-                  {formatPlayerLabel(row.display_name ?? 'Sporcu', row.rating, row.title)}
-                  {detail.winning_streak_bonus && row.streak >= 2 && <> 🔥</>}
-                </span>
-                <span className="t-muted text-xs w-10 text-right">{row.sb.toFixed(1)}</span>
-                <span className="font-semibold w-8 text-right">{row.score}</span>
-              </div>
-            ))}
-          </div>
+        {detail.joined && detail.status === 'active' && (
+          detail.my_pairing ? (
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--t-border)' }}>
+              <button type="button"
+                onClick={() => router.push(`/play/online/${detail.my_pairing!.game_id}?color=${detail.my_pairing!.my_color}`)}
+                className="t-btn px-4 py-2.5 text-sm w-full">
+                Maça Devam Et
+              </button>
+            </div>
+          ) : queueStatus === 'timeout' ? (
+            <div className="px-4 py-3 text-center" style={{ borderBottom: '1px solid var(--t-border)' }}>
+              <button type="button" onClick={() => setRetryKey((k) => k + 1)} className="t-btn-ghost px-4 py-2 text-sm">
+                Tekrar Dene
+              </button>
+            </div>
+          ) : null
         )}
+
+        {msg && <p className="px-4 py-2 text-sm" style={{ color: 'var(--t-accent)' }}>{msg}</p>}
+
+        {/* Görsel satır 3-4: Sıra / İsim / Puan tablosu. */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th className="pl-4 pr-2 py-2 text-xs italic font-semibold t-muted text-left w-12">Sıra</th>
+                <th className="px-2 py-2 text-xs italic font-semibold t-muted text-left">İsim</th>
+                <th className="px-2 pr-4 py-2 text-xs italic font-semibold t-muted text-right w-16">Puan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.length === 0 ? (
+                <tr><td colSpan={3} className="px-4 py-5 text-center text-sm t-muted">Henüz katılımcı yok.</td></tr>
+              ) : pageRows.map((row, i) => (
+                <tr key={row.child_id} style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.08)' : undefined }}>
+                  <td className="pl-4 pr-2 py-2 t-muted">{(activePage - 1) * STANDINGS_PAGE_SIZE + i + 1}</td>
+                  <td className="px-2 py-2">
+                    {formatPlayerLabel(row.display_name ?? 'Sporcu', row.rating, row.title)}
+                    {detail.winning_streak_bonus && row.streak >= 2 && <> 🔥</>}
+                  </td>
+                  <td className="px-2 pr-4 py-2 text-right font-semibold">{row.score}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Görsel satır 5: Kalan Süre · Sayfa/Toplam Kişi · İleri-Geri Gitme. */}
+        <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: '1px solid var(--t-border)' }}>
+          <div className="px-3 py-1.5 rounded-md text-xs font-bold text-center t-muted"
+            style={{ border: '1px solid var(--t-border)' }}>
+            {remainingLabel}
+          </div>
+          <div className="flex-1 px-3 py-1.5 rounded-md text-xs font-semibold text-center"
+            style={{ border: '1px solid var(--t-border)' }}>
+            {activePage}/{totalPages} - {detail.participant_count} Kişi
+          </div>
+          <div className="flex items-center gap-0.5 px-1.5 py-1 rounded-md"
+            style={{ border: '1px solid var(--t-border)' }}>
+            <button type="button" aria-label="İlk sayfa" disabled={activePage === 1}
+              onClick={() => setPage(1)}
+              className="px-1.5 py-1 text-sm disabled:opacity-30">⏮</button>
+            <button type="button" aria-label="Önceki sayfa" disabled={activePage === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="px-1.5 py-1 text-sm disabled:opacity-30">◀</button>
+            <button type="button" aria-label="Sonraki sayfa" disabled={activePage === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="px-1.5 py-1 text-sm disabled:opacity-30">▶</button>
+            <button type="button" aria-label="Son sayfa" disabled={activePage === totalPages}
+              onClick={() => setPage(totalPages)}
+              className="px-1.5 py-1 text-sm disabled:opacity-30">⏭</button>
+          </div>
+        </div>
       </div>
 
       <button type="button" disabled={busy} onClick={remove}

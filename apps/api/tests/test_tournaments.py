@@ -348,6 +348,54 @@ async def test_bitmis_turnuvaya_katilinamaz(client, db):
 
 
 @pytest.mark.asyncio
+async def test_sporcu_turnuvadan_cikabilir(client, db):
+    """Madde 2026-09-09 (5): sporcu istediği zaman turnuvadan çıkabilir —
+    katılım kaydı silinir, /tournaments listesinde joined=False'a döner ve
+    tekrar GET ile detaya bakınca da joined=False görünür."""
+    _, teacher_id = await _teacher(client, "t9a@t.com")
+    parent_id = await _parent_id(client, "p9a@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    joiner = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, creator.id)
+    await client.post(f"/tournaments/{created['id']}/join", headers=_child_headers(joiner.id))
+
+    r = await client.post(f"/tournaments/{created['id']}/leave", headers=_child_headers(joiner.id))
+    assert r.status_code == 200
+    assert r.json()["joined"] is False
+
+    r_get = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(joiner.id))
+    assert r_get.json()["joined"] is False
+
+
+@pytest.mark.asyncio
+async def test_katilmamis_sporcu_cikinca_hata_vermez(client, db):
+    """Hiç katılmamış bir sporcu 'leave' çağırırsa da 200 dönmeli (idempotent)."""
+    _, teacher_id = await _teacher(client, "t9b@t.com")
+    parent_id = await _parent_id(client, "p9b@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    outsider = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, creator.id)
+
+    r = await client.post(f"/tournaments/{created['id']}/leave", headers=_child_headers(outsider.id))
+    assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_detay_participant_count_dondurur(client, db):
+    """Detay sayfası footer'ı ('Toplam Kişi Sayısı') için GET /tournaments/{id}
+    de listeleme ucundaki gibi participant_count döndürmeli."""
+    _, teacher_id = await _teacher(client, "t9c@t.com")
+    parent_id = await _parent_id(client, "p9c@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    joiner = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, creator.id)
+    await client.post(f"/tournaments/{created['id']}/join", headers=_child_headers(joiner.id))
+
+    r = await client.get(f"/tournaments/{created['id']}", headers=_child_headers(creator.id))
+    assert r.json()["participant_count"] == 2
+
+
+@pytest.mark.asyncio
 async def test_turnuva_silinebilir(client, db):
     _, teacher_id = await _teacher(client, "t8b@t.com")
     parent_id = await _parent_id(client, "p8b@t.com")

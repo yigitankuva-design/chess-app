@@ -186,6 +186,27 @@ async def join_tournament(
     return {"joined": True}
 
 
+@router.post("/tournaments/{tournament_id}/leave", status_code=200)
+async def leave_tournament(
+    tournament_id: int,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-09 (5): sporcu istediği zaman turnuvadan çıkabilir —
+    katılım kaydı silinir, sıralamadan düşer ve bir daha eşleştirilmez.
+    Sürmekte olan maçı ETKİLENMEZ (TournamentPairing çocuk id'sine bakar,
+    katılım kaydına değil) — sadece bitirilir, ondan sonra eşleşmez."""
+    t = await db.get(Tournament, tournament_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    await db.execute(delete(TournamentParticipant).where(
+        TournamentParticipant.tournament_id == tournament_id,
+        TournamentParticipant.child_id == child.id,
+    ))
+    await db.commit()
+    return {"joined": False}
+
+
 async def _standings(db: AsyncSession, tournament_id: int, tempo: str | None = None) -> list[dict]:
     participants = (await db.execute(
         select(TournamentParticipant).where(TournamentParticipant.tournament_id == tournament_id)
@@ -276,9 +297,16 @@ async def get_tournament(
             TournamentParticipant.child_id == child.id,
         )
     )).first() is not None
+    # Detay sayfasi footer'i icin ("Toplam Kisi Sayisi", 2026-09-09 madde 5).
+    participant_count = (await db.execute(
+        select(func.count(TournamentParticipant.id)).where(
+            TournamentParticipant.tournament_id == tournament_id,
+        )
+    )).scalar_one()
     return {
         **_tournament_out(t),
         "joined": joined,
+        "participant_count": participant_count,
         "standings": await _standings(db, tournament_id, tempo),
         "my_pairing": await _my_active_pairing(db, tournament_id, child.id),
         "recent_pairings": await _recent_pairings(db, tournament_id),
