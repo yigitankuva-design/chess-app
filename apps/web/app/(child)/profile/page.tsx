@@ -2,11 +2,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { XPBar } from '@/components/XPBar';
-import { AvatarSelector } from '@/components/AvatarSelector';
-import { ChessThemeSelector } from '@/components/ChessThemeSelector';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
-import { getSavedAvatar, saveAvatar, avatarEmoji } from '@/lib/avatars';
+import { getSavedAvatar, avatarEmoji } from '@/lib/avatars';
 import { PowerButton } from '@/components/PowerButton';
 
 interface Me {
@@ -75,38 +73,22 @@ export default function ProfilePage() {
   return (
     <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-4">
 
-      {/* Stats card */}
+      {/* Madde 2026-09-XX: "Sporcu Profili" yeniden tasarlanıyor — Rozet
+          Bilgisi, Avatar Seçimi ve Tahta Seçimi kartları Zafer'in kararıyla
+          kaldırıldı (bkz. Turnuva Uygulama Mimarisi tarzı araştırma/rapor
+          süreci). Kimlik başlığı (avatar görüntüsü + isim + rütbe + XP)
+          şimdilik kalıyor, tasarım buradan devam edecek. */}
       <div className="t-card p-5 space-y-4">
         <div className="text-center space-y-1">
           <div className="text-5xl mb-2">{avatarEmoji(avatarId)}</div>
           {athleteName && <p className="text-lg font-bold">{athleteName}</p>}
           <p className="text-sm t-muted">{me.rank_name}</p>
-          <p className="text-sm t-muted">🏆 {me.badges_earned} / {me.badges_total} rozet</p>
         </div>
         <XPBar
           currentXP={me.xp_total}
           rankName={me.rank_name}
           nextRankXP={me.next_rank_xp}
         />
-      </div>
-
-      {/* Avatar selector */}
-      <div className="t-card p-5">
-        <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-3">
-          Avatarını seç
-        </p>
-        <AvatarSelector
-          value={avatarId}
-          onChange={(id) => {
-            setAvatarId(id);
-            saveAvatar(id);
-          }}
-        />
-      </div>
-
-      {/* Theme selector */}
-      <div className="t-card p-5">
-        <ChessThemeSelector />
       </div>
 
       {/* Ana sayfa + Çıkış (power ikonu) */}
