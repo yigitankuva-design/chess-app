@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { XPBar } from '@/components/XPBar';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
 import { getSavedAvatar, avatarEmoji } from '@/lib/avatars';
@@ -74,21 +73,15 @@ export default function ProfilePage() {
     <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-4">
 
       {/* Madde 2026-09-XX: "Sporcu Profili" yeniden tasarlanıyor — Rozet
-          Bilgisi, Avatar Seçimi ve Tahta Seçimi kartları Zafer'in kararıyla
-          kaldırıldı (bkz. Turnuva Uygulama Mimarisi tarzı araştırma/rapor
-          süreci). Kimlik başlığı (avatar görüntüsü + isim + rütbe + XP)
-          şimdilik kalıyor, tasarım buradan devam edecek. */}
+          Bilgisi, Avatar Seçimi, Tahta Seçimi, Rütbe Adı ve XP Çubuğu
+          Zafer'in kararıyla kaldırıldı (bkz. Turnuva Uygulama Mimarisi
+          tarzı araştırma/rapor süreci). Kimlik başlığı (avatar görüntüsü +
+          isim) şimdilik kalıyor, tasarım buradan devam edecek. */}
       <div className="t-card p-5 space-y-4">
         <div className="text-center space-y-1">
           <div className="text-5xl mb-2">{avatarEmoji(avatarId)}</div>
           {athleteName && <p className="text-lg font-bold">{athleteName}</p>}
-          <p className="text-sm t-muted">{me.rank_name}</p>
         </div>
-        <XPBar
-          currentXP={me.xp_total}
-          rankName={me.rank_name}
-          nextRankXP={me.next_rank_xp}
-        />
       </div>
 
       {/* Ana sayfa + Çıkış (power ikonu) */}
