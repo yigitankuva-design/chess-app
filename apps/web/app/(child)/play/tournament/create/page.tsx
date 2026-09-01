@@ -12,6 +12,9 @@ const DURATIONS = [
   150, 180, 210, 240, 270, 300, 330, 360, 420, 480, 540, 600, 660, 720,
 ];
 
+/** Madde 2026-09-XX: İsviçre'de "Tur Arası Süre" — sabit 4 seçenek. */
+const ROUND_GAP_OPTIONS = [5, 10, 15, 30] as const;
+
 const inputStyle: React.CSSProperties = {
   border: '1px solid var(--t-border)', background: 'var(--t-surface)', color: 'var(--t-text)',
 };
@@ -46,7 +49,13 @@ function nowTimeValue(): string {
  *    devre dışı bırakmasına güvenilmiyor.
  *
  *  Berserk'in ayrıca eski tempo kısıtı (SADECE Yıldırım/Hızlı, Klasik'te
- *  yok) da duruyor — Klasik tempoda Arena'da bile kapalı/donuk görünür. */
+ *  yok) da duruyor — Klasik tempoda Arena'da bile kapalı/donuk görünür.
+ *
+ *  Madde 2026-09-XX ("Tur Arası Süre"): İsviçre'de "Başlangıç Konumu/FEN"
+ *  alanının YERİNE "Tur Arası Süre" (5/10/15/30 dk) seçimi gelir — bir tur
+ *  bitince sıradaki tur artık anında değil, bu kadar süre sonra üretilir
+ *  (bkz. services/swiss.py::advance_swiss_tournament). İsviçre'de FEN
+ *  belirlenemez, her zaman standart başlangıçtan oynanır. */
 export default function TournamentCreatePage() {
   const router = useRouter();
   const { settings } = useSettings();
@@ -62,6 +71,7 @@ export default function TournamentCreatePage() {
   const [description, setDescription] = useState('');
   const [tc, setTc] = useState<TimeControl | null>(defaultTc);
   const [startFen, setStartFen] = useState('');
+  const [roundGapMinutes, setRoundGapMinutes] = useState<typeof ROUND_GAP_OPTIONS[number]>(5);
   const [rated, setRated] = useState(defaults.rated);
   const [winningStreakBonus, setWinningStreakBonus] = useState(true);
   const [tournamentType, setTournamentType] = useState<'arena' | 'swiss'>('arena');
@@ -89,7 +99,10 @@ export default function TournamentCreatePage() {
       base_ms: tc.base * 1000, increment_ms: tc.increment * 1000,
       rated,
       description: description.trim() || null,
-      start_fen: startFen.trim() || null,
+      // Madde 2026-09-XX: İsviçre'de bu alan yok — slot "Tur Arası Süre"ye
+      // döndü (backend de start_fen'i İsviçre'de zaten None'a zorluyor).
+      start_fen: isSwiss ? null : (startFen.trim() || null),
+      round_gap_minutes: isSwiss ? roundGapMinutes : null,
       // İsviçre'de kullanılmaz — kart kapalıyken ekranda görünen "Olmasın"
       // ile TUTARLI olsun diye gönderilen değer de burada zorlanır (backend
       // ayrıca kendi başına da zorluyor, bkz. yukarıdaki yorum).
@@ -180,13 +193,26 @@ export default function TournamentCreatePage() {
         </div>
       </div>
 
-      {/* Satır 4: Başlangıç Konumu/FEN + Puan Durumu */}
+      {/* Satır 4: (Arena: Başlangıç Konumu/FEN | İsviçre: Tur Arası Süre) + Puan Durumu */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="t-fen" className={labelCls}>Başlangıç konumu/FEN</label>
-          <input id="t-fen" value={startFen} onChange={(e) => setStartFen(e.target.value)}
-            placeholder="Boş = standart başlangıç, veya FEN yapıştır"
-            className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
+          {isSwiss ? (
+            <>
+              <label htmlFor="t-round-gap" className={labelCls}>Tur arası süre</label>
+              <select id="t-round-gap" value={roundGapMinutes}
+                onChange={(e) => setRoundGapMinutes(Number(e.target.value) as typeof ROUND_GAP_OPTIONS[number])}
+                className="w-full px-3 py-3 rounded-xl text-sm" style={inputStyle}>
+                {ROUND_GAP_OPTIONS.map((m) => <option key={m} value={m}>{m} dk</option>)}
+              </select>
+            </>
+          ) : (
+            <>
+              <label htmlFor="t-fen" className={labelCls}>Başlangıç konumu/FEN</label>
+              <input id="t-fen" value={startFen} onChange={(e) => setStartFen(e.target.value)}
+                placeholder="Boş = standart başlangıç, veya FEN yapıştır"
+                className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
+            </>
+          )}
         </div>
         <div>
           <label htmlFor="t-rated" className={labelCls}>Puan durumu</label>

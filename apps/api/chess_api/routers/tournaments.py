@@ -74,6 +74,7 @@ def _tournament_out(t: Tournament) -> dict:
         "tournament_type": t.tournament_type.value,
         "rounds_total": t.rounds_total, "current_round": t.current_round,
         "berserk_enabled": t.berserk_enabled,
+        "round_gap_minutes": t.round_gap_minutes,
     }
 
 
@@ -148,6 +149,7 @@ async def create_tournament(
         tournament_type=TournamentType(payload.tournament_type),
         rounds_total=payload.rounds_total, current_round=0,
         berserk_enabled=payload.berserk_enabled,
+        round_gap_minutes=payload.round_gap_minutes,
     )
     db.add(t)
     await db.flush()

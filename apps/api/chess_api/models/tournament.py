@@ -50,6 +50,17 @@ class Tournament(Base):
     # başlamadı). Arena'da ikisi de NULL kalır.
     rounds_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_round: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0, server_default="0")
+    # Madde 2026-09-XX: "Tur Arası Süre" — SADECE İsviçre'de dolu (5/10/15/30
+    # dakikadan biri, turnuva oluştururken kurucu seçer). Bir tur biterken
+    # (tüm eşleşmeler sonuçlanınca) sıradaki tur ANINDA değil, bu kadar süre
+    # sonra üretilir — küçük yaştaki sporculara maçlar arası nefes payı.
+    # Eski (bu alandan ÖNCE oluşturulmuş) turnuvalarda NULL kalır — geriye
+    # dönük uyum için 0 dakika (anında geçiş, eski davranış) gibi davranılır.
+    round_gap_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Şu anki tur ne zaman "hazır" (tüm eşleşmeleri sonuçlanmış) hale geldi —
+    # tur arası bekleme süresinin BAŞLANGIÇ anını tutar. Sıradaki tur
+    # üretilince NULL'a döner (services/swiss.py::advance_swiss_tournament).
+    round_ready_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # "Berserk" (2026-09-10): SADECE arena + Yıldırım/Hızlı tempoda etkindir
     # (bkz. services/tempo.py::tempo_category) — kontrol routers/live_game.py
     # _handle_berserk'te yapılır, burada sadece sporcunun TERCİHİ tutulur.

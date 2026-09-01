@@ -904,7 +904,7 @@ async def test_isvicre_turnuva_olusturulabilir(client, db):
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
         "name": "İsviçre Turnuvası", "starts_at": future,
-        "tournament_type": "swiss", "rounds_total": 5,
+        "tournament_type": "swiss", "rounds_total": 5, "round_gap_minutes": 10,
         "base_ms": 300000, "increment_ms": 2000,
     })
     assert r.status_code == 201, r.text
@@ -914,6 +914,7 @@ async def test_isvicre_turnuva_olusturulabilir(client, db):
     assert body["current_round"] == 0
     assert body["duration_minutes"] is None
     assert body["ends_at"] is None
+    assert body["round_gap_minutes"] == 10
 
 
 @pytest.mark.asyncio
@@ -927,13 +928,75 @@ async def test_isvicre_odul_ve_berserk_zorla_kapali(client, db):
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
         "name": "X", "starts_at": future, "tournament_type": "swiss",
-        "base_ms": 300000, "increment_ms": 2000,
+        "base_ms": 300000, "increment_ms": 2000, "round_gap_minutes": 15,
         "winning_streak_bonus": True, "berserk_enabled": True,
     })
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["winning_streak_bonus"] is False
     assert body["berserk_enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_isvicre_tur_arasi_sure_zorunlu(client, db):
+    """Madde 2026-09-XX: 'Tur Arası Süre' İsviçre'de ZORUNLU — verilmezse 422."""
+    _, teacher_id = await _teacher(client, "tsw9@t.com")
+    parent_id = await _parent_id(client, "psw9@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "X", "starts_at": future, "tournament_type": "swiss",
+        "base_ms": 300000, "increment_ms": 2000,
+    })
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_isvicre_tur_arasi_sure_gecersiz_deger_reddedilir(client, db):
+    """Madde 2026-09-XX: sadece 5/10/15/30 kabul edilir — ör. 7 dakika 422 döner."""
+    _, teacher_id = await _teacher(client, "tsw10@t.com")
+    parent_id = await _parent_id(client, "psw10@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "X", "starts_at": future, "tournament_type": "swiss",
+        "base_ms": 300000, "increment_ms": 2000, "round_gap_minutes": 7,
+    })
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_isvicre_fen_gonderilse_bile_yok_sayilir(client, db):
+    """Madde 2026-09-XX: İsviçre'de 'Başlangıç Konumu/FEN' alanı yok (slot
+    'Tur Arası Süre'ye ait) — client eski bir ekrandan start_fen gönderse
+    bile backend zorla None'a çeker."""
+    _, teacher_id = await _teacher(client, "tsw11@t.com")
+    parent_id = await _parent_id(client, "psw11@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "X", "starts_at": future, "tournament_type": "swiss",
+        "base_ms": 300000, "increment_ms": 2000, "round_gap_minutes": 30,
+        "start_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    })
+    assert r.status_code == 201, r.text
+    assert r.json()["start_fen"] is None
+
+
+@pytest.mark.asyncio
+async def test_arena_tur_arasi_sure_gonderilse_bile_yok_sayilir(client, db):
+    """Madde 2026-09-XX: Arena'da 'Tur Arası Süre' anlamsız — client gönderse
+    bile backend None'a çeker."""
+    _, teacher_id = await _teacher(client, "tsw12@t.com")
+    parent_id = await _parent_id(client, "psw12@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
+        "name": "X", "starts_at": future, "duration_minutes": 60,
+        "base_ms": 300000, "increment_ms": 2000, "round_gap_minutes": 10,
+    })
+    assert r.status_code == 201, r.text
+    assert r.json()["round_gap_minutes"] is None
 
 
 def test_isvicre_puanlama_klasik_olcek():
@@ -965,7 +1028,7 @@ async def test_isvicre_mac_bitince_klasik_puan_verir(client, db, db_engine, monk
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
         "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
-        "base_ms": 300000, "increment_ms": 0,
+        "base_ms": 300000, "increment_ms": 0, "round_gap_minutes": 5,
     })
     tid = r.json()["id"]
     await client.post(f"/tournaments/{tid}/join", headers=_child_headers(joiner.id))
@@ -1006,7 +1069,7 @@ async def test_isvicre_bay_klasik_1_puan_verir(client, db, db_engine, monkeypatc
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
         "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
-        "base_ms": 300000, "increment_ms": 0,
+        "base_ms": 300000, "increment_ms": 0, "round_gap_minutes": 5,
     })
     tid = r.json()["id"]
     await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
@@ -1052,7 +1115,7 @@ async def test_isvicre_1_tur_basladiktan_sonra_gec_katilim_acik(client, db, db_e
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
         "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
-        "base_ms": 300000, "increment_ms": 0,
+        "base_ms": 300000, "increment_ms": 0, "round_gap_minutes": 5,
     })
     tid = r.json()["id"]
     await client.post(f"/tournaments/{tid}/join", headers=_child_headers(b.id))
@@ -1097,7 +1160,7 @@ async def test_isvicre_tur_sayisi_katilimciya_gore_hesaplanir(client, db, db_eng
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
         "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
-        "base_ms": 300000, "increment_ms": 0,
+        "base_ms": 300000, "increment_ms": 0, "round_gap_minutes": 5,
     })
     tid = r.json()["id"]
     assert r.json()["rounds_total"] is None  # oluşturma anında henüz belirsiz
@@ -1123,7 +1186,7 @@ async def test_recent_pairings_round_number_dondurur(client, db, db_engine, monk
     future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
     r = await client.post("/tournaments", headers=_child_headers(creator.id), json={
         "name": "İsviçre", "starts_at": future, "tournament_type": "swiss",
-        "base_ms": 300000, "increment_ms": 0,
+        "base_ms": 300000, "increment_ms": 0, "round_gap_minutes": 5,
     })
     tid = r.json()["id"]
     await client.post(f"/tournaments/{tid}/join", headers=_child_headers(joiner.id))

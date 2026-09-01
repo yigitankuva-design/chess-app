@@ -51,6 +51,12 @@ class TournamentCreateRequest(BaseModel):
     # SADECE arena + Yıldırım/Hızlı tempoda gerçekten etkin olur (kontrol
     # routers/live_game.py::_handle_berserk'te) — burada sadece tercih.
     berserk_enabled: bool = False
+    # Madde 2026-09-XX: "Tur Arası Süre" — SADECE İsviçre'de ZORUNLU (5/10/
+    # 15/30 dk), Arena'da kullanılmaz (None'a zorlanır). Turnuva Oluştur
+    # ekranında İsviçre seçiliyken "Başlangıç Konumu/FEN" alanının YERİNE
+    # geçer (bkz. _type_specific_fields — İsviçre'de start_fen de None'a
+    # zorlanır, o slot artık bu alana ait).
+    round_gap_minutes: Literal[5, 10, 15, 30] | None = None
 
     @model_validator(mode="after")
     def _type_specific_fields(self) -> "TournamentCreateRequest":
@@ -69,8 +75,12 @@ class TournamentCreateRequest(BaseModel):
             self.rounds_total = None
             self.winning_streak_bonus = False
             self.berserk_enabled = False
+            if self.round_gap_minutes is None:
+                raise ValueError("İsviçre turnuvasında tur arası süre zorunludur")
+            self.start_fen = None
         else:
             if self.duration_minutes is None:
                 raise ValueError("Turnuva süresi zorunludur")
             self.rounds_total = None
+            self.round_gap_minutes = None
         return self

@@ -99,6 +99,7 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
     expect(body.tournament_type).toBe('arena');
     expect(body.rounds_total).toBeNull();
     expect(body.berserk_enabled).toBe(false);
+    expect(body.round_gap_minutes).toBeNull();
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/play/tournament/42'));
   });
@@ -167,7 +168,7 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
       expect(berserk).toHaveValue('off');
     });
 
-    it('İsviçre turnuvası oluşturulunca duration_minutes/rounds_total null, galibiyet ödülü/berserk false gönderilir', async () => {
+    it('İsviçre turnuvası oluşturulunca duration_minutes/rounds_total/start_fen null, galibiyet ödülü/berserk false, tur arası süre gönderilir', async () => {
       const fetchMock = vi.fn().mockResolvedValue(mockFetchOnce({ id: 44, name: 'İsviçre' }));
       global.fetch = fetchMock;
       render(<TournamentCreatePage />);
@@ -180,8 +181,41 @@ describe('Turnuva Oluştur — /play/tournament/create', () => {
       expect(body.tournament_type).toBe('swiss');
       expect(body.rounds_total).toBeNull();
       expect(body.duration_minutes).toBeNull();
+      expect(body.start_fen).toBeNull();
       expect(body.winning_streak_bonus).toBe(false);
       expect(body.berserk_enabled).toBe(false);
+      expect(body.round_gap_minutes).toBe(5); // varsayılan (ilk seçenek)
+    });
+
+    it('İsviçre seçilince "Başlangıç konumu/FEN" kaybolur, yerine "Tur arası süre" (5/10/15/30 dk) gelir', () => {
+      render(<TournamentCreatePage />);
+      fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
+      expect(screen.queryByLabelText('Başlangıç konumu/FEN')).not.toBeInTheDocument();
+      const gapField = screen.getByLabelText('Tur arası süre') as HTMLSelectElement;
+      expect(gapField).toBeInTheDocument();
+      expect(gapField).not.toBeDisabled();
+      const values = Array.from(gapField.options).map((o) => o.value);
+      expect(values).toEqual(['5', '10', '15', '30']);
+    });
+
+    it('Arena seçiliyken "Tur arası süre" hiç görünmez, "Başlangıç konumu/FEN" görünür', () => {
+      render(<TournamentCreatePage />);
+      expect(screen.queryByLabelText('Tur arası süre')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Başlangıç konumu/FEN')).toBeInTheDocument();
+    });
+
+    it('Tur arası süre değiştirilip İsviçre oluşturulunca seçilen değer gönderilir', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(mockFetchOnce({ id: 46, name: 'İsviçre' }));
+      global.fetch = fetchMock;
+      render(<TournamentCreatePage />);
+      fireEvent.change(screen.getByLabelText('Turnuva ismi'), { target: { value: 'İsviçre' } });
+      fireEvent.change(screen.getByLabelText('Turnuva türü'), { target: { value: 'swiss' } });
+      fireEvent.change(screen.getByLabelText('Tur arası süre'), { target: { value: '30' } });
+      fireEvent.click(screen.getByRole('button', { name: /Turnuvayı Oluştur/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.round_gap_minutes).toBe(30);
     });
 
     it('Berserk "Olsun" seçilince payload\'da berserk_enabled=true gönderilir (Arena + Yıldırım/Hızlı)', async () => {

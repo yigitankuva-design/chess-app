@@ -171,6 +171,73 @@ async def test_tur_bitmeden_sonraki_tura_gecilmez(db):
     assert t.current_round == 1  # değişmedi, tur hâlâ sürüyor
 
 
+async def _bitmis_2_tur_turnuvasi(db, round_gap_minutes, round_ready_at=None):
+    """Yardımcı: rounds_total=3, 1. tur BİTMİŞ (sonuçlanmış) — 2. tura
+    geçilip geçilmeyeceği round_gap_minutes/round_ready_at'e bağlı."""
+    t = Tournament(
+        name="X", created_by_user_id=1, tournament_type=TournamentType.swiss,
+        status=TournamentStatus.active, starts_at=datetime.utcnow(),
+        rounds_total=3, current_round=1,
+        round_gap_minutes=round_gap_minutes, round_ready_at=round_ready_at,
+    )
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    p2 = ChildProfile(parent_user_id=1, display_name="B", age=9, pin_hash="x")
+    db.add_all([p1, p2])
+    await db.commit()
+    await db.refresh(p1)
+    await db.refresh(p2)
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p1.id))
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p2.id))
+    await db.commit()
+    db.add(TournamentPairing(
+        tournament_id=t.id, white_child_id=p1.id, black_child_id=p2.id,
+        round_number=1, result="1-0",
+    ))
+    await db.commit()
+    return t
+
+
+@pytest.mark.asyncio
+async def test_tur_arasi_sure_varsa_hemen_gecilmez_bekleme_baslatilir(db):
+    """Madde 2026-09-XX ('Tur Arası Süre'): tur biter bitmez sıradaki tur
+    ARTIK anında üretilmiyor — round_gap_minutes>0 VE round_ready_at henüz
+    yoksa, bu an round_ready_at'e yazılır ve turnuva 1. turda BEKLER."""
+    t = await _bitmis_2_tur_turnuvasi(db, round_gap_minutes=10)
+    await advance_swiss_tournament(db, t, create_game=lambda w, b: _fake_create_game(db, w, b))
+    assert t.current_round == 1  # 2. tur ÜRETİLMEDİ, bekleme yeni başladı
+    assert t.round_ready_at is not None
+
+
+@pytest.mark.asyncio
+async def test_tur_arasi_sure_dolmadan_tekrar_cagrilinca_hala_beklenir(db):
+    ready_at = datetime.utcnow() - timedelta(minutes=3)  # 10 dakikalık beklemenin sadece 3'ü geçti
+    t = await _bitmis_2_tur_turnuvasi(db, round_gap_minutes=10, round_ready_at=ready_at)
+    await advance_swiss_tournament(db, t, create_game=lambda w, b: _fake_create_game(db, w, b))
+    assert t.current_round == 1  # hâlâ bekleniyor
+    assert t.round_ready_at == ready_at  # değişmedi
+
+
+@pytest.mark.asyncio
+async def test_tur_arasi_sure_dolunca_sonraki_tur_uretilir(db):
+    ready_at = datetime.utcnow() - timedelta(minutes=11)  # 10 dakikalık bekleme DOLDU
+    t = await _bitmis_2_tur_turnuvasi(db, round_gap_minutes=10, round_ready_at=ready_at)
+    await advance_swiss_tournament(db, t, create_game=lambda w, b: _fake_create_game(db, w, b))
+    assert t.current_round == 2  # 2. tur üretildi
+    assert t.round_ready_at is None  # sıradaki tur için sıfırlandı
+
+
+@pytest.mark.asyncio
+async def test_tur_arasi_suresi_olmayan_turnuva_aninda_gecer(db):
+    """Geriye dönük uyum (KURAL #3): round_gap_minutes NULL olan (bu alandan
+    ÖNCE oluşturulmuş) turnuvalarda eskisi gibi ANINDA geçilir."""
+    t = await _bitmis_2_tur_turnuvasi(db, round_gap_minutes=None)
+    await advance_swiss_tournament(db, t, create_game=lambda w, b: _fake_create_game(db, w, b))
+    assert t.current_round == 2
+
+
 @pytest.mark.asyncio
 async def test_son_turdan_sonra_turnuva_biter(db):
     t = Tournament(

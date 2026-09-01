@@ -26,7 +26,7 @@ deseni).
 import math
 import random
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Awaitable, Callable
 
 from sqlalchemy import select
@@ -227,7 +227,14 @@ async def advance_swiss_tournament(
     "her çağıran tetikler" mimarisi. Turnuva HENÜZ başlamadıysa VE zamanı
     geldiyse 1. turu üretir; aktifse VE o turdaki TÜM eşleşmeler
     sonuçlandıysa (result dolu veya "void") ya bir sonraki turu üretir ya
-    da (son turdaysa) turnuvayı bitirir."""
+    da (son turdaysa) turnuvayı bitirir.
+
+    Madde 2026-09-XX ("Tur Arası Süre"): bir tur bitince sıradaki tur ARTIK
+    ANINDA üretilmiyor — kurucunun seçtiği kadar (round_gap_minutes) beklenir.
+    round_ready_at, turun TÜM eşleşmelerinin sonuçlandığı İLK anı tutar (bu
+    fonksiyon her çağrıldığında yeniden hesaplanmaz, sadece henüz set
+    edilmemişse yazılır) — bekleme bu andan itibaren sayılır. round_gap_
+    minutes NULL/0 olan (eski) turnuvalarda eskisi gibi anında geçilir."""
     if tournament.status == TournamentStatus.upcoming:
         if datetime.utcnow() >= tournament.starts_at:
             await _start_round(db, tournament, round_number=1, create_game=create_game)
@@ -248,4 +255,14 @@ async def advance_swiss_tournament(
         await db.commit()
         return
 
+    gap_minutes = tournament.round_gap_minutes or 0
+    if gap_minutes > 0:
+        if tournament.round_ready_at is None:
+            tournament.round_ready_at = datetime.utcnow()
+            await db.commit()
+            return  # bekleme süresi şimdi başladı
+        if datetime.utcnow() - tournament.round_ready_at < timedelta(minutes=gap_minutes):
+            return  # hâlâ bekleniyor
+
+    tournament.round_ready_at = None  # sıradaki turun kendi bekleme süresi için sıfırla
     await _start_round(db, tournament, round_number=(tournament.current_round or 0) + 1, create_game=create_game)

@@ -36,6 +36,8 @@ export interface TournamentSummary {
   current_round: number | null;
   /** SADECE arena + Yıldırım/Hızlı tempoda gerçekten etkin olur. */
   berserk_enabled: boolean;
+  /** Madde 2026-09-XX ("Tur Arası Süre"): SADECE İsviçre'de dolu (5/10/15/30). */
+  round_gap_minutes: number | null;
 }
 
 export interface TournamentPairingRow {
@@ -148,6 +150,8 @@ export interface TournamentCreatePayload {
   /** SADECE İsviçre'de zorunlu (2-15). */
   rounds_total?: number | null;
   berserk_enabled?: boolean;
+  /** Madde 2026-09-XX: SADECE İsviçre'de zorunlu (5/10/15/30). */
+  round_gap_minutes?: number | null;
 }
 
 export type CreateTournamentResult =
