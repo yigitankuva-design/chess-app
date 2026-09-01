@@ -233,10 +233,17 @@ async def leave_tournament(
     çıkar ve bir daha eşleştirilmez, ama puanı DB'de kalır ki rakiplerinin
     Sonneborn-Berger hesabı olumsuz etkilenmesin (bkz. compute_sonneborn_berger,
     services/tournaments.py). Sürmekte olan maçı ETKİLENMEZ — sadece bitirilir,
-    ondan sonra eşleşmez."""
+    ondan sonra eşleşmez.
+
+    Madde 2026-09-XX: turnuva BİTMİŞSE çekilme artık MÜMKÜN DEĞİL (Zafer'in
+    kararı — bitmiş bir turnuvadan "çekilmenin" bir anlamı yok, sıralama
+    zaten dondu). Frontend butonu zaten gizliyor, burası bağımsız garanti."""
     t = await db.get(Tournament, tournament_id)
     if not t:
         raise HTTPException(status_code=404, detail="Tournament not found")
+    await _sync_status(db, t)
+    if t.status == TournamentStatus.finished:
+        raise HTTPException(status_code=400, detail="Bitmiş bir turnuvadan çekilinemez")
     await db.execute(
         update(TournamentParticipant)
         .where(

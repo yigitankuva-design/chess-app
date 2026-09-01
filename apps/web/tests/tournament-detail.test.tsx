@@ -232,33 +232,49 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
       await waitFor(() => expect(screen.getByRole('button', { name: 'KATIL' })).toBeInTheDocument());
     });
 
-    it('katılımcı listesi 20\'den fazlaysa sayfalanır, gezinme düğmeleri çalışır', async () => {
+    it('katılımcı listesi 10\'dan fazlaysa 10\'ar kişilik bloklar halinde sayfalanır, gezinme düğmeleri çalışır', async () => {
+      // Madde 2026-09-XX: blok boyutu 10 — 25 kişi 3 sayfa yapar (10+10+5).
       const standings = Array.from({ length: 25 }, (_, i) =>
         standingRow({ child_id: i + 1, display_name: `Sporcu${i + 1}`, score: 25 - i, streak: 0 }));
       await renderPage(baseDetail({ standings, participant_count: 25 }));
 
-      expect(screen.getByText('1/2 - 25 Kişi')).toBeInTheDocument();
+      expect(screen.getByText('1/3 - 25 Kişi')).toBeInTheDocument();
       expect(screen.getByText('Sporcu1')).toBeInTheDocument();
-      expect(screen.queryByText('Sporcu21')).not.toBeInTheDocument();
+      expect(screen.getByText('Sporcu10')).toBeInTheDocument();
+      expect(screen.queryByText('Sporcu11')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Önceki sayfa' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'İlk sayfa' })).toBeDisabled();
 
       fireEvent.click(screen.getByRole('button', { name: 'Sonraki sayfa' }));
-      expect(screen.getByText('2/2 - 25 Kişi')).toBeInTheDocument();
-      expect(screen.getByText('Sporcu21')).toBeInTheDocument();
+      expect(screen.getByText('2/3 - 25 Kişi')).toBeInTheDocument();
+      expect(screen.getByText('Sporcu11')).toBeInTheDocument();
+      expect(screen.getByText('Sporcu20')).toBeInTheDocument();
       expect(screen.queryByText('Sporcu1')).not.toBeInTheDocument();
+      expect(screen.queryByText('Sporcu21')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sonraki sayfa' })).not.toBeDisabled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Son sayfa' }));
+      expect(screen.getByText('3/3 - 25 Kişi')).toBeInTheDocument();
+      expect(screen.getByText('Sporcu21')).toBeInTheDocument();
+      expect(screen.queryByText('Sporcu11')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Sonraki sayfa' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Son sayfa' })).toBeDisabled();
 
       fireEvent.click(screen.getByRole('button', { name: 'İlk sayfa' }));
-      expect(screen.getByText('1/2 - 25 Kişi')).toBeInTheDocument();
+      expect(screen.getByText('1/3 - 25 Kişi')).toBeInTheDocument();
     });
 
-    it('20 veya daha az katılımcıda sayfalama tek sayfa gösterir, düğmeler pasif', async () => {
+    it('10 veya daha az katılımcıda sayfalama tek sayfa gösterir, düğmeler pasif', async () => {
       await renderPage(baseDetail());
       expect(screen.getByText('1/1 - 1 Kişi')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Sonraki sayfa' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Son sayfa' })).toBeDisabled();
+    });
+
+    it('Madde 2026-09-XX: turnuva BİTMİŞSE "ÇEKİL" gösterilmez (KATIL de yok)', async () => {
+      await renderPage(baseDetail({ status: 'finished', joined: true }));
+      expect(screen.queryByRole('button', { name: 'ÇEKİL' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'KATIL' })).not.toBeInTheDocument();
     });
   });
 });

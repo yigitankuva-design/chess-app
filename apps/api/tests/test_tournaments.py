@@ -435,6 +435,26 @@ async def test_sporcu_turnuvadan_cikabilir(client, db):
 
 
 @pytest.mark.asyncio
+async def test_bitmis_turnuvadan_cekilinemez(client, db):
+    """Madde 2026-09-XX: turnuva bitince 'çekilme' artık anlamsız/mümkün
+    değil — backend bağımsız olarak reddeder (frontend zaten ÇEKİL butonunu
+    gizler, bkz. TournamentDetailView.tsx)."""
+    _, teacher_id = await _teacher(client, "t9h@t.com")
+    parent_id = await _parent_id(client, "p9h@t.com")
+    creator = await _add_child(db, "A", teacher_id, parent_id)
+    joiner = await _add_child(db, "B", teacher_id, parent_id)
+    created = await _create_tournament(client, creator.id, duration_minutes=5)
+    await client.post(f"/tournaments/{created['id']}/join", headers=_child_headers(joiner.id))
+
+    t = await db.get(Tournament, created["id"])
+    t.starts_at = datetime.utcnow() - timedelta(minutes=10)  # süre çoktan doldu
+    await db.commit()
+
+    r = await client.post(f"/tournaments/{created['id']}/leave", headers=_child_headers(joiner.id))
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_katilmamis_sporcu_cikinca_hata_vermez(client, db):
     """Hiç katılmamış bir sporcu 'leave' çağırırsa da 200 dönmeli (idempotent)."""
     _, teacher_id = await _teacher(client, "t9b@t.com")

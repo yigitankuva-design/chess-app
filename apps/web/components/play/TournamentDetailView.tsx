@@ -70,9 +70,10 @@ function TournamentFinishedModal({ name, top3, onClose }: {
   );
 }
 
-/** Madde 2026-09-09 (5): sıralama tablosu sayfalanır — Zafer'in gönderdiği
- *  görseldeki footer'da "1/10 - 256 Kişi" örneği bunu gösteriyor. */
-const STANDINGS_PAGE_SIZE = 20;
+/** Madde 2026-09-09 (5): sıralama tablosu sayfalanır. Madde 2026-09-XX:
+ *  blok boyutu Zafer'in kararıyla 20'den 10'a indi — önce ilk 10 kişi,
+ *  ileri gidildiğinde 11-20, vb. */
+const STANDINGS_PAGE_SIZE = 10;
 
 function formatCountdown(totalSeconds: number): string {
   const clamped = Math.max(0, totalSeconds);
@@ -236,17 +237,20 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-3">
       <div className="t-card-i overflow-hidden">
         {/* Madde 2026-09-09 (5), görsel satır 1: Turnuva İsmi + Katılım Durumu.
-            Sporcu katılınca "KATIL" yerine "ÇEKİL" görünür, istediği an çıkabilir. */}
+            Sporcu katılınca "KATIL" yerine "ÇEKİL" görünür, istediği an çıkabilir.
+            Madde 2026-09-XX: turnuva BİTMİŞSE "ÇEKİL" de gösterilmez — bitmiş
+            bir turnuvadan çekilmenin bir anlamı yok (backend de ayrıca reddeder,
+            bkz. routers/tournaments.py::leave_tournament). */}
         <div className="flex items-center justify-between gap-3 px-4 py-3"
           style={{ borderBottom: '1px solid var(--t-border)' }}>
           <p className="font-bold text-base truncate">🏆 {detail.name}</p>
-          {detail.joined ? (
+          {detail.joined && detail.status !== 'finished' ? (
             <button type="button" disabled={busy} onClick={leave}
               className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50 flex-shrink-0"
               style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171' }}>
               {busy ? '...' : 'ÇEKİL'}
             </button>
-          ) : detail.status !== 'finished' ? (
+          ) : !detail.joined && detail.status !== 'finished' ? (
             <button type="button" disabled={busy} onClick={join}
               className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50 flex-shrink-0"
               style={{ background: 'var(--t-accent)', color: '#fff' }}>
