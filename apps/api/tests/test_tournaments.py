@@ -1036,8 +1036,10 @@ async def test_arena_suresi_olmadan_olusturulamaz(client, db):
 
 
 @pytest.mark.asyncio
-async def test_isvicre_1_tur_basladiktan_sonra_katilim_kapanir(client, db, db_engine, monkeypatch):
-    """3 kişi (tek sayı — 1 bay + 1 gerçek eşleşme) round 1'i HEMEN
+async def test_isvicre_1_tur_basladiktan_sonra_gec_katilim_acik(client, db, db_engine, monkeypatch):
+    """Madde 2026-09-XX: eskiden 1. tur başlayınca katılım KAPANIRDI — artık
+    geç katılım AÇIK (rapordaki 6. öneri, bay puanlaması için gerekli).
+    3 kişi (tek sayı — 1 bay + 1 gerçek eşleşme) round 1'i HEMEN
     bitirmesin diye — starts_at GELECEKTE verilip sonra geçmişe alınır
     (mevcut arena testlerinin AYNI deseni, bkz. test_sync_status_...)."""
     _patch_game_creation(db_engine, monkeypatch)
@@ -1068,7 +1070,17 @@ async def test_isvicre_1_tur_basladiktan_sonra_katilim_kapanir(client, db, db_en
     assert r_get.json()["rounds_total"] == 2
 
     r_join = await client.post(f"/tournaments/{tid}/join", headers=_child_headers(latecomer.id))
-    assert r_join.status_code == 400
+    assert r_join.status_code == 201
+
+    # Madde 2026-09-XX: latecomer late_joiner=True (bay alırsa 0,5 puan
+    # alacak) — turnuva upcoming'ken katılan b/c ise False kalır.
+    parts = (await db.execute(
+        select(TournamentParticipant).where(TournamentParticipant.tournament_id == tid)
+    )).scalars().all()
+    late_by_child = {p.child_id: p.late_joiner for p in parts}
+    assert late_by_child[latecomer.id] is True
+    assert late_by_child[b.id] is False
+    assert late_by_child[c.id] is False
 
 
 @pytest.mark.asyncio

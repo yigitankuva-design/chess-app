@@ -188,14 +188,14 @@ async def join_tournament(
     if not t:
         raise HTTPException(status_code=404, detail="Tournament not found")
     await _sync_status(db, t)
-    # Lichess Arena: devam eden bir turnuvaya sonradan katilmak serbest —
-    # yalnizca bittiyse (finished) engellenir.
+    # Devam eden bir turnuvaya sonradan katilmak serbest (Arena'da hep
+    # böyleydi) — yalnizca bittiyse (finished) engellenir. Madde 2026-09-XX:
+    # İsviçre'de de ARTIK aynı — eskiden 1. tur başlayınca katılım kapanırdı,
+    # şimdi geç katılım açık (rapordaki 6. öneri: geç katılan bir sonraki
+    # turdan eşleşir, bay alırsa 0,5 puan alır — bkz. services/swiss.py
+    # ::_start_round / _apply_swiss_bye_points).
     if t.status == TournamentStatus.finished:
         raise HTTPException(status_code=400, detail="Turnuva bitti")
-    # Madde 2026-09-10: İsviçre'de 1. tur başlayınca (eşleştirmeler üretilince)
-    # katılım KAPANIR — yeni katılan turların ortasında rakipsiz kalırdı.
-    if t.tournament_type == TournamentType.swiss and (t.current_round or 0) >= 1:
-        raise HTTPException(status_code=400, detail="Turnuva başladı, katılım kapandı")
     existing = (await db.execute(
         select(TournamentParticipant).where(
             TournamentParticipant.tournament_id == tournament_id,
@@ -203,7 +203,13 @@ async def join_tournament(
         )
     )).scalar_one_or_none()
     if existing is None:
-        db.add(TournamentParticipant(tournament_id=tournament_id, child_id=child.id))
+        # Madde 2026-09-XX: İsviçre'de "geç katılım" — katıldığı ANDA turnuva
+        # zaten upcoming DEĞİLSE (1. tur üretilmiş) True; bay puanlaması
+        # bunu okur (bkz. services/tournaments.py::_apply_swiss_bye_points).
+        late_joiner = t.status != TournamentStatus.upcoming
+        db.add(TournamentParticipant(
+            tournament_id=tournament_id, child_id=child.id, late_joiner=late_joiner,
+        ))
         await db.commit()
     elif existing.left_at is not None:
         # Madde 2026-09-09 (5): daha önce çekilmiş — satır SİLİNMEDİĞİ için

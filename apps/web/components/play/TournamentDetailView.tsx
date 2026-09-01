@@ -200,19 +200,21 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
   );
 
   const isSwiss = detail.tournament_type === 'swiss';
-  // Madde 2026-09-10: İsviçre'de 1. tur başlayınca (current_round>=1)
-  // katılım backend'de zaten reddediliyor (400) — buton önceden gizlenir.
-  const swissJoinClosed = isSwiss && (detail.current_round ?? 0) >= 1;
 
   /** Üst şeritteki tek satırlık durum mesajı — Zafer'in görseldeki
-   *  "Hazır Ol! Eşleşme Yapılıyor" örneğiyle AYNI dil. */
+   *  "Hazır Ol! Eşleşme Yapılıyor" örneğiyle AYNI dil.
+   *
+   *  Madde 2026-09-XX: İsviçre'de geç katılım artık AÇIK (Arena'yla
+   *  tutarlı — sadece turnuva bitince kapanır) — geç katılan bir sonraki
+   *  turdan eşleşir, bay alırsa 0,5 (yarım) puan alır (bkz.
+   *  services/swiss.py::_apply_swiss_bye_points). */
   function statusText(): string {
     if (detail!.status === 'finished') return 'Turnuva sona erdi.';
     if (!detail!.joined) {
       if (detail!.status === 'upcoming') {
         return `${new Date(detail!.starts_at).toLocaleString('tr-TR')} tarihinde başlayacak.`;
       }
-      return swissJoinClosed ? 'Turnuva başladı, katılım kapandı.' : 'Turnuva devam ediyor, katılabilirsin.';
+      return 'Turnuva devam ediyor, katılabilirsin.';
     }
     if (detail!.status === 'upcoming') return 'Turnuva başlayınca eşleşme yapılacak.';
     if (detail!.my_pairing) return `${detail!.my_pairing.opponent_name ?? 'Sporcu'} ile maçın sürüyor.`;
@@ -244,7 +246,7 @@ export function TournamentDetailView({ tournamentId }: { tournamentId: number })
               style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171' }}>
               {busy ? '...' : 'ÇEKİL'}
             </button>
-          ) : detail.status !== 'finished' && !swissJoinClosed ? (
+          ) : detail.status !== 'finished' ? (
             <button type="button" disabled={busy} onClick={join}
               className="px-4 py-2 rounded-md text-xs font-bold disabled:opacity-50 flex-shrink-0"
               style={{ background: 'var(--t-accent)', color: '#fff' }}>

@@ -111,14 +111,20 @@ def _epoch(dt: datetime) -> float:
 
 
 def _clock_state(game: Game) -> ClockState | None:
-    """Macin saat durumu; saatsiz macta None."""
+    """Macin saat durumu; saatsiz macta None.
+
+    Madde 2026-09-XX: Berserk yapan tarafin artirimi SIFIRDIR (game.white_
+    berserked/black_berserked — bkz. models/game.py) — rakibi normal
+    artirimini almaya devam eder."""
     if game.base_ms is None or game.last_clock_at is None:
         return None
+    inc = game.increment_ms or 0
     return ClockState(
         white_ms=game.white_ms or 0,
         black_ms=game.black_ms or 0,
         last_at=_epoch(game.last_clock_at),
-        increment_ms=game.increment_ms or 0,
+        white_increment_ms=0 if game.white_berserked else inc,
+        black_increment_ms=0 if game.black_berserked else inc,
     )
 
 
@@ -663,12 +669,14 @@ async def _handle_decline_draw(game_id, child_id, room):
 
 
 async def _handle_berserk(game_id: int, child_id: int, white_id, black_id, room) -> None:
-    """"Berserk" (madde 2026-09-10): SADECE Arena turnuvasında VE SADECE
-    Yıldırım/Hızlı tempoda VE SADECE ilk hamleden ÖNCE (mevcut 15sn ilk-hamle
-    bekleme penceresi) geçerlidir. Kendi saatini (rakibinki DEĞİL) yarıya
-    indirir; karşılığında bu maçı KAZANIRSA +1 sabit puan bonusu alır (bkz.
-    services/tournaments.py::_apply_arena_points, finalize_tournament_pairing
-    pairing'in berserk bayrağını okur)."""
+    """"Berserk" (madde 2026-09-10, artırım iptali 2026-09-XX): SADECE Arena
+    turnuvasında VE SADECE Yıldırım/Hızlı tempoda VE SADECE ilk hamleden ÖNCE
+    (mevcut 15sn ilk-hamle bekleme penceresi) geçerlidir. Kendi saatini
+    (rakibinki DEĞİL) yarıya indirir VE artırımını SIFIRLAR (Lichess'in
+    gerçek kuralı — Zafer'in kararı, bkz. services/clock.py); karşılığında bu
+    maçı KAZANIRSA ve en az MIN_BERSERK_BONUS_MOVES hamle oynanmışsa +1 sabit
+    puan bonusu alır (bkz. services/tournaments.py::_apply_arena_points,
+    finalize_tournament_pairing pairing'in berserk bayrağını okur)."""
     async with get_session_factory()() as db:
         game = await db.get(Game, game_id)
         if not game or game.status != GameStatus.active or game.base_ms is None:
@@ -694,9 +702,11 @@ async def _handle_berserk(game_id: int, child_id: int, white_id, black_id, room)
         half = game.base_ms // 2
         if is_white:
             game.white_ms = half
+            game.white_berserked = True
             pairing.white_berserked = True
         else:
             game.black_ms = half
+            game.black_berserked = True
             pairing.black_berserked = True
         await db.commit()
         white_ms, black_ms = game.white_ms, game.black_ms

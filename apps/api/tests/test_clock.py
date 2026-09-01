@@ -3,8 +3,15 @@ from chess_api.services.clock import ClockState, elapsed_ms, apply_move, is_flag
 T0 = 1_000_000.0  # sabit bir an (epoch saniye)
 
 
-def _state(white=300_000, black=300_000, last=T0, inc=0):
-    return ClockState(white_ms=white, black_ms=black, last_at=last, increment_ms=inc)
+def _state(white=300_000, black=300_000, last=T0, inc=0, white_inc=None, black_inc=None):
+    """Madde 2026-09-XX: artırım artık TARAF BAŞINA (Berserk yapan taraf
+    artırımı kaybeder) — `inc` ikisine de uygulanır (eski davranışla AYNI),
+    `white_inc`/`black_inc` verilirse SADECE o tarafı override eder."""
+    return ClockState(
+        white_ms=white, black_ms=black, last_at=last,
+        white_increment_ms=inc if white_inc is None else white_inc,
+        black_increment_ms=inc if black_inc is None else black_inc,
+    )
 
 
 def test_elapsed_ms_gecen_sureyi_hesaplar():
@@ -38,6 +45,17 @@ def test_artirim_hamleden_SONRA_eklenir():
 def test_saat_sifirin_altina_dusmez():
     s = apply_move(_state(white=1000), white_to_move=True, now=T0 + 10)
     assert s.white_ms == 0
+
+
+def test_berserk_yapan_taraf_artirim_almaz():
+    """Madde 2026-09-XX: Berserk yapan tarafın artırımı SIFIRDIR (sadece
+    süresi yarılanmıyor, artırımı da iptal olur) — rakibi normal artırımını
+    almaya devam eder (bkz. routers/live_game.py::_clock_state)."""
+    s_white_berserk = apply_move(_state(inc=5_000, white_inc=0), white_to_move=True, now=T0 + 2)
+    assert s_white_berserk.white_ms == 298_000  # 300_000 - 2_000 + 0 (artırım YOK)
+
+    s_black_normal = apply_move(_state(inc=5_000, white_inc=0), white_to_move=False, now=T0 + 2)
+    assert s_black_normal.black_ms == 303_000  # 300_000 - 2_000 + 5_000 (normal artırım)
 
 
 def test_suresi_biten_oyuncuya_artirim_verilmez():

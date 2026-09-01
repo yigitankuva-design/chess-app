@@ -13,7 +13,11 @@ class ClockState:
     white_ms: int
     black_ms: int
     last_at: float      # epoch saniye
-    increment_ms: int
+    # Madde 2026-09-XX: TEK paylaşılan artırım yerine TARAF BAŞINA — Berserk
+    # yapan tarafın artırımı SIFIRLANIR (sadece süresi yarılanmıyor), rakibi
+    # normal artırımını almaya devam eder (bkz. routers/live_game.py::_clock_state).
+    white_increment_ms: int
+    black_increment_ms: int
 
 
 def elapsed_ms(last_at: float, now: float) -> int:
@@ -31,11 +35,11 @@ def apply_move(state: ClockState, white_to_move: bool, now: float) -> ClockState
     spent = elapsed_ms(state.last_at, now)
     if white_to_move:
         left = state.white_ms - spent
-        left = 0 if left <= 0 else left + state.increment_ms
-        return ClockState(left, state.black_ms, now, state.increment_ms)
+        left = 0 if left <= 0 else left + state.white_increment_ms
+        return ClockState(left, state.black_ms, now, state.white_increment_ms, state.black_increment_ms)
     left = state.black_ms - spent
-    left = 0 if left <= 0 else left + state.increment_ms
-    return ClockState(state.white_ms, left, now, state.increment_ms)
+    left = 0 if left <= 0 else left + state.black_increment_ms
+    return ClockState(state.white_ms, left, now, state.white_increment_ms, state.black_increment_ms)
 
 
 def is_flagged(state: ClockState, white_to_move: bool, now: float) -> bool:

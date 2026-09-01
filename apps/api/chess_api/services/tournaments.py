@@ -17,13 +17,18 @@ ANINDA eslesir — sabit tur YOK). Bu dosyada:
 kalir.
 """
 from datetime import datetime, timedelta
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.models import (
-    Game, GameType, GameStatus, Tournament, TournamentStatus, TournamentType,
+    Game, GameMove, GameType, GameStatus, Tournament, TournamentStatus, TournamentType,
     TournamentPairing, TournamentParticipant,
 )
 from chess_api.services.game_room import get_room
+
+# Madde 2026-09-XX: Berserk bonusu (+1) sadece EN AZ bu kadar hamle (ply)
+# oynanmışsa verilir — istismarı önlemek için (ör. berserk yapıp hemen
+# rakibi terk ettirip/1 hamlede bitirip "bedava" bonus almak).
+MIN_BERSERK_BONUS_MOVES = 10
 
 
 def _ends_at(t: Tournament) -> datetime:
@@ -119,11 +124,24 @@ def _apply_swiss_points(participant: TournamentParticipant, *, is_win: bool, is_
     fonksiyonun onlar için parametresi bile yok. `current_streak` yine de
     sayılır (ileride açılırsa diye) ama hiçbir puana etkisi olmaz.
 
-    Bay da (rakipsiz kalan katılımcı) BU fonksiyonla, is_win=True olarak
-    çağrılır — gerçek bir galibiyetle AYNI (1.0) puanı verir, fazlasını
-    değil (bkz. services/swiss.py::_start_round)."""
+    OYNANMIŞ bir maç için kullanılır (galibiyet/beraberlik/kayıp) — bay için
+    bkz. _apply_swiss_bye_points (farklı puan kuralı)."""
     points = 1.0 if is_win else (0.5 if is_draw else 0.0)
     participant.current_streak = participant.current_streak + 1 if is_win else 0
+    participant.score += points
+
+
+def _apply_swiss_bye_points(participant: TournamentParticipant, points: float) -> None:
+    """Madde 2026-09-XX: bay puanı iki farklı değer alabilir (rapordaki 6.
+    öneri) — services/swiss.py::_start_round çağırırken karar verir:
+    - Eşleşme bulunamayana (turnuvanın başından beri orada olan, o turda
+      tek sayı katılımcı bıraktığı için rakipsiz kalan biri): 1.0 TAM puan
+      — gerçek bir galibiyetle AYNI, fazlası değil.
+    - Turnuva başladıktan SONRA katılıp bay alana: 0,5 YARIM puan —
+      istismarı önlemek için (bedava tam puan almasın diye).
+    `current_streak` galibiyet gibi sayılır (tutarlılık için — İsviçre'de
+    zaten hiçbir puana etkisi yok)."""
+    participant.current_streak += 1
     participant.score += points
 
 
@@ -150,6 +168,13 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
     streak_bonus = tournament.winning_streak_bonus if tournament else True
     is_swiss = tournament is not None and tournament.tournament_type == TournamentType.swiss
 
+    # Madde 2026-09-XX: Berserk bonusu SADECE yeterince hamle oynanmışsa
+    # (istismarı önlemek için) — bkz. MIN_BERSERK_BONUS_MOVES.
+    move_count = (await db.execute(
+        select(func.count()).select_from(GameMove).where(GameMove.game_id == game.id)
+    )).scalar_one()
+    berserk_eligible = move_count >= MIN_BERSERK_BONUS_MOVES
+
     participants = (await db.execute(
         select(TournamentParticipant).where(
             TournamentParticipant.tournament_id == pairing.tournament_id,
@@ -169,7 +194,7 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
         else:
             _apply_arena_points(
                 white_p, is_win=white_wins and not is_draw, is_draw=is_draw,
-                streak_bonus=streak_bonus, berserk_bonus=pairing.white_berserked,
+                streak_bonus=streak_bonus, berserk_bonus=pairing.white_berserked and berserk_eligible,
             )
     if black_p is not None:
         if is_swiss:
@@ -177,7 +202,7 @@ async def finalize_tournament_pairing(db: AsyncSession, game: Game) -> None:
         else:
             _apply_arena_points(
                 black_p, is_win=(not white_wins) and not is_draw, is_draw=is_draw,
-                streak_bonus=streak_bonus, berserk_bonus=pairing.black_berserked,
+                streak_bonus=streak_bonus, berserk_bonus=pairing.black_berserked and berserk_eligible,
             )
 
 

@@ -193,12 +193,12 @@ describe('Canlı turnuva sayfası — /play/tournament/[id]', () => {
       expect(screen.getByText('Tur 2/4')).toBeInTheDocument();
     });
 
-    it('1. tur başladıktan sonra katılmamış sporcuya KATIL butonu GÖSTERİLMEZ', async () => {
+    it('Madde 2026-09-XX: 1. tur başladıktan sonra da katılmamış sporcuya KATIL butonu GÖSTERİLİR (geç katılım açık)', async () => {
       await renderPage(baseDetail({
         tournament_type: 'swiss', rounds_total: 4, current_round: 1, joined: false,
       }));
-      expect(screen.queryByRole('button', { name: 'KATIL' })).not.toBeInTheDocument();
-      expect(screen.getByText(/Turnuva başladı, katılım kapandı\./)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'KATIL' })).toBeInTheDocument();
+      expect(screen.getByText(/Turnuva devam ediyor, katılabilirsin\./)).toBeInTheDocument();
     });
 
     it('henüz 1. tur başlamadıysa (current_round=0) katılmamış sporcuya KATIL gösterilir', async () => {

@@ -59,6 +59,13 @@ class Game(Base):
     white_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     black_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_clock_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Madde 2026-09-XX: Berserk yapan taraf artırımı da KAYBEDER (sadece
+    # süre yarılanmıyor) — services/clock.py per-taraf artırım hesabı için
+    # bu bayrağa bakar (bkz. routers/live_game.py::_clock_state). Puanlama
+    # bonusu HÂLÂ tournament_pairings.white_berserked/black_berserked'ten
+    # okunur (bilinçli küçük tekrar, bkz. migration BerserkIncrementGameFlags).
+    white_berserked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    black_berserked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class GameMove(Base):

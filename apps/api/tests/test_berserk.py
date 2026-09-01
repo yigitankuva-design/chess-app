@@ -85,6 +85,10 @@ async def test_berserk_kendi_saatini_yariya_indirir(db, monkeypatch):
     assert game.black_ms == 180_000  # rakibin saati DEĞİŞMEDİ
     assert pairing.white_berserked is True
     assert pairing.black_berserked is False
+    # Madde 2026-09-XX: game satırında da işaretlenir — saat mantığı
+    # (_clock_state) buradan okur, artırımı da SIFIRLAR (bkz. test_clock.py).
+    assert game.white_berserked is True
+    assert game.black_berserked is False
     berserked_msgs = [m for m in white_sender.messages if m.get("type") == "berserked"]
     assert berserked_msgs and berserked_msgs[0]["child_id"] == 1
     assert berserked_msgs[0]["color"] == "white"
@@ -161,8 +165,11 @@ async def test_arkadas_macinda_berserk_calismaz(db, monkeypatch):
 @pytest.mark.asyncio
 async def test_berserk_kazaninca_bonus_puan_alir(db):
     """Entegrasyon: finalize_tournament_pairing, pairing'in berserk bayrağını
-    okuyup +1 sabit bonus uygular (madde 2026-09-10)."""
-    from chess_api.models import ChildProfile, GameResult, TournamentParticipant
+    okuyup +1 sabit bonus uygular (madde 2026-09-10) — AMA sadece madde
+    2026-09-XX'teki istismar-önleme şartı da sağlanıyorsa (en az
+    MIN_BERSERK_BONUS_MOVES=10 hamle oynanmış olmalı, bkz. test_berserk_
+    az_hamlede_bonus_yok)."""
+    from chess_api.models import ChildProfile, GameMove, GameResult, TournamentParticipant
 
     t = Tournament(name="X", created_by_user_id=1, tournament_type=TournamentType.arena,
                    status=TournamentStatus.active, starts_at=datetime.utcnow(),
@@ -185,6 +192,8 @@ async def test_berserk_kazaninca_bonus_puan_alir(db):
     db.add(game)
     await db.commit()
     await db.refresh(game)
+    for ply in range(1, 11):  # 10 hamle — eşiği TAM karşılıyor
+        db.add(GameMove(game_id=game.id, ply=ply, san="e4", fen_after="x"))
     pairing = TournamentPairing(tournament_id=t.id, white_child_id=p1.id, black_child_id=p2.id,
                                 game_id=game.id, white_berserked=True)
     db.add(pairing)
@@ -199,6 +208,53 @@ async def test_berserk_kazaninca_bonus_puan_alir(db):
     )).scalars().all()
     scores = {p.child_id: p.score for p in parts}
     assert scores[p1.id] == 3.0  # 2 (galibiyet) + 1 (berserk bonusu)
+    assert scores[p2.id] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_berserk_az_hamlede_bonus_yok(db):
+    """Madde 2026-09-XX: istismarı önlemek için — 10 hamleden AZ oynanmış bir
+    maçta berserk yapıp kazansa bile +1 bonus VERİLMEZ (düz galibiyet puanı
+    kalır)."""
+    from chess_api.models import ChildProfile, GameMove, GameResult, TournamentParticipant
+
+    t = Tournament(name="X", created_by_user_id=1, tournament_type=TournamentType.arena,
+                   status=TournamentStatus.active, starts_at=datetime.utcnow(),
+                   duration_minutes=60, berserk_enabled=True)
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    p2 = ChildProfile(parent_user_id=1, display_name="B", age=9, pin_hash="x")
+    db.add_all([p1, p2])
+    await db.commit()
+    await db.refresh(p1)
+    await db.refresh(p2)
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p1.id))
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p2.id))
+    await db.commit()
+
+    game = Game(type=GameType.human, status=GameStatus.finished,
+               white_child_id=p1.id, black_child_id=p2.id, result=GameResult.white_wins)
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+    for ply in range(1, 4):  # sadece 3 hamle — eşiğin (10) ALTINDA
+        db.add(GameMove(game_id=game.id, ply=ply, san="e4", fen_after="x"))
+    pairing = TournamentPairing(tournament_id=t.id, white_child_id=p1.id, black_child_id=p2.id,
+                                game_id=game.id, white_berserked=True)
+    db.add(pairing)
+    await db.commit()
+
+    await finalize_tournament_pairing(db, game)
+    await db.commit()
+
+    from sqlalchemy import select
+    parts = (await db.execute(
+        select(TournamentParticipant).where(TournamentParticipant.tournament_id == t.id)
+    )).scalars().all()
+    scores = {p.child_id: p.score for p in parts}
+    assert scores[p1.id] == 2.0  # SADECE galibiyet — berserk bonusu YOK
     assert scores[p2.id] == 0.0
 
 

@@ -135,5 +135,5 @@ async def test_saatsiz_macta_clock_islenmez(clock_env):
 def test_sahte_flag_maci_bitirmez():
     """Sure dolmamisken gelen 'flag' iddiasi REDDEDILIR (saf kontrol)."""
     st = ClockState(white_ms=200_000, black_ms=200_000, last_at=1_000_000.0,
-                    increment_ms=0)
+                    white_increment_ms=0, black_increment_ms=0)
     assert is_flagged(st, white_to_move=True, now=1_000_010.0) is False

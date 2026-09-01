@@ -97,6 +97,13 @@ class TournamentParticipant(Base):
     # Madde 2026-09-10 (İsviçre): kaç kez "bay" (rakipsiz otomatik galibiyet)
     # aldı — sıradaki bay'ı verirken bunu HİÇ almamışlar tercih edilir.
     bye_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Madde 2026-09-XX (İsviçre geç katılım): katıldığı ANDA turnuva zaten
+    # "upcoming" değilse (1. tur üretilmiş) True — bay puanlaması bunu okur
+    # (geç katılana 0,5, baştan beri orada olana 1,0 — bkz. services/
+    # tournaments.py::_apply_swiss_bye_points). routers/tournaments.py::
+    # join_tournament yazar, tekrar katılımda (left_at temizlenince)
+    # DEĞİŞTİRİLMEZ (ilk katılım anı geçerli kalır).
+    late_joiner: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class TournamentPairing(Base):

@@ -49,13 +49,46 @@ def test_daha_once_oynamamis_rakiple_eslestirir():
 
 
 def test_herkesle_oynamissa_tekrara_izin_verilir():
-    """Küçük turnuvada (2 kişi) tekrar eşleşme kaçınılmaz — reddedilmemeli."""
+    """Madde 2026-09-XX: tekrar eşleşme artık KESİNLİKLE yasak — ama 2 kişilik
+    bir turnuvada matematiksel olarak KAÇINILMAZ (3. kişi yok) — bu, geri
+    izlemenin de çözemeyeceği tek nadir istisna (bkz. generate_round_pairings
+    docstring'i), o yüzden bu ÇOK nadir çıkmazda tekrara izin verilir."""
     parts = [_p(1, 2), _p(2, 0)]
     past = [TournamentPairing(tournament_id=1, white_child_id=1, black_child_id=2, result="1-0")]
     pairings, bye = generate_round_pairings(parts, past)
     assert bye is None
     assert len(pairings) == 1
     assert {pairings[0].white_child_id, pairings[0].black_child_id} == {1, 2}
+
+
+def test_gecikmeli_greedy_yerine_geri_izleme_gecerli_eslesme_bulur():
+    """Madde 2026-09-XX: tekrar eşleşme KESİNLİKLE yasak. Tek geçişli (geri
+    izlemesiz) bir greedy, en üstteki oyuncuyu (1) en yakın puanlıyla (2)
+    hemen eşler — ama bu, geriye kalan 3-4'ün TEK seçenek olmasına yol açar
+    ve onlar ZATEN oynamıştır (dead end). Geri izleme bu seçimi geri alıp
+    1-3 + 2-4'ü dener ve GEÇERLİ (hiç tekrarsız) bir eşleştirme bulur."""
+    parts = [_p(1, 4), _p(2, 3), _p(3, 2), _p(4, 1)]
+    past = [TournamentPairing(tournament_id=1, white_child_id=3, black_child_id=4, result="1-0")]
+    pairings, bye = generate_round_pairings(parts, past)
+    assert bye is None
+    assert len(pairings) == 2
+    paired_pairs = [{pr.white_child_id, pr.black_child_id} for pr in pairings]
+    assert {3, 4} not in paired_pairs  # ASLA tekrar eşleşmezler
+
+
+def test_3_ust_uste_ayni_renk_yasak():
+    """Madde 2026-09-XX: bir sporcu son 2 turda AYNI renkteyse, 3. turda
+    ZORUNLU tersi renk alır — 'kesinlikle 3 maç üst üste aynı renk yok'."""
+    parts = [_p(1, 4), _p(2, 2)]
+    past = [
+        TournamentPairing(tournament_id=1, white_child_id=1, black_child_id=2, round_number=1, result="1-0"),
+        TournamentPairing(tournament_id=1, white_child_id=1, black_child_id=2, round_number=2, result="1-0"),
+    ]
+    pairings, bye = generate_round_pairings(parts, past)
+    assert bye is None
+    assert len(pairings) == 1
+    assert pairings[0].black_child_id == 1  # 1 son 2 turda da BEYAZDI -> 3.'te SİYAH
+    assert pairings[0].white_child_id == 2
 
 
 class _SessionCtx:
@@ -198,6 +231,45 @@ async def test_bay_alan_otomatik_1_puan_kazanir(db):
         select(TournamentPairing).where(TournamentPairing.tournament_id == t.id)
     )).scalars().all()
     assert pairings == []  # bay için eşleşme satırı oluşturulmaz
+
+
+@pytest.mark.asyncio
+async def test_gec_katilan_bay_alirsa_yarim_puan_alir(db):
+    """Madde 2026-09-XX (rapordaki 6. öneri): late_joiner=True olan biri bay
+    alırsa 0.5 (yarım) puan alır — turnuva başlamadan katılanlar (varsayılan
+    late_joiner=False) bay alırsa 1.0 (tam) puan almaya devam eder."""
+    t = Tournament(
+        name="X", created_by_user_id=1, tournament_type=TournamentType.swiss,
+        status=TournamentStatus.upcoming, starts_at=datetime.utcnow() - timedelta(minutes=1),
+        rounds_total=2, current_round=0,
+    )
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    p2 = ChildProfile(parent_user_id=1, display_name="B", age=9, pin_hash="x")
+    late = ChildProfile(parent_user_id=1, display_name="Late", age=9, pin_hash="x")
+    db.add_all([p1, p2, late])
+    await db.commit()
+    await db.refresh(p1)
+    await db.refresh(p2)
+    await db.refresh(late)
+    # p1/p2 en yüksek puanlı (bay onlara gitmesin) — late en düşük puanlı
+    # VE late_joiner=True, bay ona gitsin ve 0,5 alsın.
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p1.id, score=1.0))
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=p2.id, score=1.0))
+    db.add(TournamentParticipant(tournament_id=t.id, child_id=late.id, late_joiner=True))
+    await db.commit()
+
+    await advance_swiss_tournament(db, t, create_game=lambda w, b: _fake_create_game(db, w, b))
+
+    parts = (await db.execute(
+        select(TournamentParticipant).where(TournamentParticipant.tournament_id == t.id)
+    )).scalars().all()
+    scores = {p.child_id: p.score for p in parts}
+    assert scores[late.id] == 0.5  # geç katılım bay'ı — YARIM puan
+    assert scores[p1.id] == 1.0  # eşleşti, henüz sonuçlanmadı — değişmedi
+    assert scores[p2.id] == 1.0
 
 
 @pytest.mark.asyncio
