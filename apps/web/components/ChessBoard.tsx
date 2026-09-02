@@ -10,6 +10,9 @@ import {
   getBoardColors, getPieceSet,
 } from '@/lib/chess/boardSkin';
 import { useSettings } from '@/lib/settings/settings-context';
+import { useBoardPrefs } from '@/lib/board-prefs-context';
+import { BOARD_COLORS } from '@/lib/boardColors';
+import { pieceSetUris } from '@/lib/pieceSets';
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
@@ -68,8 +71,17 @@ export function ChessBoard({
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const { theme } = useChessTheme();
   const { settings } = useSettings();
-  const boardColors = getBoardColors(settings.board);
-  const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
+  // Madde 2026-09-02: Profil > "Tahta Renklerini Değiştir"/"Taş Görünümünü
+  // Değiştir" — sporcunun cihazında yaptığı KİŞİSEL seçim, admin'in genel
+  // ayarının (settings.board, Admin > Ayarlar > Tahta) ÜSTÜNE biner. Sporcu
+  // hiç seçim yapmadıysa (id === null) admin ayarı DEĞİŞMEDEN uygulanır.
+  const { boardColorId, pieceSetId } = useBoardPrefs();
+  const boardColors = boardColorId ? BOARD_COLORS[boardColorId] : getBoardColors(settings.board);
+  const personalPieceUris = pieceSetId ? pieceSetUris(pieceSetId) : undefined;
+  const pieceSet = useMemo(
+    () => getPieceSet(personalPieceUris ?? settings.board.pieces),
+    [personalPieceUris, settings.board.pieces],
+  );
   const scrollRef = useRef(0);
   const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boardBoxRef = useRef<HTMLDivElement>(null);

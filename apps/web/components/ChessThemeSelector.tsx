@@ -29,9 +29,6 @@ export function ChessThemeSelector() {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold t-muted uppercase tracking-widest mb-3">
-        🎨 Tahta Teması
-      </p>
       <div className="grid gap-2">
         {CHESS_THEMES.map((t) => {
           const active = t.id === themeId;

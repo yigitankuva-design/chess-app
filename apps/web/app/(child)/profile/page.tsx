@@ -6,6 +6,9 @@ import { useAuth } from '@/lib/auth-context';
 import { getSavedAvatar, avatarEmoji } from '@/lib/avatars';
 import { PowerButton } from '@/components/PowerButton';
 import { TIME_GROUPS } from '@/lib/play/levels';
+import { ChessThemeSelector } from '@/components/ChessThemeSelector';
+import { BoardColorSelector } from '@/components/BoardColorSelector';
+import { PieceSetSelector } from '@/components/PieceSetSelector';
 
 interface Me {
   rank_name: string;
@@ -39,6 +42,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  * 4. tema yapıldı ve varsayılan tema oldu (bkz. lib/chess-themes.ts,
  * app/globals.css [data-chess-theme='sakin']). Bu sayfadaki sabitleme o
  * yüzden kaldırıldı — Profil artık diğer sayfalar gibi seçili temayı izliyor.
+ *
+ * Madde 2026-09-02 (2): "Ana Sayfaya Dön" butonunun altına 5 yuvarlak kart
+ * eklendi — Tema/Tahta Rengi/Taş Görünümü/Dil, tıklanınca AYNI SAYFADA
+ * üstlerinde bir panel açılır (tek seferde en fazla bir panel açık).
+ * Tema paneli mevcut ChessThemeSelector'ı kullanır; tahta rengi/taş
+ * görünümü YENİ, cihaza özel tercihlerdir (bkz. lib/board-prefs-context.tsx
+ * — admin'in genel tahta ayarının üstüne biner, onu bozmaz). Dil paneli
+ * şimdilik sadece "Türkçe" gösterir — gerçek çoklu-dil alt yapısı yok,
+ * istenmedi de. 5. kart, mevcut Çıkış butonunun bu sıraya taşınmış hali.
  */
 
 type TempoKey = 'Yıldırım' | 'Hızlı' | 'Klasik';
@@ -160,6 +172,48 @@ function ChatIcon() {
   );
 }
 
+// Madde (2): alt sıradaki 4 ayar kartı — id, ikon, etiket ve panel başlığı.
+type SettingPanelId = 'theme' | 'board-color' | 'pieces' | 'language';
+const SETTING_CARDS: { id: SettingPanelId; emoji: string; label: string }[] = [
+  { id: 'theme', emoji: '🎨', label: 'Tema Değiştir' },
+  { id: 'board-color', emoji: '🔲', label: 'Tahta Renklerini Değiştir' },
+  { id: 'pieces', emoji: '♞', label: 'Taş Görünümünü Değiştir' },
+  { id: 'language', emoji: '🌐', label: 'Dil Seçeneği' },
+];
+
+function SettingCircle({ emoji, label, active, onClick }: {
+  emoji: string; label: string; active: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      title={label}
+      className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-xl flex-shrink-0 transition-colors"
+      style={{
+        background: active ? 'var(--t-accent)' : 'var(--t-surface-2)',
+        border: '1px solid var(--t-border)',
+      }}
+    >
+      {emoji}
+    </button>
+  );
+}
+
+function LanguagePanel() {
+  return (
+    <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--t-surface-2)' }}>
+      <span className="text-2xl">🇹🇷</span>
+      <div className="flex-1 min-w-0">
+        <span className="font-semibold text-sm">Türkçe</span>
+        <span className="ml-2 t-tag-ac text-xs px-2 py-0.5">Aktif</span>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const auth = useAuth();
@@ -172,6 +226,10 @@ export default function ProfilePage() {
   const [statsTempo, setStatsTempo] = useState<TempoKey>('Yıldırım');
   const [tourTempo, setTourTempo] = useState<TempoKey>('Yıldırım');
   const [level, setLevel] = useState<LevelCode>('TD');
+  const [activePanel, setActivePanel] = useState<SettingPanelId | null>(null);
+  function togglePanel(id: SettingPanelId) {
+    setActivePanel((cur) => (cur === id ? null : id));
+  }
 
   useEffect(() => {
     setAthleteName(getAthleteName());
@@ -376,11 +434,47 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Ana sayfa + Çıkış (power ikonu) */}
+      {/* Ana sayfa */}
       <button onClick={() => router.push('/home')} className="w-full t-btn py-3 text-base">
         Ana Sayfaya Dön
       </button>
-      <div className="flex justify-center pt-1">
+
+      {/* Açık panel — kart sırasının HEMEN ÜSTÜNDE */}
+      {activePanel && (
+        <div className="t-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-wide t-muted">
+              {SETTING_CARDS.find((c) => c.id === activePanel)?.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActivePanel(null)}
+              aria-label="Paneli kapat"
+              className="w-6 h-6 rounded-md flex items-center justify-center text-sm t-muted hover:text-current"
+              style={{ background: 'var(--t-surface-2)' }}
+            >
+              ✕
+            </button>
+          </div>
+          {activePanel === 'theme' && <ChessThemeSelector />}
+          {activePanel === 'board-color' && <BoardColorSelector />}
+          {activePanel === 'pieces' && <PieceSetSelector />}
+          {activePanel === 'language' && <LanguagePanel />}
+        </div>
+      )}
+
+      {/* Ayar kartları + Çıkış (power ikonu) */}
+      <div className="flex items-center justify-center gap-3 pt-1">
+        {SETTING_CARDS.map((c) => (
+          <SettingCircle
+            key={c.id}
+            emoji={c.emoji}
+            label={c.label}
+            active={activePanel === c.id}
+            onClick={() => togglePanel(c.id)}
+          />
+        ))}
+        <div className="w-px self-stretch my-1" style={{ background: 'var(--t-border)' }} />
         <PowerButton onClick={handleLogout} />
       </div>
 
