@@ -315,8 +315,7 @@ export function OpeningCategoryCards({
                               const code = q.code ?? codes[i];
                               return (
                                 <li key={q.id} className="flex items-center gap-2 rounded-lg border border-white/10 p-2">
-                                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full border border-white/20">{code}</span>
-                                  <span className="text-xs n-muted flex-1 truncate">{q.instruction}</span>
+                                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full border border-white/20 flex-1">{code}</span>
                                   <button type="button" onClick={() => onDeleteKonumQuestion(q.id)}
                                     aria-label={`${code} kodlu Konum Pratiği sorusunu sil`}
                                     className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">Sil</button>
@@ -365,8 +364,7 @@ export function OpeningCategoryCards({
                               const code = q.code ?? codes[i];
                               return (
                                 <li key={q.id} className="flex items-center gap-2 rounded-lg border border-white/10 p-2">
-                                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full border border-white/20">{code}</span>
-                                  <span className="text-xs n-muted flex-1 truncate">{q.opening_name}</span>
+                                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full border border-white/20 flex-1">{code}</span>
                                   <button type="button" onClick={() => onDeleteTeoriQuestion(q.id)}
                                     aria-label={`${code} kodlu Teori Pratiği sorusunu sil`}
                                     className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">Sil</button>

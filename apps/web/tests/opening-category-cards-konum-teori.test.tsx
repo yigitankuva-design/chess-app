@@ -45,14 +45,15 @@ describe('OpeningCategoryCards — a) Konum Pratiği paneli (madde 2026-09-02 de
     expect(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)')).toBeInTheDocument();
   });
 
-  it('konumPool doluysa kod + talimat listelenir, Sil onDeleteKonumQuestion çağırır', () => {
+  it('konumPool doluysa SADECE kod numarası listelenir (talimat/başka bilgi YOK), Sil onDeleteKonumQuestion çağırır', () => {
     const onDelete = vi.fn();
     render(<OpeningCategoryCards color="#38bdf8"
       konumPool={[KONUM_Q]} onAddKonumQuestion={vi.fn()} onDeleteKonumQuestion={onDelete}
     />);
     openIcerikVeKart('a');
     expect(screen.getByText('001')).toBeInTheDocument();
-    expect(screen.getByText('Bu hangi açılıştır?')).toBeInTheDocument();
+    // Zafer'in isteği: havuzda sadece kod numarası olsun, talimat gösterilmez.
+    expect(screen.queryByText('Bu hangi açılıştır?')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /001 kodlu Konum Pratiği sorusunu sil/ }));
     expect(onDelete).toHaveBeenCalledWith('q1');
   });
@@ -65,14 +66,16 @@ describe('OpeningCategoryCards — b) Teori Pratiği paneli (madde 2026-09-02 de
     expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
   });
 
-  it('teoriPool doluysa kod + açılış adı listelenir, Sil onDeleteTeoriQuestion çağırır', () => {
+  it('teoriPool doluysa SADECE kod numarası listelenir (açılış adı/başka bilgi YOK), Sil onDeleteTeoriQuestion çağırır', () => {
     const onDelete = vi.fn();
     render(<OpeningCategoryCards color="#38bdf8"
       teoriPool={[TEORI_Q]} onAddTeoriQuestion={vi.fn()} onDeleteTeoriQuestion={onDelete}
     />);
     openIcerikVeKart('b');
     expect(screen.getByText('001')).toBeInTheDocument();
-    expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument();
+    // Zafer'in isteği: havuzda sadece kod numarası olsun, açılış adı gösterilmez
+    // (formun İÇİNDEKİ "Açılış veya varyant adı" input'unun placeholder'ı hariç).
+    expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /001 kodlu Teori Pratiği sorusunu sil/ }));
     expect(onDelete).toHaveBeenCalledWith('t1');
   });
