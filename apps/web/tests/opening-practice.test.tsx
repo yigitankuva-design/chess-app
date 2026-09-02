@@ -274,51 +274,38 @@ describe('OpeningPractice — etiket renkleri (madde 2026-09-02: açık temada b
   });
 });
 
-describe('OpeningPractice — a) Konum Pratiği / b) Teori Pratiği (madde 2026-09-02 devam)', () => {
-  it('konumPool/teoriPool verilmezse (undefined) kartlar "Yükleniyor..." gösterir', () => {
-    // a/b/c AYNI dış akordiyonu paylaşır (openMode tek değer) — aynı anda
-    // sadece BİRİ açık olabilir, bu yüzden ayrı ayrı kontrol edilir.
-    render(<OpeningPractice />);
+describe('OpeningPractice — a) Konum Pratiği / b) Teori Pratiği (madde devam: ara ekran YOK, direkt navigasyon)', () => {
+  it('a) tıklanınca HİÇBİR ara ekran açılmadan doğrudan onOpenKonumPratigi çağrılır', () => {
+    const onOpen = vi.fn();
+    render(<OpeningPractice onOpenKonumPratigi={onOpen} />);
     fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
-    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /b\) Teori Pratiği/ }));
-    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'Pratiğe Başla' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Yükleniyor...')).not.toBeInTheDocument();
   });
 
-  it('havuz boşsa bilgi mesajı gösterir, "Pratiğe Başla" görünmez', () => {
-    render(<OpeningPractice konumPool={[]} teoriPool={[]} />);
-    fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
-    expect(screen.getByText('Henüz soru eklenmedi.')).toBeInTheDocument();
+  it('b) tıklanınca HİÇBİR ara ekran açılmadan doğrudan onOpenTeoriPratigi çağrılır', () => {
+    const onOpen = vi.fn();
+    render(<OpeningPractice onOpenTeoriPratigi={onOpen} />);
+    fireEvent.click(screen.getByRole('button', { name: /b\) Teori Pratiği/ }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: 'Pratiğe Başla' })).not.toBeInTheDocument();
   });
 
-  it('a) havuz doluysa "Pratiğe Başla" tıklanınca onOpenKonumPratigi çağrılır', () => {
-    const onOpen = vi.fn();
-    render(<OpeningPractice
-      konumPool={[{
-        id: 'q1', instruction: 'x',
-        fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-        answer_kind: 'sentence', options: ['A', 'B'], correct_index: 0,
-      }]}
-      onOpenKonumPratigi={onOpen}
-    />);
-    fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Pratiğe Başla' }));
-    expect(onOpen).toHaveBeenCalledTimes(1);
+  it('onOpenKonumPratigi/onOpenTeoriPratigi verilmezse tıklama hata vermez (no-op)', () => {
+    render(<OpeningPractice />);
+    expect(() => {
+      fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
+      fireEvent.click(screen.getByRole('button', { name: /b\) Teori Pratiği/ }));
+    }).not.toThrow();
   });
 
-  it('b) havuz doluysa "Pratiğe Başla" tıklanınca onOpenTeoriPratigi çağrılır', () => {
-    const onOpen = vi.fn();
-    render(<OpeningPractice
-      teoriPool={[{
-        id: 't1', instruction: 'x',
-        fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-        moves: ['e4'], opening_name: 'İtalyan Açılışı', student_color: 'w',
-      }]}
-      onOpenTeoriPratigi={onOpen}
-    />);
-    fireEvent.click(screen.getByRole('button', { name: /b\) Teori Pratiği/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Pratiğe Başla' }));
-    expect(onOpen).toHaveBeenCalledTimes(1);
+  it('a)/b) tıklanınca c) Uygulama Pratiği\'nin akordiyon durumunu ETKİLEMEZ', () => {
+    render(<OpeningPractice onOpenKonumPratigi={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /c\) Uygulama Pratiği/ }));
+    expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
+    // c) hâlâ açık kalmalı — a) artık akordiyonu KAPATMIYOR, sadece navigasyon tetikliyor.
+    expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
   });
 });

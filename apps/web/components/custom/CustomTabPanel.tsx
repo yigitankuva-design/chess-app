@@ -104,8 +104,6 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
                         + `&color=${v.colorChoice}`,
                       );
                     }}
-                    konumPool={s.konum_pratigi_pool}
-                    teoriPool={s.teori_pratigi_pool}
                     onOpenKonumPratigi={() => router.push(`/play?mode=konum-pratigi&tab=${tab.id}&section=${s.id}`)}
                     onOpenTeoriPratigi={() => router.push(`/play?mode=teori-pratigi&tab=${tab.id}&section=${s.id}`)}
                   />

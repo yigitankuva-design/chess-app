@@ -12,7 +12,6 @@ import type { BotStepKey } from '@/lib/play/openingSteps';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
 import { pickDifferentPosition } from '@/lib/play/positionPool';
-import type { KonumPratigiQuestion, TeoriPratigiQuestion } from '@/lib/customTabsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -20,14 +19,13 @@ export type { OpeningVariant, Opening, OpeningTypeDef };
 
 interface Props {
   /**
-   * Madde 2026-09-02 (devam): a)/b)'nin soru havuzları — CustomTabPanel'den
-   * gelir. undefined = henüz yüklenmedi (kart "Yükleniyor..." gösterir).
-   * onOpen* verilmemişse (örn. doğrudan /play sayfasından initialVariantId
-   * ile geliniyorsa a/b/c katmanı zaten hiç render edilmiyor) kart
-   * tıklanamaz duruma düşmez — sadece navigasyon çağrılmaz.
+   * Madde (devam): a) Konum Pratiği / b) Teori Pratiği artık akordiyon
+   * AÇMIYOR — tıklanınca ARA EKRAN (Yükleniyor/Pratiğe Başla) olmadan
+   * DOĞRUDAN bu callback çağrılır, navigasyon CustomTabPanel'e bırakılır.
+   * Verilmemişse (örn. /play sayfasından initialVariantId ile doğrudan
+   * geliniyorsa a/b/c katmanı zaten hiç render edilmiyor) tıklama hiçbir
+   * şey yapmaz.
    */
-  konumPool?: KonumPratigiQuestion[];
-  teoriPool?: TeoriPratigiQuestion[];
   onOpenKonumPratigi?: () => void;
   onOpenTeoriPratigi?: () => void;
   /**
@@ -59,16 +57,17 @@ interface Props {
  *  o prop kaldirildi. */
 export function OpeningPractice({
   initialVariantId, initialCriteria, onReadyToStart,
-  konumPool, teoriPool, onOpenKonumPratigi, onOpenTeoriPratigi,
+  onOpenKonumPratigi, onOpenTeoriPratigi,
 }: Props = {}) {
   // Madde 2026-09-02: Zafer'in şemasına göre "Açılış Pratiği Yap" 3 dala
-  // ayrıldı — a) Konum Pratiği, b) Teori Pratiği (ikisi de İÇERİK/davranış
-  // kararı bekliyor, şimdilik sadece iskelet/yer tutucu), c) Uygulama
-  // Pratiği (aşağıdaki MEVCUT Bota Karşı/Arkadaşına Karşı akışı, DEĞİŞMEDEN,
-  // bir seviye içeri taşındı). directStart modu (aşağıda) bu katmanı
+  // ayrıldı — a) Konum Pratiği, b) Teori Pratiği (madde devam: tıklanınca
+  // akordiyon AÇILMAZ, doğrudan pratiğe geçilir — bkz. onOpenKonumPratigi/
+  // onOpenTeoriPratigi), c) Uygulama Pratiği (aşağıdaki MEVCUT Bota Karşı/
+  // Arkadaşına Karşı akışı, DEĞİŞMEDEN, bir seviye içeri taşındı — TEK bu
+  // dal akordiyon olarak açılır). directStart modu (aşağıda) bu katmanı
   // ATLAR — /play sayfasından doğrudan varyantla gelindiğinde a/b/c hiç
   // gösterilmez.
-  const [openMode, setOpenMode] = useState<'konum' | 'teori' | 'uygulama' | null>(null);
+  const [openMode, setOpenMode] = useState<'uygulama' | null>(null);
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
   // tum acilislari gormemeli.
@@ -190,50 +189,22 @@ export function OpeningPractice({
         <PathNode
           icon="🎯"
           label="a) Konum Pratiği"
-          active={openMode === 'konum'}
+          active={false}
           size={40}
           tint="var(--t-text-1)"
-          onClick={() => setOpenMode((p) => (p === 'konum' ? null : 'konum'))}
+          onClick={() => onOpenKonumPratigi?.()}
         />
-        {openMode === 'konum' && (
-          <Branch offset={20}>
-            {konumPool === undefined ? (
-              <p className="text-sm t-muted">Yükleniyor...</p>
-            ) : konumPool.length === 0 ? (
-              <p className="text-sm t-muted">Henüz soru eklenmedi.</p>
-            ) : (
-              <button type="button" onClick={onOpenKonumPratigi}
-                className="px-4 py-2.5 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm font-semibold transition-colors">
-                Pratiğe Başla
-              </button>
-            )}
-          </Branch>
-        )}
       </div>
 
       <div>
         <PathNode
           icon="📚"
           label="b) Teori Pratiği"
-          active={openMode === 'teori'}
+          active={false}
           size={40}
           tint="var(--t-text-1)"
-          onClick={() => setOpenMode((p) => (p === 'teori' ? null : 'teori'))}
+          onClick={() => onOpenTeoriPratigi?.()}
         />
-        {openMode === 'teori' && (
-          <Branch offset={20}>
-            {teoriPool === undefined ? (
-              <p className="text-sm t-muted">Yükleniyor...</p>
-            ) : teoriPool.length === 0 ? (
-              <p className="text-sm t-muted">Henüz soru eklenmedi.</p>
-            ) : (
-              <button type="button" onClick={onOpenTeoriPratigi}
-                className="px-4 py-2.5 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm font-semibold transition-colors">
-                Pratiğe Başla
-              </button>
-            )}
-          </Branch>
-        )}
       </div>
 
       <div>

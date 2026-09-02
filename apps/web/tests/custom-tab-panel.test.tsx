@@ -4,18 +4,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/components/play/OpeningPractice', () => ({
-  OpeningPractice: ({ onReadyToStart, konumPool, teoriPool, onOpenKonumPratigi, onOpenTeoriPratigi }: {
+  OpeningPractice: ({ onReadyToStart, onOpenKonumPratigi, onOpenTeoriPratigi }: {
     onReadyToStart?: (variant: { id: number }, criteria: {
       level: { level: number }; timeControl: { label: string }; colorChoice: string;
     }) => void;
-    konumPool?: { id: string }[];
-    teoriPool?: { id: string }[];
     onOpenKonumPratigi?: () => void;
     onOpenTeoriPratigi?: () => void;
   }) => (
-    <div data-testid="opening-practice"
-      data-konum-count={konumPool === undefined ? 'undefined' : konumPool.length}
-      data-teori-count={teoriPool === undefined ? 'undefined' : teoriPool.length}>
+    <div data-testid="opening-practice">
       açılış pratiği içeriği
       {onReadyToStart && (
         <button onClick={() => onReadyToStart(
@@ -88,14 +84,6 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('skill=5');
     expect(url).toContain('tc=5%2B0');
     expect(url).toContain('color=white');
-  });
-
-  it('madde 2026-09-02 (devam): konum/teori havuzları OpeningPractice\'e geçirilir', () => {
-    render(<CustomTabPanel tab={PRATIK} />);
-    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
-    const el = screen.getByTestId('opening-practice');
-    expect(el).toHaveAttribute('data-konum-count', '1');
-    expect(el).toHaveAttribute('data-teori-count', '0');
   });
 
   it('madde 2026-09-02 (devam): a) Konum Pratiği açılınca /play?mode=konum-pratigi\'ye yönlendirilir', () => {
