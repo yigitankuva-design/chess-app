@@ -27,12 +27,23 @@ const LEVEL_EMOJIS = ['🌱', '😊', '😎', '🔥', '⭐', '👑', '🚀', '�
 
 interface FunActivity { id: number; name: string; description: string; emoji: string }
 
+// Bu 4 renk, Hızlı Erişim kartlarının DIŞINDA da marka rengi olarak kullanılır
+// (Dersler düzey adı, Maç Yap alt bağlantıları, Eğlence oyun adları) — bu
+// yüzden SABİT kalır, temayla değişmez.
 const FEATURE_COLORS = {
   play: '#34d399',
   lessons: '#38bdf8',
   analiz: '#a78bfa',
   eglence: '#f472b6',
 };
+
+// Madde 2026-09-02: Zafer'in "Tek Vurgu" onayı — SADECE Hızlı Erişim'deki 4
+// yerleşik kart (aşağıdaki meta nesnesi) bu rengi kullanır: kendi sabit
+// renkleri yerine, sporcunun seçtiği temanın vurgu rengi (--t-accent, bkz.
+// app/globals.css [data-chess-theme='...']). Tema değişince kartlar otomatik
+// değişir. FEATURE_COLORS'ın DİĞER kullanım yerleri (yukarıdaki not) bilinçli
+// olarak DOKUNULMADI — onaylanan öneri sadece bu kart grubunu kapsıyordu.
+const QUICK_ACCESS_ACCENT = 'var(--t-accent)';
 
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
 
@@ -405,11 +416,11 @@ export default function ChildHomePage() {
             // Madde 1 (2026-08-19): admin ikon havuzundan seçtiyse (L.icons.X)
             // o kullanılır; seçmediyse eski sabit çizgi-ikona düşer.
             const meta = {
-              play:    { icon: L.icons.play || <IconSwords s={45} />, label: L.features.play,    color: FEATURE_COLORS.play },
-              lessons: { icon: L.icons.lessons || <IconBook s={45} />, label: L.features.lessons, color: FEATURE_COLORS.lessons },
+              play:    { icon: L.icons.play || <IconSwords s={45} />, label: L.features.play,    color: QUICK_ACCESS_ACCENT },
+              lessons: { icon: L.icons.lessons || <IconBook s={45} />, label: L.features.lessons, color: QUICK_ACCESS_ACCENT },
               // Madde 2026-09-01 (1): Analiz Et diğer sekmelerle AYNI akordiyona katılır.
-              analiz:  { icon: L.icons.analiz || <IconAnalyst s={45} />, label: L.features.analiz, color: FEATURE_COLORS.analiz },
-              eglence: { icon: L.icons.eglence || <IconPuzzle s={45} />, label: L.features.eglence, color: FEATURE_COLORS.eglence },
+              analiz:  { icon: L.icons.analiz || <IconAnalyst s={45} />, label: L.features.analiz, color: QUICK_ACCESS_ACCENT },
+              eglence: { icon: L.icons.eglence || <IconPuzzle s={45} />, label: L.features.eglence, color: QUICK_ACCESS_ACCENT },
             }[key];
             return (
               <FeatureTab
