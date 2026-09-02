@@ -4,7 +4,6 @@ import { AuthProvider } from '@/lib/auth-context';
 import { ChessThemeProvider } from '@/lib/chess-theme-context';
 import { BoardNotationProvider } from '@/lib/board-notation-context';
 import { SettingsProvider } from '@/lib/settings/settings-context';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const metadata: Metadata = {
   title: 'Bozüyük Satranç Akademisi',
@@ -43,7 +42,6 @@ export default function RootLayout({
             </BoardNotationProvider>
           </ChessThemeProvider>
         </SettingsProvider>
-        <ThemeToggle />
       </body>
     </html>
   );
