@@ -46,6 +46,14 @@ interface Props {
  *  — eskiden disaridan gelen `tint` (Pratik Yap kartinin rengi) kullaniliyordu,
  *  o prop kaldirildi. */
 export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToStart }: Props = {}) {
+  // Madde 2026-09-02: Zafer'in şemasına göre "Açılış Pratiği Yap" 3 dala
+  // ayrıldı — a) Konum Pratiği, b) Teori Pratiği (ikisi de İÇERİK/davranış
+  // kararı bekliyor, şimdilik sadece iskelet/yer tutucu), c) Uygulama
+  // Pratiği (aşağıdaki MEVCUT Bota Karşı/Arkadaşına Karşı akışı, DEĞİŞMEDEN,
+  // bir seviye içeri taşındı). directStart modu (aşağıda) bu katmanı
+  // ATLAR — /play sayfasından doğrudan varyantla gelindiğinde a/b/c hiç
+  // gösterilmez.
+  const [openMode, setOpenMode] = useState<'konum' | 'teori' | 'uygulama' | null>(null);
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
   // Madde 4: acilis listesi BASTAN gorunmez — sporcu basliga tiklamadan
   // tum acilislari gormemeli.
@@ -165,104 +173,152 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
     <div className="grid gap-3">
       <div>
         <PathNode
-          icon="🤖"
-          label="Bota Karşı Pratik Yap"
-          active={openOuter === 'bot'}
+          icon="🎯"
+          label="a) Konum Pratiği"
+          active={openMode === 'konum'}
           size={40}
           tint="var(--t-text-1)"
-          onClick={() => toggleOuter('bot')}
+          onClick={() => setOpenMode((p) => (p === 'konum' ? null : 'konum'))}
         />
-        {/* Madde 2026-08-21: "Bota Karşı Pratik Yap" açılınca gelen adımların
-            cümleleri her durumda (açık/kapalı) SABİT kalsın diye tint verilir
-            — önceden açıkken accent rengine dönüyordu. Madde 2026-09-02:
-            sabit değer "#fff" idi, açık temalarda (Klasik/Sakin) beyaz zemin
-            üstünde beyaz yazı görünmez oluyordu — var(--t-text-1) ile
-            değiştirildi (her temada okunaklı, hâlâ accent'e dönmez). */}
-        {openOuter === 'bot' && (
+        {openMode === 'konum' && (
           <Branch offset={20}>
-            <div>
-              <PathNode
-                icon="📖"
-                label="1. Açılış Seç"
-                trailing={variantSummary(chosenVariant?.name ?? null) ? (
-                  <span className="text-xs t-muted">{variantSummary(chosenVariant?.name ?? null)}</span>
-                ) : undefined}
-                active={openInner === 'opening'}
-                size={34}
-                tint="var(--t-text-1)"
-                onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
-              />
-              {openInner === 'opening' && (
-                <Branch offset={17}>
-                  <OpeningPicker types={types} onPicked={(args) => {
-                    handlePicked(args);
-                    setOpenInner('criteria');
-                  }} />
-                </Branch>
-              )}
-            </div>
-
-            <div>
-              <PathNode
-                icon="🎯"
-                label="2. Maç Kriterlerini Seç"
-                active={openInner === 'criteria'}
-                locked={!isCriteriaUnlocked(chosenVariant?.name ?? null)}
-                size={34}
-                tint="var(--t-text-1)"
-                onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
-              />
-              {openInner === 'criteria' && (
-                <Branch offset={17}>
-                  {/* Madde 1 (2026-08-19): Açılış Pratiği'nde Renk Seç GERİ
-                      geldi — sporcu açılışı istediği renkle pratik yapabilsin. */}
-                  <MatchCriteria
-                    startLabel="Pratiğe Başla"
-                    simplifiedLevels
-                    onStart={(v) => {
-                      // Kilit yalnizca gorsel degil: varyant yoksa mac hic baslamaz.
-                      if (!chosenVariant) return;
-                      if (onReadyToStart) { onReadyToStart(chosenVariant, v); return; }
-                      setCriteria(v);
-                      setColor(resolveColor(v.colorChoice));
-                    }}
-                  />
-                </Branch>
-              )}
-            </div>
+            <p className="text-sm t-muted">Bu bölüm yakında eklenecek.</p>
           </Branch>
         )}
       </div>
 
       <div>
         <PathNode
-          icon="🤝"
-          label="Arkadaşına Karşı Pratik Yap"
-          active={openOuter === 'friend'}
+          icon="📚"
+          label="b) Teori Pratiği"
+          active={openMode === 'teori'}
           size={40}
           tint="var(--t-text-1)"
-          onClick={() => toggleOuter('friend')}
+          onClick={() => setOpenMode((p) => (p === 'teori' ? null : 'teori'))}
         />
-        {openOuter === 'friend' && (
-          /* Sira: 1) Acilis Sec (tur->isim->varyant ic ice) 2) Kriterler
-             3) Arkadas. FriendChallenge kendi ic adimlarini HALA StepCard ile
-             cizer — o bilesen ayrica "Arkadasla Oyna" (Pratik Yap'la ilgisiz)
-             akisinda da kullanildigi icin degistirilmedi (2026-08-19 kapsam
-             karari), yalnizca acilis secim adimi tekile indirgendi (2026-08-20). */
+        {openMode === 'teori' && (
           <Branch offset={20}>
-            <FriendChallenge
-              openingStep={{
-                renderPicker: (onPicked) => (
-                  <OpeningPicker types={types} onPicked={(args) => {
-                    handlePicked(args);
-                    onPicked();
-                  }} />
-                ),
-                summary: variantSummary(chosenVariant?.name ?? null),
-                picked: chosenVariant !== null,
-                startFen: chosenVariant?.start_fen ?? null,
-              }}
-            />
+            <p className="text-sm t-muted">Bu bölüm yakında eklenecek.</p>
+          </Branch>
+        )}
+      </div>
+
+      <div>
+        <PathNode
+          icon="♟️"
+          label="c) Uygulama Pratiği"
+          active={openMode === 'uygulama'}
+          size={40}
+          tint="var(--t-text-1)"
+          onClick={() => setOpenMode((p) => (p === 'uygulama' ? null : 'uygulama'))}
+        />
+        {openMode === 'uygulama' && (
+          <Branch offset={20}>
+            <div className="grid gap-3">
+              <div>
+                <PathNode
+                  icon="🤖"
+                  label="Bota Karşı Pratik Yap"
+                  active={openOuter === 'bot'}
+                  size={40}
+                  tint="var(--t-text-1)"
+                  onClick={() => toggleOuter('bot')}
+                />
+                {/* Madde 2026-08-21: "Bota Karşı Pratik Yap" açılınca gelen adımların
+                    cümleleri her durumda (açık/kapalı) SABİT kalsın diye tint verilir
+                    — önceden açıkken accent rengine dönüyordu. Madde 2026-09-02:
+                    sabit değer "#fff" idi, açık temalarda (Klasik/Sakin) beyaz zemin
+                    üstünde beyaz yazı görünmez oluyordu — var(--t-text-1) ile
+                    değiştirildi (her temada okunaklı, hâlâ accent'e dönmez). */}
+                {openOuter === 'bot' && (
+                  <Branch offset={20}>
+                    <div>
+                      <PathNode
+                        icon="📖"
+                        label="1. Açılış Seç"
+                        trailing={variantSummary(chosenVariant?.name ?? null) ? (
+                          <span className="text-xs t-muted">{variantSummary(chosenVariant?.name ?? null)}</span>
+                        ) : undefined}
+                        active={openInner === 'opening'}
+                        size={34}
+                        tint="var(--t-text-1)"
+                        onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
+                      />
+                      {openInner === 'opening' && (
+                        <Branch offset={17}>
+                          <OpeningPicker types={types} onPicked={(args) => {
+                            handlePicked(args);
+                            setOpenInner('criteria');
+                          }} />
+                        </Branch>
+                      )}
+                    </div>
+
+                    <div>
+                      <PathNode
+                        icon="🎯"
+                        label="2. Maç Kriterlerini Seç"
+                        active={openInner === 'criteria'}
+                        locked={!isCriteriaUnlocked(chosenVariant?.name ?? null)}
+                        size={34}
+                        tint="var(--t-text-1)"
+                        onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
+                      />
+                      {openInner === 'criteria' && (
+                        <Branch offset={17}>
+                          {/* Madde 1 (2026-08-19): Açılış Pratiği'nde Renk Seç GERİ
+                              geldi — sporcu açılışı istediği renkle pratik yapabilsin. */}
+                          <MatchCriteria
+                            startLabel="Pratiğe Başla"
+                            simplifiedLevels
+                            onStart={(v) => {
+                              // Kilit yalnizca gorsel degil: varyant yoksa mac hic baslamaz.
+                              if (!chosenVariant) return;
+                              if (onReadyToStart) { onReadyToStart(chosenVariant, v); return; }
+                              setCriteria(v);
+                              setColor(resolveColor(v.colorChoice));
+                            }}
+                          />
+                        </Branch>
+                      )}
+                    </div>
+                  </Branch>
+                )}
+              </div>
+
+              <div>
+                <PathNode
+                  icon="🤝"
+                  label="Arkadaşına Karşı Pratik Yap"
+                  active={openOuter === 'friend'}
+                  size={40}
+                  tint="var(--t-text-1)"
+                  onClick={() => toggleOuter('friend')}
+                />
+                {openOuter === 'friend' && (
+                  /* Sira: 1) Acilis Sec (tur->isim->varyant ic ice) 2) Kriterler
+                     3) Arkadas. FriendChallenge kendi ic adimlarini HALA StepCard ile
+                     cizer — o bilesen ayrica "Arkadasla Oyna" (Pratik Yap'la ilgisiz)
+                     akisinda da kullanildigi icin degistirilmedi (2026-08-19 kapsam
+                     karari), yalnizca acilis secim adimi tekile indirgendi (2026-08-20). */
+                  <Branch offset={20}>
+                    <FriendChallenge
+                      openingStep={{
+                        renderPicker: (onPicked) => (
+                          <OpeningPicker types={types} onPicked={(args) => {
+                            handlePicked(args);
+                            onPicked();
+                          }} />
+                        ),
+                        summary: variantSummary(chosenVariant?.name ?? null),
+                        picked: chosenVariant !== null,
+                        startFen: chosenVariant?.start_fen ?? null,
+                      }}
+                    />
+                  </Branch>
+                )}
+              </div>
+            </div>
           </Branch>
         )}
       </div>

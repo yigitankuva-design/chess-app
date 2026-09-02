@@ -50,9 +50,18 @@ beforeEach(() => {
   })));
 });
 
+/** "c) Uygulama Pratiği" alt sekmesini açar — Bota Karşı/Arkadaşına Karşı
+ *  kartları ARTIK bunun İÇİNDE (madde 2026-09-02: a/b/c iskeleti, Zafer'in
+ *  şemasına göre — a/b'nin işlevi ayrı bir işte gelecek, burada sadece
+ *  gezinme katmanı testlere eklendi). */
+function openUygulama() {
+  fireEvent.click(screen.getByRole('button', { name: /c\) Uygulama Pratiği/ }));
+}
+
 /** Bot kartini acar, "1. Açılış Seç" akordiyonunda Tür -> Açılış -> Varyant
  *  ic ice acip son varyanti secer (madde: 2026-08-20, guncelleme). */
 async function pickVariant() {
+  openUygulama();
   fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
   fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
   fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
@@ -69,8 +78,16 @@ async function pickVariantAndStartCriteria() {
 }
 
 describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme)', () => {
-  it('başlangıçta iki dış kart kapalıdır', () => {
+  it('başlangıçta "c) Uygulama Pratiği" kapalıdır, iki iç kart DOM\'da yok', () => {
     render(<OpeningPractice />);
+    expect(screen.getByRole('button', { name: /c\) Uygulama Pratiği/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Bota Karşı Pratik Yap/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ })).not.toBeInTheDocument();
+  });
+
+  it('"c) Uygulama Pratiği" açılınca iki dış kart görünür, ikisi de kapalıdır', () => {
+    render(<OpeningPractice />);
+    openUygulama();
     expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ })).toBeInTheDocument();
     // Govdeler kapali: ic kartlarin basliklari DOM'da yok
@@ -80,6 +97,7 @@ describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme
 
   it('bot kartı açılınca İKİ kart görünür (Açılış Seç, Maç Kriterlerini Seç)', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     expect(screen.getByText('1. Açılış Seç')).toBeInTheDocument();
     expect(screen.getByText('2. Maç Kriterlerini Seç')).toBeInTheDocument();
@@ -87,6 +105,7 @@ describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme
 
   it('KİLİT: varyant seçilmeden kriter kartı açılmaz', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     const criteriaBtn = screen.getByRole('button', { name: /2\. Maç Kriterlerini Seç/ });
     expect(criteriaBtn).toHaveAttribute('aria-disabled', 'true');
@@ -96,6 +115,7 @@ describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme
 
   it('tür seçilince açılış isimleri İÇİNDE genişler (sayfa değişmez, akordiyon kapanmaz)', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
@@ -157,12 +177,14 @@ describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme
 
   it('arkadaş kartı açılınca arkadaş seçme ekranı görünür (açılış seçtirmeden)', () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ }));
     expect(screen.getByTestId('friend-challenge')).toBeInTheDocument();
   });
 
   it('dış akordiyon tek-açık: arkadaş açılınca bot kapanır', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     fireEvent.click(screen.getByRole('button', { name: /Arkadaşına Karşı Pratik Yap/ }));
     expect(screen.queryByText('1. Açılış Seç')).not.toBeInTheDocument();
@@ -172,6 +194,7 @@ describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme
   it('REGRESYON: açılış türü listesi boşsa bilgi mesajı gösterilir', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [] })));
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
     await waitFor(() =>
@@ -188,6 +211,7 @@ describe('OpeningPractice — iç içe akordiyon (madde: 2026-08-20, güncelleme
       }],
     })));
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ }));
     fireEvent.click(screen.getByRole('button', { name: /1\. Açılış Seç/ }));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
@@ -223,6 +247,7 @@ describe('OpeningPractice — initialVariantId/initialCriteria (doğrudan-başla
 
   it('yalnızca initialVariantId verilip initialCriteria eksikse normal akordiyon akışı çalışır', () => {
     render(<OpeningPractice initialVariantId={11} />);
+    openUygulama();
     expect(screen.getByRole('button', { name: /Bota Karşı Pratik Yap/ })).toBeInTheDocument();
     expect(screen.queryByTestId('bot-game')).not.toBeInTheDocument();
   });
@@ -236,12 +261,14 @@ describe('OpeningPractice — initialVariantId/initialCriteria (doğrudan-başla
 describe('OpeningPractice — etiket renkleri (madde 2026-09-02: açık temada beyaz-üstünde-beyaz düzeltmesi)', () => {
   it('dış kart etiketleri var(--t-text-1) kullanır, sabit "#fff" DEĞİL', () => {
     render(<OpeningPractice />);
+    openUygulama();
     expect(screen.getByText('Bota Karşı Pratik Yap').style.color).toBe('var(--t-text-1)');
     expect(screen.getByText('Arkadaşına Karşı Pratik Yap').style.color).toBe('var(--t-text-1)');
   });
 
   it('bot dalı açılınca iç adım etiketleri de var(--t-text-1) kullanır', () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
     expect(screen.getByText('1. Açılış Seç').style.color).toBe('var(--t-text-1)');
   });

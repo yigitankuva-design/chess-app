@@ -37,9 +37,16 @@ beforeEach(() => {
 
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 
+/** "c) Uygulama Pratiği" alt sekmesini açar — Bota Karşı/Arkadaşına Karşı
+ *  kartları ARTIK bunun İÇİNDE (madde 2026-09-02: a/b/c iskeleti). */
+function openUygulama() {
+  fireEvent.click(screen.getByText('c) Uygulama Pratiği'));
+}
+
 describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, güncelleme — iç içe akordiyon)', () => {
   it('adımlar 1) Açılış Seç 2) Maç Kriterlerini Belirle 3) Arkadaşını Seç sırasındadır', () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
 
     expect(screen.getByText('1. Açılış Seç')).toBeInTheDocument();
@@ -49,6 +56,7 @@ describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, 
 
   it('TUZAK: açılış seçilmeden kriter adımı KİLİTLİDİR', () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
     expect(screen.getByText('2. Maç Kriterlerini Belirle').closest('button'))
       .toHaveAttribute('aria-disabled', 'true');
@@ -56,6 +64,7 @@ describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, 
 
   it('liste başta gizlidir; tür seçilince o türün açılış İSİMLERİ İÇİNDE görünür', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
     expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
 
@@ -69,6 +78,7 @@ describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, 
 
   it('açılış ismi seçilince o açılışın VARYANTLARI İÇİNDE görünür', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
     fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
@@ -78,6 +88,7 @@ describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, 
 
   it('seçilen VARYANTIN start_fen değeri teklifle birlikte gider', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Arkadaşına Karşı Pratik Yap'));
     fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
@@ -99,6 +110,7 @@ describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, 
 describe('Açılış Pratiği — bota karşı 2 adım (madde: 2026-08-20, güncelleme)', () => {
   it('adımlar 1) Açılış Seç 2) Maç Kriterlerini Seç sırasındadır', () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
     expect(screen.getByText('1. Açılış Seç')).toBeInTheDocument();
     expect(screen.getByText('2. Maç Kriterlerini Seç')).toBeInTheDocument();
@@ -106,12 +118,14 @@ describe('Açılış Pratiği — bota karşı 2 adım (madde: 2026-08-20, günc
 
   it('liste başta gizlidir', () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
     expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
   });
 
   it('TUZAK: farklı bir varyant seçilince önceki seçim değişir, kriter kilidi güncel varyanta göre kalır', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
     fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
@@ -123,6 +137,7 @@ describe('Açılış Pratiği — bota karşı 2 adım (madde: 2026-08-20, günc
 
   it('boş türde bilgi mesajı gösterir', async () => {
     render(<OpeningPractice />);
+    openUygulama();
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
     fireEvent.click(screen.getByText('1. Açılış Seç'));
     fireEvent.click(await screen.findByText('Diğer Açılışlar'));
