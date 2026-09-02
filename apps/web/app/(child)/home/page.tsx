@@ -47,9 +47,6 @@ const QUICK_ACCESS_ACCENT = 'var(--t-accent)';
 
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
 
-/** Admin'in eklediği ek sekmeler için sırayla kullanılan renkler */
-const CUSTOM_TAB_COLORS = ['#fbbf24', '#2dd4bf', '#fb7185', '#60a5fa', '#c084fc'];
-
 /* ── Modern çizgi ikonlar (emoji yerine) ─────────────────────────────── */
 const svgBase = {
   viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
@@ -435,12 +432,12 @@ export default function ChildHomePage() {
               sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).
               İkonu admin'in ikon havuzundan seçtiği emoji belirler (madde
               1/3, 2026-08-19) — Pratik Yap dahil hepsi aynı kurala uyar. */}
-          {customTabs.map((ct, i) => (
+          {customTabs.map((ct) => (
             <FeatureTab
               key={ct.id}
               icon={ct.emoji}
               label={ct.label}
-              color={CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length]}
+              color={QUICK_ACCESS_ACCENT}
               active={openTab === ct.id} ledOn={openTab === ct.id || openTab === null}
               onClick={() => toggleCustomTab(ct.id)}
             />
@@ -450,10 +447,11 @@ export default function ChildHomePage() {
         {/* Açık özel sekmenin alt sekmeleri — aynı ekranda. accentColor:
             alt sekme cümleleri sekmenin kendi rengiyle aynı olsun diye
             (madde 2, 2026-08-19) — kartın ÜSTÜNDEKİ renkle BİREBİR aynı
-            hesap kullanılır. */}
+            hesap kullanılır. Madde 2026-09-02 (3): Zafer'in onayıyla özel
+            sekmeler de "Tek Vurgu"ya katıldı — hepsi QUICK_ACCESS_ACCENT. */}
         {typeof openTab === 'number' && (() => {
           const ctIdx = customTabs.findIndex((ct) => ct.id === openTab);
-          const accentColor = ctIdx >= 0 ? CUSTOM_TAB_COLORS[ctIdx % CUSTOM_TAB_COLORS.length] : undefined;
+          const accentColor = ctIdx >= 0 ? QUICK_ACCESS_ACCENT : undefined;
           return (
             <div style={{ ...pressed(18), padding: '1.1rem 1rem' }} className="mb-4">
               {customTabDetails[openTab]
