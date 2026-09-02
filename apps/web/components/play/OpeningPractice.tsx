@@ -41,8 +41,9 @@ interface Props {
  *  varyant TEK ic ice akordiyonda, bkz. OpeningPicker) -> kriterler
  *  (madde: 2026-08-20, guncelleme — admin'deki drill-down akordiyonla
  *  AYNI desen; ayri numarali "tur/isim/varyant" adimlari kaldirildi).
- *  Madde 2026-08-21: etiketler artik HER ZAMAN beyaz (#fff) — eskiden
- *  disaridan gelen `tint` (Pratik Yap kartinin rengi) kullaniliyordu,
+ *  Madde 2026-08-21: etiketler artik HER ZAMAN sabit (var(--t-text-1),
+ *  madde 2026-09-02'de #fff'ten degistirildi — acik temalarda gorunmuyordu)
+ *  — eskiden disaridan gelen `tint` (Pratik Yap kartinin rengi) kullaniliyordu,
  *  o prop kaldirildi. */
 export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToStart }: Props = {}) {
   const [openOuter, setOpenOuter] = useState<'bot' | 'friend' | null>(null);
@@ -168,12 +169,15 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
           label="Bota Karşı Pratik Yap"
           active={openOuter === 'bot'}
           size={40}
-          tint="#fff"
+          tint="var(--t-text-1)"
           onClick={() => toggleOuter('bot')}
         />
         {/* Madde 2026-08-21: "Bota Karşı Pratik Yap" açılınca gelen adımların
-            cümleleri her durumda (açık/kapalı) BEYAZ kalsın diye tint sabit
-            "#fff" verilir — önceden açıkken accent rengine dönüyordu. */}
+            cümleleri her durumda (açık/kapalı) SABİT kalsın diye tint verilir
+            — önceden açıkken accent rengine dönüyordu. Madde 2026-09-02:
+            sabit değer "#fff" idi, açık temalarda (Klasik/Sakin) beyaz zemin
+            üstünde beyaz yazı görünmez oluyordu — var(--t-text-1) ile
+            değiştirildi (her temada okunaklı, hâlâ accent'e dönmez). */}
         {openOuter === 'bot' && (
           <Branch offset={20}>
             <div>
@@ -185,7 +189,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
                 ) : undefined}
                 active={openInner === 'opening'}
                 size={34}
-                tint="#fff"
+                tint="var(--t-text-1)"
                 onClick={() => setOpenInner((p) => (p === 'opening' ? null : 'opening'))}
               />
               {openInner === 'opening' && (
@@ -205,7 +209,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
                 active={openInner === 'criteria'}
                 locked={!isCriteriaUnlocked(chosenVariant?.name ?? null)}
                 size={34}
-                tint="#fff"
+                tint="var(--t-text-1)"
                 onClick={() => setOpenInner((p) => (p === 'criteria' ? null : 'criteria'))}
               />
               {openInner === 'criteria' && (
@@ -236,7 +240,7 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
           label="Arkadaşına Karşı Pratik Yap"
           active={openOuter === 'friend'}
           size={40}
-          tint="#fff"
+          tint="var(--t-text-1)"
           onClick={() => toggleOuter('friend')}
         />
         {openOuter === 'friend' && (

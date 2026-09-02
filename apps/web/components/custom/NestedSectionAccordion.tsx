@@ -24,7 +24,9 @@ interface Props {
   /** İç içelik derinliği — dairesel ikon boyutu ve dal girintisini belirler. */
   depth: number;
   /** Sekmenin kart rengi — yalnızca EN ÜST seviyedeki başlıklara uygulanır
-   *  (Açılış Pratiği'ndeki desenle AYNI: iç seviyeler beyaz kalır). */
+   *  (Açılış Pratiği'ndeki desenle AYNI: iç seviyeler sabit metin renginde
+   *  kalır — madde 2026-09-02: "beyaz" #fff idi, açık temalarda görünmüyordu,
+   *  var(--t-text-1) ile değiştirildi). */
   accentColor?: string;
   /** Bu çağrı "Dersler" alt sekmesinin İÇİNDE mi? — admin tarafındaki
    *  NestedSectionTree'deki inDersler ile AYNI mantık. */
@@ -69,7 +71,7 @@ export function NestedSectionAccordion({
               label={s.title}
               active={open}
               size={size}
-              tint={depth === 0 ? accentColor : '#fff'}
+              tint={depth === 0 ? accentColor : 'var(--t-text-1)'}
               onClick={() => (
                 isAltKonu
                   ? router.push(`/custom/${tabId}/alt-konu/${s.id}`)

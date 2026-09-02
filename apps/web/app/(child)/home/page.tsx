@@ -33,9 +33,11 @@ interface FunActivity { id: number; name: string; description: string; emoji: st
 // bölüm başlıkları) bu rengi kullanır — sporcunun seçtiği temanın vurgu
 // rengi (--t-accent, bkz. app/globals.css [data-chess-theme='...']). Tema
 // değişince hepsi otomatik değişir. DAHA DERİN seviyeler (ders/alt konu
-// içindeki pratik modları gibi) bilinçli olarak beyaz/bağımsız kalır —
+// içindeki pratik modları gibi) bilinçli olarak sabit/bağımsız kalır —
 // özel sekmelerde zaten var olan kural (NestedSectionAccordion'da
-// "depth === 0 ? accentColor : '#fff'") yerleşik sekmelere de uygulandı.
+// "depth === 0 ? accentColor : var(--t-text-1)") yerleşik sekmelere de
+// uygulandı. (Bu sabit değer madde 2026-09-02'de "#fff" idi; açık temalarda
+// beyaz-üstünde-beyaz görünmüyordu — var(--t-text-1)'e çevrildi.)
 const QUICK_ACCESS_ACCENT = 'var(--t-accent)';
 
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
@@ -362,10 +364,14 @@ export default function ChildHomePage() {
       textDecoration: 'none',
       position: 'relative',
     };
-    /* LED yanan kartta ikon+yazı parlar; sönük karttaki matlaşır — tab'ın
-       kendi rengiyle ışıldar. */
+    /* LED yanan kartta ikon+yazı parlar; sönük karttaki matlaşır. Madde
+       2026-09-02: Zafer'in isteğiyle bu parlama (neon ışık) SADECE Neon
+       temasında görünsün diye tab'ın kendi rengi yerine --t-glow kullanılır
+       — o değişken sadece Neon temasında gerçek bir renk taşır (bkz.
+       app/globals.css [data-chess-theme='neon']), diğer 3 temada
+       transparent'tır; yani drop-shadow orada RENDER OLUR ama görünmez. */
     const contentStyle: React.CSSProperties = lit
-      ? { color, opacity: 1, filter: `drop-shadow(0 0 5px ${color})` }
+      ? { color, opacity: 1, filter: `drop-shadow(0 0 5px var(--t-glow))` }
       : { color, opacity: 0.4 };
     /* Madde 1 (2026-08-20): ikon+isim %50 büyütüldü. Emoji ikonlara (admin
        ikon havuzundan seçilen) SVG yedek ikonlarla (s=45) AYNI görsel taban

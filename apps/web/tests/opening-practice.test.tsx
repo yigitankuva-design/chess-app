@@ -232,3 +232,17 @@ describe('OpeningPractice — initialVariantId/initialCriteria (doğrudan-başla
     await waitFor(() => expect(screen.getByText('Açılış bulunamadı.')).toBeInTheDocument());
   });
 });
+
+describe('OpeningPractice — etiket renkleri (madde 2026-09-02: açık temada beyaz-üstünde-beyaz düzeltmesi)', () => {
+  it('dış kart etiketleri var(--t-text-1) kullanır, sabit "#fff" DEĞİL', () => {
+    render(<OpeningPractice />);
+    expect(screen.getByText('Bota Karşı Pratik Yap').style.color).toBe('var(--t-text-1)');
+    expect(screen.getByText('Arkadaşına Karşı Pratik Yap').style.color).toBe('var(--t-text-1)');
+  });
+
+  it('bot dalı açılınca iç adım etiketleri de var(--t-text-1) kullanır', () => {
+    render(<OpeningPractice />);
+    fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
+    expect(screen.getByText('1. Açılış Seç').style.color).toBe('var(--t-text-1)');
+  });
+});

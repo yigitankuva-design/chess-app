@@ -195,7 +195,7 @@ export function FriendChallenge({ openingStep }: Props = {}) {
             ) : undefined}
             active={open === 'opening'}
             size={34}
-            tint="#fff"
+            tint="var(--t-text-1)"
             onClick={() => setOpen((p) => (p === 'opening' ? null : 'opening'))}
           />
           {open === 'opening' && (
@@ -215,7 +215,7 @@ export function FriendChallenge({ openingStep }: Props = {}) {
             active={open === 'criteria'}
             locked={criteriaLocked}
             size={34}
-            tint="#fff"
+            tint="var(--t-text-1)"
             onClick={() => setOpen((p) => (p === 'criteria' ? null : 'criteria'))}
           />
           {open === 'criteria' && (
@@ -241,7 +241,7 @@ export function FriendChallenge({ openingStep }: Props = {}) {
             active={open === 'friend'}
             locked={criteria === null}
             size={34}
-            tint="#fff"
+            tint="var(--t-text-1)"
             onClick={() => setOpen((p) => (p === 'friend' ? null : 'friend'))}
           />
           {open === 'friend' && (

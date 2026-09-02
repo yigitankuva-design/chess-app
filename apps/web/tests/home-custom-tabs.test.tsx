@@ -22,7 +22,10 @@ vi.mock('@/lib/customTabsApi', () => ({
   ])),
   getCustomTab: vi.fn(() => Promise.resolve({
     id: 5, label: 'Turnuvalar', emoji: '📌',
-    sections: [{ id: 50, order_index: 1, title: 'Kayıt', body: 'En az 8 yaş', images: [], practice_positions: [] }],
+    sections: [
+      { id: 50, order_index: 1, title: 'Kayıt', body: 'En az 8 yaş', images: [], practice_positions: [] },
+      { id: 51, order_index: 1, title: 'Kayıt Formu', body: '', images: [], practice_positions: [], parent_id: 50 },
+    ],
   })),
 }));
 
@@ -45,5 +48,17 @@ describe('Ana sayfa — özel sekme kartı (B grubu)', () => {
     fireEvent.click(screen.getByText('Turnuvalar'));
     await waitFor(() => screen.getByText('Kayıt'));
     expect(screen.getByText('Kayıt')).toBeInTheDocument();
+  });
+
+  it('en üst seviye başlık tema rengini, İÇ seviye başlık sabit metin rengini kullanır (madde 2026-09-02)', async () => {
+    render(<HomePage />);
+    await waitFor(() => screen.getByText('Turnuvalar'));
+    fireEvent.click(screen.getByText('Turnuvalar'));
+    await waitFor(() => screen.getByText('Kayıt'));
+    expect(screen.getByText('Kayıt').style.color).toBe('var(--t-accent)');
+
+    fireEvent.click(screen.getByText('Kayıt'));
+    await waitFor(() => screen.getByText('Kayıt Formu'));
+    expect(screen.getByText('Kayıt Formu').style.color).toBe('var(--t-text-1)');
   });
 });

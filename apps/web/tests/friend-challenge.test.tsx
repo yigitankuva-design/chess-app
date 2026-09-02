@@ -95,4 +95,15 @@ describe('FriendChallenge', () => {
       expect(screen.getByText(/Sporcu listesi yüklenemedi/)).toBeInTheDocument(),
     );
   });
+
+  it('openingStep verildiğinde (Açılış Pratiği akışı) adım etiketleri var(--t-text-1) kullanır, sabit "#fff" DEĞİL (madde 2026-09-02)', () => {
+    render(
+      <FriendChallenge
+        openingStep={{ renderPicker: () => null, summary: null, picked: false, startFen: null }}
+      />,
+    );
+    expect(screen.getByText('1. Açılış Seç').style.color).toBe('var(--t-text-1)');
+    expect(screen.getByText(/Maç Kriterlerini Belirle/).style.color).toBe('var(--t-text-1)');
+    expect(screen.getByText(/Arkadaşını Seç/).style.color).toBe('var(--t-text-1)');
+  });
 });

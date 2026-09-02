@@ -39,4 +39,10 @@ describe('Ana sayfa Hızlı Erişim — "Tek Vurgu" (madde 2026-09-02)', () => {
       expect(el.style.color).toBe('var(--t-accent)');
     }
   });
+
+  it('yanan kartların parlaması --t-glow kullanır (yalnızca Neon temasında görünür olsun diye)', () => {
+    render(<ChildHomePage />);
+    const el = screen.getByText('Maç Yap');
+    expect(el.style.filter).toBe('drop-shadow(0 0 5px var(--t-glow))');
+  });
 });
