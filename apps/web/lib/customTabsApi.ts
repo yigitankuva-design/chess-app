@@ -35,6 +35,12 @@ export interface CustomTabSection {
    *  değere bakar. 'opening' | 'kazanc' | 'oyunsonu' | null (sıradan bölüm).
    *  Oluşturulduktan sonra DEĞİŞMEZ. */
   section_kind?: string | null;
+  /** Madde 2026-09-02 (devam): a) Konum Pratiği'nin çoktan seçmeli soru
+   *  havuzu — SADECE section_kind==='opening' bölümünde doldurulur. */
+  konum_pratigi_pool?: KonumPratigiQuestion[];
+  /** Madde 2026-09-02 (devam): b) Teori Pratiği'nin hamle-dizisi soru
+   *  havuzu — SADECE section_kind==='opening' bölümünde doldurulur. */
+  teori_pratigi_pool?: TeoriPratigiQuestion[];
 }
 
 export interface PositionPoolStep {
@@ -48,6 +54,38 @@ export interface PositionPoolEntry {
   id: string;
   code?: string | null;
   steps: PositionPoolStep[];
+}
+
+/** Madde 2026-09-02 (devam): a) Konum Pratiği sorusu — talimat + ZORUNLU FEN
+ *  + 2-4 şık (cümle veya görüntü) + doğru şık. Sporcu tarafında
+ *  `sentence_question`/`image_question` (bkz. lesson-steps/BoardExercise.tsx)
+ *  şeklinde çizilir — aynı alan adları BİLEREK kullanılıyor (dönüşümsüz eşleme). */
+export interface KonumPratigiQuestion {
+  id: string;
+  code?: string | null;
+  instruction: string;
+  fen: string;
+  answer_kind: 'sentence' | 'image';
+  options: string[];
+  correct_index: number;
+  success_msg?: string;
+  fail_msg?: string;
+}
+
+/** Madde 2026-09-02 (devam): b) Teori Pratiği sorusu — talimat + dizilen
+ *  konum + hem beyaz hem siyah için kayıtlı SAN hamle dizisi + açılış/varyant
+ *  adı + sporcunun hangi renkle başlayacağı (notasyonun kendi sırasından
+ *  BAĞIMSIZ, ayrı bir seçim). */
+export interface TeoriPratigiQuestion {
+  id: string;
+  code?: string | null;
+  instruction: string;
+  fen: string;
+  moves: string[];
+  opening_name: string;
+  student_color: 'w' | 'b';
+  success_msg?: string;
+  fail_msg?: string;
 }
 
 export interface CustomTabDetail {
@@ -156,6 +194,8 @@ export async function updateCustomTabSection(
     practice_positions?: { id: string; fen: string; category?: string | null; owner?: string | null }[];
     emoji?: string;
     position_pool?: PositionPoolEntry[];
+    konum_pratigi_pool?: KonumPratigiQuestion[];
+    teori_pratigi_pool?: TeoriPratigiQuestion[];
   },
 ): Promise<boolean> {
   const token = getToken();

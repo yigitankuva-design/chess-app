@@ -54,3 +54,12 @@ class CustomTabSection(Base):
     # 'oyunsonu' | None (None = sıradan bölüm, hoca'nın kendi eklediği gibi).
     # BİR KEZ oluşturulunca DEĞİŞMEZ; PATCH ile güncellenemez.
     section_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Madde 2026-09-02 (devam): "Açılış Pratiği Yap" a/b/c'ye ayrıldı — bu iki
+    # kolon a) Konum Pratiği (çoktan seçmeli soru: {id, code, instruction,
+    # fen, answer_kind, options, correct_index, success_msg?, fail_msg?}) ve
+    # b) Teori Pratiği (hamle-dizisi sorusu: {id, code, instruction, fen,
+    # moves, opening_name, student_color, success_msg?, fail_msg?}) havuzlarını
+    # tutar. practice_positions/position_pool ile AYNI desen — section_kind
+    # 'opening' olan bölümde doldurulur, diğerlerinde boş kalır.
+    konum_pratigi_pool: Mapped[list] = mapped_column(JSON, default=list)
+    teori_pratigi_pool: Mapped[list] = mapped_column(JSON, default=list)

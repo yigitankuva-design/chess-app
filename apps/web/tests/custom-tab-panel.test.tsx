@@ -4,12 +4,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/components/play/OpeningPractice', () => ({
-  OpeningPractice: ({ onReadyToStart }: {
+  OpeningPractice: ({ onReadyToStart, konumPool, teoriPool, onOpenKonumPratigi, onOpenTeoriPratigi }: {
     onReadyToStart?: (variant: { id: number }, criteria: {
       level: { level: number }; timeControl: { label: string }; colorChoice: string;
     }) => void;
+    konumPool?: { id: string }[];
+    teoriPool?: { id: string }[];
+    onOpenKonumPratigi?: () => void;
+    onOpenTeoriPratigi?: () => void;
   }) => (
-    <div data-testid="opening-practice">
+    <div data-testid="opening-practice"
+      data-konum-count={konumPool === undefined ? 'undefined' : konumPool.length}
+      data-teori-count={teoriPool === undefined ? 'undefined' : teoriPool.length}>
       açılış pratiği içeriği
       {onReadyToStart && (
         <button onClick={() => onReadyToStart(
@@ -19,6 +25,8 @@ vi.mock('@/components/play/OpeningPractice', () => ({
           test-ready-to-start
         </button>
       )}
+      {onOpenKonumPratigi && <button onClick={onOpenKonumPratigi}>test-open-konum</button>}
+      {onOpenTeoriPratigi && <button onClick={onOpenTeoriPratigi}>test-open-teori</button>}
     </div>
   ),
 }));
@@ -31,6 +39,12 @@ import type { CustomTabDetail } from '@/lib/customTabsApi';
  *  eklenmesi gerekiyor. order_index 0 = testlerde varsayılan olarak en önde. */
 const ACILIS_SECTION = {
   id: 9, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [],
+  konum_pratigi_pool: [{
+    id: 'q1', instruction: 'x',
+    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    answer_kind: 'sentence' as const, options: ['A', 'B'], correct_index: 0,
+  }],
+  teori_pratigi_pool: [],
 };
 
 const PRATIK: CustomTabDetail = {
@@ -74,6 +88,30 @@ describe('CustomTabPanel', () => {
     expect(url).toContain('skill=5');
     expect(url).toContain('tc=5%2B0');
     expect(url).toContain('color=white');
+  });
+
+  it('madde 2026-09-02 (devam): konum/teori havuzları OpeningPractice\'e geçirilir', () => {
+    render(<CustomTabPanel tab={PRATIK} />);
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    const el = screen.getByTestId('opening-practice');
+    expect(el).toHaveAttribute('data-konum-count', '1');
+    expect(el).toHaveAttribute('data-teori-count', '0');
+  });
+
+  it('madde 2026-09-02 (devam): a) Konum Pratiği açılınca /play?mode=konum-pratigi\'ye yönlendirilir', () => {
+    push.mockClear();
+    render(<CustomTabPanel tab={PRATIK} />);
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    fireEvent.click(screen.getByText('test-open-konum'));
+    expect(push).toHaveBeenCalledWith('/play?mode=konum-pratigi&tab=1&section=9');
+  });
+
+  it('madde 2026-09-02 (devam): b) Teori Pratiği açılınca /play?mode=teori-pratigi\'ye yönlendirilir', () => {
+    push.mockClear();
+    render(<CustomTabPanel tab={PRATIK} />);
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    fireEvent.click(screen.getByText('test-open-teori'));
+    expect(push).toHaveBeenCalledWith('/play?mode=teori-pratigi&tab=1&section=9');
   });
 
   it('Açılış Pratiği Yap açıkken bir alt sekme açılırsa Açılış Pratiği kapanır (tek akordiyon)', () => {

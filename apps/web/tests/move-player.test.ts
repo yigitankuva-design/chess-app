@@ -130,6 +130,43 @@ describe('isSequenceComplete', () => {
   });
 });
 
+describe('studentParity (madde 2026-09-02 devam: b) Teori Pratiği — sporcu SİYAH oynayabilir)', () => {
+  // 6k1/8/5K2/8/5R2/8/8/8 w — TWO_SIDED, beyaz başlar. Bu grupta sporcu
+  // SİYAH kabul edilir (studentParity=1): rakip (beyaz) ilk hamleyi
+  // (index 0) oynar, sporcu index 1'den başlar.
+  it('playerState: parity=1 iken hiç hamle oynanmadan sıra rakipte sayılır', () => {
+    const s = playerState(TWO_SIDED, [], 1);
+    expect(s.isStudentTurn).toBe(false);
+  });
+
+  it('playerState: parity=1 iken TEK hamleden sonra sıra sporcuya geçer', () => {
+    expect(playerState(TWO_SIDED, ['Rh4'], 1).isStudentTurn).toBe(true);
+  });
+
+  it('expectedStudentMove: parity=1 iken index 0 rakibindir, index 1 sporcunundur', () => {
+    expect(expectedStudentMove(['Rh4', 'Kf8', 'Rh8#'], [], 1)).toBeNull();
+    expect(expectedStudentMove(['Rh4', 'Kf8', 'Rh8#'], ['Rh4'], 1)).toBe('Kf8');
+  });
+
+  it('opponentKeyMove: parity=1 iken index 0 rakibindir', () => {
+    expect(opponentKeyMove(['Rh4', 'Kf8'], [], 1)).toBe('Rh4');
+    expect(opponentKeyMove(['Rh4', 'Kf8'], ['Rh4'], 1)).toBeNull();
+  });
+
+  it('tryStudentMove: parity=1 iken sporcunun hamlesi index 1 anahtarıyla karşılaştırılır', () => {
+    // Rh4 zaten (rakip tarafından) oynanmış — şimdi sporcu (siyah) Kf8 oynuyor.
+    const r = tryStudentMove(TWO_SIDED, ['Rh4', 'Kf8'], ['Rh4'], 'g8', 'f8', 1);
+    expect(r).toEqual({ kind: 'correct', playedMoves: ['Rh4', 'Kf8'] });
+  });
+
+  it('varsayılan parity=0 davranışı DEĞİŞMEDİ (geriye dönük uyumluluk)', () => {
+    expect(playerState(TWO_SIDED, []).isStudentTurn).toBe(true);
+    expect(expectedStudentMove(['Rh4'], [])).toBe('Rh4');
+    expect(opponentKeyMove(['Rh4', 'Kf8'], ['Rh4'])).toBe('Kf8');
+    expect(isSequenceComplete(['Rh4', 'Kf8'], ['Rh4', 'Kf8'])).toBe(true);
+  });
+});
+
 describe('appendUciMove', () => {
   it('motorun UCI cevabını SAN olarak ekler', () => {
     expect(appendUciMove(TWO_SIDED, ['Rh4'], 'g8f8')).toEqual(['Rh4', 'Kf8']);

@@ -12,12 +12,24 @@ import type { BotStepKey } from '@/lib/play/openingSteps';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor } from '@/lib/play/color';
 import { pickDifferentPosition } from '@/lib/play/positionPool';
+import type { KonumPratigiQuestion, TeoriPratigiQuestion } from '@/lib/customTabsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export type { OpeningVariant, Opening, OpeningTypeDef };
 
 interface Props {
+  /**
+   * Madde 2026-09-02 (devam): a)/b)'nin soru havuzları — CustomTabPanel'den
+   * gelir. undefined = henüz yüklenmedi (kart "Yükleniyor..." gösterir).
+   * onOpen* verilmemişse (örn. doğrudan /play sayfasından initialVariantId
+   * ile geliniyorsa a/b/c katmanı zaten hiç render edilmiyor) kart
+   * tıklanamaz duruma düşmez — sadece navigasyon çağrılmaz.
+   */
+  konumPool?: KonumPratigiQuestion[];
+  teoriPool?: TeoriPratigiQuestion[];
+  onOpenKonumPratigi?: () => void;
+  onOpenTeoriPratigi?: () => void;
   /**
    * Doğrudan-başlat: /play sayfası, CustomTabPanel'den yönlendirilince bunu
    * verir — seçim adımları (açılış/kriter) ATLANIR, doğrudan bu VARYANT
@@ -45,7 +57,10 @@ interface Props {
  *  madde 2026-09-02'de #fff'ten degistirildi — acik temalarda gorunmuyordu)
  *  — eskiden disaridan gelen `tint` (Pratik Yap kartinin rengi) kullaniliyordu,
  *  o prop kaldirildi. */
-export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToStart }: Props = {}) {
+export function OpeningPractice({
+  initialVariantId, initialCriteria, onReadyToStart,
+  konumPool, teoriPool, onOpenKonumPratigi, onOpenTeoriPratigi,
+}: Props = {}) {
   // Madde 2026-09-02: Zafer'in şemasına göre "Açılış Pratiği Yap" 3 dala
   // ayrıldı — a) Konum Pratiği, b) Teori Pratiği (ikisi de İÇERİK/davranış
   // kararı bekliyor, şimdilik sadece iskelet/yer tutucu), c) Uygulama
@@ -182,7 +197,16 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
         />
         {openMode === 'konum' && (
           <Branch offset={20}>
-            <p className="text-sm t-muted">Bu bölüm yakında eklenecek.</p>
+            {konumPool === undefined ? (
+              <p className="text-sm t-muted">Yükleniyor...</p>
+            ) : konumPool.length === 0 ? (
+              <p className="text-sm t-muted">Henüz soru eklenmedi.</p>
+            ) : (
+              <button type="button" onClick={onOpenKonumPratigi}
+                className="px-4 py-2.5 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm font-semibold transition-colors">
+                Pratiğe Başla
+              </button>
+            )}
           </Branch>
         )}
       </div>
@@ -198,7 +222,16 @@ export function OpeningPractice({ initialVariantId, initialCriteria, onReadyToSt
         />
         {openMode === 'teori' && (
           <Branch offset={20}>
-            <p className="text-sm t-muted">Bu bölüm yakında eklenecek.</p>
+            {teoriPool === undefined ? (
+              <p className="text-sm t-muted">Yükleniyor...</p>
+            ) : teoriPool.length === 0 ? (
+              <p className="text-sm t-muted">Henüz soru eklenmedi.</p>
+            ) : (
+              <button type="button" onClick={onOpenTeoriPratigi}
+                className="px-4 py-2.5 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 text-sm font-semibold transition-colors">
+                Pratiğe Başla
+              </button>
+            )}
           </Branch>
         )}
       </div>

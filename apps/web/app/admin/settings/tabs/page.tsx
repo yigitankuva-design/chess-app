@@ -10,7 +10,7 @@ import {
   getCustomTab, createCustomTabSection, deleteCustomTabSection, updateCustomTabSection,
   reorderCustomTabSections,
 } from '@/lib/customTabsApi';
-import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
+import type { CustomTabSummary, CustomTabDetail, KonumPratigiQuestion, TeoriPratigiQuestion } from '@/lib/customTabsApi';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
@@ -415,6 +415,89 @@ export default function AdminTabsPage() {
     setMsg('Kaydedildi ✓');
   }
 
+  /** Madde 2026-09-02 (devam): a) Konum Pratiği sorusu ekler — savePosition
+   *  ile AYNI desen (TÜM listeyi yeniden yazar, position_pool'daki gibi). */
+  async function addKonumPratigiQuestion(tabId: number, sectionId: number, q: KonumPratigiQuestion) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = [...(existing.konum_pratigi_pool ?? []), q];
+    const ok = await updateCustomTabSection(sectionId, { konum_pratigi_pool: nextPool });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, konum_pratigi_pool: nextPool } : s)),
+        },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
+  async function deleteKonumPratigiQuestion(tabId: number, sectionId: number, questionId: string) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = (existing.konum_pratigi_pool ?? []).filter((q) => q.id !== questionId);
+    const ok = await updateCustomTabSection(sectionId, { konum_pratigi_pool: nextPool });
+    if (!ok) { setMsg('Silinemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, konum_pratigi_pool: nextPool } : s)),
+        },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
+  /** Madde 2026-09-02 (devam): b) Teori Pratiği sorusu ekler — AYNI desen. */
+  async function addTeoriPratigiQuestion(tabId: number, sectionId: number, q: TeoriPratigiQuestion) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = [...(existing.teori_pratigi_pool ?? []), q];
+    const ok = await updateCustomTabSection(sectionId, { teori_pratigi_pool: nextPool });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, teori_pratigi_pool: nextPool } : s)),
+        },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
+  async function deleteTeoriPratigiQuestion(tabId: number, sectionId: number, questionId: string) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = (existing.teori_pratigi_pool ?? []).filter((q) => q.id !== questionId);
+    const ok = await updateCustomTabSection(sectionId, { teori_pratigi_pool: nextPool });
+    if (!ok) { setMsg('Silinemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, teori_pratigi_pool: nextPool } : s)),
+        },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
   async function removeAltSection(tabId: number, sectionId: number) {
     const ok = await deleteCustomTabSection(sectionId);
     if (!ok) { setMsg('Silinemedi'); return; }
@@ -684,7 +767,28 @@ export default function AdminTabsPage() {
 
               {open && (
                 <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
-                  {isPratikYap && <OpeningCategoryCards color={color} />}
+                  {isPratikYap && (() => {
+                    // Madde 2026-09-02 (devam): a)/b)'nin soru havuzları
+                    // OPENING_KIND bölümüne bağlı — detail henüz gelmediyse
+                    // (veya bölüm hiç yoksa) OpeningCategoryCards a)/b)
+                    // kartlarında "Yükleniyor..." gösterir.
+                    const openingSection = detail?.sections.find((s) => s.section_kind === OPENING_KIND);
+                    return (
+                      <OpeningCategoryCards
+                        color={color}
+                        konumPool={openingSection?.konum_pratigi_pool}
+                        teoriPool={openingSection?.teori_pratigi_pool}
+                        onAddKonumQuestion={openingSection
+                          ? (q) => addKonumPratigiQuestion(c.id, openingSection.id, q) : undefined}
+                        onDeleteKonumQuestion={openingSection
+                          ? (id) => deleteKonumPratigiQuestion(c.id, openingSection.id, id) : undefined}
+                        onAddTeoriQuestion={openingSection
+                          ? (q) => addTeoriPratigiQuestion(c.id, openingSection.id, q) : undefined}
+                        onDeleteTeoriQuestion={openingSection
+                          ? (id) => deleteTeoriPratigiQuestion(c.id, openingSection.id, id) : undefined}
+                      />
+                    );
+                  })()}
 
                   {!detail ? (
                     <p className="text-sm n-muted">Yükleniyor...</p>

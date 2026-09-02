@@ -273,3 +273,52 @@ describe('OpeningPractice — etiket renkleri (madde 2026-09-02: açık temada b
     expect(screen.getByText('1. Açılış Seç').style.color).toBe('var(--t-text-1)');
   });
 });
+
+describe('OpeningPractice — a) Konum Pratiği / b) Teori Pratiği (madde 2026-09-02 devam)', () => {
+  it('konumPool/teoriPool verilmezse (undefined) kartlar "Yükleniyor..." gösterir', () => {
+    // a/b/c AYNI dış akordiyonu paylaşır (openMode tek değer) — aynı anda
+    // sadece BİRİ açık olabilir, bu yüzden ayrı ayrı kontrol edilir.
+    render(<OpeningPractice />);
+    fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
+    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /b\) Teori Pratiği/ }));
+    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
+  });
+
+  it('havuz boşsa bilgi mesajı gösterir, "Pratiğe Başla" görünmez', () => {
+    render(<OpeningPractice konumPool={[]} teoriPool={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
+    expect(screen.getByText('Henüz soru eklenmedi.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pratiğe Başla' })).not.toBeInTheDocument();
+  });
+
+  it('a) havuz doluysa "Pratiğe Başla" tıklanınca onOpenKonumPratigi çağrılır', () => {
+    const onOpen = vi.fn();
+    render(<OpeningPractice
+      konumPool={[{
+        id: 'q1', instruction: 'x',
+        fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        answer_kind: 'sentence', options: ['A', 'B'], correct_index: 0,
+      }]}
+      onOpenKonumPratigi={onOpen}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: /a\) Konum Pratiği/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pratiğe Başla' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('b) havuz doluysa "Pratiğe Başla" tıklanınca onOpenTeoriPratigi çağrılır', () => {
+    const onOpen = vi.fn();
+    render(<OpeningPractice
+      teoriPool={[{
+        id: 't1', instruction: 'x',
+        fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        moves: ['e4'], opening_name: 'İtalyan Açılışı', student_color: 'w',
+      }]}
+      onOpenTeoriPratigi={onOpen}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: /b\) Teori Pratiği/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pratiğe Başla' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+});

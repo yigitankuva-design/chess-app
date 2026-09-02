@@ -38,7 +38,9 @@ async def get_custom_tab(tab_id: int, db: AsyncSession = Depends(get_db)):
             {"id": s.id, "order_index": s.order_index, "title": s.title, "body": s.body,
              "images": s.images, "practice_positions": s.practice_positions, "emoji": s.emoji,
              "parent_id": s.parent_id, "position_pool": s.position_pool,
-             "section_kind": s.section_kind}
+             "section_kind": s.section_kind,
+             "konum_pratigi_pool": s.konum_pratigi_pool,
+             "teori_pratigi_pool": s.teori_pratigi_pool}
             for s in sections
         ],
     }

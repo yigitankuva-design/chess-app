@@ -1583,6 +1583,38 @@ class PositionPoolEntry(BaseModel):
     steps: list[PositionPoolStep] = Field(min_length=1)
 
 
+# Madde 2026-09-02 (devam): a) Konum Pratiği — çoktan seçmeli, açılış konumu
+# tanıma sorusu. FEN burada (a'ya özgü) ZORUNLU — b'nin `PositionPoolStep`inden
+# farklı olarak burada tek bir konum + N şık var, adım grubu yok.
+class KonumPratigiQuestion(BaseModel):
+    id: str = Field(min_length=1)
+    code: str | None = None
+    instruction: str = Field(min_length=1)
+    fen: str = Field(min_length=1)
+    answer_kind: str = Field(pattern="^(sentence|image)$")
+    options: list[str] = Field(min_length=2, max_length=4)
+    correct_index: int = Field(ge=0)
+    success_msg: str | None = None
+    fail_msg: str | None = None
+
+
+# Madde 2026-09-02 (devam): b) Teori Pratiği — sporcu dizilen konumdan
+# itibaren `moves` (hem beyaz hem siyah için, SAN) cevap anahtarını tahtada
+# oynar. `student_color` kaydın hangi renkle BAŞLAYACAĞINI belirler —
+# notasyonun kendi sırasından bağımsız (Zafer'in "7. maddede sporcunun rengi
+# ne ise o renkle başlasın" isteği).
+class TeoriPratigiQuestion(BaseModel):
+    id: str = Field(min_length=1)
+    code: str | None = None
+    instruction: str = Field(min_length=1)
+    fen: str = Field(min_length=1)
+    moves: list[str] = Field(min_length=1)
+    opening_name: str = Field(min_length=1)
+    student_color: str = Field(pattern="^[wb]$")
+    success_msg: str | None = None
+    fail_msg: str | None = None
+
+
 class CustomTabSectionUpdateRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     body: str | None = None
@@ -1593,6 +1625,10 @@ class CustomTabSectionUpdateRequest(BaseModel):
     # numarasıyla eklenen, İÇİNDE birden çok numaralı adım (konum+cümle+
     # hamle sırası) barındıran gruplar.
     position_pool: list[PositionPoolEntry] | None = None
+    # Madde 2026-09-02 (devam): a)/b)'nin soru havuzları — position_pool ile
+    # AYNI semantik, TÜM listeyi değiştirir.
+    konum_pratigi_pool: list[KonumPratigiQuestion] | None = None
+    teori_pratigi_pool: list[TeoriPratigiQuestion] | None = None
 
 
 @router.post("/custom-tabs", status_code=201)
@@ -1712,7 +1748,9 @@ async def create_custom_tab_section(
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
             "parent_id": section.parent_id, "position_pool": section.position_pool,
-            "section_kind": section.section_kind}
+            "section_kind": section.section_kind,
+            "konum_pratigi_pool": section.konum_pratigi_pool,
+            "teori_pratigi_pool": section.teori_pratigi_pool}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1746,12 +1784,30 @@ async def update_custom_tab_section(
                 except ValueError:
                     raise HTTPException(status_code=400, detail="Adım için konum (fen) okunamadı")
         section.position_pool = [e.model_dump() for e in payload.position_pool]
+    if payload.konum_pratigi_pool is not None:
+        for q in payload.konum_pratigi_pool:
+            try:
+                chess.Board(q.fen)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Soru için konum (fen) okunamadı")
+            if q.correct_index >= len(q.options):
+                raise HTTPException(status_code=400, detail="Doğru şık, şık listesinin dışında")
+        section.konum_pratigi_pool = [q.model_dump() for q in payload.konum_pratigi_pool]
+    if payload.teori_pratigi_pool is not None:
+        for q in payload.teori_pratigi_pool:
+            try:
+                chess.Board(q.fen)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Soru için konum (fen) okunamadı")
+        section.teori_pratigi_pool = [q.model_dump() for q in payload.teori_pratigi_pool]
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
-            "position_pool": section.position_pool, "section_kind": section.section_kind}
+            "position_pool": section.position_pool, "section_kind": section.section_kind,
+            "konum_pratigi_pool": section.konum_pratigi_pool,
+            "teori_pratigi_pool": section.teori_pratigi_pool}
 
 
 @router.delete("/custom-tab-sections/{section_id}")
@@ -1853,7 +1909,9 @@ async def duplicate_custom_tab_section(
     return {"id": new_root.id, "order_index": new_root.order_index, "title": new_root.title,
             "body": new_root.body, "images": new_root.images,
             "practice_positions": new_root.practice_positions, "emoji": new_root.emoji,
-            "parent_id": new_root.parent_id, "position_pool": new_root.position_pool}
+            "parent_id": new_root.parent_id, "position_pool": new_root.position_pool,
+            "konum_pratigi_pool": new_root.konum_pratigi_pool,
+            "teori_pratigi_pool": new_root.teori_pratigi_pool}
 
 
 @router.post("/custom-tabs/{tab_id}/sections/reorder")

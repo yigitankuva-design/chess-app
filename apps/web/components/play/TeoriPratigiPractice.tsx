@@ -1,0 +1,105 @@
+'use client';
+import { useState } from 'react';
+import { TeoriPratigiSolver } from './TeoriPratigiSolver';
+import { pickRandomPosition, pickDifferentPosition } from '@/lib/play/positionPool';
+import { assignExerciseCodes } from '@/lib/exerciseCodes';
+import type { TeoriPratigiQuestion } from '@/lib/customTabsApi';
+
+interface Props {
+  questions: TeoriPratigiQuestion[];
+}
+
+/**
+ * b) Teori Pratiği — havuzdan rastgele bir soruyla başlar; tahtanın üstünde
+ * açılış/varyant adı gösterilir. Doğru ya da yanlış bitince (teoriden
+ * çıkınca) tahta kilitlenir, iki kart görünür: "Tekrar Pratik Yap" (AYNI
+ * soru sıfırdan) / "Yeni Konuyla Pratik Yap" (havuzdan BAŞKA bir soru) —
+ * `PositionPoolPractice.tsx`'teki practiceActions deseniyle AYNI fikir.
+ */
+export function TeoriPratigiPractice({ questions }: Props) {
+  const [current, setCurrent] = useState<TeoriPratigiQuestion | null>(
+    questions.length > 0 ? pickRandomPosition(questions) : null,
+  );
+  const [attemptKey, setAttemptKey] = useState(0);
+  const [status, setStatus] = useState<'idle' | 'success' | 'fail'>('idle');
+  const [feedback, setFeedback] = useState('');
+
+  if (questions.length === 0) {
+    return <p className="px-4 text-sm t-muted">Bu bölümde henüz soru yok.</p>;
+  }
+  if (!current) return null;
+
+  // Kod, hoca'nın admin panelinde gördüğü numarayla AYNI mantıkla üretilir.
+  const kodlar = assignExerciseCodes(questions.map((q) => ({ code: q.code ?? undefined })));
+  const kod = kodlar[questions.findIndex((q) => q.id === current.id)];
+
+  function retrySame() {
+    setStatus('idle'); setFeedback('');
+    setAttemptKey((k) => k + 1);
+  }
+
+  function tryDifferent() {
+    setCurrent((c) => pickDifferentPosition(questions, c?.id ?? null));
+    setStatus('idle'); setFeedback('');
+    setAttemptKey((k) => k + 1);
+  }
+
+  return (
+    <div className="px-4 pt-3 pb-8 max-w-lg mx-auto space-y-3">
+      <p className="font-semibold text-sm">
+        ♟️ {current.opening_name}
+        {kod && <span className="t-muted font-mono"> · {kod}</span>}
+      </p>
+
+      <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
+        style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
+        <span className="text-xl leading-none flex-shrink-0">🎯</span>
+        <p className="text-sm font-semibold flex-1">{current.instruction}</p>
+      </div>
+
+      <TeoriPratigiSolver
+        key={attemptKey}
+        question={current}
+        disabled={status !== 'idle'}
+        onSolved={() => setStatus('success')}
+        onWrong={(msg) => { setStatus('fail'); setFeedback(msg); }}
+      />
+
+      {status === 'fail' && (
+        <div className="flex items-center gap-3 py-3 px-4 rounded-2xl text-sm font-bold"
+          style={{ background: 'linear-gradient(90deg, #f59e0b, #ef4444)', color: '#fff' }}>
+          <span className="text-2xl flex-shrink-0">🤔</span>
+          <span>{feedback}</span>
+        </div>
+      )}
+
+      {status !== 'idle' && (
+        <>
+          <div className="t-card-i flex flex-col items-center justify-center gap-1.5 py-4 px-2 text-center"
+            style={{
+              borderColor: status === 'success' ? '#16a34a' : '#dc2626',
+              background: status === 'success'
+                ? 'color-mix(in srgb, #16a34a 12%, transparent)'
+                : 'color-mix(in srgb, #dc2626 12%, transparent)',
+            }}>
+            <span role="img" aria-label={status === 'success' ? 'Doğru' : 'Yanlış'}
+              style={{ fontSize: '2.75rem', lineHeight: 1, color: status === 'success' ? '#16a34a' : '#dc2626' }}>
+              {status === 'success' ? '✓' : '✕'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={retrySame}
+              className="t-card-i py-3 px-2 text-sm font-bold text-center">
+              Tekrar Pratik Yap
+            </button>
+            <button type="button" onClick={tryDifferent}
+              className="t-card-i py-3 px-2 text-sm font-bold text-center">
+              Yeni Konuyla Pratik Yap
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

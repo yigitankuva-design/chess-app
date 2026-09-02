@@ -16,9 +16,13 @@ import { ActivePlayersBadge } from '@/components/play/ActivePlayersBadge';
 import { getCustomTab } from '@/lib/customTabsApi';
 import { PositionPoolPractice } from '@/components/play/PositionPoolPractice';
 import type { PoolPosition } from '@/lib/play/positionPool';
+import { KonumPratigiPractice } from '@/components/play/KonumPratigiPractice';
+import { TeoriPratigiPractice } from '@/components/play/TeoriPratigiPractice';
+import type { KonumPratigiQuestion, TeoriPratigiQuestion } from '@/lib/customTabsApi';
 
-/** "pool" ana ekrandaki özel sekme alt sekmesinden gelir — kart listesinde YOKTUR. */
-type Mode = 'friend' | 'bot' | 'opening' | 'tournament' | 'pool';
+/** "pool"/"konum-pratigi"/"teori-pratigi" ana ekrandaki özel sekme alt
+ *  sekmesinden gelir — kart listesinde YOKTUR. */
+type Mode = 'friend' | 'bot' | 'opening' | 'tournament' | 'pool' | 'konum-pratigi' | 'teori-pratigi';
 
 const MODE_CARDS: { mode: Mode; emoji: string; title: string; subtitle: string }[] = [
   { mode: 'friend',     emoji: '🤝', title: 'Arkadaşla Oyna',     subtitle: 'Aktif sporcuya teklif gönder' },
@@ -85,13 +89,18 @@ function PlayInner() {
   const initialMode: Mode | null =
     modeParam === 'pool' && sectionParam && tabParam
       ? 'pool'
-      : modeParam === 'opening' && variantIdParam
-        ? 'opening'
-        : quickStart
-          ? 'bot'
-          : MODE_CARDS.some((c) => c.mode === modeParam)
-            ? (modeParam as Mode)
-            : null;
+      // Madde 2026-09-02 (devam): a)/b)'nin sporcu ekranları da AYNI
+      // tab+section desenini kullanır — CustomTabPanel/OpeningPractice
+      // buraya bu iki parametreyle yönlendirir.
+      : (modeParam === 'konum-pratigi' || modeParam === 'teori-pratigi') && sectionParam && tabParam
+        ? modeParam
+        : modeParam === 'opening' && variantIdParam
+          ? 'opening'
+          : quickStart
+            ? 'bot'
+            : MODE_CARDS.some((c) => c.mode === modeParam)
+              ? (modeParam as Mode)
+              : null;
 
   const [mode, setMode] = useState<Mode | null>(initialMode);
   const [botCriteria, setBotCriteria] = useState<MatchCriteriaValue | null>(quickStart);
@@ -118,6 +127,26 @@ function PlayInner() {
       setPoolTitle(section?.title ?? '');
     });
   }, [initialMode, tabParam, sectionParam, categoryParam]);
+
+  /** a)/b) modu: seçilen OPENING_KIND bölümünün soru havuzu. undefined = henüz yükleniyor. */
+  const [konumQuestions, setKonumQuestions] = useState<KonumPratigiQuestion[] | undefined>(undefined);
+  const [teoriQuestions, setTeoriQuestions] = useState<TeoriPratigiQuestion[] | undefined>(undefined);
+
+  useEffect(() => {
+    if (initialMode !== 'konum-pratigi' || !tabParam || !sectionParam) return;
+    getCustomTab(Number(tabParam)).then((detail) => {
+      const section = detail?.sections.find((s) => s.id === Number(sectionParam));
+      setKonumQuestions(section?.konum_pratigi_pool ?? []);
+    });
+  }, [initialMode, tabParam, sectionParam]);
+
+  useEffect(() => {
+    if (initialMode !== 'teori-pratigi' || !tabParam || !sectionParam) return;
+    getCustomTab(Number(tabParam)).then((detail) => {
+      const section = detail?.sections.find((s) => s.id === Number(sectionParam));
+      setTeoriQuestions(section?.teori_pratigi_pool ?? []);
+    });
+  }, [initialMode, tabParam, sectionParam]);
 
   /** Secimleri ADRESE yazar. Boylece F5/yenile sonrasi sporcu ayni ekranda
    *  kalir; React durumu kaybolsa da adres bilgiyi tasir (madde 4 ve 9). */
@@ -201,6 +230,33 @@ function PlayInner() {
             positions={poolPositions}
             initialCriteria={quickStart ?? undefined}
           />
+        )}
+      </main>
+    );
+  }
+
+  // ── a) Konum Pratiği ────────────────────────────────────────────────────
+  if (mode === 'konum-pratigi') {
+    return (
+      <main id="main-content" className="pb-12">
+        <p className="font-semibold text-sm px-4 pt-5 max-w-lg mx-auto">🎯 Konum Pratiği</p>
+        {konumQuestions === undefined ? (
+          <p className="px-4 pt-3 text-sm t-muted">Yükleniyor...</p>
+        ) : (
+          <KonumPratigiPractice questions={konumQuestions} />
+        )}
+      </main>
+    );
+  }
+
+  // ── b) Teori Pratiği ────────────────────────────────────────────────────
+  if (mode === 'teori-pratigi') {
+    return (
+      <main id="main-content" className="pb-12">
+        {teoriQuestions === undefined ? (
+          <p className="px-4 pt-5 text-sm t-muted max-w-lg mx-auto">Yükleniyor...</p>
+        ) : (
+          <TeoriPratigiPractice questions={teoriQuestions} />
         )}
       </main>
     );

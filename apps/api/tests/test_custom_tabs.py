@@ -14,9 +14,13 @@ def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():
     # Madde 2026-08-22: parent_id — ic ice (nested) alt sekmeler.
     # Madde 2026-09-02: section_kind — Pratik Yap'in sabit bolumlerini
     # basliktan bagimsiz tanimak icin (bkz. CustomTabSectionKind migration).
+    # Madde 2026-09-02 (devam): konum_pratigi_pool/teori_pratigi_pool — a)
+    # Konum Pratiği ve b) Teori Pratiği soru havuzları (bkz. KonumTeoriPools
+    # migration).
     assert cols == {
         "id", "custom_tab_id", "parent_id", "order_index", "title", "body", "images",
         "practice_positions", "emoji", "position_pool", "section_kind",
+        "konum_pratigi_pool", "teori_pratigi_pool",
     }
 
 
@@ -650,3 +654,185 @@ async def test_genel_gorunum_section_kind_iceriyor(client):
 
     detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
     assert detail["sections"][0]["section_kind"] == "oyunsonu"
+
+
+# ── a) Konum Pratiği ve b) Teori Pratiği soru havuzları — madde: 2026-09-02 (devam) ──
+
+KP_FEN = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1"
+
+
+@pytest.mark.asyncio
+async def test_konum_pratigi_sorusu_kaydedilir(client):
+    tok = await _teacher_token(client, "kp1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+    assert section["konum_pratigi_pool"] == []
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"konum_pratigi_pool": [{
+                               "id": "q1", "code": "001",
+                               "instruction": "Bu hangi açılıştır?",
+                               "fen": KP_FEN,
+                               "answer_kind": "sentence",
+                               "options": ["İtalyan Açılışı", "İspanyol Açılışı", "Sicilya Savunması"],
+                               "correct_index": 0,
+                           }]})
+    assert r.status_code == 200
+    pool = r.json()["konum_pratigi_pool"]
+    assert len(pool) == 1
+    assert pool[0]["code"] == "001"
+    assert pool[0]["correct_index"] == 0
+    assert len(pool[0]["options"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_konum_pratigi_gecersiz_fen_reddedilir(client):
+    tok = await _teacher_token(client, "kp2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"konum_pratigi_pool": [{
+                               "id": "q1", "instruction": "x", "fen": "gecersiz-fen",
+                               "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 0,
+                           }]})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_konum_pratigi_dogru_sik_disariysa_reddedilir(client):
+    tok = await _teacher_token(client, "kp3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"konum_pratigi_pool": [{
+                               "id": "q1", "instruction": "x", "fen": KP_FEN,
+                               "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 5,
+                           }]})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_konum_pratigi_tek_sik_reddedilir(client):
+    """2/3/4 şık zorunlu — tek şıklı soru anlamsız (madde: Zafer'in 2/3/4 seçim isteği)."""
+    tok = await _teacher_token(client, "kp4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"konum_pratigi_pool": [{
+                               "id": "q1", "instruction": "x", "fen": KP_FEN,
+                               "answer_kind": "sentence", "options": ["Tek şık"], "correct_index": 0,
+                           }]})
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_teori_pratigi_sorusu_kaydedilir(client):
+    tok = await _teacher_token(client, "tp1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+    assert section["teori_pratigi_pool"] == []
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"teori_pratigi_pool": [{
+                               "id": "t1", "code": "001",
+                               "instruction": "İtalyan Açılışı'nın ilk hamlelerini oyna.",
+                               "fen": FEN,
+                               "moves": ["e4", "e5", "Nf3", "Nc6", "Bc4"],
+                               "opening_name": "İtalyan Açılışı",
+                               "student_color": "w",
+                           }]})
+    assert r.status_code == 200
+    pool = r.json()["teori_pratigi_pool"]
+    assert len(pool) == 1
+    assert pool[0]["opening_name"] == "İtalyan Açılışı"
+    assert pool[0]["student_color"] == "w"
+    assert pool[0]["moves"] == ["e4", "e5", "Nf3", "Nc6", "Bc4"]
+
+
+@pytest.mark.asyncio
+async def test_teori_pratigi_gecersiz_hamle_sirasi_reddedilir(client):
+    tok = await _teacher_token(client, "tp2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"teori_pratigi_pool": [{
+                               "id": "t1", "instruction": "x", "fen": FEN,
+                               "moves": ["e4"], "opening_name": "Açılış", "student_color": "z",
+                           }]})
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_teori_pratigi_bos_hamle_listesi_reddedilir(client):
+    tok = await _teacher_token(client, "tp3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"teori_pratigi_pool": [{
+                               "id": "t1", "instruction": "x", "fen": FEN,
+                               "moves": [], "opening_name": "Açılış", "student_color": "w",
+                           }]})
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_teori_pratigi_gecersiz_fen_reddedilir(client):
+    tok = await _teacher_token(client, "tp4@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"teori_pratigi_pool": [{
+                               "id": "t1", "instruction": "x", "fen": "gecersiz-fen",
+                               "moves": ["e4"], "opening_name": "Açılış", "student_color": "w",
+                           }]})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_genel_gorunum_konum_ve_teori_pratigi_havuzlarini_icerir(client):
+    """Sporcu tarafinin okudugu /custom-tabs/{id} da iki yeni havuzu doner."""
+    tok = await _teacher_token(client, "kt1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+    await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                       json={"konum_pratigi_pool": [{
+                           "id": "q1", "instruction": "x", "fen": KP_FEN,
+                           "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 0,
+                       }]})
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    assert len(detail["sections"][0]["konum_pratigi_pool"]) == 1
+    assert detail["sections"][0]["teori_pratigi_pool"] == []

@@ -28,16 +28,28 @@ export interface PlayerState {
   fen: string;
   /** Sırası gelen taraf. */
   turn: 'w' | 'b';
-  /** Sıra sporcuda mı? (çift sayıda hamle oynanmışsa evet) */
+  /** Sıra sporcuda mı? (varsayılan parite 0'da çift sayıda hamle oynanmışsa evet) */
   isStudentTurn: boolean;
 }
 
-export function playerState(fen: string, playedMoves: string[]): PlayerState {
+/**
+ * Sporcu `playedMoves.length % 2 === studentParity` olduğunda oynar.
+ * Varsayılan 0 — MEVCUT davranış (sporcu her zaman İLK hamleyi oynar,
+ * ders içeriğindeki move_piece soruları bunu hiç değiştirmez). Madde
+ * 2026-09-02 (devam) — b) Teori Pratiği: notasyon her zaman doğal sırayla
+ * kaydedilir (genelde beyazdan), ama sporcu SİYAH oynayacaksa parity 1
+ * olur — o zaman ilk hamle (index 0) RAKİBİN, sporcu ikinci hamleden
+ * (index 1) başlar. Çağıran taraf (TeoriPratigiSolver) bu durumda mount'ta
+ * rakibin ilk hamlesini kendisi oynatır.
+ */
+export function playerState(
+  fen: string, playedMoves: string[], studentParity: 0 | 1 = 0,
+): PlayerState {
   const board = replay(fen, playedMoves);
   return {
     fen: board.fen(),
     turn: board.turn(),
-    isStudentTurn: playedMoves.length % 2 === 0,
+    isStudentTurn: playedMoves.length % 2 === studentParity,
   };
 }
 
@@ -48,8 +60,9 @@ export function playerState(fen: string, playedMoves: string[]): PlayerState {
 export function expectedStudentMove(
   answerKey: string[],
   playedMoves: string[],
+  studentParity: 0 | 1 = 0,
 ): string | null {
-  if (playedMoves.length % 2 !== 0) return null; // rakip sırası
+  if (playedMoves.length % 2 !== studentParity) return null; // rakip sırası
   return answerKey[playedMoves.length] ?? null;
 }
 
@@ -70,6 +83,7 @@ export function tryStudentMove(
   playedMoves: string[],
   from: string,
   to: string,
+  studentParity: 0 | 1 = 0,
 ): StudentMoveResult {
   const board = replay(fen, playedMoves);
   let san: string;
@@ -80,7 +94,7 @@ export function tryStudentMove(
   } catch {
     return { kind: 'illegal' };
   }
-  const expected = expectedStudentMove(answerKey, playedMoves);
+  const expected = expectedStudentMove(answerKey, playedMoves, studentParity);
   if (expected === null || san !== expected) {
     return { kind: 'wrong', san };
   }
@@ -94,8 +108,9 @@ export function tryStudentMove(
 export function opponentKeyMove(
   answerKey: string[],
   playedMoves: string[],
+  studentParity: 0 | 1 = 0,
 ): string | null {
-  if (playedMoves.length % 2 === 0) return null; // sporcu sırası
+  if (playedMoves.length % 2 === studentParity) return null; // sporcu sırası
   return answerKey[playedMoves.length] ?? null;
 }
 
@@ -103,8 +118,9 @@ export function opponentKeyMove(
 export function isSequenceComplete(
   answerKey: string[],
   playedMoves: string[],
+  studentParity: 0 | 1 = 0,
 ): boolean {
-  return playedMoves.length % 2 === 0 && answerKey[playedMoves.length] === undefined;
+  return playedMoves.length % 2 === studentParity && answerKey[playedMoves.length] === undefined;
 }
 
 /**
