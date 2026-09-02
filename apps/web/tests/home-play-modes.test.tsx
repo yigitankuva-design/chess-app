@@ -97,4 +97,11 @@ describe('Ana sayfa — Maç Yap sekmesi 3 maç türü', () => {
     fireEvent.click(screen.getByText('Maç Yap'));
     for (const m of MODES) expect(screen.queryByText(m)).not.toBeInTheDocument();
   });
+
+  it('3 maç türü de aktif temanın vurgu rengini kullanır (madde 2026-09-02 "Tek Vurgu")', () => {
+    openPlayTab();
+    for (const m of MODES) {
+      expect(screen.getByText(m).style.color).toBe('var(--t-accent)');
+    }
+  });
 });

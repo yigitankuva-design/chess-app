@@ -71,11 +71,11 @@ describe('Ana sayfa — Dersler düzey açıklaması (madde 2026-09-05 (1), gün
     expect(el.className).not.toContain('t-muted');
   });
 
-  it('düzey adı mavi (Dersler marka rengi) gösterilir (görsel: 2026-09-08)', async () => {
+  it('düzey adı aktif temanın vurgu rengini kullanır (madde 2026-09-02 "Tek Vurgu")', async () => {
     render(<HomePage />);
     fireEvent.click(screen.getByText('Dersler'));
     const label = await screen.findByText('Temel Düzey');
-    expect(label.style.color).toBe('#38bdf8');
+    expect(label.style.color).toBe('var(--t-accent)');
   });
 
   it('açıklaması olmayan düzeyde hiçbir açıklama satırı gösterilmez', async () => {

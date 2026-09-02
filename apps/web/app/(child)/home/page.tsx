@@ -27,22 +27,15 @@ const LEVEL_EMOJIS = ['🌱', '😊', '😎', '🔥', '⭐', '👑', '🚀', '�
 
 interface FunActivity { id: number; name: string; description: string; emoji: string }
 
-// Bu 4 renk, Hızlı Erişim kartlarının DIŞINDA da marka rengi olarak kullanılır
-// (Dersler düzey adı, Maç Yap alt bağlantıları, Eğlence oyun adları) — bu
-// yüzden SABİT kalır, temayla değişmez.
-const FEATURE_COLORS = {
-  play: '#34d399',
-  lessons: '#38bdf8',
-  analiz: '#a78bfa',
-  eglence: '#f472b6',
-};
-
-// Madde 2026-09-02: Zafer'in "Tek Vurgu" onayı — SADECE Hızlı Erişim'deki 4
-// yerleşik kart (aşağıdaki meta nesnesi) bu rengi kullanır: kendi sabit
-// renkleri yerine, sporcunun seçtiği temanın vurgu rengi (--t-accent, bkz.
-// app/globals.css [data-chess-theme='...']). Tema değişince kartlar otomatik
-// değişir. FEATURE_COLORS'ın DİĞER kullanım yerleri (yukarıdaki not) bilinçli
-// olarak DOKUNULMADI — onaylanan öneri sadece bu kart grubunu kapsıyordu.
+// Madde 2026-09-02: Zafer'in "Tek Vurgu" onayı — Hızlı Erişim'in 7 kartı
+// (4 yerleşik + 3 özel) VE her sekmenin İLK seviye alt öğeleri (Dersler
+// düzey adı, Maç Yap alt bağlantıları, Eğlence oyun adları, özel sekmelerin
+// bölüm başlıkları) bu rengi kullanır — sporcunun seçtiği temanın vurgu
+// rengi (--t-accent, bkz. app/globals.css [data-chess-theme='...']). Tema
+// değişince hepsi otomatik değişir. DAHA DERİN seviyeler (ders/alt konu
+// içindeki pratik modları gibi) bilinçli olarak beyaz/bağımsız kalır —
+// özel sekmelerde zaten var olan kural (NestedSectionAccordion'da
+// "depth === 0 ? accentColor : '#fff'") yerleşik sekmelere de uygulandı.
 const QUICK_ACCESS_ACCENT = 'var(--t-accent)';
 
 const SUBTOPIC_EMOJIS = ['📋', '🎯', '🛤️', '♟️', '🏁', '✅', '📖', '🧩', '👑', '⭐'];
@@ -486,7 +479,7 @@ export default function ChildHomePage() {
                 }}>
                 <IconFriends s={20} />
               </span>
-              <span className="font-bold text-sm flex items-center gap-2" style={{ color: FEATURE_COLORS.play }}>
+              <span className="font-bold text-sm flex items-center gap-2" style={{ color: QUICK_ACCESS_ACCENT }}>
                 Arkadaşla Oyna
                 {activeCount !== null && <ActivePlayersBadge count={activeCount} />}
               </span>
@@ -504,7 +497,7 @@ export default function ChildHomePage() {
                 style={{ ...(openBot ? pressed(999, 3) : raised(999, 4)), width: 44, height: 44, color: 'var(--t-text-1)' }}>
                 <IconBot s={20} />
               </span>
-              <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.play }}>
+              <span className="font-bold text-sm" style={{ color: QUICK_ACCESS_ACCENT }}>
                 Bota Karşı Oyna
               </span>
             </button>
@@ -536,7 +529,7 @@ export default function ChildHomePage() {
                 style={{ ...raised(999, 4), width: 44, height: 44, color: 'var(--t-text-1)' }}>
                 <IconTrophy s={20} />
               </span>
-              <span className="font-bold text-sm" style={{ color: FEATURE_COLORS.play }}>Turnuva Girişi</span>
+              <span className="font-bold text-sm" style={{ color: QUICK_ACCESS_ACCENT }}>Turnuva Girişi</span>
             </Link>
           </div>
         )}
@@ -564,7 +557,7 @@ export default function ChildHomePage() {
                     label={lv.name}
                     active={levelOpen}
                     size={44}
-                    tint={FEATURE_COLORS.lessons}
+                    tint={QUICK_ACCESS_ACCENT}
                     onClick={() => toggleLevel(lv.id)}
                   />
                   {/* Madde 2026-09-07 (2), gorsel guncelleme 2026-09-08: baslik 3
@@ -722,7 +715,7 @@ export default function ChildHomePage() {
                     style={{ ...raised(999, 4), textDecoration: 'none' }}
                   >
                     <span className="text-3xl leading-none">{a.emoji}</span>
-                    <span className="font-bold text-xs leading-tight" style={{ color: FEATURE_COLORS.eglence }}>
+                    <span className="font-bold text-xs leading-tight" style={{ color: QUICK_ACCESS_ACCENT }}>
                       {a.name}
                     </span>
                   </Link>

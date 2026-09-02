@@ -46,6 +46,14 @@ describe('Ana sayfa — Eğlence sekmesi (madde: 2026-08-21, admin verisi)', () 
     expect(link).toHaveAttribute('href', '/eglence/1');
   });
 
+  it('oyun/yarışma adları aktif temanın vurgu rengini kullanır (madde 2026-09-02 "Tek Vurgu")', async () => {
+    global.fetch = vi.fn(() => Promise.resolve({ ok: true, json: async () => ACTIVITIES })) as never;
+    render(<ChildHomePage />);
+    fireEvent.click(screen.getByText('Eğlence'));
+    const el = await screen.findByText('Koordinat Yarışı');
+    expect(el.style.color).toBe('var(--t-accent)');
+  });
+
   it('hiç kart eklenmediyse bilgi mesajı gösterilir', async () => {
     global.fetch = vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })) as never;
     render(<ChildHomePage />);
