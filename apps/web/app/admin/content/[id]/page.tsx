@@ -82,6 +82,28 @@ export default function AdminModuleLessonsPage() {
     await refresh();
   }
 
+  // Madde 2026-09-XX: aynı düzey içinde konuların (derslerin) sırasını
+  // değiştirmek için Yukarı/Aşağı okları — backend'de zaten var olan
+  // /admin/modules/{id}/lessons/reorder'ı çağırır (ordered_ids: TÜM
+  // derslerin YENİ tam sırası, sadece iki tanesinin yer değiştirmesi
+  // yetmez — endpoint kısmi liste göndermeyi beklemiyor).
+  async function reorderLesson(les: LessonRow, direction: 'up' | 'down') {
+    const idx = rows.findIndex((r) => r.id === les.id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (idx === -1 || swapIdx < 0 || swapIdx >= rows.length) return;
+    const reordered = [...rows];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    setMsg(null);
+    const token = getToken();
+    const r = await fetch(`${API_BASE}/admin/modules/${id}/lessons/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ordered_ids: reordered.map((x) => x.id) }),
+    });
+    if (!r.ok) { setMsg('Sıralama değiştirilemedi'); return; }
+    await refresh();
+  }
+
   async function moveLesson(les: LessonRow, moduleId: number) {
     setMsg(null);
     const token = getToken();
@@ -172,6 +194,18 @@ export default function AdminModuleLessonsPage() {
             const accent = accents[i % accents.length];
             return (
               <div key={les.id} className={`neon-card ${accent} flex flex-wrap items-center gap-3 p-4`}>
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button type="button" onClick={() => reorderLesson(les, 'up')} disabled={i === 0}
+                    aria-label={`${les.title} dersini yukarı taşı`}
+                    className="w-6 h-6 rounded-md bg-white/5 border border-white/15 text-white/70 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs leading-none transition-colors">
+                    ▲
+                  </button>
+                  <button type="button" onClick={() => reorderLesson(les, 'down')} disabled={i === rows.length - 1}
+                    aria-label={`${les.title} dersini aşağı taşı`}
+                    className="w-6 h-6 rounded-md bg-white/5 border border-white/15 text-white/70 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs leading-none transition-colors">
+                    ▼
+                  </button>
+                </div>
                 <span className={`neon-avatar ${accent} w-11 h-11 text-sm shrink-0`}>{les.order_index}</span>
                 <IconPicker
                   value={les.icon || ''}
