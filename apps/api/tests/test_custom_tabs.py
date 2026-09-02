@@ -12,9 +12,11 @@ def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():
     assert CustomTabSection.__tablename__ == "custom_tab_sections"
     cols = set(CustomTabSection.__table__.columns.keys())
     # Madde 2026-08-22: parent_id — ic ice (nested) alt sekmeler.
+    # Madde 2026-09-02: section_kind — Pratik Yap'in sabit bolumlerini
+    # basliktan bagimsiz tanimak icin (bkz. CustomTabSectionKind migration).
     assert cols == {
         "id", "custom_tab_id", "parent_id", "order_index", "title", "body", "images",
-        "practice_positions", "emoji", "position_pool",
+        "practice_positions", "emoji", "position_pool", "section_kind",
     }
 
 
@@ -591,3 +593,60 @@ async def test_kopyalanan_bolumde_konum_havuzu_bos_baslar(client):
     copy = (await client.post(f"/admin/custom-tab-sections/{src['id']}/duplicate", headers=h,
                               json={"new_title": "Sınıf 2"})).json()
     assert copy["position_pool"] == []
+
+
+@pytest.mark.asyncio
+async def test_section_kind_olusturma_sirasinda_verilir_ve_donulur(client):
+    """Madde 2026-09-02: Pratik Yap'in sabit bolumleri (Acilis/Kazanc/
+    Oyunsonu) section_kind ile olusturulur, yanit onu geri doner."""
+    tok = await _teacher_token(client, "sk1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    r = await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                          json={"title": "Açılış Pratiği Yap", "body": "", "images": [], "section_kind": "opening"})
+    assert r.status_code == 201
+    assert r.json()["section_kind"] == "opening"
+
+    # Kind verilmezse None kalir (hocanin kendi eklediği sıradan bölüm).
+    r2 = await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                           json={"title": "Sıradan Bölüm", "body": "", "images": []})
+    assert r2.json()["section_kind"] is None
+
+
+@pytest.mark.asyncio
+async def test_section_kind_ad_degisse_bile_ayni_kalir_patch_ile_degistirilemez(client):
+    """Madde 2026-09-02: section_kind, PATCH sirasinda GONDERILSE BILE
+    degismez — schema'da alan yok, sessizce yok sayilir. Boylece admin
+    basligi serbestce degistirebilir ama ozel davranis (section_kind'e
+    bagli) bozulmaz."""
+    tok = await _teacher_token(client, "sk2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Açılış Pratiği Yap", "body": "", "images": [],
+                                       "section_kind": "opening"})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"title": "Yeni Ad", "section_kind": "kazanc"})
+    assert r.status_code == 200
+    assert r.json()["title"] == "Yeni Ad"
+    # section_kind PATCH payload'inda gonderilse bile DEGISMEDI:
+    assert r.json()["section_kind"] == "opening"
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    assert detail["sections"][0]["section_kind"] == "opening"
+    assert detail["sections"][0]["title"] == "Yeni Ad"
+
+
+@pytest.mark.asyncio
+async def test_genel_gorunum_section_kind_iceriyor(client):
+    """Sporcu tarafinin okudugu genel /custom-tabs/{id} da section_kind
+    doner — CustomTabPanel bu alana bakarak Acilis/Oyunsonu'nu tanir."""
+    tok = await _teacher_token(client, "sk3@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
+    await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                      json={"title": "Oyunsonu Pratiği Yap", "body": "", "images": [], "section_kind": "oyunsonu"})
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    assert detail["sections"][0]["section_kind"] == "oyunsonu"

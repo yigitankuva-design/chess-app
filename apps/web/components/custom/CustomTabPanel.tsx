@@ -5,7 +5,7 @@ import { MatchCriteria } from '@/components/play/MatchCriteria';
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 import {
-  sectionEmoji, sortPratikSections, OPENING_ROW, OYUNSONU_SECTION, OYUNSONU_CATEGORIES, groupByCategory,
+  sectionEmoji, sortPratikSections, OPENING_KIND, OYUNSONU_KIND, OYUNSONU_CATEGORIES, groupByCategory,
 } from '@/lib/customTabs/pratikYap';
 import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
@@ -31,12 +31,15 @@ interface Props {
  * components/ui/neumorphic.tsx) — 2026-08-19 kararı. Pratik Yap OLMAYAN özel
  * sekmeler (yazı/görsel içeren sıradan sekmeler) eski köşeli kart tasarımını
  * korur.
- * Madde 2026-09-02: Açılış Pratiği Yap, Kazanç Konumu ve Oyunsonu ile AYNI
- * listede, AYNI order_index mantığıyla sıralanır (admin Yukarı/Aşağı ile
- * üçünü de serbestçe sıralayabilir — bkz. lib/customTabs/pratikYap.ts). Tek
- * fark İÇERİĞİ: bu satır açılınca normal yazı/konum havuzu yerine
- * OpeningPractice (açılış seç → kriter → maç) gösterilir; "Pratiğe Başla"ya
- * basılınca ASIL MAÇ /play sayfasına yönlendirilir (onReadyToStart).
+ * Madde 2026-09-02 (1): Açılış Pratiği Yap, Kazanç Konumu ve Oyunsonu ile
+ * AYNI listede, AYNI order_index mantığıyla sıralanır (admin Yukarı/Aşağı
+ * ile üçünü de serbestçe sıralayabilir — bkz. lib/customTabs/pratikYap.ts).
+ * Madde 2026-09-02 (2): admin bunların BAŞLIĞINI da değiştirebilir/
+ * silebilir — bu yüzden hangi satırın "Açılış" olduğu artık section_kind'e
+ * bakılarak anlaşılır, title'a DEĞİL. Tek fark İÇERİĞİ: bu satır açılınca
+ * normal yazı/konum havuzu yerine OpeningPractice (açılış seç → kriter →
+ * maç) gösterilir; "Pratiğe Başla"ya basılınca ASIL MAÇ /play sayfasına
+ * yönlendirilir (onReadyToStart).
  * "Oyunsonu Pratiği Yap" ayrıca özeldir: kriter ekranından önce sporcu 5
  * kategoriden birini seçer — kategorisiz (eski) konumlar sporcuya gösterilmez.
  */
@@ -71,8 +74,9 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
         const open = openSectionId === s.id;
         // Madde 3 (2026-08-19): admin ikon havuzundan seçtiyse (s.emoji) o
         // kullanılır; seçmediyse eski varsayılana düşer (Açılış/Kazanç/Oyunsonu
-        // 📖/🏆/🏁, diğerleri 🎯).
-        const emoji = s.emoji || sectionEmoji(s.title) || '🎯';
+        // 📖/🏆/🏁, diğerleri 🎯). Madde 2026-09-02: section_kind'e göre —
+        // admin başlığı değiştirse bile doğru ikon.
+        const emoji = s.emoji || sectionEmoji(s.section_kind) || '🎯';
         return (
           <div key={s.id}>
             <PathNode
@@ -90,7 +94,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
               <Branch offset={20}>
                 {/* Madde 4 (2026-08-19): Oyunsonu'nun 5 kategorisi BEYAZ
                     kalsın diye tint BİLEREK geçilmez. */}
-                {s.title === OPENING_ROW.title ? (
+                {s.section_kind === OPENING_KIND ? (
                   <OpeningPractice
                     onReadyToStart={(variant, v) => {
                       router.push(
@@ -101,7 +105,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
                       );
                     }}
                   />
-                ) : s.title === OYUNSONU_SECTION ? (
+                ) : s.section_kind === OYUNSONU_KIND ? (
                   openCategory === null ? (
                     <div className="grid gap-2.5">
                       {OYUNSONU_CATEGORIES.map((cat) => {

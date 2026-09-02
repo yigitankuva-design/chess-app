@@ -22,7 +22,7 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
 import {
-  PRATIK_YAP_LABEL, FIXED_SECTIONS, OPENING_ROW, OYUNSONU_SECTION, KAZANC_SECTION,
+  PRATIK_YAP_LABEL, FIXED_SECTIONS, OPENING_KIND, OYUNSONU_KIND, KAZANC_KIND,
   isFixedSection, sectionEmoji, sortPratikSections,
 } from '@/lib/customTabs/pratikYap';
 
@@ -221,12 +221,15 @@ export default function AdminTabsPage() {
         if (!loaded) return;
         let detail = loaded;
         // "Pratik Yap" sekmesinde 3 sabit alt sekme HER ZAMAN bulunur; eksik
-        // olanlar ilk açılışta oluşturulur (adına göre kontrol — iki kez oluşmaz).
+        // olanlar ilk açılışta oluşturulur. Madde 2026-09-02: varlık kontrolü
+        // section_kind'e göre yapılır (title'a DEĞİL) — admin bir sabit
+        // sekmeyi yeniden adlandırmış olsa bile YANLIŞLIKLA ikinci bir kopya
+        // oluşturulmaz.
         if (detail.label === PRATIK_YAP_LABEL) {
-          const hadOpeningRow = detail.sections.some((s) => s.title === OPENING_ROW.title);
+          const hadOpeningRow = detail.sections.some((s) => s.section_kind === OPENING_KIND);
           for (const f of FIXED_SECTIONS) {
-            if (detail.sections.some((s) => s.title === f.title)) continue;
-            const created = await createCustomTabSection(id, f.title, '', []);
+            if (detail.sections.some((s) => s.section_kind === f.kind)) continue;
+            const created = await createCustomTabSection(id, f.title, '', [], undefined, undefined, f.kind);
             if (created) detail = { ...detail, sections: [...detail.sections, created] };
           }
           // Madde 2026-09-02: "Açılış Pratiği Yap" öteden beri hep EN ÜSTTE
@@ -236,7 +239,7 @@ export default function AdminTabsPage() {
           // en başa taşınır — sonraki her açılışta admin'in kendi Yukarı/
           // Aşağı sıralaması geçerli olur, bu düzeltme sadece BİR KEZ çalışır.
           if (!hadOpeningRow) {
-            const opening = detail.sections.find((s) => s.title === OPENING_ROW.title);
+            const opening = detail.sections.find((s) => s.section_kind === OPENING_KIND);
             if (opening) {
               const orderedIds = [opening.id, ...detail.sections.filter((s) => s.id !== opening.id).map((s) => s.id)];
               const ok = await reorderCustomTabSections(id, orderedIds);
@@ -718,11 +721,14 @@ export default function AdminTabsPage() {
                       {(isPratikYap ? sortPratikSections(detail.sections) : detail.sections).map((s, idx, arr) => {
                         const sOpen = openSectionId === s.id;
                         const isEditing = editingSectionId === s.id;
-                        // Sabit sekmeler (Kazanç/Oyunsonu) adı değiştirilemez ve silinemez.
-                        const fixed = isPratikYap && isFixedSection(s.title);
+                        // Madde 2026-09-02: sabit sekmeler (Açılış/Kazanç/Oyunsonu) artık
+                        // ADI da değiştirilebilir/silinebilir — `fixed` sadece ikon
+                        // varsayılanı ve silme uyarı metni için kullanılır, buton
+                        // gizlemek için DEĞİL (isFixedSection artık section_kind'e bakar).
+                        const fixed = isPratikYap && isFixedSection(s.section_kind);
                         // Madde 3 (2026-08-19): admin ikon seçtiyse (s.emoji) o kullanılır;
-                        // seçmediyse eski varsayılana (Kazanç/Oyunsonu → 🏆/🏁) düşer.
-                        const emoji = s.emoji || (isPratikYap ? sectionEmoji(s.title) : null);
+                        // seçmediyse eski varsayılana (Açılış/Kazanç/Oyunsonu → 📖/🏆/🏁) düşer.
+                        const emoji = s.emoji || (isPratikYap ? sectionEmoji(s.section_kind) : null);
                         return (
                           <div key={s.id} className="rounded-lg border border-white/10 bg-white/[0.03]">
                             <div className="flex items-center gap-2 px-3 py-2.5">
@@ -758,20 +764,26 @@ export default function AdminTabsPage() {
                                   </button>
                                 </>
                               )}
-                              {!fixed && (
-                                <>
-                                  <button type="button" onClick={() => startEditSection(s)}
-                                    aria-label={`${s.title} alt sekmesini düzenle`}
-                                    className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">
-                                    Düzenle
-                                  </button>
-                                  <button type="button" onClick={() => removeAltSection(c.id, s.id)}
-                                    aria-label={`${s.title} alt sekmesini sil`}
-                                    className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
-                                    Sil
-                                  </button>
-                                </>
-                              )}
+                              {/* Madde 2026-09-02: Zafer'in onayıyla sabit sekmeler
+                                  (Açılış/Kazanç/Oyunsonu) de Düzenle/Sil alır — özel
+                                  davranışları section_kind'e bağlı olduğu için ad
+                                  değişse/silinse bile bozulmaz (silinirse bir sonraki
+                                  açılışta section_kind'iyle BOŞ olarak geri gelir). */}
+                              <button type="button" onClick={() => startEditSection(s)}
+                                aria-label={`${s.title} alt sekmesini düzenle`}
+                                className="px-2 py-1 rounded-md text-cyan-300 hover:bg-cyan-400/10 text-xs">
+                                Düzenle
+                              </button>
+                              <button type="button" onClick={() => {
+                                if (fixed && !confirm(
+                                  `"${s.title}" sabit bir bölüm — silersen bir sonraki açılışta BOŞ olarak otomatik yeniden oluşur (kalıcı kaybolmaz, ama yazdığın açıklama/görsel varsa o kaybolur). Devam edilsin mi?`,
+                                )) return;
+                                removeAltSection(c.id, s.id);
+                              }}
+                                aria-label={`${s.title} alt sekmesini sil`}
+                                className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">
+                                Sil
+                              </button>
                             </div>
                             {isEditing ? (
                               <div className="px-3 pb-3 space-y-2">
@@ -817,14 +829,16 @@ export default function AdminTabsPage() {
                                 )}
                                 {isPratikYap && (
                                   <div className="pt-2 border-t border-white/10">
-                                    {s.title === OPENING_ROW.title ? (
+                                    {s.section_kind === OPENING_KIND ? (
                                       /* Madde 2026-09-02: Açılış Pratiği Yap konum havuzu KULLANMAZ —
                                          içeriği (açılış/tür/varyant listesi) yukarıdaki "Açılış
-                                         Pratiği" panelinden yönetilir; bu satır sadece SIRASINI tutar. */
+                                         Pratiği" panelinden yönetilir; buradan sadece adını/sırasını
+                                         değiştirebilir ya da silebilirsin (yazı/görsel sporcuya
+                                         GÖSTERİLMEZ). */
                                       <p className="text-xs n-muted">
-                                        Bu bölümün içeriği yukarıdaki &quot;Açılış Pratiği&quot; panelinden yönetilir — burada sadece sırasını değiştirebilirsin.
+                                        Bu bölümün içeriği yukarıdaki &quot;Açılış Pratiği&quot; panelinden yönetilir — buradan yalnızca adını/sırasını değiştirebilir ya da silebilirsin.
                                       </p>
-                                    ) : s.title === OYUNSONU_SECTION ? (
+                                    ) : s.section_kind === OYUNSONU_KIND ? (
                                       /* Oyunsonu: konumlar 5 kategoriye ayrılır. */
                                       <CategorizedPositionPool
                                         fen={poolFen} turn={poolTurn}
@@ -842,7 +856,7 @@ export default function AdminTabsPage() {
                                         pool={s.practice_positions}
                                         onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
                                         onUpdatePosition={(posId, next) => updatePosition(c.id, s.id, posId, next)}
-                                        showOwnerField={s.title === KAZANC_SECTION}
+                                        showOwnerField={s.section_kind === KAZANC_KIND}
                                       />
                                     )}
                                   </div>

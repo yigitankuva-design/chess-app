@@ -60,7 +60,7 @@ describe('Sporcu özel sekme sayfası', () => {
       // Madde 2026-09-02: "Açılış Pratiği Yap" artık gerçek bir kayıt (diğer
       // 2 sabit alt sekmeyle AYNI order_index mantığı) — fixture'da olmazsa
       // hiç görünmez.
-      sections: [{ id: 9, order_index: 0, title: 'Açılış Pratiği Yap', body: '', images: [], practice_positions: [] }],
+      sections: [{ id: 9, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [] }],
     });
     render(<CustomTabViewPage />);
     await waitFor(() => screen.getByText('Pratik Yap'));

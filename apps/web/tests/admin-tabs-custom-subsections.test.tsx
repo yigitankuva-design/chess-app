@@ -23,7 +23,7 @@ vi.mock('@/lib/customTabsApi', () => ({
 import AdminTabsPage from '@/app/admin/settings/tabs/page';
 import {
   listCustomTabs, getCustomTab, createCustomTabSection, updateCustomTabSection,
-  duplicateCustomTabSection, reorderCustomTabSections,
+  duplicateCustomTabSection, reorderCustomTabSections, deleteCustomTabSection,
 } from '@/lib/customTabsApi';
 
 beforeEach(() => {
@@ -137,8 +137,8 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     // sekme gibi gerçekten OLUŞTURULMASI gereken bir kayıt — mock boş dönerse
     // ekranda hiç görünmez.
     (createCustomTabSection as ReturnType<typeof vi.fn>).mockImplementation(
-      (_tabId: number, title: string) => Promise.resolve({
-        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [],
+      (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
+        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
       }),
     );
     global.fetch = vi.fn((url: string) => {
@@ -247,8 +247,8 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
       id: 9, label: 'Pratik Yap', emoji: '🧩', sections: [],
     });
     (createCustomTabSection as ReturnType<typeof vi.fn>).mockImplementation(
-      (_tabId: number, title: string) => Promise.resolve({
-        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [],
+      (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
+        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
       }),
     );
 
@@ -257,13 +257,13 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
 
     await waitFor(() => {
-      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Açılış Pratiği Yap', '', []);
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Açılış Pratiği Yap', '', [], undefined, undefined, 'opening');
     });
     await waitFor(() => {
-      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Kazanç Konumunu Pratik Yap', '', []);
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Kazanç Konumunu Pratik Yap', '', [], undefined, undefined, 'kazanc');
     });
     await waitFor(() => {
-      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Oyunsonu Pratiği Yap', '', []);
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Oyunsonu Pratiği Yap', '', [], undefined, undefined, 'oyunsonu');
     });
   });
 
@@ -274,9 +274,9 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 9, label: 'Pratik Yap', emoji: '🧩',
       sections: [
-        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', body: '', images: [], practice_positions: [] },
-        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
-        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
+        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [] },
+        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', section_kind: 'kazanc', body: '', images: [], practice_positions: [] },
+        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [], practice_positions: [] },
       ],
     });
 
@@ -288,16 +288,16 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     expect(reorderCustomTabSections).not.toHaveBeenCalled();
   });
 
-  it('sabit sekmelerde Düzenle/Sil YOK, hocanınkinde VAR', async () => {
+  it('madde 2026-09-02: sabit sekmelerde de artık Düzenle/Sil VAR (hocanınkiyle AYNI)', async () => {
     (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: 9, order_index: 1, label: 'Pratik Yap', emoji: '🧩' },
     ]);
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 9, label: 'Pratik Yap', emoji: '🧩',
       sections: [
-        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', body: '', images: [], practice_positions: [] },
-        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
-        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
+        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [] },
+        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', section_kind: 'kazanc', body: '', images: [], practice_positions: [] },
+        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [], practice_positions: [] },
         { id: 3, order_index: 3, title: 'Hocanın Sekmesi', body: '', images: [], practice_positions: [] },
       ],
     });
@@ -307,12 +307,61 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
     await waitFor(() => screen.getByText('Hocanın Sekmesi'));
 
-    expect(screen.queryByLabelText('Açılış Pratiği Yap alt sekmesini sil')).toBeNull();
-    expect(screen.queryByLabelText('Açılış Pratiği Yap alt sekmesini düzenle')).toBeNull();
-    expect(screen.queryByLabelText('Kazanç Konumunu Pratik Yap alt sekmesini sil')).toBeNull();
-    expect(screen.queryByLabelText('Kazanç Konumunu Pratik Yap alt sekmesini düzenle')).toBeNull();
-    expect(screen.getByLabelText('Hocanın Sekmesi alt sekmesini sil')).toBeInTheDocument();
-    expect(screen.getByLabelText('Hocanın Sekmesi alt sekmesini düzenle')).toBeInTheDocument();
+    for (const title of ['Açılış Pratiği Yap', 'Kazanç Konumunu Pratik Yap', 'Oyunsonu Pratiği Yap', 'Hocanın Sekmesi']) {
+      expect(screen.getByLabelText(`${title} alt sekmesini sil`)).toBeInTheDocument();
+      expect(screen.getByLabelText(`${title} alt sekmesini düzenle`)).toBeInTheDocument();
+    }
+  });
+
+  it('madde 2026-09-02: sabit sekme Sil\'e basılınca onay istenir; onaylanmazsa silinmez', async () => {
+    vi.stubGlobal('confirm', vi.fn(() => false));
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 9, order_index: 1, label: 'Pratik Yap', emoji: '🧩' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 9, label: 'Pratik Yap', emoji: '🧩',
+      sections: [
+        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [] },
+        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', section_kind: 'kazanc', body: '', images: [], practice_positions: [] },
+        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [], practice_positions: [] },
+      ],
+    });
+
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Pratik Yap/));
+    fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
+    await waitFor(() => screen.getByText('Açılış Pratiği Yap'));
+
+    fireEvent.click(screen.getByLabelText('Açılış Pratiği Yap alt sekmesini sil'));
+    expect(window.confirm).toHaveBeenCalled();
+    expect(deleteCustomTabSection).not.toHaveBeenCalled();
+    expect(screen.getByText('Açılış Pratiği Yap')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-02: hocanın SIRADAN sekmesi Sil\'e basılınca onay İSTENMEZ (mevcut davranış korunur)', async () => {
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 9, order_index: 1, label: 'Pratik Yap', emoji: '🧩' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 9, label: 'Pratik Yap', emoji: '🧩',
+      sections: [
+        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [] },
+        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', section_kind: 'kazanc', body: '', images: [], practice_positions: [] },
+        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [], practice_positions: [] },
+        { id: 3, order_index: 3, title: 'Hocanın Sekmesi', body: '', images: [], practice_positions: [] },
+      ],
+    });
+    (deleteCustomTabSection as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Pratik Yap/));
+    fireEvent.click(screen.getByLabelText('Pratik Yap sekmesini aç'));
+    await waitFor(() => screen.getByText('Hocanın Sekmesi'));
+
+    fireEvent.click(screen.getByLabelText('Hocanın Sekmesi alt sekmesini sil'));
+    expect(window.confirm).not.toHaveBeenCalled();
+    await waitFor(() => expect(deleteCustomTabSection).toHaveBeenCalledWith(3));
   });
 
   it('madde 2026-09-02: 3 sabit alt sekme Yukarı/Aşağı ile sıralanabilir, hocanınki dahil', async () => {
@@ -322,9 +371,9 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 9, label: 'Pratik Yap', emoji: '🧩',
       sections: [
-        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', body: '', images: [], practice_positions: [] },
-        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
-        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
+        { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [] },
+        { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', section_kind: 'kazanc', body: '', images: [], practice_positions: [] },
+        { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [], practice_positions: [] },
       ],
     });
 

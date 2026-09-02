@@ -6,29 +6,38 @@
 export const PRATIK_YAP_LABEL = 'Pratik Yap';
 
 /**
- * Madde 2026-09-02: Zafer'in isteğiyle artık DİĞER İKİ SABİT ALT SEKMEYLE
- * (Kazanç/Oyunsonu) AYNI şekilde gerçek bir CustomTabSection kaydı — sırası
- * (order_index) diğerleriyle birlikte serbestçe değiştirilebilir. İçeriği
- * hâlâ özel: sporcu tarafında bu satır açılınca normal yazı/görsel/konum
- * havuzu yerine OpeningPractice (açılış seç → kriter → maç) gösterilir;
- * admin tarafında içeriği (açılış/tür/varyant listesi) ayrı bir panelden
- * (OpeningCategoryCards) yönetilir — bu kayıt sadece SIRASINI tutar.
+ * Madde 2026-09-02 (1): Zafer'in isteğiyle 3 sabit alt sekme (Açılış/
+ * Kazanç/Oyunsonu) diğer CustomTabSection kayıtlarıyla AYNI şekilde gerçek
+ * bir kayıt — order_index'i var, admin Yukarı/Aşağı ile serbestçe sıralar.
+ * Madde 2026-09-02 (2): admin artık bunların BAŞLIĞINI da serbestçe
+ * değiştirebiliyor ve silebiliyor. Bu yüzden özel davranışları (açılış
+ * pratiği ekranı, 5 kategorili konum seçimi, "Konumun Sahibi" alanı) ARTIK
+ * BAŞLIK METNİNE bakarak tanınMAZ — section_kind adında, oluşturulduktan
+ * sonra hiç değişmeyen bir alana bakılır (bkz. CustomTabSection.section_kind,
+ * backend migration CustomTabSectionKind). `title` alanı SADECE görüntülenen
+ * isimdir; `kind` sabit kimliktir.
  */
-export const OPENING_ROW = { title: 'Açılış Pratiği Yap', emoji: '📖' };
+interface FixedSectionDef { kind: string; title: string; emoji: string }
 
-/** Konumları 5 kategoriye ayrılan alt sekmenin adı. */
-export const OYUNSONU_SECTION = 'Oyunsonu Pratiği Yap';
+export const OPENING_KIND = 'opening';
+export const KAZANC_KIND = 'kazanc';
+export const OYUNSONU_KIND = 'oyunsonu';
 
-/** Konum ekleme akışında "Konumun Sahibi" alanı yalnızca bu alt sekmede vardır. */
-export const KAZANC_SECTION = 'Kazanç Konumunu Pratik Yap';
+/** Açılış Pratiği Yap açılınca sporcuya OpeningPractice (açılış seç →
+ *  kriter → maç) gösterilir; admin tarafında içeriği (açılış/tür/varyant
+ *  listesi) ayrı bir panelden (OpeningCategoryCards) yönetilir. */
+export const OPENING_ROW: FixedSectionDef = { kind: OPENING_KIND, title: 'Açılış Pratiği Yap', emoji: '📖' };
 
-/** Her zaman var olması gereken alt sekmeler (yoksa otomatik oluşturulur). Sıra
- *  burada değil, gerçek order_index'te tutulur — bkz. sortPratikSections. */
-export const FIXED_SECTIONS: { title: string; emoji: string }[] = [
-  OPENING_ROW,
-  { title: KAZANC_SECTION, emoji: '🏆' },
-  { title: OYUNSONU_SECTION, emoji: '🏁' },
-];
+/** Konum ekleme akışında "Konumun Sahibi" alanı yalnızca bu bölümde vardır. */
+const KAZANC_ROW: FixedSectionDef = { kind: KAZANC_KIND, title: 'Kazanç Konumunu Pratik Yap', emoji: '🏆' };
+
+/** Konumları 5 kategoriye ayrılan bölüm. */
+const OYUNSONU_ROW: FixedSectionDef = { kind: OYUNSONU_KIND, title: 'Oyunsonu Pratiği Yap', emoji: '🏁' };
+
+/** Her zaman var olması gereken alt sekmeler (yoksa otomatik oluşturulur,
+ *  varlık kontrolü section_kind'e göre yapılır — bkz. admin/settings/tabs
+ *  toggleCustomTab). Sıra burada değil, gerçek order_index'te tutulur. */
+export const FIXED_SECTIONS: FixedSectionDef[] = [OPENING_ROW, KAZANC_ROW, OYUNSONU_ROW];
 
 /**
  * "Oyunsonu Pratiği Yap" alt sekmesindeki 5 kategori. Konumlar bu başlıklara
@@ -67,26 +76,29 @@ export function groupByCategory<T extends CategorizedPosition>(
   return out;
 }
 
-/** Sabit alt sekmeler adı değiştirilemez / silinemez. */
-export function isFixedSection(title: string): boolean {
-  return FIXED_SECTIONS.some((s) => s.title === title);
+/** Bu section_kind bir sabit alt sekmeye mi ait? (title'a DEĞİL, kind'e bakar —
+ *  admin başlığı değiştirse bile doğru sonucu verir.) */
+export function isFixedSection(kind: string | null | undefined): boolean {
+  return !!kind && FIXED_SECTIONS.some((s) => s.kind === kind);
 }
 
-/** Sabit alt sekmenin ikonu; hoca'nın kendi sekmesiyse null. */
-export function sectionEmoji(title: string): string | null {
-  return FIXED_SECTIONS.find((s) => s.title === title)?.emoji ?? null;
+/** Sabit alt sekmenin varsayılan ikonu; hoca'nın kendi sekmesiyse null. */
+export function sectionEmoji(kind: string | null | undefined): string | null {
+  return FIXED_SECTIONS.find((s) => s.kind === kind)?.emoji ?? null;
 }
 
 /**
  * Görüntüleme sırası: önce sabitler (KENDİ ARALARINDA gerçek order_index'e
- * göre — admin'in Yukarı/Aşağı ile değiştirdiği sıra budur, madde
- * 2026-09-02), sonra hoca'nın kendi sekmeleri (kendi aralarındaki sıraları
- * korunur, listeye geldikleri sırayla).
+ * göre — admin'in Yukarı/Aşağı ile değiştirdiği sıra budur), sonra hoca'nın
+ * kendi sekmeleri (kendi aralarındaki sıraları korunur, listeye geldikleri
+ * sırayla).
  */
-export function sortPratikSections<T extends { title: string; order_index: number }>(sections: T[]): T[] {
+export function sortPratikSections<T extends { section_kind?: string | null; order_index: number }>(
+  sections: T[],
+): T[] {
   const fixed = sections
-    .filter((s) => isFixedSection(s.title))
+    .filter((s) => isFixedSection(s.section_kind))
     .sort((a, b) => a.order_index - b.order_index);
-  const rest = sections.filter((s) => !isFixedSection(s.title));
+  const rest = sections.filter((s) => !isFixedSection(s.section_kind));
   return [...fixed, ...rest];
 }

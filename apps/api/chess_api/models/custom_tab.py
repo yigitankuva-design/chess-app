@@ -46,3 +46,11 @@ class CustomTabSection(Base):
     # "explanation_cards" (açıklama kartları) özelliğinin YERİNE geçer — o
     # zaman hiç gerçek veri girilmemişti (henüz production'a hiç uygulanmadı).
     position_pool: Mapped[list] = mapped_column(JSON, default=list)
+    # Madde 2026-09-02: "Pratik Yap" sekmesinin 3 sabit alt bölümünü (Açılış/
+    # Kazanç/Oyunsonu) ADDAN BAĞIMSIZ tanımak için — admin artık bunların
+    # BAŞLIĞINI (title) serbestçe değiştirebiliyor, ama özel davranışları
+    # (açılış pratiği ekranı, 5 kategori seçimi, "Konumun Sahibi" alanı)
+    # hâlâ bu sabit değere bakarak çalışmalı — 'opening' | 'kazanc' |
+    # 'oyunsonu' | None (None = sıradan bölüm, hoca'nın kendi eklediği gibi).
+    # BİR KEZ oluşturulunca DEĞİŞMEZ; PATCH ile güncellenemez.
+    section_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)

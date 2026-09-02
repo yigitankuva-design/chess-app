@@ -28,6 +28,13 @@ export interface CustomTabSection {
    *  İleri/Geri, bir grubun İÇİNDEKİ adımlar arasında numaralı butonlarla
    *  gezinilir. */
   position_pool?: PositionPoolEntry[];
+  /** Madde 2026-09-02: "Pratik Yap"ın 3 sabit bölümünü (Açılış/Kazanç/
+   *  Oyunsonu) BAŞLIKTAN bağımsız tanımak için — admin artık başlığı
+   *  serbestçe değiştirebiliyor/silebiliyor, ama özel davranış (açılış
+   *  pratiği ekranı, 5 kategori seçimi, "Konumun Sahibi" alanı) bu sabit
+   *  değere bakar. 'opening' | 'kazanc' | 'oyunsonu' | null (sıradan bölüm).
+   *  Oluşturulduktan sonra DEĞİŞMEZ. */
+  section_kind?: string | null;
 }
 
 export interface PositionPoolStep {
@@ -119,6 +126,9 @@ export async function createCustomTabSection(
   tabId: number, title: string, body: string, images: string[], emoji?: string,
   /** Verilirse bu bölüm o bölümün ÇOCUĞU olarak eklenir (madde 2026-08-22). */
   parentId?: number,
+  /** Madde 2026-09-02: "Pratik Yap"ın sabit bölümleri (Açılış/Kazanç/
+   *  Oyunsonu) oluşturulurken verilir — bkz. CustomTabSection.section_kind. */
+  sectionKind?: string,
 ): Promise<CustomTabSection | null> {
   const token = getToken();
   try {
@@ -129,6 +139,7 @@ export async function createCustomTabSection(
         title, body, images,
         ...(emoji ? { emoji } : {}),
         ...(parentId !== undefined ? { parent_id: parentId } : {}),
+        ...(sectionKind ? { section_kind: sectionKind } : {}),
       }),
     });
     if (!r.ok) return null;

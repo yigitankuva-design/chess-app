@@ -1548,6 +1548,11 @@ class CustomTabSectionCreateRequest(BaseModel):
     # olarak) eklenir — iç içe alt sekmeler. Verilmezse (None) sekmenin en üst
     # seviyesine eklenir (eski davranış, geriye dönük uyumlu).
     parent_id: int | None = None
+    # Madde 2026-09-02: "Pratik Yap"ın 3 sabit bölümü (Açılış/Kazanç/Oyunsonu)
+    # oluşturulurken frontend bunu gönderir — BAŞLIKTAN bağımsız, kalıcı
+    # kimlik. Sıradan (hoca'nın kendi eklediği) bölümlerde None kalır.
+    # PATCH (update) ile DEĞİŞTİRİLEMEZ — bkz. CustomTabSectionUpdateRequest.
+    section_kind: str | None = Field(default=None, max_length=20)
 
 
 class PracticePosition(BaseModel):
@@ -1698,7 +1703,7 @@ async def create_custom_tab_section(
     section = CustomTabSection(
         custom_tab_id=tab_id, parent_id=payload.parent_id, order_index=max_order + 1,
         title=payload.title, body=payload.body, images=payload.images,
-        emoji=payload.emoji,
+        emoji=payload.emoji, section_kind=payload.section_kind,
     )
     db.add(section)
     await db.commit()
@@ -1706,7 +1711,8 @@ async def create_custom_tab_section(
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
-            "parent_id": section.parent_id, "position_pool": section.position_pool}
+            "parent_id": section.parent_id, "position_pool": section.position_pool,
+            "section_kind": section.section_kind}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1745,7 +1751,7 @@ async def update_custom_tab_section(
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
             "body": section.body, "images": section.images,
             "practice_positions": section.practice_positions, "emoji": section.emoji,
-            "position_pool": section.position_pool}
+            "position_pool": section.position_pool, "section_kind": section.section_kind}
 
 
 @router.delete("/custom-tab-sections/{section_id}")

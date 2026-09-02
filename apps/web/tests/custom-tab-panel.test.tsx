@@ -30,7 +30,7 @@ import type { CustomTabDetail } from '@/lib/customTabsApi';
  *  sabit alt sekmeyle AYNI order_index mantığı) — HARDCODED değil, fixture'a
  *  eklenmesi gerekiyor. order_index 0 = testlerde varsayılan olarak en önde. */
 const ACILIS_SECTION = {
-  id: 9, order_index: 0, title: 'Açılış Pratiği Yap', body: '', images: [], practice_positions: [],
+  id: 9, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [],
 };
 
 const PRATIK: CustomTabDetail = {
@@ -172,7 +172,7 @@ describe('CustomTabPanel', () => {
     const tab: CustomTabDetail = {
       id: 1, label: 'Pratik Yap', emoji: '🎯',
       sections: [{
-        id: 40, order_index: 1, title: 'Oyunsonu Pratiği Yap', body: '', images: [],
+        id: 40, order_index: 1, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [],
         practice_positions: [
           { id: 'a', fen: 'x', category: 'Piyon Finalleri' },
           { id: 'b', fen: 'y', category: 'Kale Finalleri' },
@@ -197,7 +197,7 @@ describe('CustomTabPanel', () => {
     const tab: CustomTabDetail = {
       id: 5, label: 'Pratik Yap', emoji: '🎯',
       sections: [{
-        id: 41, order_index: 1, title: 'Oyunsonu Pratiği Yap', body: '', images: [],
+        id: 41, order_index: 1, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [],
         practice_positions: [
           { id: 'a', fen: 'x', category: 'Piyon Finalleri' },
           { id: 'b', fen: 'y', category: 'Kale Finalleri' },
@@ -231,7 +231,7 @@ describe('CustomTabPanel', () => {
     const tab: CustomTabDetail = {
       id: 6, label: 'Pratik Yap', emoji: '🎯',
       sections: [{
-        id: 42, order_index: 1, title: 'Oyunsonu Pratiği Yap', body: '', images: [],
+        id: 42, order_index: 1, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [],
         practice_positions: [{ id: 'a', fen: 'x', category: 'Piyon Finalleri' }],
       }],
     };
@@ -246,8 +246,8 @@ describe('CustomTabPanel', () => {
       id: 1, label: 'Pratik Yap', emoji: '🎯',
       sections: [
         { id: 30, order_index: 4, title: 'Hocanın Sekmesi', body: 'x', images: [], practice_positions: [] },
-        { id: 31, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
-        { id: 32, order_index: 3, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
+        { id: 31, order_index: 2, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [], practice_positions: [] },
+        { id: 32, order_index: 3, title: 'Kazanç Konumunu Pratik Yap', section_kind: 'kazanc', body: '', images: [], practice_positions: [] },
         ACILIS_SECTION,
       ],
     };
