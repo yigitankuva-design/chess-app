@@ -5,7 +5,15 @@
 
 export const PRATIK_YAP_LABEL = 'Pratik Yap';
 
-/** Alt sekme DEĞİL — açılış listesi sayfasına giden sabit bağlantı satırı. */
+/**
+ * Madde 2026-09-02: Zafer'in isteğiyle artık DİĞER İKİ SABİT ALT SEKMEYLE
+ * (Kazanç/Oyunsonu) AYNI şekilde gerçek bir CustomTabSection kaydı — sırası
+ * (order_index) diğerleriyle birlikte serbestçe değiştirilebilir. İçeriği
+ * hâlâ özel: sporcu tarafında bu satır açılınca normal yazı/görsel/konum
+ * havuzu yerine OpeningPractice (açılış seç → kriter → maç) gösterilir;
+ * admin tarafında içeriği (açılış/tür/varyant listesi) ayrı bir panelden
+ * (OpeningCategoryCards) yönetilir — bu kayıt sadece SIRASINI tutar.
+ */
 export const OPENING_ROW = { title: 'Açılış Pratiği Yap', emoji: '📖' };
 
 /** Konumları 5 kategoriye ayrılan alt sekmenin adı. */
@@ -14,8 +22,10 @@ export const OYUNSONU_SECTION = 'Oyunsonu Pratiği Yap';
 /** Konum ekleme akışında "Konumun Sahibi" alanı yalnızca bu alt sekmede vardır. */
 export const KAZANC_SECTION = 'Kazanç Konumunu Pratik Yap';
 
-/** Her zaman var olması gereken alt sekmeler (yoksa otomatik oluşturulur). */
+/** Her zaman var olması gereken alt sekmeler (yoksa otomatik oluşturulur). Sıra
+ *  burada değil, gerçek order_index'te tutulur — bkz. sortPratikSections. */
 export const FIXED_SECTIONS: { title: string; emoji: string }[] = [
+  OPENING_ROW,
   { title: KAZANC_SECTION, emoji: '🏆' },
   { title: OYUNSONU_SECTION, emoji: '🏁' },
 ];
@@ -68,15 +78,15 @@ export function sectionEmoji(title: string): string | null {
 }
 
 /**
- * Görüntüleme sırası: önce sabitler (tanımlı sırayla), sonra hoca'nın kendi
- * sekmeleri (kendi aralarındaki sıraları korunur). Kayıtlı veriye dokunmaz.
+ * Görüntüleme sırası: önce sabitler (KENDİ ARALARINDA gerçek order_index'e
+ * göre — admin'in Yukarı/Aşağı ile değiştirdiği sıra budur, madde
+ * 2026-09-02), sonra hoca'nın kendi sekmeleri (kendi aralarındaki sıraları
+ * korunur, listeye geldikleri sırayla).
  */
-export function sortPratikSections<T extends { title: string }>(sections: T[]): T[] {
-  const fixed: T[] = [];
-  for (const f of FIXED_SECTIONS) {
-    const found = sections.find((s) => s.title === f.title);
-    if (found) fixed.push(found);
-  }
+export function sortPratikSections<T extends { title: string; order_index: number }>(sections: T[]): T[] {
+  const fixed = sections
+    .filter((s) => isFixedSection(s.title))
+    .sort((a, b) => a.order_index - b.order_index);
   const rest = sections.filter((s) => !isFixedSection(s.title));
   return [...fixed, ...rest];
 }

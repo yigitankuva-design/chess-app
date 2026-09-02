@@ -26,12 +26,22 @@ vi.mock('@/components/play/OpeningPractice', () => ({
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 
+/** Madde 2026-09-02: "Açılış Pratiği Yap" artık gerçek bir kayıt (diğer 2
+ *  sabit alt sekmeyle AYNI order_index mantığı) — HARDCODED değil, fixture'a
+ *  eklenmesi gerekiyor. order_index 0 = testlerde varsayılan olarak en önde. */
+const ACILIS_SECTION = {
+  id: 9, order_index: 0, title: 'Açılış Pratiği Yap', body: '', images: [], practice_positions: [],
+};
+
 const PRATIK: CustomTabDetail = {
   id: 1, label: 'Pratik Yap', emoji: '🎯',
-  sections: [{
-    id: 10, order_index: 1, title: 'Süresiz Pratik', body: 'gizli metin', images: [],
-    practice_positions: [{ id: 'p1', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }],
-  }],
+  sections: [
+    ACILIS_SECTION,
+    {
+      id: 10, order_index: 1, title: 'Süresiz Pratik', body: 'gizli metin', images: [],
+      practice_positions: [{ id: 'p1', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }],
+    },
+  ],
 };
 
 const BULMACA: CustomTabDetail = {
@@ -150,7 +160,7 @@ describe('CustomTabPanel', () => {
   it('havuzu boş olan Pratik Yap alt sekmesinde bilgi mesajı görünür', () => {
     const bos: CustomTabDetail = {
       id: 1, label: 'Pratik Yap', emoji: '🎯',
-      sections: [{ id: 11, order_index: 1, title: 'Boş Pratik', body: '', images: [], practice_positions: [] }],
+      sections: [ACILIS_SECTION, { id: 11, order_index: 1, title: 'Boş Pratik', body: '', images: [], practice_positions: [] }],
     };
     render(<CustomTabPanel tab={bos} />);
     fireEvent.click(screen.getByText('Boş Pratik'));
@@ -231,24 +241,30 @@ describe('CustomTabPanel', () => {
     expect(screen.getByText(/Bu kategoride henüz konum yok/)).toBeInTheDocument();
   });
 
-  it('Pratik Yap sekmesinde sabit alt sekmeler ikonlu ve önce gelir', () => {
+  it('Pratik Yap sekmesinde sabit alt sekmeler (Açılış/Kazanç/Oyunsonu) İKONLU gelir ve hocanın sekmesinden ÖNCE gelir', () => {
     const tab: CustomTabDetail = {
       id: 1, label: 'Pratik Yap', emoji: '🎯',
       sections: [
-        { id: 30, order_index: 1, title: 'Hocanın Sekmesi', body: 'x', images: [], practice_positions: [] },
+        { id: 30, order_index: 4, title: 'Hocanın Sekmesi', body: 'x', images: [], practice_positions: [] },
         { id: 31, order_index: 2, title: 'Oyunsonu Pratiği Yap', body: '', images: [], practice_positions: [] },
         { id: 32, order_index: 3, title: 'Kazanç Konumunu Pratik Yap', body: '', images: [], practice_positions: [] },
+        ACILIS_SECTION,
       ],
     };
     render(<CustomTabPanel tab={tab} />);
     const sira = screen.getAllByRole('button')
       .map((b) => b.textContent || '')
-      .filter((t) => /Kazanç|Oyunsonu|Hocanın/.test(t));
-    expect(sira[0]).toContain('Kazanç Konumunu Pratik Yap');
+      .filter((t) => /Kazanç|Oyunsonu|Hocanın|Açılış/.test(t));
+    // Madde 2026-09-02: sabitlerin KENDİ ARALARINDAKİ sırası artık gerçek
+    // order_index'e göre (0 < 2 < 3) — Açılış, Oyunsonu, Kazanç. Hocanın
+    // sekmesi (sabit değil) her zaman EN SONA düşer.
+    expect(sira[0]).toContain('Açılış Pratiği Yap');
     expect(sira[1]).toContain('Oyunsonu Pratiği Yap');
-    expect(sira[2]).toContain('Hocanın Sekmesi');
-    expect(sira[0]).toContain('🏆');
+    expect(sira[2]).toContain('Kazanç Konumunu Pratik Yap');
+    expect(sira[3]).toContain('Hocanın Sekmesi');
+    expect(sira[0]).toContain('📖');
     expect(sira[1]).toContain('🏁');
+    expect(sira[2]).toContain('🏆');
   });
 
   it('Alt Konu\'ya tıklanınca AYRI sayfaya yönlendirilir, akordiyon içinde açılmaz (madde: 2026-08-25)', () => {

@@ -8,6 +8,7 @@ import type { AppSettingsData, TabKey } from '@/lib/settings/defaults';
 import {
   listCustomTabs, createCustomTab, updateCustomTab, deleteCustomTab,
   getCustomTab, createCustomTabSection, deleteCustomTabSection, updateCustomTabSection,
+  reorderCustomTabSections,
 } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { compressImageToDataUri } from '@/lib/imageCompress';
@@ -21,7 +22,7 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
 import {
-  PRATIK_YAP_LABEL, FIXED_SECTIONS, OYUNSONU_SECTION, KAZANC_SECTION,
+  PRATIK_YAP_LABEL, FIXED_SECTIONS, OPENING_ROW, OYUNSONU_SECTION, KAZANC_SECTION,
   isFixedSection, sectionEmoji, sortPratikSections,
 } from '@/lib/customTabs/pratikYap';
 
@@ -222,10 +223,33 @@ export default function AdminTabsPage() {
         // "Pratik Yap" sekmesinde 3 sabit alt sekme HER ZAMAN bulunur; eksik
         // olanlar ilk açılışta oluşturulur (adına göre kontrol — iki kez oluşmaz).
         if (detail.label === PRATIK_YAP_LABEL) {
+          const hadOpeningRow = detail.sections.some((s) => s.title === OPENING_ROW.title);
           for (const f of FIXED_SECTIONS) {
             if (detail.sections.some((s) => s.title === f.title)) continue;
             const created = await createCustomTabSection(id, f.title, '', []);
             if (created) detail = { ...detail, sections: [...detail.sections, created] };
+          }
+          // Madde 2026-09-02: "Açılış Pratiği Yap" öteden beri hep EN ÜSTTE
+          // duruyordu; artık gerçek bir kayıt (order_index) — eksik olup ŞİMDİ
+          // oluşturulduysa (var olan akademilerde ilk açılış) yeni kayıt
+          // sona eklenir (backend max_order+1). Sıra ANİDEN değişmesin diye
+          // en başa taşınır — sonraki her açılışta admin'in kendi Yukarı/
+          // Aşağı sıralaması geçerli olur, bu düzeltme sadece BİR KEZ çalışır.
+          if (!hadOpeningRow) {
+            const opening = detail.sections.find((s) => s.title === OPENING_ROW.title);
+            if (opening) {
+              const orderedIds = [opening.id, ...detail.sections.filter((s) => s.id !== opening.id).map((s) => s.id)];
+              const ok = await reorderCustomTabSections(id, orderedIds);
+              if (ok) {
+                // Sunucuyu tekrar sorgulamadan, sunucudaki AYNI mantıkla
+                // (1'den başlayan sıra numarası) yerel state'i eşitliyoruz.
+                const orderMap = new Map(orderedIds.map((sid, i) => [sid, i + 1]));
+                detail = {
+                  ...detail,
+                  sections: detail.sections.map((s) => ({ ...s, order_index: orderMap.get(s.id) ?? s.order_index })),
+                };
+              }
+            }
           }
         }
         setCustomTabDetails((prev) => ({ ...prev, [id]: detail }));
@@ -290,6 +314,25 @@ export default function AdminTabsPage() {
     });
     cancelEditSection();
     setMsg('Kaydedildi ✓');
+  }
+
+  /** Madde 2026-09-02: Pratik Yap'ın alt sekmelerini (Açılış/Kazanç/Oyunsonu +
+   *  varsa hocanın eklediği ekstra sekmeler) birbirine göre yukarı/aşağı
+   *  taşır — komşusuyla yer değiştirir, NestedSectionTree'deki moveSection
+   *  ile AYNI desen, aynı `/sections/reorder` ucunu kullanır. Ekrandaki sıra
+   *  (sortPratikSections) TAM olarak sunucuya gönderilen sıradır. */
+  async function movePratikSection(tabId: number, sectionId: number, dir: -1 | 1) {
+    const detail = customTabDetails[tabId];
+    if (!detail) return;
+    const ordered = sortPratikSections(detail.sections);
+    const i = ordered.findIndex((s) => s.id === sectionId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= ordered.length) return;
+    const reordered = [...ordered];
+    [reordered[i], reordered[j]] = [reordered[j], reordered[i]];
+    const ok = await reorderCustomTabSections(tabId, reordered.map((s) => s.id));
+    if (!ok) { setMsg('Sıralanamadı'); return; }
+    await reloadCustomTabDetail(tabId);
   }
 
   /**
@@ -672,7 +715,7 @@ export default function AdminTabsPage() {
                       {detail.sections.length === 0 && !isPratikYap && (
                         <p className="text-sm n-muted">Henüz alt sekme yok. Aşağıdan ekleyebilirsin.</p>
                       )}
-                      {(isPratikYap ? sortPratikSections(detail.sections) : detail.sections).map((s) => {
+                      {(isPratikYap ? sortPratikSections(detail.sections) : detail.sections).map((s, idx, arr) => {
                         const sOpen = openSectionId === s.id;
                         const isEditing = editingSectionId === s.id;
                         // Sabit sekmeler (Kazanç/Oyunsonu) adı değiştirilemez ve silinemez.
@@ -699,6 +742,22 @@ export default function AdminTabsPage() {
                                 </span>
                                 <span className="text-xs n-muted">{sOpen ? '▴' : '▾'}</span>
                               </button>
+                              {isPratikYap && (
+                                <>
+                                  <button type="button" onClick={() => movePratikSection(c.id, s.id, -1)}
+                                    disabled={idx === 0}
+                                    aria-label={`${s.title} alt sekmesini yukarı taşı`}
+                                    className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">
+                                    ↑
+                                  </button>
+                                  <button type="button" onClick={() => movePratikSection(c.id, s.id, 1)}
+                                    disabled={idx === arr.length - 1}
+                                    aria-label={`${s.title} alt sekmesini aşağı taşı`}
+                                    className="px-2 py-1 rounded-md bg-white/5 text-white/70 hover:bg-white/10 disabled:opacity-30 text-xs">
+                                    ↓
+                                  </button>
+                                </>
+                              )}
                               {!fixed && (
                                 <>
                                   <button type="button" onClick={() => startEditSection(s)}
@@ -758,7 +817,14 @@ export default function AdminTabsPage() {
                                 )}
                                 {isPratikYap && (
                                   <div className="pt-2 border-t border-white/10">
-                                    {s.title === OYUNSONU_SECTION ? (
+                                    {s.title === OPENING_ROW.title ? (
+                                      /* Madde 2026-09-02: Açılış Pratiği Yap konum havuzu KULLANMAZ —
+                                         içeriği (açılış/tür/varyant listesi) yukarıdaki "Açılış
+                                         Pratiği" panelinden yönetilir; bu satır sadece SIRASINI tutar. */
+                                      <p className="text-xs n-muted">
+                                        Bu bölümün içeriği yukarıdaki &quot;Açılış Pratiği&quot; panelinden yönetilir — burada sadece sırasını değiştirebilirsin.
+                                      </p>
+                                    ) : s.title === OYUNSONU_SECTION ? (
                                       /* Oyunsonu: konumlar 5 kategoriye ayrılır. */
                                       <CategorizedPositionPool
                                         fen={poolFen} turn={poolTurn}

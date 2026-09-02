@@ -17,7 +17,7 @@ interface OpeningType { id: number; name: string; openings: Opening[] }
  */
 export function OpeningCategoryCards({ color }: { color: string }) {
   const [list, setList] = useState<OpeningType[] | null>(null);
-  /** "Açılış Pratiği Yap" başlığı kapalıyken hiçbir tür görünmez. */
+  /** "Açılış Pratiği İçeriği" başlığı kapalıyken hiçbir tür görünmez. */
   const [sectionOpen, setSectionOpen] = useState(false);
 
   const [typeName, setTypeName] = useState('');
@@ -244,11 +244,16 @@ export function OpeningCategoryCards({ color }: { color: string }) {
         type="button"
         onClick={() => setSectionOpen((p) => !p)}
         aria-expanded={sectionOpen}
-        aria-label={`Açılış Pratiği Yap kartını ${sectionOpen ? 'kapat' : 'aç'}`}
+        aria-label={`Açılış Pratiği İçeriği kartını ${sectionOpen ? 'kapat' : 'aç'}`}
         className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
       >
         <span className="text-xl leading-none">📖</span>
-        <span className="text-sm font-semibold flex-1" style={{ color }}>Açılış Pratiği Yap</span>
+        {/* Madde 2026-09-02: "Açılış Pratiği Yap" artık aşağıdaki sıralanabilir
+            listede de gerçek bir satır (bkz. CustomTabPanel/admin sections
+            listesi) — bu panelin başlığı İÇERİK editörü olduğunu netleştirsin
+            diye "İçeriği" ile ayrıştırıldı (aksi halde iki aynı metin, testte
+            ve ekranda belirsizliğe yol açıyordu). */}
+        <span className="text-sm font-semibold flex-1" style={{ color }}>Açılış Pratiği İçeriği</span>
         <span className="text-xs n-muted">{sectionOpen ? '▴' : '▾'}</span>
       </button>
 

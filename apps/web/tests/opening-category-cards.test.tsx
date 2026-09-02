@@ -29,7 +29,7 @@ beforeEach(() => {
 
 async function open() {
   render(<OpeningCategoryCards color="#38bdf8" />);
-  fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği Yap kartını aç/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği İçeriği kartını aç/ }));
   fireEvent.click(await screen.findByRole('button', { name: /e4'lü Açılışlar kartını aç/ }));
   await waitFor(() => expect(screen.getByText('İtalyan Açılışı')).toBeInTheDocument());
 }
@@ -37,14 +37,14 @@ async function open() {
 describe('OpeningCategoryCards — admin (madde: 2026-08-20, açılış türü seviyesi)', () => {
   it('"Açılış türü ekle" formu görünür, FEN ve isim alanı içermez', async () => {
     render(<OpeningCategoryCards color="#38bdf8" />);
-    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği Yap kartını aç/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği İçeriği kartını aç/ }));
     expect(screen.getByPlaceholderText("Açılış türü adı (örn. e4'lü Açılışlar)")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Açılış türü ekle' })).toBeInTheDocument();
   });
 
   it('açılış türü eklerken sadece {name} gönderilir', async () => {
     render(<OpeningCategoryCards color="#38bdf8" />);
-    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği Yap kartını aç/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği İçeriği kartını aç/ }));
     fireEvent.change(screen.getByPlaceholderText("Açılış türü adı (örn. e4'lü Açılışlar)"), {
       target: { value: "d4'lü Açılışlar" },
     });
@@ -125,7 +125,7 @@ describe('OpeningCategoryCards — admin (madde: 2026-08-20, açılış türü s
       return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
     }) as unknown as typeof fetch;
     render(<OpeningCategoryCards color="#38bdf8" />);
-    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği Yap kartını aç/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği İçeriği kartını aç/ }));
     fireEvent.click(await screen.findByRole('button', { name: /e4'lü Açılışlar kartını aç/ }));
     await waitFor(() => expect(screen.getByText('Boş Açılış')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Boş Açılış varyantlarını aç/ }));
@@ -140,7 +140,7 @@ describe('OpeningCategoryCards — admin (madde: 2026-08-20, açılış türü s
       return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
     }) as unknown as typeof fetch;
     render(<OpeningCategoryCards color="#38bdf8" />);
-    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği Yap kartını aç/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği İçeriği kartını aç/ }));
     await waitFor(() => expect(screen.getByText('Henüz açılış türü yok.')).toBeInTheDocument());
   });
 

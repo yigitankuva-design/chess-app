@@ -56,7 +56,11 @@ describe('Sporcu özel sekme sayfası', () => {
 
   it('etiketi "Pratik Yap" olan sekmede sabit "Açılış Pratiği Yap" satırı görünür ve aynı sayfada açılır', async () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: 5, label: 'Pratik Yap', emoji: '🧩', sections: [],
+      id: 5, label: 'Pratik Yap', emoji: '🧩',
+      // Madde 2026-09-02: "Açılış Pratiği Yap" artık gerçek bir kayıt (diğer
+      // 2 sabit alt sekmeyle AYNI order_index mantığı) — fixture'da olmazsa
+      // hiç görünmez.
+      sections: [{ id: 9, order_index: 0, title: 'Açılış Pratiği Yap', body: '', images: [], practice_positions: [] }],
     });
     render(<CustomTabViewPage />);
     await waitFor(() => screen.getByText('Pratik Yap'));

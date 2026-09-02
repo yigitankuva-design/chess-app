@@ -5,7 +5,7 @@ import { MatchCriteria } from '@/components/play/MatchCriteria';
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 import {
-  sectionEmoji, sortPratikSections, OYUNSONU_SECTION, OYUNSONU_CATEGORIES, groupByCategory,
+  sectionEmoji, sortPratikSections, OPENING_ROW, OYUNSONU_SECTION, OYUNSONU_CATEGORIES, groupByCategory,
 } from '@/lib/customTabs/pratikYap';
 import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
@@ -25,16 +25,18 @@ interface Props {
  * (kutucuk açılınca yerinde) hem /custom/[id] sayfasında AYNI bileşen kullanılır —
  * iki yerde iki farklı ekran olmaz.
  *
- * "Pratik Yap" sekmesi özeldir: en üstte sabit Açılış Pratiği Yap satırı durur ve
- * alt sekmeleri yazı/görsel yerine bota karşı pratik kriterlerini gösterir.
- * Pratik Yap'ın tasarımı Maç Yap/Dersler'le AYNI (yuvarlak kabartma ikon
- * düğüm + kesikli bağlantı çizgisi, bkz. components/ui/neumorphic.tsx) —
- * 2026-08-19 kararı. Pratik Yap OLMAYAN özel sekmeler (yazı/görsel içeren
- * sıradan sekmeler) eski köşeli kart tasarımını korur.
- * Açılış Pratiği Yap, DİĞER alt sekmeler gibi seçim adımlarını (tür/açılış/
- * düzey) AYNI SAYFADA gösterir — ama Kazanç Konumu ve Oyunsonu'nda olduğu
- * gibi, "Pratiğe Başla"ya basılınca ASIL MAÇ /play sayfasına yönlendirilir
- * (OpeningPractice'in onReadyToStart prop'u).
+ * "Pratik Yap" sekmesi özeldir: alt sekmeleri yazı/görsel yerine bota karşı
+ * pratik kriterlerini gösterir. Pratik Yap'ın tasarımı Maç Yap/Dersler'le
+ * AYNI (yuvarlak kabartma ikon düğüm + kesikli bağlantı çizgisi, bkz.
+ * components/ui/neumorphic.tsx) — 2026-08-19 kararı. Pratik Yap OLMAYAN özel
+ * sekmeler (yazı/görsel içeren sıradan sekmeler) eski köşeli kart tasarımını
+ * korur.
+ * Madde 2026-09-02: Açılış Pratiği Yap, Kazanç Konumu ve Oyunsonu ile AYNI
+ * listede, AYNI order_index mantığıyla sıralanır (admin Yukarı/Aşağı ile
+ * üçünü de serbestçe sıralayabilir — bkz. lib/customTabs/pratikYap.ts). Tek
+ * fark İÇERİĞİ: bu satır açılınca normal yazı/konum havuzu yerine
+ * OpeningPractice (açılış seç → kriter → maç) gösterilir; "Pratiğe Başla"ya
+ * basılınca ASIL MAÇ /play sayfasına yönlendirilir (onReadyToStart).
  * "Oyunsonu Pratiği Yap" ayrıca özeldir: kriter ekranından önce sporcu 5
  * kategoriden birini seçer — kategorisiz (eski) konumlar sporcuya gösterilmez.
  */
@@ -44,9 +46,6 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
    *  yalnızca Alt Konu sayfasından "Geri" ile dönülünce dolu gelir. */
   const [initialOpenPath] = useState<number[] | undefined>(() => readAndClearPendingOpenPath(tab.id));
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
-  /** Açılış Pratiği Yap satırı diğer alt sekmelerle AYNI akordiyona katılır
-   *  (biri açılınca öbürü kapanır) ama numaralı bir bölüm id'si taşımaz. */
-  const [openOpening, setOpenOpening] = useState(false);
   /** "Oyunsonu Pratiği Yap" içinde seçilen kategori — null = kategori listesi gösterilir. */
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const isPratikYap = tab.label === 'Pratik Yap';
@@ -68,35 +67,11 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
 
   return (
     <div className="grid gap-3">
-      <div>
-        <PathNode
-          icon="📖"
-          label="Açılış Pratiği Yap"
-          active={openOpening}
-          size={40}
-          tint={accentColor}
-          onClick={() => { setOpenOpening((p) => !p); setOpenSectionId(null); setOpenCategory(null); }}
-        />
-        {openOpening && (
-          <Branch offset={20}>
-            <OpeningPractice
-              onReadyToStart={(variant, v) => {
-                router.push(
-                  `/play?mode=opening&variant=${variant.id}`
-                  + `&skill=${v.level.level}`
-                  + `&tc=${encodeURIComponent(v.timeControl.label)}`
-                  + `&color=${v.colorChoice}`,
-                );
-              }}
-            />
-          </Branch>
-        )}
-      </div>
-
       {sortPratikSections(tab.sections).map((s) => {
-        const open = !openOpening && openSectionId === s.id;
+        const open = openSectionId === s.id;
         // Madde 3 (2026-08-19): admin ikon havuzundan seçtiyse (s.emoji) o
-        // kullanılır; seçmediyse eski varsayılana düşer (Kazanç/Oyunsonu 🏆/🏁, diğerleri 🎯).
+        // kullanılır; seçmediyse eski varsayılana düşer (Açılış/Kazanç/Oyunsonu
+        // 📖/🏆/🏁, diğerleri 🎯).
         const emoji = s.emoji || sectionEmoji(s.title) || '🎯';
         return (
           <div key={s.id}>
@@ -109,14 +84,24 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
               onClick={() => {
                 setOpenSectionId((p) => (p === s.id ? null : s.id));
                 setOpenCategory(null);
-                setOpenOpening(false);
               }}
             />
             {open && (
               <Branch offset={20}>
                 {/* Madde 4 (2026-08-19): Oyunsonu'nun 5 kategorisi BEYAZ
                     kalsın diye tint BİLEREK geçilmez. */}
-                {s.title === OYUNSONU_SECTION ? (
+                {s.title === OPENING_ROW.title ? (
+                  <OpeningPractice
+                    onReadyToStart={(variant, v) => {
+                      router.push(
+                        `/play?mode=opening&variant=${variant.id}`
+                        + `&skill=${v.level.level}`
+                        + `&tc=${encodeURIComponent(v.timeControl.label)}`
+                        + `&color=${v.colorChoice}`,
+                      );
+                    }}
+                  />
+                ) : s.title === OYUNSONU_SECTION ? (
                   openCategory === null ? (
                     <div className="grid gap-2.5">
                       {OYUNSONU_CATEGORIES.map((cat) => {
