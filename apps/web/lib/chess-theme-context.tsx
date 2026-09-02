@@ -33,7 +33,7 @@ export function ChessThemeProvider({ children }: { children: ReactNode }) {
     setMounted(true);
     try {
       const stored = localStorage.getItem('chess-theme');
-      const validIds: string[] = ['classic', 'night', 'neon'];
+      const validIds: string[] = ['classic', 'night', 'neon', 'sakin'];
       const resolved = (stored && validIds.includes(stored) ? stored : DEFAULT_THEME_ID) as ChessThemeId;
       if (resolved !== DEFAULT_THEME_ID || stored === DEFAULT_THEME_ID) {
         setThemeId(resolved);

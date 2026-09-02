@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr" data-chess-theme="neon">
+    <html lang="tr" data-chess-theme="sakin">
       <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
         <a
           href="#main-content"

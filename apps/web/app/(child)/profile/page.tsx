@@ -34,11 +34,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  * Hoca notunun METNİ de aynı sebeple placeholder — "Zafer Hoca" gerçek
  * bir kişi, ona ait uydurma bir geri bildirim yazılmadı.
  *
- * Madde 2026-09-02: Zafer'in onayıyla tasarım tuvalinin özel paleti
- * (bkz. SAKIN_PANEL_PALETTE) SADECE bu sayfaya sabit uygulandı — uygulamanın
- * classic/night/neon tema seçiminden bağımsız, sporcu hangi temayı seçerse
- * seçsin Profil hep aynı krem/turuncu görünümde. Bilinçli bir seçim: Profil
- * bu yüzden geri kalan uygulamadan görsel olarak farklı görünüyor.
+ * Madde 2026-09-02: tasarım tuvalinin paleti önce sadece bu sayfaya sabit
+ * uygulanmıştı; Zafer beğenince aynı palet uygulama genelinde "sakin" adında
+ * 4. tema yapıldı ve varsayılan tema oldu (bkz. lib/chess-themes.ts,
+ * app/globals.css [data-chess-theme='sakin']). Bu sayfadaki sabitleme o
+ * yüzden kaldırıldı — Profil artık diğer sayfalar gibi seçili temayı izliyor.
  */
 
 type TempoKey = 'Yıldırım' | 'Hızlı' | 'Klasik';
@@ -101,35 +101,9 @@ const SKILL_AREAS: { label: string; pct: number }[] = [
 const WEEK_DAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 const ACTIVE_WEEK_DAYS = new Set([0, 1, 3, 4, 5]); // madde 4: 5 gün çalıştı
 
-// Zafer'in onayladığı "Sakin Panel" tasarım tuvalinin özel paleti — SADECE bu
-// sayfaya sabit uygulanıyor (uygulamanın genelindeki classic/night/neon tema
-// seçiminden bağımsız). --t-* değişkenlerini bu <main> köküne ezerek
-// tanımlıyoruz; .t-card/.t-btn/.t-muted gibi ortak sınıflar zaten bu
-// değişkenleri kullandığı için sayfanın geri kalanı otomatik uyuyor.
-const SAKIN_PANEL_PALETTE = {
-  '--t-bg': '#F6F2EA',
-  '--t-surface': '#FFFFFF',
-  '--t-surface-2': '#F1EDE3',
-  '--t-border': '#E7DFD2',
-  '--t-text-1': '#2B2420',
-  '--t-text-2': '#766A5E',
-  '--t-accent': '#D97B3F',
-  '--t-accent-dk': '#B85F28',
-  '--t-accent-fg': '#FFFFFF',
-  '--t-ok-bg': '#E3F1E6',
-  '--t-ok-bd': '#4C8B5F',
-  '--t-ok-text': '#2F5C3D',
-  '--t-err-bg': '#FBE4E1',
-  '--t-err-bd': '#C24B3F',
-  '--t-err-text': '#8F3327',
-  '--t-prog-bg': '#E7DFD2',
-  '--t-prog-fill': '#D97B3F',
-  '--t-glow': 'transparent',
-  background: '#F6F2EA',
-} as React.CSSProperties;
-
 // Sakin Panel'in kendi madalya renkleri (mevcut turnuva podyum renklerinden
-// daha yumuşak/mat) — sadece bu sayfadaki PodiumTile'larda kullanılıyor.
+// daha yumuşak/mat) — sadece bu sayfadaki PodiumTile'larda kullanılıyor,
+// aktif temadan bağımsız (madalya rengi zaten geleneksel altın/gümüş/bronz).
 const SAKIN_PANEL_PODIUM = { gold: '#E0A526', silver: '#9AA3AC', bronze: '#C0742F' };
 
 function TempoSelector({ value, onChange }: { value: TempoKey; onChange: (t: TempoKey) => void }) {
@@ -224,7 +198,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-4" style={SAKIN_PANEL_PALETTE}>
+      <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-4">
         <div className="t-skel h-32 rounded-2xl" />
         <div className="t-skel h-24 rounded-2xl" />
         <div className="t-skel h-48 rounded-2xl" />
@@ -234,7 +208,7 @@ export default function ProfilePage() {
 
   if (!me) {
     return (
-      <main className="px-4 pt-8 pb-12 max-w-xl mx-auto text-center space-y-4" style={SAKIN_PANEL_PALETTE}>
+      <main className="px-4 pt-8 pb-12 max-w-xl mx-auto text-center space-y-4">
         <p className="t-muted">Profil yüklenemedi. Giriş yaptın mı?</p>
         <div className="flex justify-center">
           <PowerButton onClick={handleLogout} />
@@ -249,7 +223,7 @@ export default function ProfilePage() {
   const lvl = LEVEL_PROGRESS[level];
 
   return (
-    <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-3" style={SAKIN_PANEL_PALETTE}>
+    <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-3">
 
       {/* 1) Kimlik şeridi */}
       <div className="t-card p-4 flex items-center gap-4">

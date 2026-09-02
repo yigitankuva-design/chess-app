@@ -75,7 +75,7 @@ body {
   --t-glow:      transparent;
 }
 
-/* NEON — uygulama teması (admin ile aynı koyu-neon). Varsayılan. */
+/* NEON — admin ile aynı koyu-neon tema. */
 [data-chess-theme='neon'] {
   --t-bg:        #07070c;
   --t-surface:   #0e0e17;
@@ -101,6 +101,34 @@ body {
   --t-prog-bg:   rgba(255,255,255,0.08);
   --t-prog-fill: #22d3ee;
   --t-glow:      rgba(34,211,238,0.45);
+}
+
+/* SAKİN — Zafer'in onayladığı "Sakin Panel" tasarımı. Varsayılan uygulama teması. */
+[data-chess-theme='sakin'] {
+  --t-bg:        #F6F2EA;
+  --t-surface:   #FFFFFF;
+  --t-surface-2: #F1EDE3;
+  --t-border:    #E7DFD2;
+  --t-text-1:    #2B2420;
+  --t-text-2:    #766A5E;
+  --t-accent:    #D97B3F;
+  --t-accent-dk: #B85F28;
+  --t-accent-fg: #FFFFFF;
+  --t-nav-bg:    #2B2420;
+  --t-nav-text:  #A8998C;
+  --t-nav-act:   #F6F2EA;
+  --t-ok-bg:     #E3F1E6;
+  --t-ok-bd:     #4C8B5F;
+  --t-ok-text:   #2F5C3D;
+  --t-err-bg:    #FBE4E1;
+  --t-err-bd:    #C24B3F;
+  --t-err-text:  #8F3327;
+  --t-info-bg:   #EAF1F9;
+  --t-info-bd:   #3B82F6;
+  --t-info-text: #1D4ED8;
+  --t-prog-bg:   #E7DFD2;
+  --t-prog-fill: #D97B3F;
+  --t-glow:      transparent;
 }
 
 
