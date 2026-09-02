@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { KonumPratigiFields } from '@/components/admin/KonumPratigiFields';
+import type { KonumPratigiQuestion } from '@/lib/customTabsApi';
 
 const FEN = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1';
 
@@ -77,5 +78,41 @@ describe('KonumPratigiFields', () => {
     await screen.findByRole('button', { name: 'Soruyu ekle' });
     expect((screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)') as HTMLInputElement).value).toBe('');
     expect(screen.getByRole('button', { name: 'Soruyu ekle' })).toBeDisabled();
+  });
+});
+
+describe('KonumPratigiFields — düzenleme modu (madde: Kazanç Konumu ile AYNI havuz deseni)', () => {
+  const INITIAL: KonumPratigiQuestion = {
+    id: 'q1', code: '003', instruction: 'Bu hangi açılıştır?', fen: FEN,
+    answer_kind: 'sentence', options: ['İtalyan Açılışı', 'İspanyol Açılışı'], correct_index: 1,
+  };
+
+  it('initial verilince tüm alanlar dolu gelir, adımlar BAŞTAN tamamlanmış sayılır', () => {
+    render(<KonumPratigiFields initial={INITIAL} onSubmit={vi.fn()} />);
+    expect((screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)') as HTMLInputElement).value)
+      .toBe('Bu hangi açılıştır?');
+    expect((screen.getByPlaceholderText('1. şık') as HTMLInputElement).value).toBe('İtalyan Açılışı');
+    expect((screen.getByPlaceholderText('2. şık') as HTMLInputElement).value).toBe('İspanyol Açılışı');
+    expect(screen.getByLabelText('2. şık doğru')).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Soruyu kaydet' })).toBeEnabled();
+  });
+
+  it('"Soruyu kaydet" id/code KORUYARAK onSubmit\'i çağırır', () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<KonumPratigiFields initial={INITIAL} onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)'), {
+      target: { value: 'Güncellenmiş talimat' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Soruyu kaydet' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'q1', code: '003', instruction: 'Güncellenmiş talimat',
+    }));
+  });
+
+  it('onCancel verilince "Vazgeç" butonu görünür ve tıklanınca çağrılır', () => {
+    const onCancel = vi.fn();
+    render(<KonumPratigiFields initial={INITIAL} onSubmit={vi.fn()} onCancel={onCancel} />);
+    fireEvent.click(screen.getByText('Vazgeç'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });

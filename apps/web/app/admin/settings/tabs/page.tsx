@@ -437,6 +437,28 @@ export default function AdminTabsPage() {
     setMsg('Kaydedildi ✓');
   }
 
+  /** Madde: Kazanç Konumu'ndaki Konum Havuzu'yla AYNI desen — kod DEĞİŞMEZ,
+   *  düzenlenen soru id'siyle bulunup yerine yazılır. */
+  async function updateKonumPratigiQuestion(tabId: number, sectionId: number, questionId: string, next: KonumPratigiQuestion) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = (existing.konum_pratigi_pool ?? []).map((q) => (q.id === questionId ? next : q));
+    const ok = await updateCustomTabSection(sectionId, { konum_pratigi_pool: nextPool });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, konum_pratigi_pool: nextPool } : s)),
+        },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
   async function deleteKonumPratigiQuestion(tabId: number, sectionId: number, questionId: string) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
@@ -462,6 +484,27 @@ export default function AdminTabsPage() {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
     const nextPool = [...(existing.teori_pratigi_pool ?? []), q];
+    const ok = await updateCustomTabSection(sectionId, { teori_pratigi_pool: nextPool });
+    if (!ok) { setMsg('Kaydedilemedi'); return; }
+    setCustomTabDetails((prev) => {
+      const tab = prev[tabId];
+      if (!tab) return prev;
+      return {
+        ...prev,
+        [tabId]: {
+          ...tab,
+          sections: tab.sections.map((s) => (s.id === sectionId ? { ...s, teori_pratigi_pool: nextPool } : s)),
+        },
+      };
+    });
+    setMsg('Kaydedildi ✓');
+  }
+
+  /** Madde: Kazanç Konumu'ndaki Konum Havuzu'yla AYNI desen — kod DEĞİŞMEZ. */
+  async function updateTeoriPratigiQuestion(tabId: number, sectionId: number, questionId: string, next: TeoriPratigiQuestion) {
+    const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
+    if (!existing) return;
+    const nextPool = (existing.teori_pratigi_pool ?? []).map((q) => (q.id === questionId ? next : q));
     const ok = await updateCustomTabSection(sectionId, { teori_pratigi_pool: nextPool });
     if (!ok) { setMsg('Kaydedilemedi'); return; }
     setCustomTabDetails((prev) => {
@@ -780,10 +823,14 @@ export default function AdminTabsPage() {
                         teoriPool={openingSection?.teori_pratigi_pool}
                         onAddKonumQuestion={openingSection
                           ? (q) => addKonumPratigiQuestion(c.id, openingSection.id, q) : undefined}
+                        onUpdateKonumQuestion={openingSection
+                          ? (id, next) => updateKonumPratigiQuestion(c.id, openingSection.id, id, next) : undefined}
                         onDeleteKonumQuestion={openingSection
                           ? (id) => deleteKonumPratigiQuestion(c.id, openingSection.id, id) : undefined}
                         onAddTeoriQuestion={openingSection
                           ? (q) => addTeoriPratigiQuestion(c.id, openingSection.id, q) : undefined}
+                        onUpdateTeoriQuestion={openingSection
+                          ? (id, next) => updateTeoriPratigiQuestion(c.id, openingSection.id, id, next) : undefined}
                         onDeleteTeoriQuestion={openingSection
                           ? (id) => deleteTeoriPratigiQuestion(c.id, openingSection.id, id) : undefined}
                       />

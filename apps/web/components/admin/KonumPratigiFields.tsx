@@ -11,26 +11,33 @@ import type { KonumPratigiQuestion } from '@/lib/customTabsApi';
 
 interface Props {
   onSubmit: (q: KonumPratigiQuestion) => Promise<void>;
+  /** Verilirse DÜZENLEME modu: alanlar bu soruyla dolu başlar, "Soruyu Ekle"
+   *  yerine "Soruyu Kaydet" yazar, id/code KORUNUR (yeniden üretilmez). */
+  initial?: KonumPratigiQuestion;
+  /** Yalnızca düzenleme modunda gösterilen "Vazgeç" butonu. */
+  onCancel?: () => void;
 }
 
 /**
- * a) Konum Pratiği — soru ekleme formu. Zafer'in belirttiği 6 adım:
+ * a) Konum Pratiği — soru ekleme/düzenleme formu. Zafer'in belirttiği 6 adım:
  * Talimatı Gir, FEN Ekle (ZORUNLU, sadece yapıştırma — "Konum Diz" DEĞİL),
  * Seçenek Sayısını Belirle (2/3/4), Cevap Tipini Belirle (Cümle/Görüntü),
  * Cevapları Gir, Soruyu Ekle. Alan şekli lesson-steps'teki `sentence_question`
  * ile AYNI (bkz. components/lesson-steps/BoardExercise.tsx) — sporcu tarafı
  * bu soruları dönüşümsüz o bileşenle çizer.
  */
-export function KonumPratigiFields({ onSubmit }: Props) {
-  const [instruction, setInstruction] = useState('');
-  const [fenText, setFenText] = useState('');
+export function KonumPratigiFields({ onSubmit, initial, onCancel }: Props) {
+  const editing = !!initial;
+  const [instruction, setInstruction] = useState(initial?.instruction ?? '');
+  const [fenText, setFenText] = useState(initial?.fen ?? '');
   const [fenTurnOverride, setFenTurnOverride] = useState<'w' | 'b' | null>(null);
-  const [optionCount, setOptionCount] = useState<2 | 3 | 4>(2);
-  const [optionCountChosen, setOptionCountChosen] = useState(false);
-  const [answerKind, setAnswerKind] = useState<'sentence' | 'image'>('sentence');
-  const [answerKindChosen, setAnswerKindChosen] = useState(false);
-  const [options, setOptions] = useState<string[]>(['', '']);
-  const [correctIndex, setCorrectIndex] = useState(0);
+  const [optionCount, setOptionCount] = useState<2 | 3 | 4>((initial?.options.length ?? 2) as 2 | 3 | 4);
+  // "Belirle" adımları BİLFİİL tıklama ister; düzenlemede tamam sayılır (KURAL #3).
+  const [optionCountChosen, setOptionCountChosen] = useState(editing);
+  const [answerKind, setAnswerKind] = useState<'sentence' | 'image'>(initial?.answer_kind ?? 'sentence');
+  const [answerKindChosen, setAnswerKindChosen] = useState(editing);
+  const [options, setOptions] = useState<string[]>(initial?.options ?? ['', '']);
+  const [correctIndex, setCorrectIndex] = useState(initial?.correct_index ?? 0);
   const [openPoolFor, setOpenPoolFor] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [imgErr, setImgErr] = useState<string | null>(null);
@@ -81,14 +88,16 @@ export function KonumPratigiFields({ onSubmit }: Props) {
     setSaving(true);
     try {
       await onSubmit({
-        id: crypto.randomUUID(),
+        // Düzenlemede id/code KORUNUR — sporcunun bildiği numara sabittir.
+        id: initial?.id ?? crypto.randomUUID(),
+        code: initial?.code,
         instruction: instruction.trim(),
         fen: finalFen,
         answer_kind: answerKind,
         options,
         correct_index: correctIndex,
       });
-      reset();
+      if (!editing) reset();
     } catch {
       setErr('Kaydedilemedi');
     }
@@ -205,10 +214,16 @@ export function KonumPratigiFields({ onSubmit }: Props) {
       <div className="flex items-center gap-2">
         <button type="button" onClick={submit} disabled={saving || !gateOpen}
           className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-50 text-sm transition-colors">
-          {saving ? 'Kaydediliyor...' : 'Soruyu ekle'}
+          {saving ? 'Kaydediliyor...' : editing ? 'Soruyu kaydet' : 'Soruyu ekle'}
         </button>
         {!gateOpen && missing && (
           <span className="text-xs n-muted">Eksik: {missing.no}. {missing.label}</span>
+        )}
+        {editing && onCancel && (
+          <button type="button" onClick={onCancel}
+            className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+            Vazgeç
+          </button>
         )}
       </div>
     </div>

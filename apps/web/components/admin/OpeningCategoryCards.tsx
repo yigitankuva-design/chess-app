@@ -1,9 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { getToken } from '@/lib/auth-storage';
-import { assignExerciseCodes } from '@/lib/exerciseCodes';
-import { KonumPratigiFields } from './KonumPratigiFields';
-import { TeoriPratigiFields } from './TeoriPratigiFields';
+import { KonumPratigiPoolView } from './KonumPratigiPoolView';
+import { TeoriPratigiPoolView } from './TeoriPratigiPoolView';
 import type { KonumPratigiQuestion, TeoriPratigiQuestion } from '@/lib/customTabsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -20,8 +19,10 @@ interface Props {
   konumPool?: KonumPratigiQuestion[];
   teoriPool?: TeoriPratigiQuestion[];
   onAddKonumQuestion?: (q: KonumPratigiQuestion) => Promise<void>;
+  onUpdateKonumQuestion?: (id: string, next: KonumPratigiQuestion) => Promise<void>;
   onDeleteKonumQuestion?: (id: string) => Promise<void>;
   onAddTeoriQuestion?: (q: TeoriPratigiQuestion) => Promise<void>;
+  onUpdateTeoriQuestion?: (id: string, next: TeoriPratigiQuestion) => Promise<void>;
   onDeleteTeoriQuestion?: (id: string) => Promise<void>;
 }
 
@@ -33,8 +34,8 @@ interface Props {
  * satır listesi AYNI desende tekrar eder.
  */
 export function OpeningCategoryCards({
-  color, konumPool, teoriPool, onAddKonumQuestion, onDeleteKonumQuestion,
-  onAddTeoriQuestion, onDeleteTeoriQuestion,
+  color, konumPool, teoriPool, onAddKonumQuestion, onUpdateKonumQuestion, onDeleteKonumQuestion,
+  onAddTeoriQuestion, onUpdateTeoriQuestion, onDeleteTeoriQuestion,
 }: Props) {
   const [list, setList] = useState<OpeningType[] | null>(null);
   /** "Açılış Pratiği İçeriği" başlığı kapalıyken hiçbir tür görünmez. */
@@ -296,38 +297,15 @@ export function OpeningCategoryCards({
             </button>
             {openMode === 'konum' && (
               <div className="px-3 pb-3 space-y-3">
-                {konumPool === undefined || !onAddKonumQuestion || !onDeleteKonumQuestion ? (
+                {konumPool === undefined || !onAddKonumQuestion || !onUpdateKonumQuestion || !onDeleteKonumQuestion ? (
                   <p className="text-xs n-muted">Yükleniyor...</p>
                 ) : (
-                  <>
-                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-bold n-muted uppercase tracking-widest">Soru Havuzu</p>
-                        <span className="text-xs n-muted px-2 py-0.5 rounded-full border border-white/15">{konumPool.length}</span>
-                      </div>
-                      {konumPool.length === 0 ? (
-                        <p className="text-xs n-muted">Henüz soru eklenmedi.</p>
-                      ) : (
-                        <ul className="space-y-1.5">
-                          {(() => {
-                            const codes = assignExerciseCodes(konumPool.map((p) => ({ code: p.code ?? undefined })));
-                            return konumPool.map((q, i) => {
-                              const code = q.code ?? codes[i];
-                              return (
-                                <li key={q.id} className="flex items-center gap-2 rounded-lg border border-white/10 p-2">
-                                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full border border-white/20 flex-1">{code}</span>
-                                  <button type="button" onClick={() => onDeleteKonumQuestion(q.id)}
-                                    aria-label={`${code} kodlu Konum Pratiği sorusunu sil`}
-                                    className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">Sil</button>
-                                </li>
-                              );
-                            });
-                          })()}
-                        </ul>
-                      )}
-                    </div>
-                    <KonumPratigiFields onSubmit={onAddKonumQuestion} />
-                  </>
+                  <KonumPratigiPoolView
+                    pool={konumPool}
+                    onAddQuestion={onAddKonumQuestion}
+                    onUpdateQuestion={onUpdateKonumQuestion}
+                    onDeleteQuestion={onDeleteKonumQuestion}
+                  />
                 )}
               </div>
             )}
@@ -345,38 +323,15 @@ export function OpeningCategoryCards({
             </button>
             {openMode === 'teori' && (
               <div className="px-3 pb-3 space-y-3">
-                {teoriPool === undefined || !onAddTeoriQuestion || !onDeleteTeoriQuestion ? (
+                {teoriPool === undefined || !onAddTeoriQuestion || !onUpdateTeoriQuestion || !onDeleteTeoriQuestion ? (
                   <p className="text-xs n-muted">Yükleniyor...</p>
                 ) : (
-                  <>
-                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-bold n-muted uppercase tracking-widest">Soru Havuzu</p>
-                        <span className="text-xs n-muted px-2 py-0.5 rounded-full border border-white/15">{teoriPool.length}</span>
-                      </div>
-                      {teoriPool.length === 0 ? (
-                        <p className="text-xs n-muted">Henüz soru eklenmedi.</p>
-                      ) : (
-                        <ul className="space-y-1.5">
-                          {(() => {
-                            const codes = assignExerciseCodes(teoriPool.map((p) => ({ code: p.code ?? undefined })));
-                            return teoriPool.map((q, i) => {
-                              const code = q.code ?? codes[i];
-                              return (
-                                <li key={q.id} className="flex items-center gap-2 rounded-lg border border-white/10 p-2">
-                                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full border border-white/20 flex-1">{code}</span>
-                                  <button type="button" onClick={() => onDeleteTeoriQuestion(q.id)}
-                                    aria-label={`${code} kodlu Teori Pratiği sorusunu sil`}
-                                    className="px-2 py-1 rounded-md text-rose-400 hover:bg-rose-500/10 text-xs">Sil</button>
-                                </li>
-                              );
-                            });
-                          })()}
-                        </ul>
-                      )}
-                    </div>
-                    <TeoriPratigiFields onSubmit={onAddTeoriQuestion} />
-                  </>
+                  <TeoriPratigiPoolView
+                    pool={teoriPool}
+                    onAddQuestion={onAddTeoriQuestion}
+                    onUpdateQuestion={onUpdateTeoriQuestion}
+                    onDeleteQuestion={onDeleteTeoriQuestion}
+                  />
                 )}
               </div>
             )}

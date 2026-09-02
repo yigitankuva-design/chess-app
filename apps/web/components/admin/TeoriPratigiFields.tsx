@@ -6,14 +6,20 @@ import { StepList } from './StepList';
 import { teoriPratigiSteps } from '@/lib/admin/teoriPratigiSteps';
 import { firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import { formatNotation } from '@/lib/admin/movePieceSteps';
+import { parseFenInput } from '@/lib/chess/fenInput';
 import type { TeoriPratigiQuestion } from '@/lib/customTabsApi';
 
 interface Props {
   onSubmit: (q: TeoriPratigiQuestion) => Promise<void>;
+  /** Verilirse DÜZENLEME modu: alanlar bu soruyla dolu başlar, "Soruyu Ekle"
+   *  yerine "Soruyu Kaydet" yazar, id/code KORUNUR (yeniden üretilmez). */
+  initial?: TeoriPratigiQuestion;
+  /** Yalnızca düzenleme modunda gösterilen "Vazgeç" butonu. */
+  onCancel?: () => void;
 }
 
 /**
- * b) Teori Pratiği — soru ekleme formu. Zafer'in belirttiği 8 adım:
+ * b) Teori Pratiği — soru ekleme/düzenleme formu. Zafer'in belirttiği 8 adım:
  * Talimatı Gir, Konum Diz, Konumu Kaydet, Cevap Hamlelerini Yap ve Notasyon
  * Oluştur, Notasyonu Kaydet, Açılış veya Varyantın Adını Gir, Hamle
  * Sırasını Belirle (sporcunun rengi), Soruyu Ekle. Dizme/kayıt/notasyon
@@ -24,16 +30,22 @@ interface Props {
  * notasyon bazen beyaz bazen siyah taraftan pratik edilebilsin diye
  * (bkz. lib/chess/movePlayer.ts'teki studentParity genellemesi).
  */
-export function TeoriPratigiFields({ onSubmit }: Props) {
-  const [instruction, setInstruction] = useState('');
-  const [setupFen, setSetupFen] = useState(START_FEN);
-  const [setupTurn, setSetupTurn] = useState<'w' | 'b'>('w');
-  const [fen, setFen] = useState<string | null>(null);
-  const [moves, setMoves] = useState<string[]>([]);
-  const [notationSaved, setNotationSaved] = useState(false);
-  const [openingName, setOpeningName] = useState('');
-  const [studentColor, setStudentColor] = useState<'w' | 'b'>('w');
-  const [studentColorChosen, setStudentColorChosen] = useState(false);
+export function TeoriPratigiFields({ onSubmit, initial, onCancel }: Props) {
+  const editing = !!initial;
+  const [instruction, setInstruction] = useState(initial?.instruction ?? '');
+  const [setupFen, setSetupFen] = useState(initial?.fen ?? START_FEN);
+  const [setupTurn, setSetupTurn] = useState<'w' | 'b'>(() => {
+    if (!initial) return 'w';
+    const parsed = parseFenInput(initial.fen);
+    return parsed.ok ? parsed.turn : 'w';
+  });
+  const [fen, setFen] = useState<string | null>(initial?.fen ?? null);
+  const [moves, setMoves] = useState<string[]>(initial?.moves ?? []);
+  // Düzenlemede notasyon zaten kayıtlı sayılır — admin "Notasyonu Düzenle" ile açabilir.
+  const [notationSaved, setNotationSaved] = useState(editing);
+  const [openingName, setOpeningName] = useState(initial?.opening_name ?? '');
+  const [studentColor, setStudentColor] = useState<'w' | 'b'>(initial?.student_color ?? 'w');
+  const [studentColorChosen, setStudentColorChosen] = useState(editing);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -56,14 +68,16 @@ export function TeoriPratigiFields({ onSubmit }: Props) {
     setSaving(true);
     try {
       await onSubmit({
-        id: crypto.randomUUID(),
+        // Düzenlemede id/code KORUNUR — sporcunun bildiği numara sabittir.
+        id: initial?.id ?? crypto.randomUUID(),
+        code: initial?.code,
         instruction: instruction.trim(),
         fen,
         moves,
         opening_name: openingName.trim(),
         student_color: studentColor,
       });
-      reset();
+      if (!editing) reset();
     } catch {
       setErr('Kaydedilemedi');
     }
@@ -139,10 +153,16 @@ export function TeoriPratigiFields({ onSubmit }: Props) {
       <div className="flex items-center gap-2">
         <button type="button" onClick={submit} disabled={saving || !gateOpen}
           className="px-4 py-2 rounded-lg bg-green-400/15 text-green-200 border border-green-400/50 hover:bg-green-400/25 disabled:opacity-50 text-sm transition-colors">
-          {saving ? 'Kaydediliyor...' : 'Soruyu ekle'}
+          {saving ? 'Kaydediliyor...' : editing ? 'Soruyu kaydet' : 'Soruyu ekle'}
         </button>
         {!gateOpen && missing && (
           <span className="text-xs n-muted">Eksik: {missing.no}. {missing.label}</span>
+        )}
+        {editing && onCancel && (
+          <button type="button" onClick={onCancel}
+            className="px-4 py-2 rounded-lg bg-white/5 text-white/80 border border-white/15 hover:bg-white/10 text-sm transition-colors">
+            Vazgeç
+          </button>
         )}
       </div>
     </div>

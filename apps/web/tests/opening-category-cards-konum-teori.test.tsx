@@ -29,53 +29,65 @@ const TEORI_Q: TeoriPratigiQuestion = {
   moves: ['e4'], opening_name: 'İtalyan Açılışı', student_color: 'w',
 };
 
-describe('OpeningCategoryCards — a) Konum Pratiği paneli (madde 2026-09-02 devam)', () => {
-  it('konumPool undefined iken "Yükleniyor..." gösterir', () => {
-    render(<OpeningCategoryCards color="#38bdf8" />);
+describe('OpeningCategoryCards — a) Konum Pratiği paneli (madde: Kazanç Konumu ile AYNI havuz deseni)', () => {
+  it('gerekli callback\'lerden biri eksikse (henüz yüklenmediyse) "Yükleniyor..." gösterir', () => {
+    render(<OpeningCategoryCards color="#38bdf8"
+      konumPool={[]} onAddKonumQuestion={vi.fn()} onDeleteKonumQuestion={vi.fn()}
+      // onUpdateKonumQuestion EKSİK — hâlâ yüklenme durumu sayılır.
+    />);
     openIcerikVeKart('a');
     expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
   });
 
-  it('konumPool boşsa "Henüz soru eklenmedi." gösterir, form yine de görünür', () => {
+  it('havuz boşsa "Konum Havuzu" kartı 0 gösterir, ekle formu her zaman görünür', () => {
     render(<OpeningCategoryCards color="#38bdf8"
-      konumPool={[]} onAddKonumQuestion={vi.fn()} onDeleteKonumQuestion={vi.fn()}
+      konumPool={[]} onAddKonumQuestion={vi.fn()} onUpdateKonumQuestion={vi.fn()} onDeleteKonumQuestion={vi.fn()}
     />);
     openIcerikVeKart('a');
-    expect(screen.getByText('Henüz soru eklenmedi.')).toBeInTheDocument();
+    expect(screen.getByText('Konum Havuzu').closest('button')).toHaveTextContent('0');
     expect(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)')).toBeInTheDocument();
   });
 
-  it('konumPool doluysa SADECE kod numarası listelenir (talimat/başka bilgi YOK), Sil onDeleteKonumQuestion çağırır', () => {
+  it('havuz doluysa "Konum Havuzu" kartı açılınca SADECE kod numarası görünür (Kazanç Konumu ile AYNI ızgara)', () => {
     const onDelete = vi.fn();
     render(<OpeningCategoryCards color="#38bdf8"
-      konumPool={[KONUM_Q]} onAddKonumQuestion={vi.fn()} onDeleteKonumQuestion={onDelete}
+      konumPool={[KONUM_Q]} onAddKonumQuestion={vi.fn()} onUpdateKonumQuestion={vi.fn()} onDeleteKonumQuestion={onDelete}
     />);
     openIcerikVeKart('a');
-    expect(screen.getByText('001')).toBeInTheDocument();
-    // Zafer'in isteği: havuzda sadece kod numarası olsun, talimat gösterilmez.
+    fireEvent.click(screen.getByText('Konum Havuzu'));
+    expect(screen.getByRole('button', { name: 'Soru 001' })).toBeInTheDocument();
+    // Zafer'in isteği: havuz ızgarasında sadece kod numarası olsun, talimat gösterilmez.
     expect(screen.queryByText('Bu hangi açılıştır?')).not.toBeInTheDocument();
+
+    // Koda tıklayınca düzenleme açılır, Sil orada görünür.
+    fireEvent.click(screen.getByRole('button', { name: 'Soru 001' }));
     fireEvent.click(screen.getByRole('button', { name: /001 kodlu Konum Pratiği sorusunu sil/ }));
     expect(onDelete).toHaveBeenCalledWith('q1');
   });
 });
 
-describe('OpeningCategoryCards — b) Teori Pratiği paneli (madde 2026-09-02 devam)', () => {
-  it('teoriPool undefined iken "Yükleniyor..." gösterir', () => {
-    render(<OpeningCategoryCards color="#38bdf8" />);
+describe('OpeningCategoryCards — b) Teori Pratiği paneli (madde: Kazanç Konumu ile AYNI havuz deseni)', () => {
+  it('gerekli callback\'lerden biri eksikse "Yükleniyor..." gösterir', () => {
+    render(<OpeningCategoryCards color="#38bdf8"
+      teoriPool={[]} onAddTeoriQuestion={vi.fn()} onDeleteTeoriQuestion={vi.fn()}
+      // onUpdateTeoriQuestion EKSİK.
+    />);
     openIcerikVeKart('b');
     expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
   });
 
-  it('teoriPool doluysa SADECE kod numarası listelenir (açılış adı/başka bilgi YOK), Sil onDeleteTeoriQuestion çağırır', () => {
+  it('havuz doluysa "Konum Havuzu" kartı açılınca SADECE kod numarası görünür, Sil düzenlemede çalışır', () => {
     const onDelete = vi.fn();
     render(<OpeningCategoryCards color="#38bdf8"
-      teoriPool={[TEORI_Q]} onAddTeoriQuestion={vi.fn()} onDeleteTeoriQuestion={onDelete}
+      teoriPool={[TEORI_Q]} onAddTeoriQuestion={vi.fn()} onUpdateTeoriQuestion={vi.fn()} onDeleteTeoriQuestion={onDelete}
     />);
     openIcerikVeKart('b');
-    expect(screen.getByText('001')).toBeInTheDocument();
-    // Zafer'in isteği: havuzda sadece kod numarası olsun, açılış adı gösterilmez
-    // (formun İÇİNDEKİ "Açılış veya varyant adı" input'unun placeholder'ı hariç).
+    fireEvent.click(screen.getByText('Konum Havuzu'));
+    expect(screen.getByRole('button', { name: 'Soru 001' })).toBeInTheDocument();
+    // Zafer'in isteği: havuz ızgarasında sadece kod numarası olsun, açılış adı gösterilmez.
     expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Soru 001' }));
     fireEvent.click(screen.getByRole('button', { name: /001 kodlu Teori Pratiği sorusunu sil/ }));
     expect(onDelete).toHaveBeenCalledWith('t1');
   });
