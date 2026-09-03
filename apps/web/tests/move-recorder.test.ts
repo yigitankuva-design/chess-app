@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { recorderState, tryAppendMove, notationRows } from '@/lib/chess/moveRecorder';
+import { mapToFen, fenToMap, START_FEN } from '@/components/BoardEditor';
 
 const KINGLESS = '8/8/8/8/8/8/4P3/8 w - - 0 1';   // Zafer'in öğretim pozisyonu
 const TWO_SIDED = '6k1/8/5K2/8/5R2/8/8/8 w - - 0 1'; // gerçek prod pozisyonu
@@ -22,6 +23,25 @@ describe('tryAppendMove', () => {
 
   it('SIRA KİLİDİ: tek renkli pozisyonda ikinci hamle eklenemez', () => {
     expect(tryAppendMove(KINGLESS, ['e4'], 'e4', 'e5')).toBeNull();
+  });
+});
+
+describe('tryAppendMove — Konum Diz sonrası rok (madde: rok/geçerken alma düzeltmesi)', () => {
+  it('BoardEditor\'da dizilen (mapToFen ile üretilen) konumda BEYAZ kısa rok kabul edilir', () => {
+    // Zafer'in yaşadığı senaryo: "Konum Diz" ile bir açılış konumu dizilir
+    // (taşlar oynatılır, kral/kaleler başlangıç karesinde kalır), sonra
+    // "Cevap Hamlelerini Yap"ta rok denenir.
+    const map = fenToMap(START_FEN);
+    delete map['b1']; delete map['c1']; delete map['d1']; delete map['f1']; delete map['g1'];
+    const fen = mapToFen(map, 'w'); // e1=K, h1=R, aralar boş — kısa rok legal olmalı
+    expect(tryAppendMove(fen, [], 'e1', 'g1')).toEqual(['O-O']);
+  });
+
+  it('BoardEditor\'da dizilen konumda SİYAH uzun rok kabul edilir', () => {
+    const map = fenToMap(START_FEN);
+    delete map['b8']; delete map['c8']; delete map['d8'];
+    const fen = mapToFen(map, 'b'); // e8=k, a8=r, aralar boş — uzun rok legal olmalı
+    expect(tryAppendMove(fen, [], 'e8', 'c8')).toEqual(['O-O-O']);
   });
 });
 

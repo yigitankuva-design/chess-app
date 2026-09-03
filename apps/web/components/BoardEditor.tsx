@@ -35,6 +35,28 @@ export function fenToMap(fen: string): Record<string, string> {
   return map;
 }
 
+/**
+ * Kare→taş haritasına bakarak rok haklarını hesaplar — kral VE ilgili kale
+ * hâlâ kendi başlangıç karesindeyse o yöndeki hak verilir. Taşıma GEÇMİŞİ
+ * bilinmediği için (statik dizmede bu bilgi yok) bu bir SEZGİ — Lichess'in
+ * kendi board editor'ünün de kullandığı standart yaklaşım. Öncesinde bu alan
+ * HER ZAMAN "-" yazılıyordu; kral/kaleler başlangıç karesinde olsa bile rok
+ * chess.js tarafından geçersiz sayılıyordu (rok SADECE FEN'in bu alanına
+ * bakılarak değerlendirilir, taşların gerçek konumuna bakılmaz).
+ */
+function computeCastlingRights(map: Record<string, string>): string {
+  let rights = '';
+  if (map['e1'] === 'K') {
+    if (map['h1'] === 'R') rights += 'K';
+    if (map['a1'] === 'R') rights += 'Q';
+  }
+  if (map['e8'] === 'k') {
+    if (map['h8'] === 'r') rights += 'k';
+    if (map['a8'] === 'r') rights += 'q';
+  }
+  return rights || '-';
+}
+
 /** Kare→taş haritasını tam FEN'e çevirir. */
 export function mapToFen(map: Record<string, string>, turn: 'w' | 'b'): string {
   const rows: string[] = [];
@@ -53,7 +75,9 @@ export function mapToFen(map: Record<string, string>, turn: 'w' | 'b'): string {
     if (empty > 0) row += String(empty);
     rows.push(row);
   }
-  return `${rows.join('/')} ${turn} - - 0 1`;
+  // Geçerken alma (en passant) alanı BİLEREK "-" kalır: bu bilgi sadece bir
+  // önceki hamlenin doğrudan sonucu olabilir, statik dizmede anlamsızdır.
+  return `${rows.join('/')} ${turn} ${computeCastlingRights(map)} - 0 1`;
 }
 
 interface Props {
