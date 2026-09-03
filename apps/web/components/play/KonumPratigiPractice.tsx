@@ -55,7 +55,12 @@ export function KonumPratigiPractice({ questions }: Props) {
           cevaptan sonra tekrar deneme YOK, sporcu "Sonraki Soruya Geç" ile
           ilerler (ders içindeki sentence_question'ın aksine, orada retry
           serbest kalır). */}
-      <BoardExercise exercises={shuffled} done={false} onCorrect={() => {}} noRetry />
+      {/* Madde 2026-09-04 (5): "0/1"/"Soru X/Y" kenarlıklı kutuda, talimat
+          ikonu olmadan — SADECE bu ekranda. */}
+      <BoardExercise
+        exercises={shuffled} done={false} onCorrect={() => {}} noRetry
+        boxedProgress hideInstructionIcon
+      />
     </div>
   );
 }

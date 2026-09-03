@@ -39,7 +39,7 @@ function MaclarimAnalizPageInner() {
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-      <AnalizPageHeader title="Maçlarımın Analizi" onBack={() => router.push('/home')} />
+      <AnalizPageHeader title="Maçlarımın Analizi" />
       <GameAnalysisSection initialGameId={initialGameId} />
     </main>
   );

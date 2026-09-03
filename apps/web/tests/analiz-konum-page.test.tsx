@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 
 const push = vi.fn();
 const replace = vi.fn();
@@ -24,10 +24,9 @@ describe('KonumAnalizPage (madde 2026-09-02 (5))', () => {
     expect(screen.getByTestId('custom-position-analysis')).toBeInTheDocument();
   });
 
-  it('Geri butonu /home\'a yönlendirir', () => {
+  it('madde 2026-09-04 (4): kendi "Geri" butonunu ÇİZMEZ — AppNav\'ın tek butonu bu sayfada da geçerli', () => {
     render(<KonumAnalizPage />);
-    fireEvent.click(screen.getByLabelText('Geri'));
-    expect(push).toHaveBeenCalledWith('/home');
+    expect(screen.queryByLabelText('Geri')).not.toBeInTheDocument();
   });
 });
 

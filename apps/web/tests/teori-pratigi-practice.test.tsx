@@ -2,14 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 vi.mock('@/components/play/TeoriPratigiSolver', () => ({
-  TeoriPratigiSolver: ({ question, onSolved, onWrong }: {
+  TeoriPratigiSolver: ({ question, onSolved, onWrong, onMovesChange }: {
     question: { id: string };
     onSolved: () => void;
     onWrong: (msg: string) => void;
+    onMovesChange?: (moves: string[]) => void;
   }) => (
     <div data-testid="solver" data-question-id={question.id}>
       <button onClick={onSolved}>fake-solve</button>
       <button onClick={() => onWrong('Bu hamle teorinin dışında.')}>fake-wrong</button>
+      <button onClick={() => onMovesChange?.(['e4', 'e5'])}>fake-move</button>
     </div>
   ),
 }));
@@ -43,6 +45,18 @@ describe('TeoriPratigiPractice', () => {
     expect(screen.getAllByText(/İtalyan Açılışı/)).toHaveLength(2);
     expect(screen.getByText(/001/)).toBeInTheDocument();
     expect(screen.getByText(Q1.instruction)).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-04 (6): başlıkta/talimat kutusunda ikon YOKTUR, HAMLELER bölümü VAR ve güncellenir', () => {
+    render(<TeoriPratigiPractice questions={[Q1]} />);
+    expect(screen.queryByText('♟️')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Hamleler')).toBeInTheDocument();
+    expect(screen.getByText('Henüz hamle yapılmadı.')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('fake-move'));
+    expect(screen.queryByText('Henüz hamle yapılmadı.')).not.toBeInTheDocument();
+    // "e4" onSelectPly verilmediği için düz metin (buton değil) — bitişik
+    // parça (bkz. MoveList.tsx move()), tek başına bir öğe değil.
+    expect(screen.getByLabelText('Hamleler')).toHaveTextContent('e4 – e5');
   });
 
   it('başlangıçta doğru/yanlış kartı ve tekrar/yeni butonları YOKTUR', () => {

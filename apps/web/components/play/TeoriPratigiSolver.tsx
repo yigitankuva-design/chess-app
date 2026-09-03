@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 import { ChessBoard } from '@/components/ChessBoard';
 import { playerState, tryStudentMove, opponentKeyMove } from '@/lib/chess/movePlayer';
@@ -18,6 +18,9 @@ interface Props {
   disabled: boolean;
   onSolved: () => void;
   onWrong: (msg: string) => void;
+  /** Madde 2026-09-04 (6): oynanan hamleler değiştikçe çağrılır — üst bileşen
+   *  (TeoriPratigiPractice) bunu HAMLELER (notasyon) bölümünde gösterir. */
+  onMovesChange?: (moves: string[]) => void;
 }
 
 /**
@@ -41,7 +44,7 @@ interface Props {
  *    AYNI desen (`resolvePremove`, `lib/play/premove.ts`) — kopyalanmadı,
  *    aynı yardımcı yeniden kullanıldı.
  */
-export function TeoriPratigiSolver({ question, disabled, onSolved, onWrong }: Props) {
+export function TeoriPratigiSolver({ question, disabled, onSolved, onWrong, onMovesChange }: Props) {
   const fenTurn = playerState(question.fen, []).turn;
   const studentParity: 0 | 1 = fenTurn === question.student_color ? 0 : 1;
 
@@ -50,6 +53,11 @@ export function TeoriPratigiSolver({ question, disabled, onSolved, onWrong }: Pr
     const first = opponentKeyMove(question.moves, [], 1);
     return first ? [first] : [];
   });
+
+  useEffect(() => {
+    onMovesChange?.(playedMoves);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playedMoves]);
   const [premove, setPremove] = useState<Premove | null>(null);
   /** setTimeout içindeki playOpponentReply eski closure'ı görebilir; ref ile ikizlenir. */
   const premoveRef = useRef<Premove | null>(null);

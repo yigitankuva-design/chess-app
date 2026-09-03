@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 
-const { push, writePendingOpenPath } = vi.hoisted(() => ({
+const { push, writePendingOpenPath, useBackOverride } = vi.hoisted(() => ({
   push: vi.fn(),
   writePendingOpenPath: vi.fn(),
+  useBackOverride: vi.fn(),
 }));
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '5', sectionId: '203' }),
@@ -11,6 +12,11 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/lib/customTabsApi', () => ({ getCustomTab: vi.fn() }));
 vi.mock('@/lib/customTabs/pendingOpenPath', () => ({ writePendingOpenPath }));
+// Madde 2026-09-04 (4): sayfa artık kendi "Geri" butonunu ÇİZMİYOR — özel
+// geri mantığını useBackOverride'a kaydediyor (AppNav'ın TEK butonu okur).
+// Bu testler o mantığı, gerçek butonu simüle ETMEDEN, kaydedilen fonksiyonu
+// çağırarak doğrular.
+vi.mock('@/lib/nav/backOverride', () => ({ useBackOverride }));
 // Aynı gerekçe: tests/alt-konu-walkthrough.test.tsx'teki ChessBoard stub'u.
 vi.mock('@/components/ChessBoard', () => ({
   ChessBoard: ({ fen }: { fen: string }) => <div data-square="e4" data-fen={fen} />,
@@ -73,25 +79,29 @@ describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08
     await waitFor(() => screen.getByText('Sayfa bulunamadı'));
   });
 
-  it('madde 3: Geri butonu Ana Menü\'ye döner ve Dersler→Düzey→Konu zincirini AÇIK bırakacak yolu kaydeder', async () => {
+  it('madde 3/2026-09-04 (4): kaydedilen geri mantığı Ana Menü\'ye döner ve Dersler→Düzey→Konu zincirini AÇIK bırakacak yolu kaydeder', async () => {
     push.mockClear();
     writePendingOpenPath.mockClear();
+    useBackOverride.mockClear();
     mockDersHierarchy();
     render(<AltKonuPage />);
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
 
-    fireEvent.click(screen.getByLabelText('Geri'));
+    // Bölüm yüklendikten SONRAKİ son çağrı gerçek fonksiyonu taşır (yükleme
+    // sırasında null ile de çağrılmış olabilir — bkz. "koşulsuz hook" notu).
+    const lastCall = useBackOverride.mock.calls.at(-1)!;
+    const goBack = lastCall[0] as () => void;
+    expect(goBack).not.toBeNull();
+    goBack();
     // Alt Konu'nun (203) KENDİSİ hariç, kökten (Dersler=200) aşağı doğru zincir.
     expect(writePendingOpenPath).toHaveBeenCalledWith({ tabId: 5, path: [200, 201, 202] });
     expect(push).toHaveBeenCalledWith('/home');
   });
 
-  it('madde 2026-08-28 (1): Geri butonundaki ok işareti kalınlaştırılmış (bold) ve büyütülmüş', async () => {
+  it('sayfa KENDİ görünür "Geri" butonunu çizmez (madde 2026-09-04 (4) — tek buton kuralı)', async () => {
     mockDersHierarchy();
     render(<AltKonuPage />);
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
-    const backBtn = screen.getByLabelText('Geri');
-    expect(backBtn).toHaveClass('t-premium');
-    expect(backBtn).toHaveStyle({ fontWeight: '700' });
+    expect(screen.queryByLabelText('Geri')).not.toBeInTheDocument();
   });
 });

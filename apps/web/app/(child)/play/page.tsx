@@ -239,7 +239,8 @@ function PlayInner() {
   if (mode === 'konum-pratigi') {
     return (
       <main id="main-content" className="pb-12">
-        <p className="font-semibold text-sm px-4 pt-5 max-w-lg mx-auto">🎯 Konum Pratiği</p>
+        {/* Madde 2026-09-04 (5): ikon kaldırıldı, başlık ortalandı. */}
+        <p className="font-semibold text-sm px-4 pt-5 max-w-lg mx-auto text-center">Konum Pratiği</p>
         {konumQuestions === undefined ? (
           <p className="px-4 pt-3 text-sm t-muted">Yükleniyor...</p>
         ) : (

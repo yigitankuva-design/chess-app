@@ -54,7 +54,7 @@ export function CustomPositionAnalysis() {
             background: mode === 'board' ? 'rgba(34,211,238,0.12)' : 'rgba(255,255,255,0.03)',
           }}>
           <span className="text-xl leading-none">🧩</span>
-          <span className="text-sm font-semibold">Konum Dizerek Ekle</span>
+          <span className="text-sm font-semibold">Konum Diz</span>
         </button>
         <button type="button" onClick={() => setMode(mode === 'fen' ? null : 'fen')}
           className={CARD}

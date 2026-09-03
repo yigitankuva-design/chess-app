@@ -1,10 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
-const push = vi.fn();
 let searchParamValue: string | null = null;
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push }),
   useSearchParams: () => ({ get: (_key: string) => searchParamValue }),
 }));
 vi.mock('@/lib/settings/useTabGuard', () => ({ useTabGuard: vi.fn() }));
@@ -30,10 +28,10 @@ describe('KonumAnalizSonucPage (madde 2026-09-03 (7))', () => {
     expect(await screen.findByText('Analiz edilecek bir konum bulunamadı.')).toBeInTheDocument();
   });
 
-  it('Geri butonu /analiz/konum\'a döner', async () => {
+  it('madde 2026-09-04 (4): kendi "Geri" butonunu ÇİZMEZ — tarayıcı geçmişi varken AppNav zaten /analiz/konum\'a döner', async () => {
     searchParamValue = FEN;
     render(<KonumAnalizSonucPage />);
-    fireEvent.click(await screen.findByLabelText('Geri'));
-    expect(push).toHaveBeenCalledWith('/analiz/konum');
+    await screen.findByTestId('analysis-board');
+    expect(screen.queryByLabelText('Geri')).not.toBeInTheDocument();
   });
 });

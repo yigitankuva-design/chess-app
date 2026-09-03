@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { useBackOverrideHandler } from '@/lib/nav/backOverride';
 
 interface NavConfig {
   title: string;
@@ -39,6 +40,11 @@ function getConfig(pathname: string): NavConfig {
     return { title: 'Rozetler', back: '/home', rightHref: '/home', rightIcon: 'home' };
   if (pathname.startsWith('/profile'))
     return { title: 'Profil', back: '/home', rightHref: '/home', rightIcon: 'home' };
+  // Madde 2026-09-04 (4): /custom/* sayfalarının KENDİ geri butonu kaldırıldı
+  // (uygulama genelinde TEK geri butonu kuralı) — bu satır olmadan bu
+  // sayfalarda geri dönme imkânı hiç kalmazdı (varsayılan `back: null`).
+  if (pathname.startsWith('/custom'))
+    return { title: '', back: '/home', rightHref: '/home', rightIcon: 'home' };
   return { title: '', back: null, rightHref: '/profile', rightIcon: 'profile' };
 }
 
@@ -66,13 +72,19 @@ export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { title, back, rightHref, rightIcon } = getConfig(pathname);
+  /** Madde 2026-09-04 (4): bazı sayfaların (ör. custom/[id]/alt-konu/[sectionId])
+   *  "geri" işlemi düz navigasyon değil, özel bir mantık gerektiriyor — bkz.
+   *  lib/nav/backOverride.tsx. Doluysa AŞAĞIDAKİ TEK buton varsayılan
+   *  davranış YERİNE bunu çağırır; sayfa KENDİ butonunu ÇİZMEZ. */
+  const overrideHandler = useBackOverrideHandler();
 
   const navTextStyle = { color: 'var(--t-nav-text)' } as React.CSSProperties;
-  const navActiveStyle = { color: 'var(--t-nav-act)' } as React.CSSProperties;
 
   // Geri: bir önceki sayfaya dön (en başa değil). Tarayıcı geçmişi yoksa
-  // yapılandırılmış geri hedefine (genelde /home) düş.
+  // yapılandırılmış geri hedefine (genelde /home) düş. Özel mantık kayıtlıysa
+  // (overrideHandler) o öncelikli.
   function handleBack() {
+    if (overrideHandler) { overrideHandler(); return; }
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
     } else {
@@ -88,11 +100,11 @@ export function AppNav() {
     >
       {/* Left */}
       <div className="w-9 flex items-center justify-start flex-shrink-0">
-        {back && (
+        {(back || overrideHandler) && (
           <button
             onClick={handleBack}
-            className="flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-white/10 active:bg-white/20"
-            style={navActiveStyle}
+            className="flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 transition-colors hover:opacity-80 active:scale-95"
+            style={{ border: '2px solid var(--t-accent)', color: 'var(--t-accent)' }}
             aria-label="Geri"
           >
             <IconChevronLeft />

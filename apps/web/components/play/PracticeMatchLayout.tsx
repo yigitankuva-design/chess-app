@@ -38,6 +38,12 @@ interface Props {
    *  ekranının (Bota Karşı Maç Yap) sebebe göre değişen sonuç mesajları
    *  için. Kart RENGİ yine `outcome`'dan gelir (win/draw/loss). */
   resultText?: string;
+  /** Madde 2026-09-04 (2): verilirse geri bildirim kartının alanı (butonlar
+   *  ile notasyon ARASINDAKİ TEK yer) `outcome`/`resultText` YERİNE bunu
+   *  gösterir — renkli `OUTCOME_CLASS` UYGULANMAZ (içerik kendi kart
+   *  görünümünü taşır, örn. MatchAnalysisSummary). "Analiz Et" tıklanınca
+   *  kazandın/kaybettin kartının YERİNE analiz özetinin gelmesi için. */
+  feedbackOverride?: ReactNode;
 }
 
 const DEFAULT_OUTCOME_TEXT: Record<PracticeOutcome, string> = {
@@ -59,6 +65,7 @@ const OUTCOME_CLASS: Record<PracticeOutcome, string> = {
  */
 export function PracticeMatchLayout({
   top, bottom, board, moveList, outcome, actions, extra, outcomeText, resultText,
+  feedbackOverride,
 }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 space-y-2">
@@ -89,7 +96,9 @@ export function PracticeMatchLayout({
           </div>
         </div>
 
-        {outcome && (
+        {feedbackOverride ? (
+          <div className="pm-feedback">{feedbackOverride}</div>
+        ) : outcome && (
           <div className={`pm-feedback ${OUTCOME_CLASS[outcome]} p-4 text-center text-lg font-bold`}>
             {resultText ?? outcomeText?.[outcome] ?? DEFAULT_OUTCOME_TEXT[outcome]}
           </div>

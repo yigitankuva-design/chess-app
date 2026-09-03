@@ -94,3 +94,24 @@ describe('PracticeMatchLayout — 4 dairesel kart, yazı yok', () => {
     expect(screen.getByTestId('movelist-slot')).toBeInTheDocument();
   });
 });
+
+describe('PracticeMatchLayout — feedbackOverride (madde 2026-09-04 (2))', () => {
+  it('feedbackOverride verilince outcome kartı YERİNE bu gösterilir, renk sınıfı UYGULANMAZ', () => {
+    renderLayout({ outcome: 'win', feedbackOverride: <div data-testid="analysis-slot">Özet</div> });
+    expect(screen.getByTestId('analysis-slot')).toBeInTheDocument();
+    expect(screen.queryByText('Tebrikler Kazandın')).not.toBeInTheDocument();
+    // pm-feedback konumlandırma sınıfı hâlâ var, ama t-ok/renk sınıfı YOK.
+    expect(screen.getByTestId('analysis-slot').parentElement).toHaveClass('pm-feedback');
+    expect(screen.getByTestId('analysis-slot').parentElement).not.toHaveClass('t-ok');
+  });
+
+  it('feedbackOverride yoksa eski outcome davranışı korunur', () => {
+    renderLayout({ outcome: 'loss' });
+    expect(screen.getByText('Bot Kazandı')).toHaveClass('t-err');
+  });
+
+  it('feedbackOverride verilse de outcome=null ise render EDİLİR (analiz maç bitmeden de gösterilebilir)', () => {
+    renderLayout({ outcome: null, feedbackOverride: <div data-testid="analysis-slot" /> });
+    expect(screen.getByTestId('analysis-slot')).toBeInTheDocument();
+  });
+});

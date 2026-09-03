@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { TeoriPratigiSolver } from './TeoriPratigiSolver';
+import { MoveList } from '@/components/play/MoveList';
 import { pickRandomPosition, pickDifferentPosition } from '@/lib/play/positionPool';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 import type { TeoriPratigiQuestion } from '@/lib/customTabsApi';
@@ -23,6 +24,9 @@ export function TeoriPratigiPractice({ questions }: Props) {
   const [attemptKey, setAttemptKey] = useState(0);
   const [status, setStatus] = useState<'idle' | 'success' | 'fail'>('idle');
   const [feedback, setFeedback] = useState('');
+  /** Madde 2026-09-04 (6): HAMLELER (notasyon) bölümü için — bu ekranda
+   *  önceden YOKTU, BotGame'in kullandığı AYNI MoveList bileşenine verilir. */
+  const [moves, setMoves] = useState<string[]>([]);
 
   if (questions.length === 0) {
     return <p className="px-4 text-sm t-muted">Bu bölümde henüz soru yok.</p>;
@@ -34,27 +38,28 @@ export function TeoriPratigiPractice({ questions }: Props) {
   const kod = kodlar[questions.findIndex((q) => q.id === current.id)];
 
   function retrySame() {
-    setStatus('idle'); setFeedback('');
+    setStatus('idle'); setFeedback(''); setMoves([]);
     setAttemptKey((k) => k + 1);
   }
 
   function tryDifferent() {
     setCurrent((c) => pickDifferentPosition(questions, c?.id ?? null));
-    setStatus('idle'); setFeedback('');
+    setStatus('idle'); setFeedback(''); setMoves([]);
     setAttemptKey((k) => k + 1);
   }
 
   return (
     <div className="px-4 pt-3 pb-8 max-w-lg mx-auto space-y-3">
-      <p className="font-semibold text-sm">
-        ♟️ {current.opening_name}
+      {/* Madde 2026-09-04 (6): taş ikonu kaldırıldı, satır ortalandı. */}
+      <p className="font-semibold text-sm text-center">
+        {current.opening_name}
         {kod && <span className="t-muted font-mono"> · {kod}</span>}
       </p>
 
-      <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
+      {/* Madde 2026-09-04 (6): talimat ikonu kaldırıldı, metin ortalandı. */}
+      <div className="flex items-start justify-center gap-3 py-3 px-4 rounded-xl"
         style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-        <span className="text-xl leading-none flex-shrink-0">🎯</span>
-        <p className="text-sm font-semibold flex-1">{current.instruction}</p>
+        <p className="text-sm font-semibold text-center">{current.instruction}</p>
       </div>
 
       <TeoriPratigiSolver
@@ -63,7 +68,11 @@ export function TeoriPratigiPractice({ questions }: Props) {
         disabled={status !== 'idle'}
         onSolved={() => setStatus('success')}
         onWrong={(msg) => { setStatus('fail'); setFeedback(msg); }}
+        onMovesChange={setMoves}
       />
+
+      {/* Madde 2026-09-04 (6): HAMLELER bölümü — bu ekranda önceden YOKTU. */}
+      <MoveList san={moves} startFen={current.fen} />
 
       {status === 'fail' && (
         <div className="flex items-center gap-3 py-3 px-4 rounded-2xl text-sm font-bold"

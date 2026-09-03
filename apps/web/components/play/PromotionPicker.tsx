@@ -29,7 +29,6 @@ export function PromotionPicker({ onPick, onCancel }: Props) {
               className="t-card-i flex flex-col items-center gap-1 py-3"
             >
               <span className="text-3xl leading-none" aria-hidden="true">{c.symbol}</span>
-              <span className="text-[11px] font-medium">{c.label}</span>
             </button>
           ))}
         </div>

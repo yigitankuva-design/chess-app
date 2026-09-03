@@ -20,7 +20,7 @@ export default function YeniAnalizPage() {
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-      <AnalizPageHeader title="Yeni Analiz" onBack={() => router.push('/home')} />
+      <AnalizPageHeader title="Yeni Analiz" />
       <FreePlayAnalysis />
     </main>
   );

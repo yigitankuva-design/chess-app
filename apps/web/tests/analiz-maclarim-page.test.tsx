@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 
 const push = vi.fn();
 const replace = vi.fn();
@@ -34,10 +34,9 @@ describe('MaclarimAnalizPage (madde 2026-09-02 (4))', () => {
     expect(screen.getByTestId('game-analysis-section')).toBeInTheDocument();
   });
 
-  it('Geri butonu /home\'a yönlendirir', () => {
+  it('madde 2026-09-04 (4): kendi "Geri" butonunu ÇİZMEZ — AppNav\'ın tek butonu bu sayfada da geçerli', () => {
     render(<MaclarimAnalizPage />);
-    fireEvent.click(screen.getByLabelText('Geri'));
-    expect(push).toHaveBeenCalledWith('/home');
+    expect(screen.queryByLabelText('Geri')).not.toBeInTheDocument();
   });
 });
 

@@ -66,6 +66,17 @@ describe('TeoriPratigiSolver — ön-hamle (madde: Pratik Yap sekmesinde de olsu
     expect(fen).toContain('5N2'); // at f3'te — ön-hamle OTOMATİK oynandı
   });
 
+  it('madde 2026-09-04 (6): DOĞRU hamlede onMovesChange güncel hamle listesiyle çağrılır', () => {
+    const onMovesChange = vi.fn();
+    render(
+      <TeoriPratigiSolver question={QUESTION} disabled={false} onSolved={vi.fn()} onWrong={vi.fn()}
+        onMovesChange={onMovesChange} />,
+    );
+    onMovesChange.mockClear(); // mount'taki ilk (boş dizi) çağrıyı sayma
+    fireEvent.click(screen.getByText('oyna-e4'));
+    expect(onMovesChange).toHaveBeenCalledWith(['e4']);
+  });
+
   it('GEÇERSİZ ön-hamle sessizce iptal edilir, oyun normal devam eder', () => {
     render(<TeoriPratigiSolver question={QUESTION} disabled={false} onSolved={vi.fn()} onWrong={vi.fn()} />);
     fireEvent.click(screen.getByText('oyna-e4'));

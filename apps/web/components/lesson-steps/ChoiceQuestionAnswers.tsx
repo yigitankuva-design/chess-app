@@ -5,11 +5,14 @@ interface Props {
   exercise: ChoiceTypeConfig;
   disabled: boolean;
   onAnswer: (index: number) => void;
+  /** Madde 2026-09-04 (5): talimat kutusundaki 🎯 ikonu render edilmez, metin
+   *  ortalanır. Varsayılan false — SADECE a) Konum Pratiği bunu açar. */
+  hideInstructionIcon?: boolean;
 }
 
 /** Çoktan seçmeli sorunun talimat kartı + şık butonları.
  *  Yatay yerleşimde tahtanın YANINDAKİ alana (`content`) konur. */
-export function ChoiceQuestionAnswers({ exercise, disabled, onAnswer }: Props) {
+export function ChoiceQuestionAnswers({ exercise, disabled, onAnswer, hideInstructionIcon = false }: Props) {
   const gridCols = exercise.options.length === 2 ? 'grid-cols-2'
     : exercise.options.length === 3 ? 'grid-cols-3'
     : 'grid-cols-2';
@@ -19,8 +22,10 @@ export function ChoiceQuestionAnswers({ exercise, disabled, onAnswer }: Props) {
       {exercise.instruction && (
         <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
           style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-          <span className="text-xl leading-none flex-shrink-0">🎯</span>
-          <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
+          {!hideInstructionIcon && <span className="text-xl leading-none flex-shrink-0">🎯</span>}
+          <p className={`text-sm font-semibold flex-1${hideInstructionIcon ? ' text-center' : ''}`}>
+            {exercise.instruction}
+          </p>
         </div>
       )}
 

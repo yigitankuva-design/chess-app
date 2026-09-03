@@ -195,6 +195,13 @@ interface Props {
    *  anlatımı içindeki alıştırmalarda verilmez, düğme hiç render edilmez.
    *  Bileşen hangi pratik modunda olduğunu BİLMEZ — yazıyı sayfa belirler. */
   quitSlot?: ReactNode;
+  /** Madde 2026-09-04 (5): "0/1" ve "Soru X/Y" göstergeleri her biri kendi
+   *  kenarlıklı kutusuna alınır. Varsayılan false — SADECE a) Konum Pratiği
+   *  bunu açar; dersler/diğer pratik modları eski (kutusuz) görünümde kalır. */
+  boxedProgress?: boolean;
+  /** Madde 2026-09-04 (5): talimat kutusundaki 🎯 ikonu render edilmez.
+   *  Varsayılan false — SADECE a) Konum Pratiği bunu açar. */
+  hideInstructionIcon?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -251,7 +258,7 @@ function ProgressDots({ total, current, doneCount, results }: {
 export function BoardExercise({
   exercises, done, onCorrect, onFinish, noRetry = false,
   initialIndex = 0, onIndexChange, initialAnswer = null, initialDoneCount,
-  onAnswered, quitSlot,
+  onAnswered, quitSlot, boxedProgress = false, hideInstructionIcon = false,
 }: Props) {
   // Madde 1: click_square/identify_piece sorularinin tahtasi ham
   // react-chessboard cizdigi icin uygulamanin ortak temasini/notasyonunu
@@ -532,11 +539,20 @@ export function BoardExercise({
   return (
     <div className="space-y-3 mt-2 pt-3" style={{ borderTop: '1px solid var(--t-border)' }}>
 
-      {/* Progress */}
-      <div className="flex items-center justify-between">
-        <ProgressDots total={total} current={currentIdx} doneCount={doneCount} results={results} />
+      {/* Progress — madde 2026-09-04 (5): boxedProgress=true iken (SADECE
+          a) Konum Pratiği) her iki gösterge de kendi kenarlıklı kutusuna alınır. */}
+      <div className="flex items-center justify-between gap-2">
+        <div
+          className={boxedProgress ? 'px-2.5 py-1 rounded-lg' : undefined}
+          style={boxedProgress ? { border: '1px solid var(--t-border)' } : undefined}
+        >
+          <ProgressDots total={total} current={currentIdx} doneCount={doneCount} results={results} />
+        </div>
         <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-          style={{ background: 'var(--t-surface-2)', color: 'var(--t-muted)' }}>
+          style={{
+            background: 'var(--t-surface-2)', color: 'var(--t-muted)',
+            ...(boxedProgress ? { border: '1px solid var(--t-border)' } : {}),
+          }}>
           Soru {currentIdx + 1}/{total}
         </span>
       </div>
@@ -633,11 +649,15 @@ export function BoardExercise({
         <div className="pg-content space-y-3">
           {isBoardExercise(exercise) ? (
             <>
-              {/* Talimat — tahtanın yanında (yatay) / altında (dikey) kart olarak */}
+              {/* Talimat — tahtanın yanında (yatay) / altında (dikey) kart olarak.
+                  Madde 2026-09-04 (5): hideInstructionIcon=true iken (SADECE
+                  a) Konum Pratiği) ikon kaldırılır, metin ortalanır. */}
               <div className="flex items-start gap-3 py-3 px-4 rounded-xl"
                 style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-                <span className="text-xl leading-none flex-shrink-0">🎯</span>
-                <p className="text-sm font-semibold flex-1">{exercise.instruction}</p>
+                {!hideInstructionIcon && <span className="text-xl leading-none flex-shrink-0">🎯</span>}
+                <p className={`text-sm font-semibold flex-1${hideInstructionIcon ? ' text-center' : ''}`}>
+                  {exercise.instruction}
+                </p>
               </div>
 
               {/* Multiple-choice for identify_piece */}
@@ -668,7 +688,8 @@ export function BoardExercise({
               )}
             </>
           ) : (
-            <ChoiceQuestionAnswers exercise={exercise} disabled={status === 'success'} onAnswer={onChoiceAnswer} />
+            <ChoiceQuestionAnswers exercise={exercise} disabled={status === 'success'} onAnswer={onChoiceAnswer}
+              hideInstructionIcon={hideInstructionIcon} />
           )}
           {/* Çıkış düğmesi içeriğin SONUNDA: en yaygın tip olan click_square'de
               talimat tek öğedir, yani "talimatın hemen altı" ile aynı yer. Şıklı

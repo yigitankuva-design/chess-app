@@ -44,6 +44,15 @@ describe('KonumPratigiPractice', () => {
     expect(screen.getByLabelText('Yanlış')).toBeInTheDocument();
   });
 
+  it('madde 2026-09-04 (5): talimat kutusunda 🎯 ikonu YOKTUR, "0/1"/"Soru X/Y" kenarlıklı kutuda', () => {
+    render(<KonumPratigiPractice questions={[Q1]} />);
+    const instruction = screen.getByText('Bu hangi açılıştır?');
+    expect(instruction.parentElement).not.toHaveTextContent('🎯');
+    // "0/1" → ProgressDots'un kendi iç div'i → boxedProgress'in eklediği kenarlıklı sarmalayıcı.
+    expect(screen.getByText('0/1').parentElement?.parentElement).toHaveStyle({ border: '1px solid var(--t-border)' });
+    expect(screen.getByText('Soru 1/1')).toHaveStyle({ border: '1px solid var(--t-border)' });
+  });
+
   it('havuz KARIŞTIRILIR — sıra admin sırasıyla birebir aynı olmak zorunda değildir', () => {
     // Math.random hep 0 dönerse Fisher–Yates sırayı TERSİNE çevirir — deterministik kanıt.
     vi.spyOn(Math, 'random').mockReturnValue(0);

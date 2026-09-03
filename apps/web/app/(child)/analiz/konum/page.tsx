@@ -17,14 +17,10 @@ export default function KonumAnalizPage() {
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <button onClick={() => router.push('/home')} aria-label="Geri"
-          className="flex items-center justify-center rounded-full border border-white/15 t-premium flex-shrink-0"
-          style={{ width: 36, height: 36, fontSize: '1.35rem', fontWeight: 700 }}>
-          ←
-        </button>
-        <h1 className="text-xl font-extrabold t-premium">Konum Analizi</h1>
-      </div>
+      {/* Madde 2026-09-04 (4): kendi "geri" butonu kaldırıldı — AppNav'ın
+       *  üst bar'ındaki TEK buton bu sayfada da geri gitmeyi sağlıyor. */}
+      <h1 className="text-xl font-extrabold t-premium text-center">Konum Analizi</h1>
+      <hr className="t-line" />
       <CustomPositionAnalysis />
     </main>
   );

@@ -608,18 +608,17 @@ export function BotGame({
       outcome={status === 'over' ? outcome : null}
       resultText={resultText}
       actions={matchActions}
-      extra={(
-        <>
-          {extra}
-          {showAnalysis && (
-            <MatchAnalysisSummary
-              summary={gameSummary}
-              progress={analysisProgress}
-              onLearnFromMistakes={learnFromMistakes}
-            />
-          )}
-        </>
-      )}
+      // Madde 2026-09-04 (2): "Analiz Et" tıklanınca geri bildirim kartının
+      // (kazandın/kaybettin) YERİNE analiz özeti gelir — extra'da AYRI bir
+      // yerde (notasyonun altında) değil.
+      feedbackOverride={showAnalysis ? (
+        <MatchAnalysisSummary
+          summary={gameSummary}
+          progress={analysisProgress}
+          onLearnFromMistakes={learnFromMistakes}
+        />
+      ) : undefined}
+      extra={extra}
     />
   );
 }

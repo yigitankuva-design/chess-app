@@ -15,13 +15,13 @@ beforeEach(() => {
 describe('CustomPositionAnalysis', () => {
   it('başlangıçta iki seçenek kartı görünür', () => {
     render(<CustomPositionAnalysis />);
-    expect(screen.getByText('Konum Dizerek Ekle')).toBeInTheDocument();
+    expect(screen.getByText('Konum Diz')).toBeInTheDocument();
     expect(screen.getByText('FEN Ekle')).toBeInTheDocument();
   });
 
   it('madde 2026-09-03 (7): Konum Dizerek Ekle → Analiz Et, AYRI SAYFAYA (fen ile) yönlendirir', () => {
     render(<CustomPositionAnalysis />);
-    fireEvent.click(screen.getByText('Konum Dizerek Ekle'));
+    fireEvent.click(screen.getByText('Konum Diz'));
     fireEvent.click(screen.getByText('🔍 Analiz Et'));
     expect(push).toHaveBeenCalledWith(`/analiz/konum/sonuc?fen=${encodeURIComponent(START_FEN)}`);
   });

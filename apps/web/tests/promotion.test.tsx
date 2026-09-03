@@ -54,4 +54,12 @@ describe('PromotionPicker — seçim penceresi', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Vazgeç' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it('madde 2026-09-04 (3): kartlarda sadece taş görseli var, isim YAZI olarak görünmez', () => {
+    render(<PromotionPicker onPick={vi.fn()} onCancel={vi.fn()} />);
+    // Erişilebilir ad (aria-label) hâlâ var — sadece görünür metin kaldırıldı.
+    const vezir = screen.getByRole('button', { name: 'Vezir' });
+    expect(vezir).toHaveTextContent('♛');
+    expect(vezir.textContent).toBe('♛');
+  });
 });
