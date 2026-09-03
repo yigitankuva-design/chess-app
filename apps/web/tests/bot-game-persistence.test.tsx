@@ -86,7 +86,9 @@ describe('BotGame — sayfa yenilemesi (madde 3)', () => {
     vi.stubGlobal('confirm', () => true);
 
     render(<BotGame skillLevel={0} depth={1} studentColor="w" onGameEnd={vi.fn()} />);
-    const terk = await screen.findByText('Terk Et');
+    // Madde 2026-09-03 (2): "Terk Et" artık dairesel ikon buton — görünür
+    // metin YOK, erişilebilir ad aria-label'dan gelir.
+    const terk = await screen.findByLabelText('Terk Et');
     terk.click();
 
     await waitFor(() => expect(loadBotGame(key)).toBeNull());

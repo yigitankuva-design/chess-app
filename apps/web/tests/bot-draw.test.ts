@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { materialDiff, botAcceptsDraw } from '@/lib/play/botDraw';
+import { materialDiff, botAcceptsDraw, DRAW_ACCEPT_MARGIN_PAWNS } from '@/lib/play/botDraw';
 
 const BASLANGIC = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // Beyazin fazla bir veziri var (siyahin veziri yok).
@@ -26,24 +26,30 @@ describe('materialDiff', () => {
   });
 });
 
-describe('botAcceptsDraw (madde 6)', () => {
-  it('eşit konumda kabul eder', () => {
-    expect(botAcceptsDraw(BASLANGIC, 'b')).toBe(true);
-    expect(botAcceptsDraw(BASLANGIC, 'w')).toBe(true);
+describe('botAcceptsDraw (madde 2026-09-03 (2): motor puanına göre ±3)', () => {
+  it('eşit pozisyonda (0 puan) kabul eder', () => {
+    expect(botAcceptsDraw(0)).toBe(true);
   });
 
-  it('bot açık ara öndeyse REDDEDER', () => {
-    expect(botAcceptsDraw(BEYAZ_ONDE, 'w')).toBe(false);
+  it('sporcu tam sınırda (+3 / -3) hâlâ kabul edilir', () => {
+    expect(botAcceptsDraw(3)).toBe(true);
+    expect(botAcceptsDraw(-3)).toBe(true);
   });
 
-  it('bot geride ise kabul eder', () => {
-    expect(botAcceptsDraw(BEYAZ_ONDE, 'b')).toBe(true);
+  it('sporcu +3\'ten FAZLA öndeyse (hangi yönde olursa olsun) REDDEDER', () => {
+    expect(botAcceptsDraw(3.01)).toBe(false);
+    expect(botAcceptsDraw(-3.01)).toBe(false);
   });
 
-  it('bir piyonluk üstünlük reddetmeye yetmez', () => {
-    // Siyahin bir piyonu eksik; bot beyaz ve 1 onde.
-    const birPiyonFazla = 'rnbqkbnr/ppppppp1/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    expect(materialDiff(birPiyonFazla)).toBe(1);
-    expect(botAcceptsDraw(birPiyonFazla, 'w')).toBe(true);
+  it('sporcu açık ara öndeyse de REDDEDER (kolay beraberlik yok)', () => {
+    expect(botAcceptsDraw(9)).toBe(false);
+  });
+
+  it('sporcu açık ara GERİDEyse de REDDEDER (madde: hangi taraf lehine olursa olsun)', () => {
+    expect(botAcceptsDraw(-9)).toBe(false);
+  });
+
+  it('eşik sabiti 3 puan', () => {
+    expect(DRAW_ACCEPT_MARGIN_PAWNS).toBe(3);
   });
 });

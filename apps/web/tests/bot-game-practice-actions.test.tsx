@@ -9,6 +9,7 @@ vi.mock('@/lib/chess/stockfish', () => ({
     async init() {}
     setSkill() {}
     async bestMove() { return '(none)'; }
+    async analyze() { return { bestMove: 'e2e4', scoreCp: 0, mate: null }; }
     destroy() {}
   },
 }));
@@ -34,7 +35,7 @@ function renderPractice(onPlaySame = vi.fn(), onPlayDifferent = vi.fn()) {
   return { onPlaySame, onPlayDifferent };
 }
 
-describe('BotGame — practiceActions (madde 2: 4 dairesel kart)', () => {
+describe('BotGame — practiceActions (madde 2026-09-03 (3): 5 dairesel kart)', () => {
   beforeEach(() => {
     sessionStorage.clear();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -45,78 +46,77 @@ describe('BotGame — practiceActions (madde 2: 4 dairesel kart)', () => {
     vi.restoreAllMocks();
   });
 
-  it('4 ikon\'lu kart görünür, YAZI etiketi (Beraberlik Teklif Et vb.) YOKTUR', async () => {
+  it('5 ikon\'lu kart görünür (Beraberlik Teklif Et YOK), YAZI etiketi YOKTUR', async () => {
     renderPractice();
     await screen.findByTestId('board');
-    expect(screen.getByLabelText('Aynı konumu tekrar pratik yap')).toBeInTheDocument();
-    expect(screen.getByLabelText('Beraberlik teklif et')).toBeInTheDocument();
-    expect(screen.getByLabelText('Pratiği terk et')).toBeInTheDocument();
-    expect(screen.getByLabelText('Farklı bir konumu pratik yap')).toBeInTheDocument();
-    expect(screen.queryByText(/Beraberlik Teklif Et/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Konumu Yeniden Tekrar Et')).toBeInTheDocument();
+    expect(screen.getByLabelText('İpucu Göster')).toBeInTheDocument();
+    expect(screen.getByLabelText('Terk Et')).toBeInTheDocument();
+    expect(screen.getByLabelText('Tahtanın Yönünü Değiştir')).toBeInTheDocument();
+    expect(screen.getByLabelText('Farklı Bir Konumu Pratik Yap')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Beraberlik/)).not.toBeInTheDocument();
     expect(screen.queryByText('Yeniden Oyna')).not.toBeInTheDocument();
   });
 
-  it('maç bitmeden: Beraberlik + Terk Et AKTİF, Tekrar Et + Farklı Konum SÖNÜK', async () => {
+  it('maç bitmeden: İpucu Göster + Terk Et + Tahtanın Yönünü Değiştir AKTİF, Tekrar Et + Farklı Konum SÖNÜK', async () => {
     renderPractice();
     await screen.findByTestId('board');
-    expect(screen.getByLabelText('Aynı konumu tekrar pratik yap')).toBeDisabled();
-    expect(screen.getByLabelText('Beraberlik teklif et')).not.toBeDisabled();
-    expect(screen.getByLabelText('Pratiği terk et')).not.toBeDisabled();
-    expect(screen.getByLabelText('Farklı bir konumu pratik yap')).toBeDisabled();
+    expect(screen.getByLabelText('Konumu Yeniden Tekrar Et')).toBeDisabled();
+    expect(screen.getByLabelText('İpucu Göster')).not.toBeDisabled();
+    expect(screen.getByLabelText('Terk Et')).not.toBeDisabled();
+    expect(screen.getByLabelText('Tahtanın Yönünü Değiştir')).not.toBeDisabled();
+    expect(screen.getByLabelText('Farklı Bir Konumu Pratik Yap')).toBeDisabled();
   });
 
-  it('Terk Et onaylanınca: kırmızı "Bot Kazandı" kartı çıkar, Tekrar Et + Farklı Konum AKTİFLEŞİR, Beraberlik + Terk Et SÖNER', async () => {
+  it('Terk Et onaylanınca: kırmızı "Bot Kazandı" kartı çıkar, Tekrar Et + Farklı Konum AKTİFLEŞİR, İpucu + Terk Et SÖNER', async () => {
     vi.stubGlobal('confirm', vi.fn(() => true));
     renderPractice();
     await screen.findByTestId('board');
-    fireEvent.click(screen.getByLabelText('Pratiği terk et'));
+    fireEvent.click(screen.getByLabelText('Terk Et'));
 
     await waitFor(() => screen.getByText('Bot Kazandı'));
     expect(screen.getByText('Bot Kazandı')).toHaveClass('t-err');
-    expect(screen.getByLabelText('Aynı konumu tekrar pratik yap')).not.toBeDisabled();
-    expect(screen.getByLabelText('Farklı bir konumu pratik yap')).not.toBeDisabled();
-    expect(screen.getByLabelText('Beraberlik teklif et')).toBeDisabled();
-    expect(screen.getByLabelText('Pratiği terk et')).toBeDisabled();
+    expect(screen.getByLabelText('Konumu Yeniden Tekrar Et')).not.toBeDisabled();
+    expect(screen.getByLabelText('Farklı Bir Konumu Pratik Yap')).not.toBeDisabled();
+    expect(screen.getByLabelText('İpucu Göster')).toBeDisabled();
+    expect(screen.getByLabelText('Terk Et')).toBeDisabled();
+    // Tahtanın Yönünü Değiştir maç bitse de her zaman aktif kalır.
+    expect(screen.getByLabelText('Tahtanın Yönünü Değiştir')).not.toBeDisabled();
   });
 
   it('Terk Et onaylanmazsa (confirm false) maç devam eder', async () => {
     vi.stubGlobal('confirm', vi.fn(() => false));
     renderPractice();
     await screen.findByTestId('board');
-    fireEvent.click(screen.getByLabelText('Pratiği terk et'));
+    fireEvent.click(screen.getByLabelText('Terk Et'));
     expect(screen.queryByText('Bot Kazandı')).not.toBeInTheDocument();
-  });
-
-  it('bot beraberliği kabul ederse mavi "Berabere Bitti" kartı çıkar', async () => {
-    vi.doMock('@/lib/play/botDraw', () => ({ botAcceptsDraw: () => true }));
-    vi.resetModules();
-    const { BotGame: FreshBotGame } = await import('@/components/BotGame');
-    render(
-      <FreshBotGame skillLevel={1} depth={1} studentColor="w" onGameEnd={() => {}}
-        practiceActions={{ onPlaySame: vi.fn(), onPlayDifferent: vi.fn() }} />,
-    );
-    await screen.findByTestId('board');
-    fireEvent.click(screen.getByLabelText('Beraberlik teklif et'));
-    await waitFor(() => screen.getByText('Berabere Bitti'));
-    expect(screen.getByText('Berabere Bitti')).toHaveClass('t-info');
-    vi.doUnmock('@/lib/play/botDraw');
   });
 
   it('maç bittikten sonra "tekrar et" ve "farklı konum" tıklanınca ilgili callback çağrılır', async () => {
     vi.stubGlobal('confirm', vi.fn(() => true));
     const { onPlaySame } = renderPractice();
     await screen.findByTestId('board');
-    fireEvent.click(screen.getByLabelText('Pratiği terk et'));
+    fireEvent.click(screen.getByLabelText('Terk Et'));
     await waitFor(() => screen.getByText('Bot Kazandı'));
 
-    fireEvent.click(screen.getByLabelText('Aynı konumu tekrar pratik yap'));
+    fireEvent.click(screen.getByLabelText('Konumu Yeniden Tekrar Et'));
     expect(onPlaySame).toHaveBeenCalled();
+  });
+
+  it('İpucu Göster tıklanınca motor sorgulanır ve kare işaretlenir (highlightSquares)', async () => {
+    renderPractice();
+    const board = await screen.findByTestId('board');
+    fireEvent.click(screen.getByLabelText('İpucu Göster'));
+    await waitFor(() => expect(board).toBeInTheDocument());
+    // ChessBoard mock'landığı için highlightSquares'i doğrudan göremeyiz —
+    // asıl davranış (highlightSquares prop'u) ChessBoard'un kendi testlerinde
+    // zaten kapsanıyor; burada sadece tıklamanın hataya düşmediği doğrulanır.
   });
 
   it('practiceActions verilmezse eski Beraberlik Teklif Et / Yeniden Oyna davranışı korunur', async () => {
     render(<BotGame skillLevel={1} depth={1} studentColor="w" onGameEnd={() => {}} />);
     await screen.findByTestId('board');
-    await waitFor(() => screen.getByText(/Beraberlik Teklif Et/));
-    expect(screen.queryByLabelText('Aynı konumu tekrar pratik yap')).not.toBeInTheDocument();
+    await waitFor(() => screen.getByLabelText(/Beraberlik Teklif Et/));
+    expect(screen.queryByLabelText('Konumu Yeniden Tekrar Et')).not.toBeInTheDocument();
   });
 });

@@ -85,8 +85,8 @@ describe('PositionPoolPractice — başlıkta kod', () => {
   });
 });
 
-describe('PositionPoolPractice — Konumun Sahibi (madde 2026-08-24)', () => {
-  it('konumda owner varsa "kod - sahip" olarak kod kısmının sağında gösterilir', async () => {
+describe('PositionPoolPractice — Konumun Sahibi (madde 2026-08-24, başlık düzeni: 2026-09-03 (3))', () => {
+  it('konumda owner varsa üst barda başlık+kod, ALT barda (ayrı) sahip ismi gösterilir', async () => {
     const { LEVELS, ALL_TIMES } = await import('@/lib/play/levels');
     render(
       <PositionPoolPractice
@@ -96,11 +96,11 @@ describe('PositionPoolPractice — Konumun Sahibi (madde 2026-08-24)', () => {
       />,
     );
     expect(await screen.findByText('🎯 Kazanç Konumunu Pratik Yap')).toBeInTheDocument();
-    expect(screen.getByText('· 001')).toBeInTheDocument();
-    expect(screen.getByText('- Ali - Veli')).toBeInTheDocument();
+    expect(screen.getByText('001')).toBeInTheDocument();
+    expect(screen.getByTestId('pool-owner-bar')).toHaveTextContent('Ali - Veli');
   });
 
-  it('owner yoksa ek metin gösterilmez', async () => {
+  it('owner yoksa alt bar hiç render edilmez', async () => {
     const { LEVELS, ALL_TIMES } = await import('@/lib/play/levels');
     render(
       <PositionPoolPractice
@@ -109,7 +109,7 @@ describe('PositionPoolPractice — Konumun Sahibi (madde 2026-08-24)', () => {
         initialCriteria={{ level: LEVELS[0], timeControl: ALL_TIMES[0], colorChoice: 'white', rated: false }}
       />,
     );
-    expect(await screen.findByText('· 001')).toBeInTheDocument();
-    expect(screen.queryByText(/^-/)).not.toBeInTheDocument();
+    expect(await screen.findByText('001')).toBeInTheDocument();
+    expect(screen.queryByTestId('pool-owner-bar')).not.toBeInTheDocument();
   });
 });

@@ -9,6 +9,14 @@ import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+interface Props {
+  /** Madde 2026-09-03 (2): BotGame'in "Analiz Et" özet kartındaki
+   *  "Hatalarından Ders Al" CTA'sından gelinince, listeye bakmadan DOĞRUDAN
+   *  bu maç açılır. Liste yüklendiğinde bulunamazsa (silinmiş/başka sporcu)
+   *  sessizce normal listeye düşer. */
+  initialGameId?: number | null;
+}
+
 /**
  * Hızlı Erişim "Analiz Et" alt sekmeleri — hem "Yeni Analiz" hem "Maçlarımın
  * Analizi" AYNI tasarımı/bileşeni kullanır (madde 2026-09-01): bitmiş maçlar
@@ -16,7 +24,7 @@ const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
  * otomatik motor analizi gösterilir. Kendi içinde bağımsız state taşır —
  * ebeveyn akordiyon kapanıp yeniden açıldığında (unmount/mount) baştan başlar.
  */
-export function GameAnalysisSection() {
+export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<GameSummary | null>(null);
@@ -26,8 +34,14 @@ export function GameAnalysisSection() {
   const [hideNotation, setHideNotation] = useState(false);
 
   useEffect(() => {
-    listMyGames().then((g) => { setGames(g); setLoading(false); });
-  }, []);
+    listMyGames().then((g) => {
+      setGames(g);
+      setLoading(false);
+      const target = initialGameId != null ? g.find((game) => game.id === initialGameId) : undefined;
+      if (target) void selectGame(target);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGameId]);
 
   async function selectGame(g: GameSummary) {
     setSelectedGame(g);

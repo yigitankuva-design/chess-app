@@ -57,12 +57,18 @@ export function PositionPoolPractice({ positions, initialCriteria, title }: Prop
   return (
     <>
       {title && (
-        <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
-          <p className="font-semibold text-sm">
-            🎯 {title}
-            {kod && <span className="t-muted font-mono"> · {kod}</span>}
-            {current.owner && <span className="t-muted"> - {current.owner}</span>}
-          </p>
+        // Madde 2026-09-03 (3): başlık İKİ ayrı bara bölündü (Zafer onayı) —
+        // üstte bölüm adı + kod, altında (varsa) rakip ismi kendi barında.
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center justify-between px-4 py-3">
+            <p className="font-semibold text-sm">🎯 {title}</p>
+            {kod && <p className="t-muted font-mono text-sm">{kod}</p>}
+          </div>
+          {current.owner && (
+            <div className="px-4 pb-2 text-center" data-testid="pool-owner-bar">
+              <p className="t-muted text-sm">{current.owner}</p>
+            </div>
+          )}
         </div>
       )}
     <BotGame

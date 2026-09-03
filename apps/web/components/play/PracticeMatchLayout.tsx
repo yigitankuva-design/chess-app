@@ -33,6 +33,11 @@ interface Props {
    *  metinleri kullanılır. Arkadaş maçında (LiveGame) "Bot Kazandı" gibi
    *  bota özel ifadeler anlamsız olduğu için override edilir. */
   outcomeText?: Partial<Record<PracticeOutcome, string>>;
+  /** Madde 2026-09-03 (2): verilirse `outcome`/`outcomeText` YERİNE bu TAM
+   *  metin gösterilir (örn. "⏰ Süren bitti — Bot kazandı.") — gerçek maç
+   *  ekranının (Bota Karşı Maç Yap) sebebe göre değişen sonuç mesajları
+   *  için. Kart RENGİ yine `outcome`'dan gelir (win/draw/loss). */
+  resultText?: string;
 }
 
 const DEFAULT_OUTCOME_TEXT: Record<PracticeOutcome, string> = {
@@ -53,7 +58,7 @@ const OUTCOME_CLASS: Record<PracticeOutcome, string> = {
  * `practiceActions` verildiği dallarda kullanılır.
  */
 export function PracticeMatchLayout({
-  top, bottom, board, moveList, outcome, actions, extra, outcomeText,
+  top, bottom, board, moveList, outcome, actions, extra, outcomeText, resultText,
 }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 space-y-2">
@@ -86,7 +91,7 @@ export function PracticeMatchLayout({
 
         {outcome && (
           <div className={`pm-feedback ${OUTCOME_CLASS[outcome]} p-4 text-center text-lg font-bold`}>
-            {outcomeText?.[outcome] ?? DEFAULT_OUTCOME_TEXT[outcome]}
+            {resultText ?? outcomeText?.[outcome] ?? DEFAULT_OUTCOME_TEXT[outcome]}
           </div>
         )}
 

@@ -2,10 +2,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
-import { MatchLayout } from '@/components/play/MatchLayout';
 import type { PlayerInfo } from '@/components/play/MatchLayout';
 import { PracticeMatchLayout } from '@/components/play/PracticeMatchLayout';
 import type { PracticeAction, PracticeOutcome } from '@/components/play/PracticeMatchLayout';
+import { MatchAnalysisSummary } from '@/components/play/MatchAnalysisSummary';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
@@ -16,6 +16,8 @@ import type { PromotionPiece } from '@/lib/play/promotion';
 import { ChessBoard } from './ChessBoard';
 import { useBoardNotation } from '@/lib/board-notation-context';
 import { StockfishEngine } from '@/lib/chess/stockfish';
+import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
+import { computeGameSummary } from '@/lib/chess/gameSummary';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
 import { getSavedAvatar } from '@/lib/avatars';
 import {
@@ -112,6 +114,20 @@ export function BotGame({
    *  maclariyla AYNI kuraldan gelir (drawOffers.ts) — iki yerde iki sayi olmaz. */
   const [drawOffersUsed, setDrawOffersUsed] = useState(restoredRef.current?.drawOffersUsed ?? 0);
   const [drawNote, setDrawNote] = useState('');
+  /** Madde 2026-09-03 (2): beraberlik kararı artık motor sorgusu gerektiriyor —
+   *  sorgu sürerken buton kilitlenir, sporcu iki kez tıklayıp hakkını
+   *  boşa harcamasın diye. */
+  const [drawChecking, setDrawChecking] = useState(false);
+  /** Madde 2026-09-03 (3): "Tahtanın Yönünü Değiştir" — sporcunun rengine göre
+   *  hesaplanan varsayılan yöne EK bir ters çevirme. */
+  const [flipped, setFlipped] = useState(false);
+  /** Madde 2026-09-03 (3): "İpucu Göster" — motorun önerdiği kare çifti,
+   *  ChessBoard'un ZATEN VAR OLAN highlightSquares prop'uyla işaretlenir. */
+  const [hint, setHint] = useState<{ from: Square; to: Square } | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  /** Madde 2026-09-03 (2): "Analiz Et" tıklanınca true olur — motor TÜM
+   *  maçı arka planda değerlendirmeye SADECE o zaman başlar. */
+  const [showAnalysis, setShowAnalysis] = useState(false);
   // Sporcunun adi girişte saklaniyor; yoksa nötr bir etiket kullanilir.
   const [studentName] = useState(() => getAthleteName() || 'Sen');
   const [studentAvatar] = useState(() => getSavedAvatar());
@@ -128,6 +144,20 @@ export function BotGame({
   const sanHistory = useMemo(() => chessRef.current.history(), [fen]);
   const fens = useMemo(() => fensFromSan(startFen, sanHistory), [startFen, sanHistory]);
   const nav = useMoveHistoryNav(fens);
+
+  /** Madde 2026-09-03 (2): "Analiz Et" özet kartı — SADECE `showAnalysis`
+   *  true olunca (tıklanınca) motor tüm maçı arka planda değerlendirir.
+   *  `useMoveQualityEval` "Maçlarım" analizinde kullanılan AYNI hook —
+   *  ikinci bir motor entegrasyonu YAZILMADI. */
+  const evalMoves = useMemo(
+    () => fens.slice(1).map((fenAfter, i) => ({ ply: i + 1, fenAfter })),
+    [fens],
+  );
+  const { evalByPly, progress: analysisProgress } = useMoveQualityEval(fens[0], evalMoves, showAnalysis);
+  const gameSummary = useMemo(
+    () => (showAnalysis ? computeGameSummary(evalByPly, fens, studentColor) : null),
+    [showAnalysis, evalByPly, fens, studentColor],
+  );
 
   const tc = timeControl ?? null;
   const [whiteTime, setWhiteTime] = useState(restoredRef.current?.whiteTime ?? (tc ? tc.base : 0));
@@ -281,17 +311,65 @@ export function BotGame({
     onGameEnd('loss');
   }
 
-  function offerDrawToBot() {
-    if (!canOfferDraw(drawOffersUsed)) return;
+  /** Madde 2026-09-03 (2): bot artık malzeme farkına değil, motorun konuma
+   *  verdiği puana bakar — sporcunun pozisyonu ±3 puandan fazla UZAKSA
+   *  (hangi yönde olursa olsun) reddeder. Mat bulunduysa (kesin sonuç)
+   *  HER ZAMAN reddedilir. */
+  async function offerDrawToBot() {
+    if (!canOfferDraw(drawOffersUsed) || drawChecking) return;
     setDrawOffersUsed((n) => n + 1);
-    if (botAcceptsDraw(chessRef.current.fen(), botColor)) {
-      setStatus('over');
-      clearBotGame(sessionKeyStr);
-      setResultText('🤝 Bot beraberliği kabul etti.');
-      setOutcome('draw');
-      onGameEnd('draw');
-    } else {
-      setDrawNote('Bot beraberliği reddetti.');
+    setDrawChecking(true);
+    try {
+      const eng = engineRef.current;
+      const fenNow = chessRef.current.fen();
+      const sideToMove: 'w' | 'b' = fenNow.split(/\s+/)[1] === 'b' ? 'b' : 'w';
+      const sign = sideToMove === studentColor ? 1 : -1;
+      const { scoreCp, mate } = eng
+        ? await eng.analyze(fenNow, depth)
+        : { scoreCp: null, mate: null };
+      const accepted = mate === null && scoreCp !== null && botAcceptsDraw((scoreCp * sign) / 100);
+      if (accepted) {
+        setStatus('over');
+        clearBotGame(sessionKeyStr);
+        setResultText('🤝 Bot beraberliği kabul etti.');
+        setOutcome('draw');
+        onGameEnd('draw');
+      } else {
+        setDrawNote('Bot beraberliği reddetti.');
+      }
+    } finally {
+      setDrawChecking(false);
+    }
+  }
+
+  /** Madde 2026-09-03 (3): "İpucu Göster" — sadece sporcunun sırasındayken.
+   *  Sayı sınırı yok, her tıklamada güncel pozisyon için yeniden hesaplanır. */
+  async function showHint() {
+    if (hintLoading || status !== 'playing' || chessRef.current.turn() !== studentColor) return;
+    const eng = engineRef.current;
+    if (!eng) return;
+    setHintLoading(true);
+    try {
+      const { bestMove } = await eng.analyze(chessRef.current.fen(), depth);
+      if (bestMove) {
+        setHint({ from: bestMove.slice(0, 2) as Square, to: bestMove.slice(2, 4) as Square });
+      }
+    } finally {
+      setHintLoading(false);
+    }
+  }
+
+  /** Madde 2026-09-03 (2): "Analiz Et" özet kartındaki CTA — mevcut
+   *  "Maçlarım" hamle-hamle analiz ekranına YÖNLENDİRİR (ikinci bir
+   *  hamle-gezinme ekranı YAZILMADI). `next/navigation`'ın `useRouter`'ı
+   *  KASITLI kullanılmadı — BotGame testlerinin BÜYÜK ÇOĞUNLUĞU App Router
+   *  context'i olmadan render ediyor (invariant hatası verir); düz `window.location`
+   *  ile yönlendirme hem router bağımlılığı istemez hem de bu ekrandan
+   *  çıkış zaten tam sayfa geçişi kadar nadir bir eylemdir. Kayıt hiç
+   *  oluşmadıysa (çevrimdışı) sessizce hiçbir şey yapmaz. */
+  function learnFromMistakes() {
+    if (gameIdRef.current != null && typeof window !== 'undefined') {
+      window.location.href = `/analiz/maclarim?gameId=${gameIdRef.current}`;
     }
   }
 
@@ -308,6 +386,7 @@ export function BotGame({
     if (!move) return false;
     setFen(chess.fen());
     clearPremove(); // yeni hamle yapıldı, eski ön-hamle geçersiz.
+    setHint(null); // madde 2026-09-03 (3): pozisyon değişti, eski ipucu geçersiz.
     playMoveSound(); // madde 2: sporcunun hamlesinde nötr tık sesi.
     if (tc) {
       // Hamleyi yapan SPORCU — kendi rengine gore artis eklenir.
@@ -394,13 +473,21 @@ export function BotGame({
   const boardInteractive = status === 'playing' && !thinking && nav.isLive
     && chessRef.current.turn() === studentColor;
 
+  // Madde 2026-09-03 (2/3): "Tahtanın Yönünü Değiştir" — sporcunun rengine
+  // göre varsayılan yönün ÜSTÜNE bir ters çevirme.
+  const baseOrientation: 'white' | 'black' = studentColor === 'w' ? 'white' : 'black';
+  const orientation: 'white' | 'black' = flipped
+    ? (baseOrientation === 'white' ? 'black' : 'white')
+    : baseOrientation;
+
   const board = (
     <>
       <ChessBoard
         fen={nav.viewFen}
         interactive={boardInteractive}
         onPieceDrop={handleDrop}
-        boardOrientation={studentColor === 'w' ? 'white' : 'black'}
+        boardOrientation={orientation}
+        highlightSquares={hint ? [hint.from, hint.to] : []}
         onWheelStep={nav.step}
         historyView={!nav.isLive}
         onLeaveHistory={nav.goLive}
@@ -436,28 +523,34 @@ export function BotGame({
     </>
   );
 
-  // Pratik Yap akışları (Kazanç Konumu / Oyunsonu / Açılış) — 4 dairesel
-  // eylem kartı + renkli geri bildirim. Gerçek maçlar (Bota Karşı Oyna)
-  // eskisi gibi MatchLayout'ta kalır.
+  // Pratik Yap akışları (Kazanç Konumu / Oyunsonu / Açılış) — 5 dairesel
+  // eylem kartı + renkli geri bildirim (madde 2026-09-03 (3): Konumu Yeniden
+  // Tekrar Et / İpucu Göster / Terk Et / Tahtanın Yönünü Değiştir / Farklı
+  // Bir Konumu Pratik Yap — Beraberlik Teklif Et bu ekrandan KALKTI).
   if (practiceActions) {
-    const actions: [PracticeAction, PracticeAction, PracticeAction, PracticeAction] = [
+    const actions: PracticeAction[] = [
       {
-        icon: '🔁', label: 'Aynı konumu tekrar pratik yap',
+        icon: '🔁', label: 'Konumu Yeniden Tekrar Et',
         onClick: practiceActions.onPlaySame, enabled: status === 'over',
       },
       {
-        icon: '🤝', label: 'Beraberlik teklif et',
-        onClick: offerDrawToBot, enabled: status === 'playing' && canOfferDraw(drawOffersUsed),
+        icon: '💡', label: 'İpucu Göster',
+        onClick: showHint,
+        enabled: status === 'playing' && !hintLoading && chessRef.current.turn() === studentColor,
       },
       {
-        icon: '🏳️', label: 'Pratiği terk et',
+        icon: '🏳️', label: 'Terk Et',
         onClick: () => {
           if (confirm('Pratiği terk etmek istiyor musun?')) resignToBot();
         },
         enabled: status === 'playing',
       },
       {
-        icon: '🎲', label: 'Farklı bir konumu pratik yap',
+        icon: '🔄', label: 'Tahtanın Yönünü Değiştir',
+        onClick: () => setFlipped((f) => !f), enabled: true,
+      },
+      {
+        icon: '🎲', label: 'Farklı Bir Konumu Pratik Yap',
         onClick: practiceActions.onPlayDifferent, enabled: status === 'over',
       },
     ];
@@ -474,26 +567,59 @@ export function BotGame({
     );
   }
 
+  // Gerçek maç (Bota Karşı Maç Yap) — madde 2026-09-03 (2): 5 dairesel eylem
+  // kartı (Beraberlik Teklif Et / Terk Et / Analiz Et / Tahtanın Yönünü
+  // Değiştir / Yeniden Oyna). AYNI dairesel bileşen (PracticeMatchLayout)
+  // kullanılır — arkadaş/turnuva maçları (LiveGame → MatchLayout) DOKUNULMAZ.
+  const matchActions: PracticeAction[] = [
+    {
+      icon: '🤝', label: `Beraberlik Teklif Et (${offersLeft(drawOffersUsed)})`,
+      onClick: offerDrawToBot,
+      enabled: status === 'playing' && canOfferDraw(drawOffersUsed) && !drawChecking,
+    },
+    {
+      icon: '🏳️', label: 'Terk Et',
+      onClick: () => {
+        if (confirm('Maçı terk etmek istiyor musun? Maçı kaybedeceksin.')) resignToBot();
+      },
+      enabled: status === 'playing',
+    },
+    {
+      icon: '🔍', label: 'Analiz Et',
+      onClick: () => setShowAnalysis(true),
+      enabled: status === 'over',
+    },
+    {
+      icon: '🔄', label: 'Tahtanın Yönünü Değiştir',
+      onClick: () => setFlipped((f) => !f), enabled: true,
+    },
+    ...(onRematch ? [{
+      icon: '🔁', label: 'Yeniden Oyna',
+      onClick: onRematch, enabled: status === 'over',
+    }] : []),
+  ];
+
   return (
-    <MatchLayout
+    <PracticeMatchLayout
       top={top}
       bottom={bottom}
       board={board}
       moveList={moveList}
-      extra={extra}
-      over={status === 'over'}
-      resultSlot={
-        <div className="t-ok p-4 text-center text-lg font-bold">
-          {resultText}
-        </div>
-      }
-      drawLabel={`Beraberlik Teklif Et (${offersLeft(drawOffersUsed)})`}
-      drawDisabled={!canOfferDraw(drawOffersUsed)}
-      onOfferDraw={offerDrawToBot}
-      onResign={resignToBot}
-      onRematch={onRematch}
-      rematchEnabled={status === 'over'}
-      rematchLabel="Yeniden Oyna"
+      outcome={status === 'over' ? outcome : null}
+      resultText={resultText}
+      actions={matchActions}
+      extra={(
+        <>
+          {extra}
+          {showAnalysis && (
+            <MatchAnalysisSummary
+              summary={gameSummary}
+              progress={analysisProgress}
+              onLearnFromMistakes={learnFromMistakes}
+            />
+          )}
+        </>
+      )}
     />
   );
 }
