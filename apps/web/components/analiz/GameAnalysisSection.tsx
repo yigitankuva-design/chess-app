@@ -11,9 +11,9 @@ const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 interface Props {
   /** Madde 2026-09-03 (2): BotGame'in "Analiz Et" özet kartındaki
-   *  "Hatalarından Ders Al" CTA'sından gelinince, listeye bakmadan DOĞRUDAN
-   *  bu maç açılır. Liste yüklendiğinde bulunamazsa (silinmiş/başka sporcu)
-   *  sessizce normal listeye düşer. */
+   *  "Hatalarını Gözden Geçir" CTA'sından gelinince, listeye bakmadan
+   *  DOĞRUDAN bu maç açılır. Liste yüklendiğinde bulunamazsa (silinmiş/başka
+   *  sporcu) sessizce normal listeye düşer. */
   initialGameId?: number | null;
 }
 

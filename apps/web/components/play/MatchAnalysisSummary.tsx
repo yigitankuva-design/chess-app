@@ -63,7 +63,7 @@ export function MatchAnalysisSummary({ summary, progress, onLearnFromMistakes }:
         ))}
       </div>
       <button type="button" onClick={onLearnFromMistakes} className="t-btn w-full">
-        Hatalarından Ders Al
+        Hatalarını Gözden Geçir
       </button>
     </div>
   );
