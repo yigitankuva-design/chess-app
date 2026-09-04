@@ -38,6 +38,13 @@ export interface GameSummary {
 const INACCURACY_CP = 50;
 const MISTAKE_CP = 100;
 const BLUNDER_CP = 300;
+/** Madde 2026-09-06 (6): ACPL ORTALAMASINA giren tek bir hamlenin kaybı bu
+ *  değerle sınırlanır — mat skorlarının `mateToCp()` ile ürettiği (yüz
+ *  binlerce cp'lik) aşırı büyük değerler ortalamayı anlamsız şişirmesin
+ *  (gözlemlenen "3788" hatası). SADECE ortalama için — inaccuracy/mistake/
+ *  blunder SAYIMI hâlâ ham (sınırsız) cpLoss'a bakar, çünkü mat kaçırmak
+ *  zaten kesin bir "vahim hata"dır, eşik altına düşürülmemeli. */
+const ACPL_CAP_CP = 1000;
 
 /** Mat skorunu eşik mantığının tek tip çalışması için büyük bir centipawn
  *  değerine çevirir — `moveQuality.ts`'teki AYNI teknik, bağımsız kopyası
@@ -138,7 +145,7 @@ export function computeGameSummary(
     const beforeForStudent = forSide(beforeCp, studentColor);
     const afterForStudent = forSide(afterCp, studentColor);
     const cpLoss = Math.max(0, beforeForStudent - afterForStudent);
-    cpLosses.push(cpLoss);
+    cpLosses.push(Math.min(cpLoss, ACPL_CAP_CP));
 
     const kind = classifyDelta(cpLoss);
     if (kind === 'inaccuracy') inaccuracies++;

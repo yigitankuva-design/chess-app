@@ -73,23 +73,18 @@ export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
         <p className="text-sm t-muted">Henüz hamle yapılmadı.</p>
       ) : (
         <div ref={boxRef} className="max-h-32 overflow-y-auto overflow-x-hidden">
-          {/* Akici yazi: satir dolunca kendiliginden alt satira gecer. */}
-          <p className="text-sm font-mono leading-relaxed break-words">
-            {rows.map((r, i) => (
-              <span key={r.no}>
-                <span className="whitespace-nowrap">
-                  <span className="t-muted">{r.no}.</span>{' '}
-                  {move(r.white, '…')}
-                  {r.black ? <>{' – '}{move(r.black, '')}</> : null}
-                  {i < rows.length - 1 ? ',' : ''}
-                </span>
-                {/* Ayirici bosluk nowrap DISINDA ve GERCEK bosluk:
-                    once bolunmez bosluk (U+00A0) vardi, bu yuzden satir
-                    hic bolunmuyor ve yazi yatay akiyordu. */}
-                {i < rows.length - 1 ? ' ' : ''}
-              </span>
+          {/* Madde 2026-09-06 (4): NotationCard'daki AYNI sabit 3-sütun grid —
+              satır sayısı içerik uzunluğuna göre değil, HER ZAMAN 3 hamle/satır. */}
+          <div className="grid gap-x-1 gap-y-1.5 text-sm font-mono"
+            style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            {rows.map((r) => (
+              <div key={r.no} className="whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="t-muted">{r.no}.</span>{' '}
+                {move(r.white, '…')}
+                {r.black ? <>{'-'}{move(r.black, '')}</> : null}
+              </div>
             ))}
-          </p>
+          </div>
         </div>
       )}
     </section>

@@ -55,8 +55,9 @@ describe('TeoriPratigiPractice', () => {
     fireEvent.click(screen.getByText('fake-move'));
     expect(screen.queryByText('Henüz hamle yapılmadı.')).not.toBeInTheDocument();
     // "e4" onSelectPly verilmediği için düz metin (buton değil) — bitişik
-    // parça (bkz. MoveList.tsx move()), tek başına bir öğe değil.
-    expect(screen.getByLabelText('Hamleler')).toHaveTextContent('e4 – e5');
+    // parça (bkz. MoveList.tsx move()), tek başına bir öğe değil. Madde
+    // 2026-09-06 (4): ayırıcı artık dar boşluksuz tire.
+    expect(screen.getByLabelText('Hamleler')).toHaveTextContent('e4-e5');
   });
 
   it('başlangıçta doğru/yanlış kartı ve tekrar/yeni butonları YOKTUR', () => {

@@ -3,14 +3,16 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/components/analiz/AnalysisBoard', () => ({
   AnalysisBoard: ({
-    fen, boardOrientation, onWheelStep, hideNotation,
+    fen, boardOrientation, onWheelStep, hideNotation, interactive, onPieceDrop,
   }: {
     fen: string; boardOrientation?: string; onWheelStep?: (delta: 1 | -1) => void; hideNotation?: boolean;
+    interactive?: boolean; onPieceDrop?: (from: string, to: string) => boolean;
   }) => (
     <div data-testid="analysis-board" data-fen={fen} data-orientation={boardOrientation}
-      data-hide-notation={hideNotation ? 'true' : 'false'}>
+      data-hide-notation={hideNotation ? 'true' : 'false'} data-interactive={interactive ? 'true' : 'false'}>
       <button type="button" data-testid="wheel-forward" onClick={() => onWheelStep?.(1)} />
       <button type="button" data-testid="wheel-back" onClick={() => onWheelStep?.(-1)} />
+      <button type="button" data-testid="drop-d2d4" onClick={() => onPieceDrop?.('d2', 'd4')} />
     </div>
   ),
   ANALYSIS_BOARD_MAX_WIDTH: 380,
@@ -39,6 +41,10 @@ const GAMES = [
     id: 7, type: 'bot' as const, result: '1-0' as const, student_color: 'w' as const,
     started_at: '2026-08-30T10:00:00', finished_at: '2026-08-30T10:20:00',
     opponent: { type: 'bot' as const, level: 4 }, start_fen: null,
+    white_name: 'Ali', black_name: 'Bot · Düzey 4', rated: false,
+    white_rating_after: null, black_rating_after: null,
+    white_rating_delta: null, black_rating_delta: null,
+    tempo_label: null, opening_name: null, variant_name: null,
   },
 ];
 const MOVES = [
@@ -130,6 +136,28 @@ describe('GameAnalysisSection — fare tekerleği ile ileri/geri (madde 2026-09-
 
     fireEvent.click(screen.getByTestId('wheel-back'));
     expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', START_FEN);
+  });
+});
+
+describe('GameAnalysisSection — madde 2026-09-06 (7): tek seviyeli varyant, tahta artık interaktif', () => {
+  it('tahta interactive olarak açılır', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    expect(await screen.findByTestId('analysis-board')).toHaveAttribute('data-interactive', 'true');
+  });
+
+  it('kayıtlı ana hamle yerine farklı bir hamle denenince ana hat SİLİNMEZ, varyant eklenir', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board'); // ply 0, başlangıç konumu
+
+    fireEvent.click(screen.getByTestId('drop-d2d4')); // e4 YERİNE farklı bir hamle dene
+    expect(screen.getByText('e4')).toBeInTheDocument();  // kayıtlı ana hamle hâlâ duruyor
+    expect(screen.getByText('d4')).toBeInTheDocument();  // yeni varyant görünür
   });
 });
 

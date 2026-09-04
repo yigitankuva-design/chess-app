@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
-from chess_api.models import ChildProfile, Game, GameMove, GameType, GameStatus, GameResult
+from chess_api.models import ChildProfile, Game, GameMove, GameType, GameStatus, GameResult, OpeningVariant, Opening
 from chess_api.schemas.game import (
     StartBotGameRequest, StartBotGameResponse, MakeMoveRequest, MoveResponse,
 )
@@ -13,10 +13,22 @@ from chess_api.services.badge_engine import evaluate_event, BadgeEvent
 from chess_api.services.rank_engine import add_xp
 from chess_api.services.activity_logger import log_activity
 from chess_api.services.time_limit_check import check_time_limit
+from chess_api.services.tempo import tempo_category
 
 router = APIRouter(prefix="/games", tags=["games"])
 
 INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+
+def _tempo_label(base_ms: int | None, increment_ms: int | None) -> str | None:
+    """Madde 2026-09-06 (8): "Maçlarımın Analizi" kartındaki "5+3(Yıldırım)"
+    biçimi — süresiz maçta None döner."""
+    if base_ms is None:
+        return None
+    base_min = round(base_ms / 60_000)
+    inc_s = round((increment_ms or 0) / 1_000)
+    category = tempo_category(base_ms, increment_ms)
+    return f"{base_min}+{inc_s}({category})" if category else f"{base_min}+{inc_s}"
 
 
 @router.post("/bot/start", response_model=StartBotGameResponse)
@@ -179,12 +191,34 @@ async def list_my_games(
     for game in games:
         if game.type == GameType.bot:
             opponent = {"type": "bot", "level": game.black_bot_level}
+            white_name = (await db.get(ChildProfile, game.white_child_id)).display_name if game.white_child_id else None
+            black_name = f"Bot · Düzey {game.black_bot_level}" if game.black_bot_level is not None else "Bot"
         else:
             other_id = (
                 game.black_child_id if game.white_child_id == child.id else game.white_child_id
             )
             other = await db.get(ChildProfile, other_id) if other_id else None
             opponent = {"type": "human", "name": other.display_name if other else None}
+            white = await db.get(ChildProfile, game.white_child_id) if game.white_child_id else None
+            black = await db.get(ChildProfile, game.black_child_id) if game.black_child_id else None
+            white_name = white.display_name if white else None
+            black_name = black.display_name if black else None
+
+        # Madde 2026-09-06 (8): Açılış Pratiği'nden başlayan maçlarda (start_fen
+        # bilinen bir OpeningVariant'a eşleşiyorsa) açılış/varyant ismi —
+        # serbest/sıfırdan başlayan maçlarda İKİSİ DE null kalır (kapsam
+        # dışı bırakıldı, Zafer'e onaylatıldı).
+        opening_name = None
+        variant_name = None
+        if game.start_fen:
+            variant = (await db.execute(
+                select(OpeningVariant).where(OpeningVariant.start_fen == game.start_fen)
+            )).scalar_one_or_none()
+            if variant:
+                variant_name = variant.name
+                opening = await db.get(Opening, variant.opening_id)
+                opening_name = opening.name if opening else None
+
         out.append({
             "id": game.id, "type": game.type.value,
             "result": game.result.value if game.result else None,
@@ -195,6 +229,25 @@ async def list_my_games(
             # Acilis pratiginden baslayan maclarda ilk konum (ply 0) standart
             # baslangic DEGILDIR — Analiz Et ekraninin dogru gostermesi icin.
             "start_fen": game.start_fen,
+            # Madde 2026-09-06 (8): "Maçlarımın Analizi" tam maç kartı.
+            "white_name": white_name,
+            "black_name": black_name,
+            "rated": game.rated,
+            # Madde 2026-09-06 (8): görseldeki "2095+6" biçimi — maç SONRASI
+            # güncel puan + o maçtan kazanılan/kaybedilen fark.
+            "white_rating_after": game.white_rating_after,
+            "black_rating_after": game.black_rating_after,
+            "white_rating_delta": (
+                game.white_rating_after - game.white_rating_before
+                if game.white_rating_after is not None and game.white_rating_before is not None else None
+            ),
+            "black_rating_delta": (
+                game.black_rating_after - game.black_rating_before
+                if game.black_rating_after is not None and game.black_rating_before is not None else None
+            ),
+            "tempo_label": _tempo_label(game.base_ms, game.increment_ms),
+            "opening_name": opening_name,
+            "variant_name": variant_name,
         })
     return out
 

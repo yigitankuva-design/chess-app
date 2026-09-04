@@ -1,15 +1,21 @@
 'use client';
 import { PROMOTION_CHOICES } from '@/lib/play/promotion';
 import type { PromotionPiece } from '@/lib/play/promotion';
+import { pieceSetUris } from '@/lib/pieceSets';
 
 interface Props {
+  /** Terfi eden piyonun rengi — hangi taşın (beyaz/siyah) gösterileceğini belirler. */
+  color: 'w' | 'b';
   onPick: (piece: PromotionPiece) => void;
   onCancel: () => void;
 }
 
+/** Madde 2026-09-06 (1): kartlardaki taşlar artık Cburnett SVG seti. */
+const CBURNETT = pieceSetUris('cburnett');
+
 /** Piyon terfi ettiginde acilan secim penceresi (madde 2).
  *  Otomatik vezir YOK — sporcu Vezir/Kale/Fil/At arasindan secer. */
-export function PromotionPicker({ onPick, onCancel }: Props) {
+export function PromotionPicker({ color, onPick, onCancel }: Props) {
   return (
     <div
       role="dialog"
@@ -28,7 +34,12 @@ export function PromotionPicker({ onPick, onCancel }: Props) {
               onClick={() => onPick(c.piece)}
               className="t-card-i flex flex-col items-center gap-1 py-3"
             >
-              <span className="text-3xl leading-none" aria-hidden="true">{c.symbol}</span>
+              <img
+                src={CBURNETT[`${color}${c.piece.toUpperCase()}`]}
+                alt=""
+                aria-hidden="true"
+                className="w-9 h-9"
+              />
             </button>
           ))}
         </div>

@@ -12,6 +12,7 @@ vi.mock('@/components/analiz/AnalysisBoard', () => ({
       data-hide-notation={hideNotation ? 'true' : 'false'}>
       <button type="button" data-testid="drop-e2e4" onClick={() => onPieceDrop?.('e2', 'e4')} />
       <button type="button" data-testid="drop-e7e5" onClick={() => onPieceDrop?.('e7', 'e5')} />
+      <button type="button" data-testid="drop-d2d4" onClick={() => onPieceDrop?.('d2', 'd4')} />
       <button type="button" data-testid="drop-illegal" onClick={() => onPieceDrop?.('e2', 'e5')} />
       <button type="button" data-testid="wheel-forward" onClick={() => onWheelStep?.(1)} />
       <button type="button" data-testid="wheel-back" onClick={() => onWheelStep?.(-1)} />
@@ -84,17 +85,41 @@ describe('FreePlayAnalysis — fare tekerleğiyle geri/ileri alma (madde 2026-09
     expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', FEN_AFTER_E4);
   });
 
-  it('geri alınmış bir konumdan YENİ bir hamle oynanırsa, geri alınan hamle KALICI olarak budanır (dallanma)', () => {
+  it('madde 2026-09-06 (7): AYNI hamlenin tekrar oynanması dallanma YARATMAZ — gelecek (e5) KORUNUR', () => {
     render(<FreePlayAnalysis />);
     fireEvent.click(screen.getByTestId('drop-e2e4'));
     fireEvent.click(screen.getByTestId('drop-e7e5'));
+    const fenAfterE4E5 = screen.getByTestId('analysis-board').getAttribute('data-fen');
     fireEvent.click(screen.getByTestId('wheel-back')); // e5'i geri al, e4'te kal
     fireEvent.click(screen.getByTestId('wheel-back')); // e4'ü de geri al, başlangıca dön
-    fireEvent.click(screen.getByTestId('drop-e2e4')); // aynı hamleyi yeniden oyna
-    // e7e5 artık geri gelemez — ileri tekerlek başlangıçtan sadece 1 adım ileri gidebilir.
+    fireEvent.click(screen.getByTestId('drop-e2e4')); // aynı hamleyi yeniden oyna — dallanma YOK
     fireEvent.click(screen.getByTestId('wheel-forward'));
     fireEvent.click(screen.getByTestId('wheel-forward'));
-    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', FEN_AFTER_E4);
+    // e5 hâlâ orada — eski davranışta bu adımda başlangıçtan sadece 1 adım
+    // ileri gidilebiliyordu (e5 budanmıştı); artık ikisi de korunuyor.
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', fenAfterE4E5);
+    expect(screen.getByText('e5')).toBeInTheDocument();
+  });
+});
+
+describe('FreePlayAnalysis — ana hatta FARKLI bir hamle denemek: tek seviyeli varyant (madde 2026-09-06 (7))', () => {
+  it('ana hat SİLİNMEZ — hem orijinal hamle hem yeni varyant notasyonda görünür', () => {
+    render(<FreePlayAnalysis />);
+    fireEvent.click(screen.getByTestId('drop-e2e4'));
+    fireEvent.click(screen.getByTestId('wheel-back')); // başlangıca dön
+    fireEvent.click(screen.getByTestId('drop-d2d4')); // e4 YERİNE farklı bir hamle dene
+    expect(screen.getByText('e4')).toBeInTheDocument();  // ana hat hâlâ duruyor
+    expect(screen.getByText('d4')).toBeInTheDocument();  // yeni varyant görünür
+  });
+
+  it('varyant denendikten sonra ana hamleye tıklayınca ana hattın pozisyonuna dönülür', () => {
+    render(<FreePlayAnalysis />);
+    fireEvent.click(screen.getByTestId('drop-e2e4'));
+    const fenAfterE4 = screen.getByTestId('analysis-board').getAttribute('data-fen');
+    fireEvent.click(screen.getByTestId('wheel-back'));
+    fireEvent.click(screen.getByTestId('drop-d2d4'));
+    fireEvent.click(screen.getByText('e4')); // ana hattaki hamleye geri dön
+    expect(screen.getByTestId('analysis-board')).toHaveAttribute('data-fen', fenAfterE4);
   });
 });
 

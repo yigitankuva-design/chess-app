@@ -517,6 +517,7 @@ export function LiveGame({ gameId, myColor, tournamentId, berserkAvailable }: Pr
         <>
           {pending && (
             <PromotionPicker
+              color={myColor === 'white' ? 'w' : 'b'}
               onPick={(piece) => {
                 const p = pending;
                 setPending(null);

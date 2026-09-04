@@ -7,8 +7,9 @@ import type { PlayerInfo } from '@/components/play/MatchLayout';
 export type PracticeOutcome = 'win' | 'draw' | 'loss';
 
 export interface PracticeAction {
-  /** Ekranda gösterilen tek karakter/emoji — kartlarda YAZI olmaz (madde 2c). */
-  icon: string;
+  /** Ekranda gösterilen tek karakter/emoji (veya madde 2026-09-06 (5): özel
+   *  bir SVG/ReactNode) — kartlarda YAZI olmaz (madde 2c). */
+  icon: ReactNode;
   /** Ekranda görünmez, ekran okuyucu ve test'ler için. */
   label: string;
   onClick: () => void;

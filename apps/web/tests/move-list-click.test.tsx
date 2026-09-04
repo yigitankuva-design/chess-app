@@ -36,13 +36,11 @@ describe('MoveList — hamleye tıklayarak gezinme (madde 1)', () => {
       .not.toHaveAttribute('aria-current');
   });
 
-  it('tıklanabilir haldeyken de yazım aynı kalır (Türkçe, virgüllü)', () => {
+  it('tıklanabilir haldeyken de yazım aynı kalır (Türkçe, sabit 3 sütun grid)', () => {
     render(<MoveList san={['e4', 'e5', 'Nf3', 'Nc6']} onSelectPly={vi.fn()} />);
-    const metin = screen.getByLabelText('Hamleler').textContent!
-      .replace(/\s+/g, ' ')
-      .replace(/^\s*Hamleler\s*/, '')
-      .replace(/^\s*Notasyon Verilerini Gizle\s*/, '')
-      .trim();
-    expect(metin).toBe('1. e4 – e5, 2. Af3 – Ac6');
+    const rows = Array.from(
+      screen.getByLabelText('Hamleler').querySelectorAll('.whitespace-nowrap'),
+    ).map((el) => el.textContent!.replace(/\s+/g, ' ').trim());
+    expect(rows).toEqual(['1. e4-e5', '2. Af3-Ac6']);
   });
 });

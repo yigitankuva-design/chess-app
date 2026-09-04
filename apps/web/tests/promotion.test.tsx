@@ -35,7 +35,7 @@ describe('promotion — saf mantık (madde 2)', () => {
 
 describe('PromotionPicker — seçim penceresi', () => {
   it('dört taş da sunulur', () => {
-    render(<PromotionPicker onPick={vi.fn()} onCancel={vi.fn()} />);
+    render(<PromotionPicker color="w" onPick={vi.fn()} onCancel={vi.fn()} />);
     for (const label of ['Vezir', 'Kale', 'Fil', 'At']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
@@ -43,23 +43,29 @@ describe('PromotionPicker — seçim penceresi', () => {
 
   it('seçilen taş geri bildirilir', () => {
     const onPick = vi.fn();
-    render(<PromotionPicker onPick={onPick} onCancel={vi.fn()} />);
+    render(<PromotionPicker color="w" onPick={onPick} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'At' }));
     expect(onPick).toHaveBeenCalledWith('n');
   });
 
   it('vazgeçilebilir', () => {
     const onCancel = vi.fn();
-    render(<PromotionPicker onPick={vi.fn()} onCancel={onCancel} />);
+    render(<PromotionPicker color="w" onPick={vi.fn()} onCancel={onCancel} />);
     fireEvent.click(screen.getByRole('button', { name: 'Vazgeç' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('madde 2026-09-04 (3): kartlarda sadece taş görseli var, isim YAZI olarak görünmez', () => {
-    render(<PromotionPicker onPick={vi.fn()} onCancel={vi.fn()} />);
+    render(<PromotionPicker color="w" onPick={vi.fn()} onCancel={vi.fn()} />);
     // Erişilebilir ad (aria-label) hâlâ var — sadece görünür metin kaldırıldı.
     const vezir = screen.getByRole('button', { name: 'Vezir' });
-    expect(vezir).toHaveTextContent('♛');
-    expect(vezir.textContent).toBe('♛');
+    expect(vezir.textContent).toBe('');
+    expect(vezir.querySelector('img')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-06 (1): taş görseli Cburnett setinden ve renge göre gelir', () => {
+    render(<PromotionPicker color="b" onPick={vi.fn()} onCancel={vi.fn()} />);
+    const img = screen.getByRole('button', { name: 'Vezir' }).querySelector('img');
+    expect(img).toHaveAttribute('src', '/pieces/cburnett/bQ.svg');
   });
 });

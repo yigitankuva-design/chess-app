@@ -109,7 +109,17 @@ async def apply_rating_update(db: AsyncSession, game: Game) -> None:
     k_white = _k_factor(white.games_played)
     k_black = _k_factor(black.games_played)
 
+    white_before, black_before = white.rating, black.rating
     white.rating = max(0, round(white.rating + k_white * (score_white - expected_white)))
     black.rating = max(0, round(black.rating + k_black * (score_black - expected_black)))
     white.games_played += 1
     black.games_played += 1
+
+    # Madde 2026-09-06 (8): "Maçlarımın Analizi" kartındaki puan farkı için
+    # bu maça özel anlık görüntü — ChildTempoRating CÜMÜLATİF olduğu için
+    # (hep en güncel puanı tutar), geçmiş bir maça bakınca o ANKİ değişimi
+    # göstermenin tek yolu bunu maçın kendisine yazmak.
+    game.white_rating_before = white_before
+    game.white_rating_after = white.rating
+    game.black_rating_before = black_before
+    game.black_rating_after = black.rating

@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameMoveList } from '@/components/analiz/GameMoveList';
 
 const MOVES = [
-  { ply: 1, san: 'e4', fen_after: 'f1' },
-  { ply: 2, san: 'e5', fen_after: 'f2' },
-  { ply: 3, san: 'Nf3', fen_after: 'f3' },
+  { ply: 1, san: 'e4', fenAfter: 'f1' },
+  { ply: 2, san: 'e5', fenAfter: 'f2' },
+  { ply: 3, san: 'Nf3', fenAfter: 'f3' },
 ];
 
 function setup(over: Partial<React.ComponentProps<typeof GameMoveList>> = {}) {
@@ -64,10 +64,10 @@ describe('GameMoveList', () => {
 
   it('madde 2026-09-04 (1c/3c/4c): bir hamlenin beyaz+siyah kısmı satır sınırında BÖLÜNMEZ', () => {
     const moves = [
-      { ply: 1, san: 'e4', fen_after: 'f1' },
-      { ply: 2, san: 'e5', fen_after: 'f2' },
-      { ply: 3, san: 'Nf3', fen_after: 'f3' },
-      { ply: 4, san: 'Nc6', fen_after: 'f4' },
+      { ply: 1, san: 'e4', fenAfter: 'f1' },
+      { ply: 2, san: 'e5', fenAfter: 'f2' },
+      { ply: 3, san: 'Nf3', fenAfter: 'f3' },
+      { ply: 4, san: 'Nc6', fenAfter: 'f4' },
     ];
     setup({ moves });
     expect(screen.queryAllByText('2.')).toHaveLength(1);

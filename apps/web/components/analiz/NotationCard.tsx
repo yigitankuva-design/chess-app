@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toTurkishSan } from '@/lib/chess/analysisFormat';
 import { classifyMoveQuality } from '@/lib/chess/moveQuality';
 import type { WhiteScore } from '@/lib/chess/moveQuality';
@@ -8,6 +8,16 @@ export interface NotationMove {
   ply: number;
   san: string;
   fenAfter: string;
+  /** Madde 2026-09-06 (7): bu hamle yerine denenen TEK SEVİYELİ alternatif
+   *  devam (varsa) — bkz. lib/chess/variantMoves.ts. */
+  variant?: NotationMove[];
+}
+
+export interface ActiveVariant {
+  /** Alternatifin bağlı olduğu ANA HAT ply'ı. */
+  atPly: number;
+  /** Varyant içindeki konum (1 tabanlı — variant[index-1] aktif hamle). */
+  index: number;
 }
 
 interface Props {
@@ -25,6 +35,11 @@ interface Props {
   /** Arka planda kaç ply değerlendirildi / toplam kaç ply var — verilirse ve
    *  bitmemişse küçük bir "değerlendiriliyor" satırı gösterilir. */
   evalProgress?: { done: number; total: number };
+  /** Madde 2026-09-06 (7): şu an bir varyant mı gösteriliyor — verilirse
+   *  mainline vurgusu kapanır, o varyantın ilgili hamlesi vurgulanır. */
+  activeVariant?: ActiveVariant | null;
+  /** Bir varyant hamlesine tıklanınca çağrılır. */
+  onSelectVariantPly?: (atPly: number, index: number) => void;
 }
 
 interface MovePair {
@@ -65,7 +80,7 @@ const QUALITY_COLOR = { bad: '#f87171', good: '#7dd3fc' } as const;
 
 export function NotationCard({
   moves, currentPly, onSelectPly, hideNotation, onToggleHideNotation, onDeleteAfter,
-  evalByPly, evalProgress,
+  evalByPly, evalProgress, activeVariant, onSelectVariantPly,
 }: Props) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
@@ -105,8 +120,33 @@ export function NotationCard({
   const pairs = buildPairs(moves);
   const clickable = !!onSelectPly;
 
+  /** Madde 2026-09-06 (7): bir hamlenin altına, girintili küçük punto bir
+   *  alt-satır olarak alternatif devamı gösterir (Lichess'ten esinlenilen
+   *  KAVRAM — tasarım/kod kendimize özgü). */
+  const variantRow = (atPly: number, variant: NotationMove[]) => {
+    const moveNo = Math.ceil(atPly / 2);
+    return (
+      <div key={`variant-${atPly}`} className="whitespace-nowrap overflow-x-auto text-[0.78em] pl-3 t-muted"
+        style={{ gridColumn: '1 / -1' }}>
+        <span aria-hidden="true">↳ {moveNo}{atPly % 2 === 0 ? '…' : '.'}{' '}</span>
+        {variant.map((vm) => {
+          const active = !!activeVariant && activeVariant.atPly === atPly && activeVariant.index === vm.ply;
+          const label = toTurkishSan(vm.san);
+          if (!onSelectVariantPly) return <span key={vm.ply} className="px-0.5">{label}</span>;
+          return (
+            <button key={vm.ply} type="button" onClick={() => onSelectVariantPly(atPly, vm.ply)}
+              className="rounded px-0.5"
+              style={{ background: active ? 'rgba(34,211,238,0.25)' : undefined, fontWeight: active ? 700 : undefined }}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   const moveCell = (m: NotationMove) => {
-    const active = currentPly === m.ply;
+    const active = !activeVariant && currentPly === m.ply;
     const mover: 'w' | 'b' = m.ply % 2 === 1 ? 'w' : 'b';
     const before = evalByPly?.[m.ply - 1];
     const after = evalByPly?.[m.ply];
@@ -157,15 +197,19 @@ export function NotationCard({
       {moves.length === 0 ? (
         <p className="text-xs t-muted">Henüz hamle yok.</p>
       ) : (
-        <div className="grid gap-x-2 gap-y-1.5 text-sm font-mono"
+        <div className="grid gap-x-1 gap-y-1.5 text-sm font-mono"
           style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {pairs.map((p) => (
-            <div key={p.moveNumber} className="whitespace-nowrap overflow-hidden text-ellipsis">
-              <span className="t-muted">{p.moveNumber}.</span>{' '}
-              {p.white && moveCell(p.white)}
-              {' - '}
-              {p.black && moveCell(p.black)}
-            </div>
+            <Fragment key={p.moveNumber}>
+              <div className="whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="t-muted">{p.moveNumber}.</span>{' '}
+                {p.white && moveCell(p.white)}
+                {'-'}
+                {p.black && moveCell(p.black)}
+              </div>
+              {p.white?.variant && variantRow(p.white.ply, p.white.variant)}
+              {p.black?.variant && variantRow(p.black.ply, p.black.variant)}
+            </Fragment>
           ))}
         </div>
       )}

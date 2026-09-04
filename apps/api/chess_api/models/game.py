@@ -66,6 +66,15 @@ class Game(Base):
     # okunur (bilinçli küçük tekrar, bkz. migration BerserkIncrementGameFlags).
     white_berserked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     black_berserked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Madde 2026-09-06 (8): "Maçlarımın Analizi" kartında puan farkını
+    # ("±N") gösterebilmek için — apply_rating_update() içinde puan
+    # GÜNCELLENMEDEN hemen önce/sonra yakalanır. Puansız/bot maçlarda (o
+    # fonksiyon erken döner) HEPSİ NULL kalır — frontend bunu "puan yok"
+    # sinyali olarak kullanır.
+    white_rating_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    white_rating_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    black_rating_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    black_rating_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class GameMove(Base):

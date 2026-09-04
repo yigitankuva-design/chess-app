@@ -6,6 +6,7 @@ import type { PlayerInfo } from '@/components/play/MatchLayout';
 import { PracticeMatchLayout } from '@/components/play/PracticeMatchLayout';
 import type { PracticeAction, PracticeOutcome } from '@/components/play/PracticeMatchLayout';
 import { MatchAnalysisSummary } from '@/components/play/MatchAnalysisSummary';
+import { FlipBoardIcon, ReplayIcon } from '@/components/play/PracticeActionIcons';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
 import { isPromotionMove, promotionFromUci, toUci } from '@/lib/play/promotion';
@@ -511,6 +512,7 @@ export function BotGame({
     <>
       {pending && (
         <PromotionPicker
+          color={studentColor}
           onPick={(piece) => {
             const p = pending;
             setPending(null);
@@ -530,7 +532,7 @@ export function BotGame({
   if (practiceActions) {
     const actions: PracticeAction[] = [
       {
-        icon: '🔁', label: 'Konumu Yeniden Tekrar Et',
+        icon: <ReplayIcon />, label: 'Konumu Yeniden Tekrar Et',
         onClick: practiceActions.onPlaySame, enabled: status === 'over',
       },
       {
@@ -546,7 +548,7 @@ export function BotGame({
         enabled: status === 'playing',
       },
       {
-        icon: '🔄', label: 'Tahtanın Yönünü Değiştir',
+        icon: <FlipBoardIcon />, label: 'Tahtanın Yönünü Değiştir',
         onClick: () => setFlipped((f) => !f), enabled: true,
       },
       {
@@ -590,11 +592,11 @@ export function BotGame({
       enabled: status === 'over',
     },
     {
-      icon: '🔄', label: 'Tahtanın Yönünü Değiştir',
+      icon: <FlipBoardIcon />, label: 'Tahtanın Yönünü Değiştir',
       onClick: () => setFlipped((f) => !f), enabled: true,
     },
     ...(onRematch ? [{
-      icon: '🔁', label: 'Yeniden Oyna',
+      icon: <ReplayIcon />, label: 'Yeniden Oyna',
       onClick: onRematch, enabled: status === 'over',
     }] : []),
   ];

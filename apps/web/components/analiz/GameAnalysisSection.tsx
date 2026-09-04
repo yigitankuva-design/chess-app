@@ -1,11 +1,15 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import type { Square } from 'chess.js';
+import { Chess } from 'chess.js';
 import { listMyGames, getGameMoves } from '@/lib/analiz/analizApi';
-import type { GameSummary, GameMoveDto } from '@/lib/analiz/analizApi';
+import type { GameSummary } from '@/lib/analiz/analizApi';
 import { GameHistoryList } from './GameHistoryList';
 import { GameMoveList } from './GameMoveList';
 import { AnalysisBoard, ANALYSIS_BOARD_MAX_WIDTH } from './AnalysisBoard';
 import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
+import { applyMove, currentFen, stepView } from '@/lib/chess/variantMoves';
+import type { PlayedMove, ActiveVariant } from '@/lib/chess/variantMoves';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -28,8 +32,9 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<GameSummary | null>(null);
-  const [moves, setMoves] = useState<GameMoveDto[]>([]);
+  const [history, setHistory] = useState<PlayedMove[]>([]);
   const [ply, setPly] = useState(0);
+  const [activeVariant, setActiveVariant] = useState<ActiveVariant | null>(null);
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
   const [hideNotation, setHideNotation] = useState(false);
 
@@ -46,17 +51,19 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
   async function selectGame(g: GameSummary) {
     setSelectedGame(g);
     setPly(0);
+    setActiveVariant(null);
     setOrientation('white');
-    setMoves(await getGameMoves(g.id));
+    const moves = await getGameMoves(g.id);
+    setHistory(moves.map((m) => ({ ply: m.ply, san: m.san, fenAfter: m.fen_after })));
   }
 
   const baseFen = selectedGame?.start_fen ?? START_FEN;
-  /** Madde 2026-09-05 (3): hamle kalitesi işaretleri — maç seçilince arka
-   *  planda TÜM hamleler baştan değerlendirilir (React hook kuralları
-   *  gereği erken return'den ÖNCE, koşulsuz çağrılır). */
+  /** Madde 2026-09-05 (3): hamle kalitesi işaretleri — SADECE kayıtlı ana hat
+   *  üzerinden hesaplanır (varyant hamleleri kapsam dışı). React hook
+   *  kuralları gereği erken return'den ÖNCE, koşulsuz çağrılır. */
   const evalMoves = useMemo(
-    () => moves.map((m) => ({ ply: m.ply, fenAfter: m.fen_after })),
-    [moves],
+    () => history.map((m) => ({ ply: m.ply, fenAfter: m.fenAfter })),
+    [history],
   );
   const { evalByPly, progress } = useMoveQualityEval(baseFen, evalMoves, !!selectedGame);
 
@@ -64,20 +71,52 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
     return <GameHistoryList games={games} loading={loading} onSelect={selectGame} />;
   }
 
-  const fen = ply === 0 ? baseFen : (moves[ply - 1]?.fen_after ?? baseFen);
+  const fen = currentFen(baseFen, history, ply, activeVariant);
+
+  /** Madde 2026-09-06 (7): kayıtlı maçı incelerken ana hamle yerine farklı
+   *  bir hamle denenirse artık SONRASI SİLİNMEZ — o ply'a tek seviyeli bir
+   *  varyant olarak eklenir (bkz. lib/chess/variantMoves.ts). Sporcunun
+   *  KAYITLI maçı (backend) hiçbir zaman değişmez, sadece bu analiz
+   *  oturumunun yerel state'i. */
+  function handlePieceDrop(from: Square, to: Square): boolean {
+    try {
+      const board = new Chess(fen);
+      const mv = board.move({ from, to, promotion: 'q' });
+      if (!mv) return false;
+      const r = applyMove(history, ply, activeVariant, { san: mv.san, fenAfter: board.fen() });
+      setHistory(r.history);
+      setPly(r.viewIndex);
+      setActiveVariant(r.activeVariant);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   /** Madde 2026-09-05 (2): tahta üzerinde fare tekerleği ile hamle geçmişinde
-   *  ileri/geri gidilir — 0..moves.length arasında sınırlanır. */
+   *  ileri/geri gidilir — 0..history.length arasında sınırlanır. */
   function handleWheelStep(delta: 1 | -1) {
-    setPly((p) => Math.max(0, Math.min(moves.length, p + delta)));
+    const r = stepView(history, ply, activeVariant, delta);
+    setPly(r.viewIndex);
+    setActiveVariant(r.activeVariant);
   }
 
   /** Madde 2026-09-05 (3): sağ tık menüsündeki "Bu Hamleden Sonrasını Sil" —
    *  kullanıcı kararıyla YALNIZCA bu analiz oturumunda geçici bir kırpma;
    *  sporcunun kayıtlı maçı DEĞİŞMEZ (backend'e hiçbir istek atılmaz). */
   function handleDeleteAfter(afterPly: number) {
-    setMoves((prev) => prev.filter((m) => m.ply <= afterPly));
+    setHistory((prev) => prev.filter((m) => m.ply <= afterPly));
     setPly((p) => Math.min(p, afterPly));
+    setActiveVariant(null);
+  }
+
+  function selectMainPly(nextPly: number) {
+    setPly(nextPly);
+    setActiveVariant(null);
+  }
+
+  function selectVariantPly(atPly: number, index: number) {
+    setActiveVariant({ atPly, index });
   }
 
   return (
@@ -94,12 +133,14 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
         </button>
       </div>
       <AnalysisBoard fen={fen} boardOrientation={orientation}
+        interactive onPieceDrop={handlePieceDrop}
         onWheelStep={handleWheelStep} hideNotation={hideNotation} />
-      <GameMoveList moves={moves} currentPly={ply} onSelectPly={setPly}
+      <GameMoveList moves={history} currentPly={ply} onSelectPly={selectMainPly}
         onFlipBoard={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
         hideNotation={hideNotation} onToggleHideNotation={() => setHideNotation((v) => !v)}
         onDeleteAfter={handleDeleteAfter}
         evalByPly={evalByPly} evalProgress={progress}
+        activeVariant={activeVariant} onSelectVariantPly={selectVariantPly}
       />
     </div>
   );

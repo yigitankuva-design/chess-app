@@ -111,6 +111,21 @@ describe('computeGameSummary', () => {
     expect(summary.blunders).toBe(1);
   });
 
+  it('madde 2026-09-06 (6): mat kaçırma ACPL ortalamasını aşırı şişirmez (1000cp sınırı)', () => {
+    // Sporcu (beyaz) matlık bir avantajı kaçırıp kendini mat ettiriyor —
+    // mateToCp() burada ~99700 cp'lik bir kayıp üretir; sınırsız bırakılsa
+    // ACPL tek başına bu hamleyle binlerce cp'ye fırlardı (gözlemlenen "3788" hatası).
+    const evalByPly: Record<number, WhiteScore> = {
+      0: { cp: null, mate: 3 },   // beyaz 3 hamlede mat ediyordu
+      1: { cp: null, mate: -3 },  // hamleden sonra artık SİYAH 3 hamlede mat ediyor
+    };
+    const fens = [START, START];
+    const summary = computeGameSummary(evalByPly, fens, 'w');
+    expect(summary.blunders).toBe(1);          // sınıflandırma HÂLÂ ham kayba bakar
+    expect(summary.acpl).not.toBeNull();
+    expect(summary.acpl!).toBeLessThanOrEqual(1000); // ama ortalama sınırlanır
+  });
+
   it('hiç hamle yoksa (tek ply) tüm sayaçlar sıfır, ortalamalar null', () => {
     const summary = computeGameSummary({ 0: { cp: 0, mate: null } }, [START], 'w');
     expect(summary).toEqual({

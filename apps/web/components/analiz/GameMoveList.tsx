@@ -1,10 +1,10 @@
-import type { GameMoveDto } from '@/lib/analiz/analizApi';
 import { NotationCard } from './NotationCard';
+import type { NotationMove, ActiveVariant } from './NotationCard';
 import type { WhiteScore } from '@/lib/chess/moveQuality';
 
 interface Props {
-  moves: GameMoveDto[];
-  /** 0 = başlangıç konumu (henüz hamle yok); N = moves[N-1]'in fen_after'ı. */
+  moves: NotationMove[];
+  /** 0 = başlangıç konumu (henüz hamle yok); N = moves[N-1]'in fenAfter'ı. */
   currentPly: number;
   onSelectPly: (ply: number) => void;
   /** Tahtayı çevirir (madde 2026-08-30/3). */
@@ -15,6 +15,9 @@ interface Props {
   /** Madde 2026-09-05 (3): hamle kalitesi işaretleri için ply→skor haritası. */
   evalByPly?: Record<number, WhiteScore>;
   evalProgress?: { done: number; total: number };
+  /** Madde 2026-09-06 (7): tek seviyeli varyant görüntüleme/seçim (bkz. NotationCard). */
+  activeVariant?: ActiveVariant | null;
+  onSelectVariantPly?: (atPly: number, index: number) => void;
 }
 
 type IconType = 'flip' | 'first' | 'prev' | 'next' | 'last';
@@ -72,12 +75,13 @@ const NavBtn = ({
  */
 export function GameMoveList({
   moves, currentPly, onSelectPly, onFlipBoard, hideNotation, onToggleHideNotation, onDeleteAfter,
-  evalByPly, evalProgress,
+  evalByPly, evalProgress, activeVariant, onSelectVariantPly,
 }: Props) {
   const total = moves.length;
 
   return (
     <div className="space-y-2">
+      <hr className="border-t border-white/15" />
       <div className="flex items-center justify-center gap-2">
         <NavBtn label="Tahtayı çevir" icon="flip" onClick={onFlipBoard} />
         <NavBtn label="Başa git" icon="first" onClick={() => onSelectPly(0)} disabled={currentPly === 0} />
@@ -85,13 +89,15 @@ export function GameMoveList({
         <NavBtn label="İleri" icon="next" onClick={() => onSelectPly(Math.min(total, currentPly + 1))} disabled={currentPly === total} />
         <NavBtn label="Sona git" icon="last" onClick={() => onSelectPly(total)} disabled={currentPly === total} />
       </div>
+      <hr className="border-t border-white/15" />
 
       <NotationCard
-        moves={moves.map((m) => ({ ply: m.ply, san: m.san, fenAfter: m.fen_after }))}
+        moves={moves}
         currentPly={currentPly} onSelectPly={onSelectPly}
         hideNotation={hideNotation} onToggleHideNotation={onToggleHideNotation}
         onDeleteAfter={onDeleteAfter}
         evalByPly={evalByPly} evalProgress={evalProgress}
+        activeVariant={activeVariant} onSelectVariantPly={onSelectVariantPly}
       />
     </div>
   );

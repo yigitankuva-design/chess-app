@@ -263,6 +263,111 @@ async def test_list_my_games_standart_baslangicta_start_fen_null_doner(client, c
     assert response.json()[0]["start_fen"] is None
 
 
+async def test_list_my_games_bot_macinda_isimler_ve_puan_null(client, child_auth, db):
+    """Madde 2026-09-06 (8): bot maçında white_name sporcunun kendi ismi,
+    black_name "Bot · Düzey N" — bot maçları asla puanlı olmadığı için
+    rating_delta alanları NULL kalır."""
+    from chess_api.models import Game, GameType, GameStatus, GameResult
+
+    token, child_id = child_auth
+    db.add(Game(type=GameType.bot, status=GameStatus.finished, result=GameResult.white_wins,
+                white_child_id=child_id, black_bot_level=7))
+    await db.commit()
+
+    response = await client.get("/games", headers={"Authorization": f"Bearer {token}"})
+    g = response.json()[0]
+    assert g["white_name"] == "Ali"
+    assert g["black_name"] == "Bot · Düzey 7"
+    assert g["rated"] is False
+    assert g["white_rating_delta"] is None
+    assert g["black_rating_delta"] is None
+    assert g["tempo_label"] is None
+    assert g["opening_name"] is None
+    assert g["variant_name"] is None
+
+
+async def test_list_my_games_insan_macinda_her_iki_isim_ve_tempo_etiketi(client, child_auth, db):
+    from chess_api.models import Game, GameType, GameStatus, GameResult
+
+    token, child_id = child_auth
+    other_id, other_name = await _ikinci_cocuk(client)
+    db.add(Game(type=GameType.human, status=GameStatus.finished, result=GameResult.white_wins,
+                white_child_id=child_id, black_child_id=other_id,
+                base_ms=300_000, increment_ms=3_000, rated=True,
+                white_rating_before=400, white_rating_after=420,
+                black_rating_before=400, black_rating_after=380))
+    await db.commit()
+
+    response = await client.get("/games", headers={"Authorization": f"Bearer {token}"})
+    g = response.json()[0]
+    assert g["white_name"] == "Ali"
+    assert g["black_name"] == other_name
+    assert g["rated"] is True
+    assert g["white_rating_after"] == 420
+    assert g["black_rating_after"] == 380
+    assert g["white_rating_delta"] == 20
+    assert g["black_rating_delta"] == -20
+    assert g["tempo_label"] == "5+3(Yıldırım)"
+
+
+async def test_list_my_games_puansiz_insan_macinda_rating_delta_null(client, child_auth, db):
+    from chess_api.models import Game, GameType, GameStatus, GameResult
+
+    token, child_id = child_auth
+    other_id, _ = await _ikinci_cocuk(client)
+    db.add(Game(type=GameType.human, status=GameStatus.finished, result=GameResult.draw,
+                white_child_id=child_id, black_child_id=other_id, rated=False))
+    await db.commit()
+
+    response = await client.get("/games", headers={"Authorization": f"Bearer {token}"})
+    g = response.json()[0]
+    assert g["white_rating_delta"] is None
+    assert g["black_rating_delta"] is None
+    assert g["tempo_label"] is None
+
+
+async def test_list_my_games_acilis_pratigi_varyantiyla_eslesince_isim_doner(client, child_auth, db):
+    from chess_api.models import Game, GameType, GameStatus, GameResult, Opening, OpeningType, OpeningVariant
+
+    token, child_id = child_auth
+    fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    otype = OpeningType(name="e4'lü Açılışlar")
+    db.add(otype)
+    await db.commit()
+    await db.refresh(otype)
+    opening = Opening(name="İspanyol Açılışı", opening_type_id=otype.id)
+    db.add(opening)
+    await db.commit()
+    await db.refresh(opening)
+    db.add(OpeningVariant(opening_id=opening.id, name="Berlin Defansı", start_fen=fen))
+    db.add(Game(type=GameType.bot, status=GameStatus.finished, result=GameResult.draw,
+                white_child_id=child_id, black_bot_level=3, start_fen=fen))
+    await db.commit()
+
+    response = await client.get("/games", headers={"Authorization": f"Bearer {token}"})
+    g = response.json()[0]
+    assert g["opening_name"] == "İspanyol Açılışı"
+    assert g["variant_name"] == "Berlin Defansı"
+
+
+async def test_list_my_games_eslesmeyen_start_fen_acilis_ismi_dondurmez(client, child_auth, db):
+    """Serbest/sıfırdan oynanan bir maçın start_fen'i (varsa) hiçbir
+    OpeningVariant'a eşleşmiyorsa açılış/varyant ismi gösterilmez (madde
+    2026-09-06 (8): onaylanan kapsam sınırı — tam ECO tanıma kapsam dışı)."""
+    from chess_api.models import Game, GameType, GameStatus, GameResult
+
+    token, child_id = child_auth
+    db.add(Game(type=GameType.bot, status=GameStatus.finished, result=GameResult.draw,
+                white_child_id=child_id, black_bot_level=3,
+                start_fen="rnbqkbnr/pppppppp/8/8/8/4N3/PPPPPPPP/RNBQKB1R b KQkq - 1 1"))
+    await db.commit()
+
+    response = await client.get("/games", headers={"Authorization": f"Bearer {token}"})
+    g = response.json()[0]
+    assert g["opening_name"] is None
+    assert g["variant_name"] is None
+
+
 async def test_list_my_games_en_yeniden_eskiye_siralanir(client, child_auth, db):
     from datetime import datetime, timedelta
     from chess_api.models import Game, GameType, GameStatus, GameResult

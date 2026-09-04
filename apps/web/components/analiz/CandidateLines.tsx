@@ -44,7 +44,7 @@ export function CandidateLines({ lines, depth, loading = false }: Props) {
           >
             <span
               className="font-mono font-bold flex-shrink-0"
-              style={{ minWidth: 40, color: i === 0 ? 'rgb(165 243 252)' : undefined }}
+              style={{ minWidth: 40, color: i === 0 ? 'var(--t-text-1)' : undefined }}
             >
               {scoreLabel(line.scoreCp, line.mate)}
             </span>

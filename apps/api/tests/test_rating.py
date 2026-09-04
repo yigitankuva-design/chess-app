@@ -134,6 +134,61 @@ async def test_galibiyet_puan_kazandirir_kayip_kaybettirir(db):
 
 
 @pytest.mark.asyncio
+async def test_mac_uzerine_rating_oncesi_sonrasi_yazilir(db):
+    """Madde 2026-09-06 (8): Maçlarımın Analizi kartındaki puan farkı
+    ("±N") için — ChildTempoRating kümülatif olduğundan, o maça özel
+    değişim SADECE maçın kendi kolonlarından okunabilir."""
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    p2 = ChildProfile(parent_user_id=1, display_name="B", age=9, pin_hash="x")
+    db.add_all([p1, p2])
+    await db.commit()
+    await db.refresh(p1)
+    await db.refresh(p2)
+
+    game = Game(type=GameType.human, status=GameStatus.finished, result=GameResult.white_wins,
+               white_child_id=p1.id, black_child_id=p2.id, base_ms=300_000, increment_ms=0,
+               rated=True)
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+
+    await apply_rating_update(db, game)
+    await db.commit()
+    await db.refresh(game)
+
+    assert game.white_rating_before == STARTING_RATING
+    assert game.white_rating_after == 420
+    assert game.black_rating_before == STARTING_RATING
+    assert game.black_rating_after == 380
+
+
+@pytest.mark.asyncio
+async def test_puansiz_macta_rating_kolonlari_null_kalir(db):
+    p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
+    p2 = ChildProfile(parent_user_id=1, display_name="B", age=9, pin_hash="x")
+    db.add_all([p1, p2])
+    await db.commit()
+    await db.refresh(p1)
+    await db.refresh(p2)
+
+    game = Game(type=GameType.human, status=GameStatus.finished, result=GameResult.white_wins,
+               white_child_id=p1.id, black_child_id=p2.id, base_ms=300_000, increment_ms=0,
+               rated=False)
+    db.add(game)
+    await db.commit()
+    await db.refresh(game)
+
+    await apply_rating_update(db, game)
+    await db.commit()
+    await db.refresh(game)
+
+    assert game.white_rating_before is None
+    assert game.white_rating_after is None
+    assert game.black_rating_before is None
+    assert game.black_rating_after is None
+
+
+@pytest.mark.asyncio
 async def test_beraberlik_esit_puanda_degismez(db):
     p1 = ChildProfile(parent_user_id=1, display_name="A", age=9, pin_hash="x")
     p2 = ChildProfile(parent_user_id=1, display_name="B", age=9, pin_hash="x")
