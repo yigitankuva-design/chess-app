@@ -353,9 +353,12 @@ function PlayInner() {
   // ── Bota Karşı Oyna: maç ───────────────────────────────────────────────────
   // Madde: 2026-08-21 — Açılış Pratiği'ndeki BotGame ile AYNI tasarım: üstte
   // ekstra düz-yazı başlık/"Ayarları değiştir" barı YOK, BotGame kendi
-  // kabartılmış oyuncu kartlarıyla tek başına çizilir.
+  // kabartılmış oyuncu kartlarıyla tek başına çizilir. Madde 2026-09-05 (1)
+  // düzeltmesi: üst kart satırı (İkon-Bot-Süre) AppNav'ın siyah başlık
+  // barına yapışık duruyordu — `pt-4` ile ARADA boşluk bırakıldı (Zafer'in
+  // düzeltmesi: boşluk KARTIN İÇİNDE değil, kartla header ARASINDA olmalı).
   return (
-    <main className="pb-12">
+    <main className="pt-4 pb-12">
       <BotGame
         key={gameKey}
         skillLevel={botCriteria.level.skill}

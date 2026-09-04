@@ -72,23 +72,13 @@ export function AvatarBox({ avatarId, active }: { avatarId: string; active: bool
   );
 }
 
-/** Madde 2026-09-04 (1): isim kutusunun boş payı yazının ÜSTÜNDE kalsın diye
- *  (Zafer'in görseli) sadece bu kutuda `flex-end` kullanılır — Avatar/Time
- *  kutuları (CENTER_CONTENT, tam ortalı) DOKUNULMAZ. */
-const NAME_CONTENT: CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-end',
-  justifyContent: 'center',
-  paddingBottom: '0.3rem',
-};
-
 /** Dikdörtgen kart — oyuncu ismi. */
 export function NameBox({ name, active }: { name: string; active: boolean }) {
   return (
     <div
       data-active={active ? 'true' : 'false'}
       className="mc-rect t-card-i text-center px-2"
-      style={{ ...cardBorder(active), ...NAME_CONTENT }}
+      style={{ ...cardBorder(active), ...CENTER_CONTENT }}
     >
       <span className="font-semibold text-sm truncate">{name}</span>
     </div>
