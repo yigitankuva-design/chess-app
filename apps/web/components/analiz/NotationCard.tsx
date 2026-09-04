@@ -172,7 +172,7 @@ export function NotationCard({
   };
 
   return (
-    <div className="rounded-xl border-2 border-white/20 p-3">
+    <div className="rounded-xl border-2 p-3" style={{ borderColor: 'var(--t-accent)' }}>
       <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-white/15">
         <p className="font-bold text-sm t-premium">Hamleler</p>
         <label className="flex items-center gap-1.5 text-xs t-muted cursor-pointer select-none">

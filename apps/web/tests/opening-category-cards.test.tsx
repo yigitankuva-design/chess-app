@@ -27,11 +27,11 @@ beforeEach(() => {
   }) as unknown as typeof fetch;
 });
 
-/** "c) Uygulama Pratiği" alt sekmesini açar — tür/açılış/varyant yönetim
- *  ağacı ARTIK bunun İÇİNDE (madde 2026-09-02: admin tarafı da a/b/c'ye
- *  ayrıldı, a) Konum ve b) Teori şimdilik yer tutucu). */
+/** "c) Açılış Konumunu İlerlet" alt sekmesini açar — tür/açılış/varyant
+ *  yönetim ağacı ARTIK bunun İÇİNDE (madde 2026-09-02: admin tarafı da
+ *  a/b/c'ye ayrıldı; madde 2026-09-06 üçüncü tur: isimler yeniden adlandırıldı). */
 function openUygulama() {
-  fireEvent.click(screen.getByRole('button', { name: /c\) Uygulama Pratiği kartını aç/ }));
+  fireEvent.click(screen.getByRole('button', { name: /c\) Açılış Konumunu İlerlet kartını aç/ }));
 }
 
 async function open() {

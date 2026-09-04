@@ -6,6 +6,7 @@ import type { PlayerInfo } from '@/components/play/MatchLayout';
 import { PracticeMatchLayout } from '@/components/play/PracticeMatchLayout';
 import type { PracticeAction, PracticeOutcome } from '@/components/play/PracticeMatchLayout';
 import { MatchAnalysisSummary } from '@/components/play/MatchAnalysisSummary';
+import { MoveLimitAnalysisSummary } from '@/components/play/MoveLimitAnalysisSummary';
 import { FlipBoardIcon, ReplayIcon } from '@/components/play/PracticeActionIcons';
 import { MoveList } from '@/components/play/MoveList';
 import { PromotionPicker } from '@/components/play/PromotionPicker';
@@ -47,6 +48,11 @@ interface Props {
   startFen?: string;
   /** 0-1 arası: botun kasıtlı zayıf hamle yapma ihtimali. Verilmezse/0 ise eski davranış. */
   blunderChance?: number;
+  /** Madde 2026-09-06 (üçüncü tur/4): c) Açılış Konumunu İlerlet — verilirse
+   *  sporcu VE bot HER TARAFI AYRI AYRI SAYILARAK bu kadar hamle oynayınca
+   *  (toplam 2×moveLimit yarı-hamle) pratik mat/pat beklemeden OTOMATİK
+   *  biter, feedbackOverride alanında ilerleme analizi gösterilir. */
+  moveLimit?: number;
   onGameEnd: (result: 'win' | 'loss' | 'draw') => void;
   /** Verilirse maç bitince "Yeniden Oyna" butonu görünür ve aktif olur. */
   onRematch?: () => void;
@@ -62,7 +68,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export function BotGame({
   skillLevel, depth, timeControl, studentColor = 'w', startFen, blunderChance = 0,
-  onGameEnd, onRematch, practiceActions,
+  moveLimit, onGameEnd, onRematch, practiceActions,
 }: Props) {
   const { hideNotation } = useBoardNotation();
   // Oturum anahtarı render'lar arasında sabittir; prop'lardan türetilir.
@@ -129,6 +135,9 @@ export function BotGame({
   /** Madde 2026-09-03 (2): "Analiz Et" tıklanınca true olur — motor TÜM
    *  maçı arka planda değerlendirmeye SADECE o zaman başlar. */
   const [showAnalysis, setShowAnalysis] = useState(false);
+  /** Madde 2026-09-06 (üçüncü tur/4): moveLimit dolunca true olur —
+   *  pratik mat/pat beklemeden biter, ilerleme analizi gösterilir. */
+  const [limitReached, setLimitReached] = useState(false);
   // Sporcunun adi girişte saklaniyor; yoksa nötr bir etiket kullanilir.
   const [studentName] = useState(() => getAthleteName() || 'Sen');
   const [studentAvatar] = useState(() => getSavedAvatar());
@@ -154,7 +163,7 @@ export function BotGame({
     () => fens.slice(1).map((fenAfter, i) => ({ ply: i + 1, fenAfter })),
     [fens],
   );
-  const { evalByPly, progress: analysisProgress } = useMoveQualityEval(fens[0], evalMoves, showAnalysis);
+  const { evalByPly, progress: analysisProgress } = useMoveQualityEval(fens[0], evalMoves, showAnalysis || limitReached);
   const gameSummary = useMemo(
     () => (showAnalysis ? computeGameSummary(evalByPly, fens, studentColor) : null),
     [showAnalysis, evalByPly, fens, studentColor],
@@ -207,6 +216,7 @@ export function BotGame({
             });
             setFen(chessRef.current.fen());
             await persistMove(uci);
+            if (!cancelled) checkMoveLimit();
           }
         } catch { /* motor hatasi oyunu kilitlemez */ }
         if (!cancelled) setThinking(false);
@@ -304,6 +314,21 @@ export function BotGame({
     }
   }
 
+  /** Madde 2026-09-06 (üçüncü tur/4): moveLimit dolunca (2×moveLimit yarı-
+   *  hamle — turlar hep sırayla değiştiği için bu her zaman İKİ tarafın da
+   *  TAM OLARAK moveLimit hamle oynadığı anlamına gelir, kim başlamış olursa
+   *  olsun) pratiği mat/pat beklemeden bitirir. `true` dönerse çağıran taraf
+   *  hemen `return` etmeli — sonraki hamleler (örn. botun cevabı) oynanmaz. */
+  function checkMoveLimit(): boolean {
+    if (!moveLimit) return false;
+    if (chessRef.current.history().length < moveLimit * 2) return false;
+    setStatus('over');
+    clearBotGame(sessionKeyStr);
+    setLimitReached(true);
+    onGameEnd('draw'); // pratik akışında bu callback zaten no-op — anlamlı bir win/loss/draw yok.
+    return true;
+  }
+
   function resignToBot() {
     setStatus('over');
     clearBotGame(sessionKeyStr);
@@ -399,6 +424,7 @@ export function BotGame({
       // Terfi harfi UCI'ye MUTLAKA girer; yoksa sunucu baska hamle kaydeder.
       await persistMove(toUci(from, to, promo));
       if (chess.isGameOver()) { finish(); return; }
+      if (checkMoveLimit()) return;
 
       setThinking(true);
       const botUci = await pickBotMove(chess.fen());
@@ -421,6 +447,7 @@ export function BotGame({
       }
       setThinking(false);
       if (chess.isGameOver()) { finish(); return; }
+      if (checkMoveLimit()) return;
 
       // Madde 5: sıra sporcuya geldi — ön-hamle varsa şimdi oynanır.
       // Geçersizse SESSİZCE iptal edilir (uyarı yok, sıra sporcuda kalır).
@@ -564,6 +591,17 @@ export function BotGame({
         moveList={moveList}
         outcome={outcome}
         actions={actions}
+        // Madde 2026-09-06 (üçüncü tur/4): moveLimit dolunca kazandın/kaybettin
+        // kartı YERİNE ilerleme analizi gösterilir (madde 2026-09-04 (2)'deki
+        // "Analiz Et" ile AYNI feedbackOverride mekanizması).
+        feedbackOverride={limitReached ? (
+          <MoveLimitAnalysisSummary
+            evalByPly={evalByPly}
+            progress={analysisProgress}
+            totalPly={(moveLimit ?? 0) * 2}
+            studentColor={studentColor}
+          />
+        ) : undefined}
         extra={extra}
       />
     );

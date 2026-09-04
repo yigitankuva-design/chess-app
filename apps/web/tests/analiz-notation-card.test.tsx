@@ -24,6 +24,12 @@ describe('NotationCard — görseldeki tasarım (madde 2026-09-05 (4))', () => {
     expect(screen.getByLabelText('Notasyon Verilerini Gizle')).toBeInTheDocument();
   });
 
+  it('madde 2026-09-06 (üçüncü tur/5): kart çerçevesi tema uyumlu (var(--t-accent))', () => {
+    setup();
+    const card = screen.getByText('Hamleler').closest<HTMLElement>('div.rounded-xl');
+    expect(card?.style.borderColor).toBe('var(--t-accent)');
+  });
+
   it('her tam hamle "N. beyaz - siyah" biçiminde (tire ile) gösterilir', () => {
     setup();
     expect(screen.getByText('1.')).toBeInTheDocument();

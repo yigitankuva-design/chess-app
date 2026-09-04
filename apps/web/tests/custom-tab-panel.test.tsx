@@ -6,7 +6,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: ({ onReadyToStart, onOpenKonumPratigi, onOpenTeoriPratigi }: {
     onReadyToStart?: (variant: { id: number }, criteria: {
-      level: { level: number }; timeControl: { label: string }; colorChoice: string;
+      colorChoice: string; moveLimit: number;
     }) => void;
     onOpenKonumPratigi?: () => void;
     onOpenTeoriPratigi?: () => void;
@@ -16,7 +16,7 @@ vi.mock('@/components/play/OpeningPractice', () => ({
       {onReadyToStart && (
         <button onClick={() => onReadyToStart(
           { id: 7 },
-          { level: { level: 5 }, timeControl: { label: '5+0' }, colorChoice: 'white' },
+          { colorChoice: 'white', moveLimit: 5 },
         )}>
           test-ready-to-start
         </button>
@@ -81,9 +81,8 @@ describe('CustomTabPanel', () => {
     const url = push.mock.calls[0][0] as string;
     expect(url).toContain('mode=opening');
     expect(url).toContain('variant=7');
-    expect(url).toContain('skill=5');
-    expect(url).toContain('tc=5%2B0');
     expect(url).toContain('color=white');
+    expect(url).toContain('moveLimit=5');
   });
 
   it('madde 2026-09-02 (devam): a) Konum Pratiği açılınca /play?mode=konum-pratigi\'ye yönlendirilir', () => {

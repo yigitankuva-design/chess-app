@@ -4,7 +4,6 @@ import { firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import type { KonumPratigiStepState } from '@/lib/admin/konumPratigiSteps';
 
 const BLANK: KonumPratigiStepState = {
-  instruction: '',
   fenValid: false,
   optionCountChosen: false,
   answerKindChosen: false,
@@ -12,23 +11,21 @@ const BLANK: KonumPratigiStepState = {
 };
 
 const FULL: KonumPratigiStepState = {
-  instruction: 'Bu hangi açılıştır?',
   fenValid: true,
   optionCountChosen: true,
   answerKindChosen: true,
   options: ['İtalyan Açılışı', 'İspanyol Açılışı'],
 };
 
-describe('konumPratigiSteps', () => {
-  it('altı adım döner, sıra numaraları 1-6 olur', () => {
+describe('konumPratigiSteps (madde 2026-09-06 üçüncü tur/2: "Talimatı Gir" kaldırıldı)', () => {
+  it('beş adım döner, sıra numaraları 1-5 olur', () => {
     const steps = konumPratigiSteps(BLANK);
-    expect(steps).toHaveLength(6);
-    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(steps).toHaveLength(5);
+    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it('adım etiketleri Zafer\'in belirttiği sırayla', () => {
+  it('adım etiketleri Zafer\'in belirttiği sırayla ("Talimatı Gir" YOK)', () => {
     expect(konumPratigiSteps(BLANK).map((s) => s.label)).toEqual([
-      'Talimatı Gir',
       'FEN Ekle',
       'Seçenek Sayısını Belirle',
       'Cevap Tipini Belirle',
@@ -41,41 +38,33 @@ describe('konumPratigiSteps', () => {
     expect(konumPratigiSteps(BLANK).every((s) => !s.done)).toBe(true);
   });
 
-  it('tam durumda altı adım da tamamlanmıştır', () => {
+  it('tam durumda beş adım da tamamlanmıştır', () => {
     expect(konumPratigiSteps(FULL).every((s) => s.done)).toBe(true);
   });
 
-  it('adım 1 talimat girilince tamamlanır', () => {
-    expect(konumPratigiSteps({ ...BLANK, instruction: 'Soru' })[0].done).toBe(true);
+  it('adım 1 FEN geçerli olunca tamamlanır', () => {
+    expect(konumPratigiSteps({ ...BLANK, fenValid: true })[0].done).toBe(true);
   });
 
-  it('adım 1 yalnızca boşluk girilirse tamamlanmaz', () => {
-    expect(konumPratigiSteps({ ...BLANK, instruction: '   ' })[0].done).toBe(false);
+  it('TUZAK: adım 2 seçenek sayısı BİLFİİL seçilmeden tamamlanmaz', () => {
+    expect(konumPratigiSteps(BLANK)[1].done).toBe(false);
+    expect(konumPratigiSteps({ ...BLANK, optionCountChosen: true })[1].done).toBe(true);
   });
 
-  it('adım 2 FEN geçerli olunca tamamlanır', () => {
-    expect(konumPratigiSteps({ ...BLANK, fenValid: true })[1].done).toBe(true);
-  });
-
-  it('TUZAK: adım 3 seçenek sayısı BİLFİİL seçilmeden tamamlanmaz', () => {
+  it('TUZAK: adım 3 cevap tipi BİLFİİL seçilmeden tamamlanmaz', () => {
     expect(konumPratigiSteps(BLANK)[2].done).toBe(false);
-    expect(konumPratigiSteps({ ...BLANK, optionCountChosen: true })[2].done).toBe(true);
+    expect(konumPratigiSteps({ ...BLANK, answerKindChosen: true })[2].done).toBe(true);
   });
 
-  it('TUZAK: adım 4 cevap tipi BİLFİİL seçilmeden tamamlanmaz', () => {
-    expect(konumPratigiSteps(BLANK)[3].done).toBe(false);
-    expect(konumPratigiSteps({ ...BLANK, answerKindChosen: true })[3].done).toBe(true);
+  it('adım 4 en az iki dolu şık varsa tamamlanır', () => {
+    expect(konumPratigiSteps({ ...BLANK, options: ['A', 'B'] })[3].done).toBe(true);
+    expect(konumPratigiSteps({ ...BLANK, options: ['A', ''] })[3].done).toBe(false);
+    expect(konumPratigiSteps({ ...BLANK, options: ['A'] })[3].done).toBe(false);
   });
 
-  it('adım 5 en az iki dolu şık varsa tamamlanır', () => {
-    expect(konumPratigiSteps({ ...BLANK, options: ['A', 'B'] })[4].done).toBe(true);
-    expect(konumPratigiSteps({ ...BLANK, options: ['A', ''] })[4].done).toBe(false);
-    expect(konumPratigiSteps({ ...BLANK, options: ['A'] })[4].done).toBe(false);
-  });
-
-  it('Soruyu Ekle (6) yalnızca öncekilerin hepsi bitince tamamlanır', () => {
-    expect(konumPratigiSteps(FULL)[5].done).toBe(true);
-    expect(konumPratigiSteps({ ...FULL, fenValid: false })[5].done).toBe(false);
+  it('Soruyu Ekle (5) yalnızca öncekilerin hepsi bitince tamamlanır', () => {
+    expect(konumPratigiSteps(FULL)[4].done).toBe(true);
+    expect(konumPratigiSteps({ ...FULL, fenValid: false })[4].done).toBe(false);
   });
 });
 

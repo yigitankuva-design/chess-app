@@ -37,10 +37,10 @@ beforeEach(() => {
 
 import { OpeningPractice } from '@/components/play/OpeningPractice';
 
-/** "c) Uygulama Pratiği" alt sekmesini açar — Bota Karşı/Arkadaşına Karşı
- *  kartları ARTIK bunun İÇİNDE (madde 2026-09-02: a/b/c iskeleti). */
+/** "c) Açılış Konumunu İlerlet" alt sekmesini açar — Bota Karşı/Arkadaşına
+ *  Karşı kartları ARTIK bunun İÇİNDE (madde 2026-09-02: a/b/c iskeleti). */
 function openUygulama() {
-  fireEvent.click(screen.getByText('c) Uygulama Pratiği'));
+  fireEvent.click(screen.getByText('c) Açılış Konumunu İlerlet'));
 }
 
 describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, güncelleme — iç içe akordiyon)', () => {
@@ -107,13 +107,14 @@ describe('Açılış Pratiği — arkadaşa karşı 3 adım (madde: 2026-08-20, 
   });
 });
 
-describe('Açılış Pratiği — bota karşı 2 adım (madde: 2026-08-20, güncelleme)', () => {
-  it('adımlar 1) Açılış Seç 2) Maç Kriterlerini Seç sırasındadır', () => {
+describe('Açılış Pratiği — bota karşı 3 adım (madde: 2026-08-20, güncelleme; 2026-09-06 üçüncü tur)', () => {
+  it('adımlar 1) Açılış Seç 2) Renk Seç 3) İlerleme Sınırı Belirle sırasındadır', () => {
     render(<OpeningPractice />);
     openUygulama();
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
     expect(screen.getByText('1. Açılış Seç')).toBeInTheDocument();
-    expect(screen.getByText('2. Maç Kriterlerini Seç')).toBeInTheDocument();
+    expect(screen.getByText('2. Renk Seç')).toBeInTheDocument();
+    expect(screen.getByText('3. İlerleme Sınırı Belirle')).toBeInTheDocument();
   });
 
   it('liste başta gizlidir', () => {
@@ -123,7 +124,7 @@ describe('Açılış Pratiği — bota karşı 2 adım (madde: 2026-08-20, günc
     expect(screen.queryByText('İtalyan Açılışı')).not.toBeInTheDocument();
   });
 
-  it('TUZAK: farklı bir varyant seçilince önceki seçim değişir, kriter kilidi güncel varyanta göre kalır', async () => {
+  it('TUZAK: farklı bir varyant seçilince önceki seçim değişir, renk kilidi güncel varyanta göre kalır', async () => {
     render(<OpeningPractice />);
     openUygulama();
     fireEvent.click(screen.getByText('Bota Karşı Pratik Yap'));
@@ -131,7 +132,7 @@ describe('Açılış Pratiği — bota karşı 2 adım (madde: 2026-08-20, günc
     fireEvent.click(await screen.findByText("e4'lü Açılışlar"));
     fireEvent.click(await screen.findByText('İtalyan Açılışı'));
     fireEvent.click(await screen.findByText('Ana Hat'));
-    expect(screen.getByText('2. Maç Kriterlerini Seç').closest('button'))
+    expect(screen.getByText('2. Renk Seç').closest('button'))
       .toHaveAttribute('aria-disabled', 'false');
   });
 

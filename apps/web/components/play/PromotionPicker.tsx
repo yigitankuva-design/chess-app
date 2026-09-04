@@ -32,7 +32,7 @@ export function PromotionPicker({ color, onPick, onCancel }: Props) {
               type="button"
               aria-label={c.label}
               onClick={() => onPick(c.piece)}
-              className="t-card-i flex flex-col items-center justify-center gap-1 py-3"
+              className="t-card-i aspect-square flex items-center justify-center"
             >
               <img
                 src={CBURNETT[`${color}${c.piece.toUpperCase()}`]}

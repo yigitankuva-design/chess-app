@@ -9,6 +9,8 @@ import { MatchCriteria } from '@/components/play/MatchCriteria';
 import type { MatchCriteriaValue } from '@/components/play/MatchCriteria';
 import { resolveColor } from '@/lib/play/color';
 import type { PieceColor, ColorChoice } from '@/lib/play/color';
+import { MOVE_LIMIT_OPTIONS } from '@/lib/play/moveLimit';
+import type { OpeningAdvanceCriteria } from '@/lib/play/moveLimit';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
 import { useSettings } from '@/lib/settings/settings-context';
 import { usePresenceCount } from '@/lib/presence/PresenceContext';
@@ -86,6 +88,18 @@ function PlayInner() {
    *  (madde: 2026-08-20 — eskiden doğrudan açılışın id'siydi, artık FEN
    *  varyantta yaşadığı için parametre de varyant id'si taşır). */
   const variantIdParam = searchParams.get('variant');
+  /** Madde 2026-09-06 (üçüncü tur/4): c) Açılış Konumunu İlerlet — Düzey/
+   *  Tempo artık URL'de YOK (Düzey sabit, Tempo kalktı), YERİNE moveLimit
+   *  taşınır. `colorParam` (aşağıdaki quickColor) burada da paylaşılır. */
+  const moveLimitParam = searchParams.get('moveLimit');
+  const quickMoveLimit = moveLimitParam
+    ? MOVE_LIMIT_OPTIONS.find((n) => n === Number(moveLimitParam))
+    : undefined;
+  /** Madde 2026-09-06 (üçüncü tur/4): c) Açılış Konumunu İlerlet'in kendi
+   *  "hazır" kriteri — quickStart'tan BAĞIMSIZ (Düzey/Tempo yok). */
+  const openingAdvanceCriteria: OpeningAdvanceCriteria | undefined = quickMoveLimit
+    ? { colorChoice: quickColor, moveLimit: quickMoveLimit }
+    : undefined;
   const initialMode: Mode | null =
     modeParam === 'pool' && sectionParam && tabParam
       ? 'pool'
@@ -299,7 +313,7 @@ function PlayInner() {
         <p className="font-semibold text-sm">📖 Açılışı Pratiği Yap</p>
         <OpeningPractice
           initialVariantId={variantIdParam ? Number(variantIdParam) : undefined}
-          initialCriteria={quickStart ?? undefined}
+          initialCriteria={openingAdvanceCriteria}
         />
       </main>
     );

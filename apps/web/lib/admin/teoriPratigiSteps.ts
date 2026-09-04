@@ -2,35 +2,40 @@ import { hasPieces } from '@/lib/admin/movePieceSteps';
 import type { StepInfo } from '@/lib/admin/movePieceSteps';
 
 /**
- * b) Teori Pratiği sorusunun 8 adımlık akışının saf mantığı — Zafer'in
- * belirttiği sırayla: Talimatı Gir, Konum Diz, Konumu Kaydet, Cevap
- * Hamlelerini Yap ve Notasyon Oluştur, Notasyonu Kaydet, Açılış veya
- * Varyantın Adını Gir, Hamle Sırasını Belirle, Soruyu Ekle.
- * `movePieceSteps.ts`'teki "Taşı Oynat" akışıyla AYNI setup/record/save
- * fazlarını kullanır, üstüne açılış adı + sporcunun rengi eklenir.
+ * b) Açılış Teorisini Hatırla (eski adıyla Teori Pratiği) sorusunun 7
+ * adımlık akışının saf mantığı — madde 2026-09-06 (üçüncü tur/3): eski
+ * "Talimatı Gir" adımı KALDIRILDI (Zafer onayı: sabit bir talimat kullanılır
+ * — bkz. TEORI_PRATIGI_INSTRUCTION — geri kalan 7 adım DEĞİŞMEDEN kalır).
+ * Kalan sıra: Konum Diz, Konumu Kaydet, Cevap Hamlelerini Yap ve Notasyon
+ * Oluştur, Notasyonu Kaydet, Açılış veya Varyantın Adını Gir, Hamle Sırasını
+ * Belirle, Soruyu Ekle. `movePieceSteps.ts`'teki "Taşı Oynat" akışıyla AYNI
+ * setup/record/save fazlarını kullanır, üstüne açılış adı + sporcunun rengi
+ * eklenir.
  */
 export interface TeoriPratigiStepState {
-  instruction: string;
-  /** Adım 2 — dizme tahtasının FEN'i. */
+  /** Adım 1 — dizme tahtasının FEN'i. */
   setupFen: string;
-  /** Adım 3 — "Konumu Kaydet" sonrası kilitlenen konum; null = henüz kaydedilmedi. */
+  /** Adım 2 — "Konumu Kaydet" sonrası kilitlenen konum; null = henüz kaydedilmedi. */
   fen: string | null;
-  /** Adım 4 — kaydedilen SAN hamleleri. */
+  /** Adım 3 — kaydedilen SAN hamleleri. */
   moves: string[];
-  /** Adım 5 — "Notasyonu Kaydet"e basıldı mı? */
+  /** Adım 4 — "Notasyonu Kaydet"e basıldı mı? */
   notationSaved: boolean;
-  /** Adım 6 — açılış/varyant adı. */
+  /** Adım 5 — açılış/varyant adı. */
   openingName: string;
   /**
-   * Adım 7 — sporcunun rengi (Beyaz/Siyah) BİLFİİL seçildi mi? Varsayılan
+   * Adım 6 — sporcunun rengi (Beyaz/Siyah) BİLFİİL seçildi mi? Varsayılan
    * bir renk olduğu için değere bakmak yetmez (movePieceSteps'teki
    * turnChosen tuzağıyla AYNI).
    */
   studentColorChosen: boolean;
 }
 
+/** Madde 2026-09-06 (üçüncü tur/3): admin artık talimat yazmıyor — sporcuya
+ *  HER SORUDA aynı sabit talimat gösterilir (bkz. TeoriPratigiPractice.tsx). */
+export const TEORI_PRATIGI_INSTRUCTION = 'Açılışın ilk hamlelerini oyna';
+
 export const TEORI_PRATIGI_STEP_LABELS = [
-  'Talimatı Gir',
   'Konum Diz',
   'Konumu Kaydet',
   'Cevap Hamlelerini Yap ve Notasyon Oluştur',
@@ -41,7 +46,6 @@ export const TEORI_PRATIGI_STEP_LABELS = [
 
 export function teoriPratigiSteps(s: TeoriPratigiStepState): StepInfo[] {
   const done = [
-    s.instruction.trim().length > 0,
     hasPieces(s.setupFen),
     s.fen !== null,
     s.moves.length > 0,

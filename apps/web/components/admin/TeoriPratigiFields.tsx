@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { BoardEditor, START_FEN } from '@/components/BoardEditor';
 import { MoveRecorderBoard } from './MoveRecorderBoard';
 import { StepList } from './StepList';
-import { teoriPratigiSteps } from '@/lib/admin/teoriPratigiSteps';
+import { teoriPratigiSteps, TEORI_PRATIGI_INSTRUCTION } from '@/lib/admin/teoriPratigiSteps';
 import { firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import { formatNotation } from '@/lib/admin/movePieceSteps';
 import { parseFenInput } from '@/lib/chess/fenInput';
@@ -19,10 +19,12 @@ interface Props {
 }
 
 /**
- * b) Teori Pratiği — soru ekleme/düzenleme formu. Zafer'in belirttiği 8 adım:
- * Talimatı Gir, Konum Diz, Konumu Kaydet, Cevap Hamlelerini Yap ve Notasyon
- * Oluştur, Notasyonu Kaydet, Açılış veya Varyantın Adını Gir, Hamle
- * Sırasını Belirle (sporcunun rengi), Soruyu Ekle. Dizme/kayıt/notasyon
+ * b) Açılış Teorisini Hatırla (eski adıyla Teori Pratiği) — soru ekleme/
+ * düzenleme formu. Madde 2026-09-06 (üçüncü tur/3): 7 adım — Konum Diz,
+ * Konumu Kaydet, Cevap Hamlelerini Yap ve Notasyon Oluştur, Notasyonu
+ * Kaydet, Açılış veya Varyantın Adını Gir, Hamle Sırasını Belirle
+ * (sporcunun rengi), Soruyu Ekle. Eski "Talimatı Gir" adımı KALKTI — sabit
+ * talimat TEORI_PRATIGI_INSTRUCTION kullanılır. Dizme/kayıt/notasyon
  * fazları `MovePieceFields.tsx`'teki "Taşı Oynat" akışıyla AYNI
  * (`BoardEditor` → "Konumu Kaydet" → `MoveRecorderBoard` → "Notasyonu
  * Kaydet"); üstüne açılış adı + sporcunun rengi eklenir. "Hamle Sırası"
@@ -32,7 +34,6 @@ interface Props {
  */
 export function TeoriPratigiFields({ onSubmit, initial, onCancel }: Props) {
   const editing = !!initial;
-  const [instruction, setInstruction] = useState(initial?.instruction ?? '');
   const [setupFen, setSetupFen] = useState(initial?.fen ?? START_FEN);
   const [setupTurn, setSetupTurn] = useState<'w' | 'b'>(() => {
     if (!initial) return 'w';
@@ -50,13 +51,12 @@ export function TeoriPratigiFields({ onSubmit, initial, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
 
   const steps = teoriPratigiSteps({
-    instruction, setupFen, fen, moves, notationSaved, openingName, studentColorChosen,
+    setupFen, fen, moves, notationSaved, openingName, studentColorChosen,
   });
   const missing = firstIncomplete(steps);
   const gateOpen = allDone(steps);
 
   function reset() {
-    setInstruction('');
     setSetupFen(START_FEN); setSetupTurn('w');
     setFen(null); setMoves([]); setNotationSaved(false);
     setOpeningName(''); setStudentColor('w'); setStudentColorChosen(false);
@@ -71,7 +71,7 @@ export function TeoriPratigiFields({ onSubmit, initial, onCancel }: Props) {
         // Düzenlemede id/code KORUNUR — sporcunun bildiği numara sabittir.
         id: initial?.id ?? crypto.randomUUID(),
         code: initial?.code,
-        instruction: instruction.trim(),
+        instruction: TEORI_PRATIGI_INSTRUCTION,
         fen,
         moves,
         opening_name: openingName.trim(),
@@ -86,10 +86,7 @@ export function TeoriPratigiFields({ onSubmit, initial, onCancel }: Props) {
 
   return (
     <div className="space-y-4">
-      <StepList steps={steps} missingNo={missing?.no ?? null} ariaLabel="Teori Pratiği soru adımları" />
-
-      <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-        placeholder="Talimat (örn. İtalyan Açılışı'nın ilk hamlelerini oyna)" className="neon-input text-sm" />
+      <StepList steps={steps} missingNo={missing?.no ?? null} ariaLabel="Açılış Teorisini Hatırla soru adımları" />
 
       {fen === null ? (
         <div className="space-y-3">

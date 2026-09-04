@@ -17,11 +17,14 @@ vi.mock('@/components/play/TeoriPratigiSolver', () => ({
 }));
 
 import { TeoriPratigiPractice } from '@/components/play/TeoriPratigiPractice';
+import { TEORI_PRATIGI_INSTRUCTION } from '@/lib/admin/teoriPratigiSteps';
 import type { TeoriPratigiQuestion } from '@/lib/customTabsApi';
 
 const Q1: TeoriPratigiQuestion = {
   id: 'q1', code: '001',
-  instruction: 'İtalyan Açılışı\'nın ilk hamlelerini oyna',
+  // Madde 2026-09-06 (üçüncü tur/3): bu alan artık render'da YOK SAYILIR —
+  // sporcuya HER ZAMAN TEORI_PRATIGI_INSTRUCTION gösterilir.
+  instruction: 'eski-farklı-bir-talimat',
   fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
   moves: ['e4', 'e5', 'Bc4'],
   opening_name: 'İtalyan Açılışı',
@@ -38,13 +41,12 @@ describe('TeoriPratigiPractice', () => {
     expect(screen.getByText(/henüz soru yok/)).toBeInTheDocument();
   });
 
-  it('açılış adı, kod ve talimat gösterilir', () => {
+  it('açılış adı, kod ve SABİT talimat gösterilir (q.instruction YOK SAYILIR)', () => {
     render(<TeoriPratigiPractice questions={[Q1]} />);
-    // İki yerde geçer: başlıkta ("♟️ İtalyan Açılışı · 001") ve talimat
-    // cümlesinin İÇİNDE ("İtalyan Açılışı'nın ilk hamlelerini oyna").
-    expect(screen.getAllByText(/İtalyan Açılışı/)).toHaveLength(2);
+    expect(screen.getByText(/İtalyan Açılışı/)).toBeInTheDocument();
     expect(screen.getByText(/001/)).toBeInTheDocument();
-    expect(screen.getByText(Q1.instruction)).toBeInTheDocument();
+    expect(screen.getByText(TEORI_PRATIGI_INSTRUCTION)).toBeInTheDocument();
+    expect(screen.queryByText('eski-farklı-bir-talimat')).not.toBeInTheDocument();
   });
 
   it('madde 2026-09-04 (6): başlıkta/talimat kutusunda ikon YOKTUR, HAMLELER bölümü VAR ve güncellenir', () => {

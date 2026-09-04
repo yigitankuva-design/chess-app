@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PoolPicker } from './PoolPicker';
 import { StepList } from './StepList';
-import { konumPratigiSteps } from '@/lib/admin/konumPratigiSteps';
+import { konumPratigiSteps, KONUM_PRATIGI_INSTRUCTION } from '@/lib/admin/konumPratigiSteps';
 import { firstIncomplete, allDone } from '@/lib/admin/questionSteps';
 import { parseFenInput, withTurn } from '@/lib/chess/fenInput';
 import { SavedPositionBoard } from './SavedPositionBoard';
@@ -19,16 +19,17 @@ interface Props {
 }
 
 /**
- * a) Konum Pratiği — soru ekleme/düzenleme formu. Zafer'in belirttiği 6 adım:
- * Talimatı Gir, FEN Ekle (ZORUNLU, sadece yapıştırma — "Konum Diz" DEĞİL),
- * Seçenek Sayısını Belirle (2/3/4), Cevap Tipini Belirle (Cümle/Görüntü),
- * Cevapları Gir, Soruyu Ekle. Alan şekli lesson-steps'teki `sentence_question`
- * ile AYNI (bkz. components/lesson-steps/BoardExercise.tsx) — sporcu tarafı
- * bu soruları dönüşümsüz o bileşenle çizer.
+ * a) Açılışı Tahmin Et (eski Konum Pratiği) — soru ekleme/düzenleme formu.
+ * Madde 2026-09-06 (üçüncü tur/2): 5 adım — FEN Ekle (ZORUNLU, sadece
+ * yapıştırma — "Konum Diz" DEĞİL), Seçenek Sayısını Belirle (2/3/4), Cevap
+ * Tipini Belirle (Cümle/Görüntü), Cevapları Gir, Soruyu Ekle. Eski "Talimatı
+ * Gir" adımı KALKTI — sabit talimat KONUM_PRATIGI_INSTRUCTION kullanılır.
+ * Alan şekli lesson-steps'teki `sentence_question` ile AYNI (bkz.
+ * components/lesson-steps/BoardExercise.tsx) — sporcu tarafı bu soruları
+ * dönüşümsüz o bileşenle çizer.
  */
 export function KonumPratigiFields({ onSubmit, initial, onCancel }: Props) {
   const editing = !!initial;
-  const [instruction, setInstruction] = useState(initial?.instruction ?? '');
   const [fenText, setFenText] = useState(initial?.fen ?? '');
   const [fenTurnOverride, setFenTurnOverride] = useState<'w' | 'b' | null>(null);
   const [optionCount, setOptionCount] = useState<2 | 3 | 4>((initial?.options.length ?? 2) as 2 | 3 | 4);
@@ -49,7 +50,7 @@ export function KonumPratigiFields({ onSubmit, initial, onCancel }: Props) {
   const finalFen = parsed.ok ? withTurn(parsed.fen, fenTurn) : '';
 
   const steps = konumPratigiSteps({
-    instruction, fenValid: parsed.ok, optionCountChosen, answerKindChosen, options,
+    fenValid: parsed.ok, optionCountChosen, answerKindChosen, options,
   });
   const missing = firstIncomplete(steps);
   const gateOpen = allDone(steps);
@@ -76,7 +77,7 @@ export function KonumPratigiFields({ onSubmit, initial, onCancel }: Props) {
   }
 
   function reset() {
-    setInstruction(''); setFenText(''); setFenTurnOverride(null);
+    setFenText(''); setFenTurnOverride(null);
     setOptionCount(2); setOptionCountChosen(false);
     setAnswerKind('sentence'); setAnswerKindChosen(false);
     setOptions(['', '']); setCorrectIndex(0);
@@ -91,7 +92,7 @@ export function KonumPratigiFields({ onSubmit, initial, onCancel }: Props) {
         // Düzenlemede id/code KORUNUR — sporcunun bildiği numara sabittir.
         id: initial?.id ?? crypto.randomUUID(),
         code: initial?.code,
-        instruction: instruction.trim(),
+        instruction: KONUM_PRATIGI_INSTRUCTION,
         fen: finalFen,
         answer_kind: answerKind,
         options,
@@ -106,10 +107,7 @@ export function KonumPratigiFields({ onSubmit, initial, onCancel }: Props) {
 
   return (
     <div className="space-y-4">
-      <StepList steps={steps} missingNo={missing?.no ?? null} ariaLabel="Konum Pratiği soru adımları" />
-
-      <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-        placeholder="Talimat (örn. Bu konum hangi açılıştır?)" className="neon-input text-sm" />
+      <StepList steps={steps} missingNo={missing?.no ?? null} ariaLabel="Açılışı Tahmin Et soru adımları" />
 
       <div className="space-y-2">
         <p className="text-xs n-muted">

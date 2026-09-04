@@ -18,12 +18,11 @@ vi.mock('@/components/play/OfferBoard', () => ({
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: ({ initialVariantId, initialCriteria }: {
     initialVariantId?: number;
-    initialCriteria?: { level: { level: number }; timeControl: { label: string }; colorChoice: string };
+    initialCriteria?: { colorChoice: string; moveLimit: number };
   }) => (
     <div data-testid="opening-practice"
       data-variant-id={initialVariantId ?? ''}
-      data-skill={initialCriteria?.level.level ?? ''}
-      data-tc={initialCriteria?.timeControl.label ?? ''}
+      data-move-limit={initialCriteria?.moveLimit ?? ''}
       data-color={initialCriteria?.colorChoice ?? ''}
     />
   ),
@@ -48,17 +47,16 @@ describe('/play — ?mode= ile doğrudan akış açılır', () => {
     expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
   });
 
-  it('mode=opening&variant=<id>&skill&tc&color CustomTabPanel\'den gelen doğrudan-başlat bilgisini OpeningPractice\'e taşır (madde: 2026-08-19, güncelleme 2026-08-20)', () => {
-    renderWith('mode=opening&variant=7&skill=5&tc=5%2B0&color=white');
+  it('mode=opening&variant=<id>&color&moveLimit CustomTabPanel\'den gelen doğrudan-başlat bilgisini OpeningPractice\'e taşır (madde: 2026-08-19, güncelleme 2026-08-20; 2026-09-06 üçüncü tur/4)', () => {
+    renderWith('mode=opening&variant=7&color=white&moveLimit=5');
     const el = screen.getByTestId('opening-practice');
     expect(el).toHaveAttribute('data-variant-id', '7');
-    expect(el).toHaveAttribute('data-skill', '5');
-    expect(el).toHaveAttribute('data-tc', '5+0');
+    expect(el).toHaveAttribute('data-move-limit', '5');
     expect(el).toHaveAttribute('data-color', 'white');
   });
 
   it('mode=opening&variant=<id> varken skill+tc bot maçına DÜŞÜRMEZ — açılış pratiği önceliklidir', () => {
-    renderWith('mode=opening&variant=7&skill=5&tc=5%2B0&color=white');
+    renderWith('mode=opening&variant=7&color=white&moveLimit=5');
     expect(screen.queryByTestId('bot-game')).not.toBeInTheDocument();
     expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
   });

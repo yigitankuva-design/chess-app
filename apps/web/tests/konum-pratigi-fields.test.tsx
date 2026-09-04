@@ -1,14 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { KonumPratigiFields } from '@/components/admin/KonumPratigiFields';
+import { KONUM_PRATIGI_INSTRUCTION } from '@/lib/admin/konumPratigiSteps';
 import type { KonumPratigiQuestion } from '@/lib/customTabsApi';
 
 const FEN = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1';
 
 function fillMinimalValidForm() {
-  fireEvent.change(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)'), {
-    target: { value: 'Bu hangi açılıştır?' },
-  });
   fireEvent.change(screen.getByPlaceholderText(/FEN yapıştır/), { target: { value: FEN } });
   fireEvent.click(screen.getByRole('button', { name: '2 seçenek' }));
   fireEvent.click(screen.getByRole('button', { name: 'Cümle' }));
@@ -17,12 +15,12 @@ function fillMinimalValidForm() {
 }
 
 describe('KonumPratigiFields', () => {
-  it('adım listesi ve talimat kutusu görünür', () => {
+  it('madde 2026-09-06 (üçüncü tur/2): adım listesi 5 adımdır, "Talimat" alanı/adımı YOKTUR', () => {
     render(<KonumPratigiFields onSubmit={vi.fn()} />);
-    const stepList = screen.getByRole('list', { name: 'Konum Pratiği soru adımları' });
-    expect(stepList).toHaveTextContent('Talimatı Gir');
+    const stepList = screen.getByRole('list', { name: 'Açılışı Tahmin Et soru adımları' });
+    expect(stepList).not.toHaveTextContent('Talimat');
     expect(stepList).toHaveTextContent('FEN Ekle');
-    expect(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Talimat/)).not.toBeInTheDocument();
   });
 
   it('geçersiz FEN yapıştırılınca uyarı gösterir', () => {
@@ -41,10 +39,10 @@ describe('KonumPratigiFields', () => {
   it('eksik adımlar varken "Soruyu ekle" devre dışıdır', () => {
     render(<KonumPratigiFields onSubmit={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Soruyu ekle' })).toBeDisabled();
-    expect(screen.getByText(/Eksik: 1\. Talimatı Gir/)).toBeInTheDocument();
+    expect(screen.getByText(/Eksik: 1\. FEN Ekle/)).toBeInTheDocument();
   });
 
-  it('tüm adımlar tamamlanınca "Soruyu ekle" etkinleşir ve doğru şekli gönderir', async () => {
+  it('tüm adımlar tamamlanınca "Soruyu ekle" etkinleşir ve SABİT talimatla gönderir', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<KonumPratigiFields onSubmit={onSubmit} />);
     fillMinimalValidForm();
@@ -54,7 +52,7 @@ describe('KonumPratigiFields', () => {
     fireEvent.click(submitBtn);
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const arg = onSubmit.mock.calls[0][0];
-    expect(arg.instruction).toBe('Bu hangi açılıştır?');
+    expect(arg.instruction).toBe(KONUM_PRATIGI_INSTRUCTION);
     expect(arg.answer_kind).toBe('sentence');
     expect(arg.options).toEqual(['İtalyan Açılışı', 'İspanyol Açılışı']);
     expect(arg.correct_index).toBe(0);
@@ -76,36 +74,31 @@ describe('KonumPratigiFields', () => {
     fillMinimalValidForm();
     fireEvent.click(screen.getByRole('button', { name: 'Soruyu ekle' }));
     await screen.findByRole('button', { name: 'Soruyu ekle' });
-    expect((screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)') as HTMLInputElement).value).toBe('');
+    expect((screen.getByPlaceholderText(/FEN yapıştır/) as HTMLTextAreaElement).value).toBe('');
     expect(screen.getByRole('button', { name: 'Soruyu ekle' })).toBeDisabled();
   });
 });
 
 describe('KonumPratigiFields — düzenleme modu (madde: Kazanç Konumu ile AYNI havuz deseni)', () => {
   const INITIAL: KonumPratigiQuestion = {
-    id: 'q1', code: '003', instruction: 'Bu hangi açılıştır?', fen: FEN,
+    id: 'q1', code: '003', instruction: 'Eski özel talimat metni', fen: FEN,
     answer_kind: 'sentence', options: ['İtalyan Açılışı', 'İspanyol Açılışı'], correct_index: 1,
   };
 
-  it('initial verilince tüm alanlar dolu gelir, adımlar BAŞTAN tamamlanmış sayılır', () => {
+  it('initial verilince alanlar dolu gelir, adımlar BAŞTAN tamamlanmış sayılır', () => {
     render(<KonumPratigiFields initial={INITIAL} onSubmit={vi.fn()} />);
-    expect((screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)') as HTMLInputElement).value)
-      .toBe('Bu hangi açılıştır?');
     expect((screen.getByPlaceholderText('1. şık') as HTMLInputElement).value).toBe('İtalyan Açılışı');
     expect((screen.getByPlaceholderText('2. şık') as HTMLInputElement).value).toBe('İspanyol Açılışı');
     expect(screen.getByLabelText('2. şık doğru')).toBeChecked();
     expect(screen.getByRole('button', { name: 'Soruyu kaydet' })).toBeEnabled();
   });
 
-  it('"Soruyu kaydet" id/code KORUYARAK onSubmit\'i çağırır', () => {
+  it('"Soruyu kaydet" id/code KORUYARAK, talimatı SABİT metne normalize ederek onSubmit\'i çağırır', () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<KonumPratigiFields initial={INITIAL} onSubmit={onSubmit} />);
-    fireEvent.change(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)'), {
-      target: { value: 'Güncellenmiş talimat' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'Soruyu kaydet' }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'q1', code: '003', instruction: 'Güncellenmiş talimat',
+      id: 'q1', code: '003', instruction: KONUM_PRATIGI_INSTRUCTION,
     }));
   });
 

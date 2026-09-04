@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { BoardExercise } from '@/components/lesson-steps/BoardExercise';
 import type { SentenceQuestionEx } from '@/components/lesson-steps/BoardExercise';
+import { KONUM_PRATIGI_INSTRUCTION } from '@/lib/admin/konumPratigiSteps';
 import type { KonumPratigiQuestion } from '@/lib/customTabsApi';
 
 interface Props {
@@ -22,7 +23,10 @@ function shuffle<T>(arr: T[]): T[] {
 function toExercise(q: KonumPratigiQuestion): SentenceQuestionEx {
   return {
     type: 'sentence_question',
-    instruction: q.instruction,
+    // Madde 2026-09-06 (üçüncü tur/2): admin artık talimat yazmıyor —
+    // q.instruction'daki (varsa eski/DB'deki) değer YOK SAYILIR, sporcuya
+    // HER SORUDA aynı sabit talimat gösterilir.
+    instruction: KONUM_PRATIGI_INSTRUCTION,
     fen: q.fen,
     sentence_show_board: true,
     answer_kind: q.answer_kind,
@@ -35,7 +39,8 @@ function toExercise(q: KonumPratigiQuestion): SentenceQuestionEx {
 }
 
 /**
- * a) Konum Pratiği — sporcunun açılış konumlarını tanıyıp tanımadığını
+ * a) Açılışı Tahmin Et (eski adıyla Konum Pratiği) — sporcunun açılış
+ * konumlarını tanıyıp tanımadığını
  * ölçen çoktan seçmeli soru havuzu. Sıfır yeni geri bildirim/skor kodu:
  * havuz `sentence_question` şekline çevrilip doğrudan `BoardExercise`'e
  * verilir — ilerleme noktaları, KOD gösterimi, doğru/yanlış kartı hepsi
@@ -62,7 +67,7 @@ export function KonumPratigiPractice({ questions }: Props) {
       <BoardExercise
         exercises={shuffled} done={false} onCorrect={() => {}} noRetry
         boxedProgress hideInstructionIcon
-        headerTitle="Konum Pratiği" boardMaxWidth={360}
+        headerTitle="Açılışı Tahmin Et" boardMaxWidth={360}
       />
     </div>
   );

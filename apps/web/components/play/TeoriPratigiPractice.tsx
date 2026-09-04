@@ -4,6 +4,7 @@ import { TeoriPratigiSolver } from './TeoriPratigiSolver';
 import { MoveList } from '@/components/play/MoveList';
 import { pickRandomPosition, pickDifferentPosition } from '@/lib/play/positionPool';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
+import { TEORI_PRATIGI_INSTRUCTION } from '@/lib/admin/teoriPratigiSteps';
 import type { TeoriPratigiQuestion } from '@/lib/customTabsApi';
 
 interface Props {
@@ -11,11 +12,12 @@ interface Props {
 }
 
 /**
- * b) Teori Pratiği — havuzdan rastgele bir soruyla başlar; tahtanın üstünde
- * açılış/varyant adı gösterilir. Doğru ya da yanlış bitince (teoriden
- * çıkınca) tahta kilitlenir, iki kart görünür: "Tekrar Pratik Yap" (AYNI
- * soru sıfırdan) / "Yeni Konuyla Pratik Yap" (havuzdan BAŞKA bir soru) —
- * `PositionPoolPractice.tsx`'teki practiceActions deseniyle AYNI fikir.
+ * b) Açılış Teorisini Hatırla (eski adıyla Teori Pratiği) — havuzdan
+ * rastgele bir soruyla başlar; tahtanın üstünde açılış/varyant adı
+ * gösterilir. Doğru ya da yanlış bitince (teoriden çıkınca) tahta
+ * kilitlenir, TEK satırda 3 parça görünür: "Teoriyi Tekrar Et" (AYNI soru
+ * sıfırdan) / ✓-✕ durumu / "Farklı Teoriye Geç" (havuzdan BAŞKA bir soru) —
+ * madde 2026-09-06 (ikinci tur/G).
  */
 export function TeoriPratigiPractice({ questions }: Props) {
   const [current, setCurrent] = useState<TeoriPratigiQuestion | null>(
@@ -59,7 +61,9 @@ export function TeoriPratigiPractice({ questions }: Props) {
       {/* Madde 2026-09-04 (6): talimat ikonu kaldırıldı, metin ortalandı. */}
       <div className="flex items-start justify-center gap-3 py-3 px-4 rounded-xl"
         style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
-        <p className="text-sm font-semibold text-center">{current.instruction}</p>
+        {/* Madde 2026-09-06 (üçüncü tur/3): admin artık talimat yazmıyor —
+            current.instruction'daki (varsa eski/DB'deki) değer YOK SAYILIR. */}
+        <p className="text-sm font-semibold text-center">{TEORI_PRATIGI_INSTRUCTION}</p>
       </div>
 
       <TeoriPratigiSolver

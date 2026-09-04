@@ -97,11 +97,13 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
                 {s.section_kind === OPENING_KIND ? (
                   <OpeningPractice
                     onReadyToStart={(variant, v) => {
+                      // Madde 2026-09-06 (üçüncü tur/4): Düzey/Tempo artık YOK
+                      // (Düzey sabit 10. seviyede kalır, /play sayfası bunu
+                      // kendisi belirler) — YERİNE moveLimit taşınır.
                       router.push(
                         `/play?mode=opening&variant=${variant.id}`
-                        + `&skill=${v.level.level}`
-                        + `&tc=${encodeURIComponent(v.timeControl.label)}`
-                        + `&color=${v.colorChoice}`,
+                        + `&color=${v.colorChoice}`
+                        + `&moveLimit=${v.moveLimit}`,
                       );
                     }}
                     onOpenKonumPratigi={() => router.push(`/play?mode=konum-pratigi&tab=${tab.id}&section=${s.id}`)}

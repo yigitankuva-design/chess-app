@@ -289,10 +289,10 @@ export function OpeningCategoryCards({
             <button type="button"
               onClick={() => setOpenMode((p) => (p === 'konum' ? null : 'konum'))}
               aria-expanded={openMode === 'konum'}
-              aria-label={`a) Konum Pratiği kartını ${openMode === 'konum' ? 'kapat' : 'aç'}`}
+              aria-label={`a) Açılışı Tahmin Et kartını ${openMode === 'konum' ? 'kapat' : 'aç'}`}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
               <span className="text-xl leading-none">🎯</span>
-              <span className="text-sm font-semibold flex-1 n-text">a) Konum Pratiği</span>
+              <span className="text-sm font-semibold flex-1 n-text">a) Açılışı Tahmin Et</span>
               <span className="text-xs n-muted">{openMode === 'konum' ? '▴' : '▾'}</span>
             </button>
             {openMode === 'konum' && (
@@ -315,10 +315,10 @@ export function OpeningCategoryCards({
             <button type="button"
               onClick={() => setOpenMode((p) => (p === 'teori' ? null : 'teori'))}
               aria-expanded={openMode === 'teori'}
-              aria-label={`b) Teori Pratiği kartını ${openMode === 'teori' ? 'kapat' : 'aç'}`}
+              aria-label={`b) Açılış Teorisini Hatırla kartını ${openMode === 'teori' ? 'kapat' : 'aç'}`}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
               <span className="text-xl leading-none">📚</span>
-              <span className="text-sm font-semibold flex-1 n-text">b) Teori Pratiği</span>
+              <span className="text-sm font-semibold flex-1 n-text">b) Açılış Teorisini Hatırla</span>
               <span className="text-xs n-muted">{openMode === 'teori' ? '▴' : '▾'}</span>
             </button>
             {openMode === 'teori' && (
@@ -341,10 +341,10 @@ export function OpeningCategoryCards({
             <button type="button"
               onClick={() => setOpenMode((p) => (p === 'uygulama' ? null : 'uygulama'))}
               aria-expanded={openMode === 'uygulama'}
-              aria-label={`c) Uygulama Pratiği kartını ${openMode === 'uygulama' ? 'kapat' : 'aç'}`}
+              aria-label={`c) Açılış Konumunu İlerlet kartını ${openMode === 'uygulama' ? 'kapat' : 'aç'}`}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
               <span className="text-xl leading-none">♟️</span>
-              <span className="text-sm font-semibold flex-1 n-text">c) Uygulama Pratiği</span>
+              <span className="text-sm font-semibold flex-1 n-text">c) Açılış Konumunu İlerlet</span>
               <span className="text-xs n-muted">{openMode === 'uygulama' ? '▴' : '▾'}</span>
             </button>
             {openMode === 'uygulama' && (

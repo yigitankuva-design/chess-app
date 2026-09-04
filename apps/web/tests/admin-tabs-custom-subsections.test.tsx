@@ -162,8 +162,8 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     expect(screen.queryByText("e4'lü Açılışlar")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Açılış Pratiği İçeriği kartını aç'));
     // Madde 2026-09-02: admin tarafı da a/b/c'ye ayrıldı — tür kartları
-    // ARTIK "c) Uygulama Pratiği" alt sekmesinin içinde.
-    fireEvent.click(screen.getByLabelText('c) Uygulama Pratiği kartını aç'));
+    // ARTIK "c) Açılış Konumunu İlerlet" alt sekmesinin içinde.
+    fireEvent.click(screen.getByLabelText('c) Açılış Konumunu İlerlet kartını aç'));
     // Ayrı sayfa yerine yerinde açılan, admin'in eklediği tür kartları.
     await waitFor(() => expect(screen.getByText("e4'lü Açılışlar")).toBeInTheDocument());
     expect(screen.getByText("d4'lü Açılışlar")).toBeInTheDocument();

@@ -13,7 +13,7 @@ beforeEach(() => {
 function openIcerikVeKart(kart: 'a' | 'b') {
   fireEvent.click(screen.getByRole('button', { name: /Açılış Pratiği İçeriği kartını aç/ }));
   fireEvent.click(screen.getByRole('button', {
-    name: kart === 'a' ? /a\) Konum Pratiği kartını aç/ : /b\) Teori Pratiği kartını aç/,
+    name: kart === 'a' ? /a\) Açılışı Tahmin Et kartını aç/ : /b\) Açılış Teorisini Hatırla kartını aç/,
   }));
 }
 
@@ -45,7 +45,9 @@ describe('OpeningCategoryCards — a) Konum Pratiği paneli (madde: Kazanç Konu
     />);
     openIcerikVeKart('a');
     expect(screen.getByText('Konum Havuzu').closest('button')).toHaveTextContent('0');
-    expect(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)')).toBeInTheDocument();
+    // Madde 2026-09-06 (üçüncü tur/2): "Talimat" alanı kalktı — ekle formunun
+    // göründüğünü FEN alanıyla doğrula.
+    expect(screen.getByPlaceholderText(/FEN yapıştır/)).toBeInTheDocument();
   });
 
   it('havuz doluysa "Konum Havuzu" kartı açılınca SADECE kod numarası görünür (Kazanç Konumu ile AYNI ızgara)', () => {

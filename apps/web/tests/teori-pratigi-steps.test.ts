@@ -7,7 +7,6 @@ const EMPTY = '8/8/8/8/8/8/8/8 w - - 0 1';
 const TWO_SIDED = '6k1/8/5K2/8/5R2/8/8/8 w - - 0 1';
 
 const BLANK: TeoriPratigiStepState = {
-  instruction: '',
   setupFen: EMPTY,
   fen: null,
   moves: [],
@@ -17,7 +16,6 @@ const BLANK: TeoriPratigiStepState = {
 };
 
 const FULL: TeoriPratigiStepState = {
-  instruction: 'İtalyan Açılışı\'nın ilk hamlelerini oyna',
   setupFen: TWO_SIDED,
   fen: TWO_SIDED,
   moves: ['Rh4'],
@@ -26,16 +24,15 @@ const FULL: TeoriPratigiStepState = {
   studentColorChosen: true,
 };
 
-describe('teoriPratigiSteps', () => {
-  it('sekiz adım döner, sıra numaraları 1-8 olur', () => {
+describe('teoriPratigiSteps (madde 2026-09-06 üçüncü tur/3: "Talimatı Gir" kaldırıldı)', () => {
+  it('yedi adım döner, sıra numaraları 1-7 olur', () => {
     const steps = teoriPratigiSteps(BLANK);
-    expect(steps).toHaveLength(8);
-    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(steps).toHaveLength(7);
+    expect(steps.map((s) => s.no)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
-  it('adım etiketleri Zafer\'in belirttiği sırayla', () => {
+  it('adım etiketleri Zafer\'in belirttiği sırayla ("Talimatı Gir" YOK)', () => {
     expect(teoriPratigiSteps(BLANK).map((s) => s.label)).toEqual([
-      'Talimatı Gir',
       'Konum Diz',
       'Konumu Kaydet',
       'Cevap Hamlelerini Yap ve Notasyon Oluştur',
@@ -50,40 +47,40 @@ describe('teoriPratigiSteps', () => {
     expect(teoriPratigiSteps(BLANK).every((s) => !s.done)).toBe(true);
   });
 
-  it('tam durumda sekiz adım da tamamlanmıştır', () => {
+  it('tam durumda yedi adım da tamamlanmıştır', () => {
     expect(teoriPratigiSteps(FULL).every((s) => s.done)).toBe(true);
   });
 
-  it('TUZAK: adım 2 boş tahtada tamamlanmaz, taş dizilince tamamlanır', () => {
-    expect(teoriPratigiSteps(BLANK)[1].done).toBe(false);
-    expect(teoriPratigiSteps({ ...BLANK, setupFen: TWO_SIDED })[1].done).toBe(true);
+  it('TUZAK: adım 1 boş tahtada tamamlanmaz, taş dizilince tamamlanır', () => {
+    expect(teoriPratigiSteps(BLANK)[0].done).toBe(false);
+    expect(teoriPratigiSteps({ ...BLANK, setupFen: TWO_SIDED })[0].done).toBe(true);
   });
 
-  it('adım 3 konum kaydedilince (fen !== null) tamamlanır', () => {
-    expect(teoriPratigiSteps({ ...BLANK, fen: TWO_SIDED })[2].done).toBe(true);
+  it('adım 2 konum kaydedilince (fen !== null) tamamlanır', () => {
+    expect(teoriPratigiSteps({ ...BLANK, fen: TWO_SIDED })[1].done).toBe(true);
   });
 
-  it('adım 4 en az bir hamle varsa tamamlanır', () => {
-    expect(teoriPratigiSteps({ ...BLANK, moves: ['e4'] })[3].done).toBe(true);
+  it('adım 3 en az bir hamle varsa tamamlanır', () => {
+    expect(teoriPratigiSteps({ ...BLANK, moves: ['e4'] })[2].done).toBe(true);
   });
 
-  it('adım 5 notasyon kaydedilince tamamlanır', () => {
-    expect(teoriPratigiSteps({ ...BLANK, notationSaved: true })[4].done).toBe(true);
+  it('adım 4 notasyon kaydedilince tamamlanır', () => {
+    expect(teoriPratigiSteps({ ...BLANK, notationSaved: true })[3].done).toBe(true);
   });
 
-  it('adım 6 açılış adı girilince tamamlanır', () => {
-    expect(teoriPratigiSteps({ ...BLANK, openingName: 'İtalyan Açılışı' })[5].done).toBe(true);
-    expect(teoriPratigiSteps({ ...BLANK, openingName: '   ' })[5].done).toBe(false);
+  it('adım 5 açılış adı girilince tamamlanır', () => {
+    expect(teoriPratigiSteps({ ...BLANK, openingName: 'İtalyan Açılışı' })[4].done).toBe(true);
+    expect(teoriPratigiSteps({ ...BLANK, openingName: '   ' })[4].done).toBe(false);
   });
 
-  it('TUZAK: adım 7 sporcunun rengi BİLFİİL seçilmeden tamamlanmaz', () => {
-    expect(teoriPratigiSteps(BLANK)[6].done).toBe(false);
-    expect(teoriPratigiSteps({ ...BLANK, studentColorChosen: true })[6].done).toBe(true);
+  it('TUZAK: adım 6 sporcunun rengi BİLFİİL seçilmeden tamamlanmaz', () => {
+    expect(teoriPratigiSteps(BLANK)[5].done).toBe(false);
+    expect(teoriPratigiSteps({ ...BLANK, studentColorChosen: true })[5].done).toBe(true);
   });
 
-  it('Soruyu Ekle (8) yalnızca öncekilerin hepsi bitince tamamlanır', () => {
-    expect(teoriPratigiSteps(FULL)[7].done).toBe(true);
-    expect(teoriPratigiSteps({ ...FULL, notationSaved: false })[7].done).toBe(false);
+  it('Soruyu Ekle (7) yalnızca öncekilerin hepsi bitince tamamlanır', () => {
+    expect(teoriPratigiSteps(FULL)[6].done).toBe(true);
+    expect(teoriPratigiSteps({ ...FULL, notationSaved: false })[6].done).toBe(false);
   });
 });
 

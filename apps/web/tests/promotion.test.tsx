@@ -71,6 +71,14 @@ describe('PromotionPicker — seçim penceresi', () => {
     expect(btn.className).toContain('justify-center');
   });
 
+  it('madde 2026-09-06 (üçüncü tur/6): kart tam kare — taş her yönden tam ortalı', () => {
+    render(<PromotionPicker color="w" onPick={vi.fn()} onCancel={vi.fn()} />);
+    const btn = screen.getByRole('button', { name: 'Vezir' });
+    expect(btn.className).toContain('aspect-square');
+    expect(btn.className).toContain('items-center');
+    expect(btn.className).toContain('justify-center');
+  });
+
   it('madde 2026-09-06 (1): taş görseli Cburnett setinden ve renge göre gelir', () => {
     render(<PromotionPicker color="b" onPick={vi.fn()} onCancel={vi.fn()} />);
     const img = screen.getByRole('button', { name: 'Vezir' }).querySelector('img');

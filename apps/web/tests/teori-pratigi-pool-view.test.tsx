@@ -44,7 +44,9 @@ describe('TeoriPratigiPoolView — havuz kartı (Kazanç Konumu ile AYNI desen)'
     setup({ pool: [] });
     fireEvent.click(screen.getByText('Konum Havuzu'));
     expect(screen.getByText('Henüz soru eklenmedi.')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/İtalyan Açılışı'nın ilk hamlelerini oyna/)).toBeInTheDocument();
+    // Madde 2026-09-06 (üçüncü tur/3): "Talimat" alanı kalktı — ekle formunun
+    // göründüğünü "Konumu Kaydet" adımıyla doğrula.
+    expect(screen.getByText('Konumu Kaydet')).toBeInTheDocument();
   });
 
   it('kayıtlı kod korunur, kodsuza boşta olan numara verilir', () => {

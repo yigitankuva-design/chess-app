@@ -39,6 +39,11 @@ describe('MoveList — tahta altındaki notasyon (madde 1/3)', () => {
     render(<MoveList san={['e4']} />);
     expect(screen.getByLabelText('Hamleler').className).toContain('max-w-[600px]');
   });
+
+  it('madde 2026-09-06 (üçüncü tur/5): kart çerçevesi tema uyumlu (var(--t-accent))', () => {
+    render(<MoveList san={['e4']} />);
+    expect(screen.getByLabelText('Hamleler').style.borderColor).toBe('var(--t-accent)');
+  });
 });
 
 describe('MoveList — madde 2026-09-06 (4): her satırda SABİT 3 hamle çifti', () => {

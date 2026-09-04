@@ -51,8 +51,11 @@ export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
 
   return (
     <section aria-label="Hamleler"
-      /* Genislik TAHTAYLA AYNI: notasyon tahta hizasini gecmez. */
-      className="t-card-i mt-3 p-3 w-full max-w-[600px] mx-auto">
+      /* Genislik TAHTAYLA AYNI: notasyon tahta hizasini gecmez. Madde
+         2026-09-06 (ucuncu tur/5): cerceve rengi tema uyumlu (t-card-i'nin
+         varsayilan norotr sinirini SADECE burada accent'e cevirir). */
+      className="t-card-i mt-3 p-3 w-full max-w-[600px] mx-auto"
+      style={{ borderColor: 'var(--t-accent)' }}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <p className="text-xs font-semibold t-muted uppercase tracking-widest">
           Hamleler

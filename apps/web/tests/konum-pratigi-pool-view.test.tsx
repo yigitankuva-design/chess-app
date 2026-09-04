@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { KonumPratigiPoolView } from '@/components/admin/KonumPratigiPoolView';
+import { KONUM_PRATIGI_INSTRUCTION } from '@/lib/admin/konumPratigiSteps';
 import type { KonumPratigiQuestion } from '@/lib/customTabsApi';
 
 const FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -44,7 +45,9 @@ describe('KonumPratigiPoolView — havuz kartı (Kazanç Konumu ile AYNI desen)'
     setup({ pool: [] });
     fireEvent.click(screen.getByText('Konum Havuzu'));
     expect(screen.getByText('Henüz soru eklenmedi.')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)')).toBeInTheDocument();
+    // Madde 2026-09-06 (üçüncü tur/2): "Talimat" alanı kalktı — ekle formunun
+    // göründüğünü FEN alanıyla doğrula.
+    expect(screen.getByPlaceholderText(/FEN yapıştır/)).toBeInTheDocument();
   });
 
   it('kayıtlı kod korunur, kodsuza boşta olan numara verilir', () => {
@@ -64,21 +67,22 @@ describe('KonumPratigiPoolView — düzenleme (Kazanç Konumu ile AYNI: tıkla-d
     expect(screen.getByText('Vazgeç')).toBeInTheDocument();
     // Ekle formu (üstte, her zaman görünür) + düzenleme formu (altta) AYNI
     // placeholder'ı paylaşır — düzenleme formu DOM sırasında İKİNCİ (index 1).
-    const talimatlar = screen.getAllByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)');
-    expect(talimatlar).toHaveLength(2);
-    expect((talimatlar[1] as HTMLInputElement).value).toBe('Bu hangi açılıştır?');
+    const fenAlanlari = screen.getAllByPlaceholderText(/FEN yapıştır/);
+    expect(fenAlanlari).toHaveLength(2);
+    expect((fenAlanlari[1] as HTMLTextAreaElement).value.split(' ')[0]).toBe(FEN.split(' ')[0]);
   });
 
-  it('"Soruyu kaydet" onUpdateQuestion\'ı ID/KOD DEĞİŞMEDEN çağırır', () => {
+  it('"Soruyu kaydet" onUpdateQuestion\'ı ID/KOD DEĞİŞMEDEN, talimatı SABİT metne normalize ederek çağırır', () => {
     const p = setup({ pool: [soru({ id: 'a', code: '005' })] });
     fireEvent.click(screen.getByText('Konum Havuzu'));
     fireEvent.click(screen.getByRole('button', { name: 'Soru 005' }));
-    fireEvent.change(screen.getAllByPlaceholderText('Talimat (örn. Bu konum hangi açılıştır?)')[1], {
-      target: { value: 'Güncellenmiş talimat' },
+    fireEvent.change(screen.getAllByPlaceholderText('1. şık')[1], {
+      target: { value: 'Güncellenmiş İtalyan Açılışı' },
     });
     fireEvent.click(screen.getByText('Soruyu kaydet'));
     expect(p.onUpdateQuestion).toHaveBeenCalledWith('a', expect.objectContaining({
-      id: 'a', code: '005', instruction: 'Güncellenmiş talimat',
+      id: 'a', code: '005', instruction: KONUM_PRATIGI_INSTRUCTION,
+      options: ['Güncellenmiş İtalyan Açılışı', 'İspanyol Açılışı'],
     }));
   });
 
