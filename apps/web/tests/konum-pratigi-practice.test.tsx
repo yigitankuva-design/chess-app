@@ -53,6 +53,18 @@ describe('KonumPratigiPractice', () => {
     expect(screen.getByText('Soru 1/1')).toHaveStyle({ border: '1px solid var(--t-border)' });
   });
 
+  it('madde 2026-09-06 (ikinci tur/F): başlık progress satırında, tahta büyütülmüş', () => {
+    render(<KonumPratigiPractice questions={[Q1]} />);
+    expect(screen.getByText('Konum Pratiği')).toBeInTheDocument();
+    // Aynı satırda: "0/1" göstergesi ve "Soru 1/1" rozetiyle birlikte.
+    const row = screen.getByText('Konum Pratiği').parentElement;
+    expect(row).toHaveTextContent('0/1');
+    expect(row).toHaveTextContent('Soru 1/1');
+    // Q1 bir sentence_question (sentence_show_board) — tahta ChoiceQuestionVisual'ın
+    // "sentence-board" kartı, isBoardExercise'in coord-frame'i DEĞİL.
+    expect(screen.getByTestId('sentence-board')).toHaveStyle({ maxWidth: '360px' });
+  });
+
   it('havuz KARIŞTIRILIR — sıra admin sırasıyla birebir aynı olmak zorunda değildir', () => {
     // Math.random hep 0 dönerse Fisher–Yates sırayı TERSİNE çevirir — deterministik kanıt.
     vi.spyOn(Math, 'random').mockReturnValue(0);

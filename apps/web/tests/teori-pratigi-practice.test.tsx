@@ -62,16 +62,25 @@ describe('TeoriPratigiPractice', () => {
 
   it('başlangıçta doğru/yanlış kartı ve tekrar/yeni butonları YOKTUR', () => {
     render(<TeoriPratigiPractice questions={[Q1]} />);
-    expect(screen.queryByText('Tekrar Pratik Yap')).not.toBeInTheDocument();
-    expect(screen.queryByText('Yeni Konuyla Pratik Yap')).not.toBeInTheDocument();
+    expect(screen.queryByText('Teoriyi Tekrar Et')).not.toBeInTheDocument();
+    expect(screen.queryByText('Farklı Teoriye Geç')).not.toBeInTheDocument();
   });
 
   it('doğru bitince ✓ kartı ve iki buton görünür', () => {
     render(<TeoriPratigiPractice questions={[Q1]} />);
     fireEvent.click(screen.getByText('fake-solve'));
     expect(screen.getByLabelText('Doğru')).toBeInTheDocument();
-    expect(screen.getByText('Tekrar Pratik Yap')).toBeInTheDocument();
-    expect(screen.getByText('Yeni Konuyla Pratik Yap')).toBeInTheDocument();
+    expect(screen.getByText('Teoriyi Tekrar Et')).toBeInTheDocument();
+    expect(screen.getByText('Farklı Teoriye Geç')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-06 (ikinci tur/G): butonlar ve durum kartı TEK satırda 3 sütun', () => {
+    render(<TeoriPratigiPractice questions={[Q1]} />);
+    fireEvent.click(screen.getByText('fake-solve'));
+    const row = screen.getByText('Teoriyi Tekrar Et').parentElement;
+    expect(row?.className).toContain('grid-cols-3');
+    expect(row).toHaveTextContent('Farklı Teoriye Geç');
+    expect(row?.querySelector('[aria-label="Doğru"]')).toBeInTheDocument();
   });
 
   it('teoriden çıkınca ✕ kartı, geri bildirim mesajı ve iki buton görünür', () => {
@@ -79,23 +88,23 @@ describe('TeoriPratigiPractice', () => {
     fireEvent.click(screen.getByText('fake-wrong'));
     expect(screen.getByLabelText('Yanlış')).toBeInTheDocument();
     expect(screen.getByText('Bu hamle teorinin dışında.')).toBeInTheDocument();
-    expect(screen.getByText('Tekrar Pratik Yap')).toBeInTheDocument();
+    expect(screen.getByText('Teoriyi Tekrar Et')).toBeInTheDocument();
   });
 
-  it('"Tekrar Pratik Yap" AYNI soruyla sıfırlar, kart kaybolur', () => {
+  it('"Teoriyi Tekrar Et" AYNI soruyla sıfırlar, kart kaybolur', () => {
     render(<TeoriPratigiPractice questions={[Q1]} />);
     fireEvent.click(screen.getByText('fake-wrong'));
-    fireEvent.click(screen.getByText('Tekrar Pratik Yap'));
+    fireEvent.click(screen.getByText('Teoriyi Tekrar Et'));
     expect(screen.queryByLabelText('Yanlış')).not.toBeInTheDocument();
     expect(screen.getByTestId('solver').getAttribute('data-question-id')).toBe('q1');
   });
 
-  it('"Yeni Konuyla Pratik Yap" BAŞKA bir soru seçer', () => {
+  it('"Farklı Teoriye Geç" BAŞKA bir soru seçer', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     render(<TeoriPratigiPractice questions={[Q1, Q2]} />);
     const initialId = screen.getByTestId('solver').getAttribute('data-question-id');
     fireEvent.click(screen.getByText('fake-solve'));
-    fireEvent.click(screen.getByText('Yeni Konuyla Pratik Yap'));
+    fireEvent.click(screen.getByText('Farklı Teoriye Geç'));
     expect(screen.getByTestId('solver').getAttribute('data-question-id')).not.toBe(initialId);
     expect(screen.queryByLabelText('Doğru')).not.toBeInTheDocument();
     vi.restoreAllMocks();

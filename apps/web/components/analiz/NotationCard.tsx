@@ -155,13 +155,13 @@ export function NotationCard({
     const qualityColor = quality ? QUALITY_COLOR[quality.tone] : undefined;
     if (!clickable) {
       return (
-        <span className="px-1" style={qualityColor ? { color: qualityColor, fontWeight: 700 } : undefined}
+        <span className="px-0.5" style={qualityColor ? { color: qualityColor, fontWeight: 700 } : undefined}
           onContextMenu={(e) => openMenu(e, m)}>{label}</span>
       );
     }
     return (
       <button type="button" onClick={() => onSelectPly!(m.ply)} onContextMenu={(e) => openMenu(e, m)}
-        className="rounded px-1"
+        className="rounded px-0.5"
         style={{
           background: active ? 'rgba(34,211,238,0.25)' : undefined,
           color: qualityColor, fontWeight: qualityColor ? 700 : undefined,
@@ -197,12 +197,12 @@ export function NotationCard({
       {moves.length === 0 ? (
         <p className="text-xs t-muted">Henüz hamle yok.</p>
       ) : (
-        <div className="grid gap-x-1 gap-y-1.5 text-sm font-mono"
+        <div className="grid gap-x-1 gap-y-1.5 text-xs font-mono"
           style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {pairs.map((p) => (
             <Fragment key={p.moveNumber}>
               <div className="whitespace-nowrap overflow-hidden text-ellipsis">
-                <span className="t-muted">{p.moveNumber}.</span>{' '}
+                <span className="t-muted">{p.moveNumber}.</span>
                 {p.white && moveCell(p.white)}
                 {'-'}
                 {p.black && moveCell(p.black)}

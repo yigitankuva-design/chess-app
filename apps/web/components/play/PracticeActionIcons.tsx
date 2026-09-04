@@ -23,8 +23,8 @@ export function FlipBoardIcon() {
  *  hiçbir üçüncü taraf ikon setinden kopyalanmadı). */
 export function ReplayIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M19.05 14.57 A7.5 7.5 0 1 1 15.75 5.51" />
       <polygon points="12.6,4.2 18.6,4.9 15.5,9.9" fill="currentColor" stroke="none" />
     </svg>

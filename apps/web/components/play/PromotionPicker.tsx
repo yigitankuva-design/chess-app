@@ -32,13 +32,13 @@ export function PromotionPicker({ color, onPick, onCancel }: Props) {
               type="button"
               aria-label={c.label}
               onClick={() => onPick(c.piece)}
-              className="t-card-i flex flex-col items-center gap-1 py-3"
+              className="t-card-i flex flex-col items-center justify-center gap-1 py-3"
             >
               <img
                 src={CBURNETT[`${color}${c.piece.toUpperCase()}`]}
                 alt=""
                 aria-hidden="true"
-                className="w-9 h-9"
+                className="w-[50px] h-[50px]"
               />
             </button>
           ))}

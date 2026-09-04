@@ -63,6 +63,14 @@ describe('PromotionPicker — seçim penceresi', () => {
     expect(vezir.querySelector('img')).toBeInTheDocument();
   });
 
+  it('madde 2026-09-06 (ikinci tur/C): taş görseli %40 büyütülmüş (50x50) ve kart tam ortalı', () => {
+    render(<PromotionPicker color="w" onPick={vi.fn()} onCancel={vi.fn()} />);
+    const btn = screen.getByRole('button', { name: 'Vezir' });
+    const img = btn.querySelector('img');
+    expect(img).toHaveClass('w-[50px]', 'h-[50px]');
+    expect(btn.className).toContain('justify-center');
+  });
+
   it('madde 2026-09-06 (1): taş görseli Cburnett setinden ve renge göre gelir', () => {
     render(<PromotionPicker color="b" onPick={vi.fn()} onCancel={vi.fn()} />);
     const img = screen.getByRole('button', { name: 'Vezir' }).querySelector('img');

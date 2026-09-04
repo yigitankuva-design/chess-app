@@ -27,7 +27,7 @@ describe('GameHistoryList', () => {
     expect(screen.getByText('Henüz bitmiş bir maçın yok.')).toBeInTheDocument();
   });
 
-  it('madde 2026-09-06 (8): beyaz — skor — siyah, tempo/tarih ve açılış/varyant satırları', () => {
+  it('madde 2026-09-06 (ikinci tur/E): beyaz — skor — siyah — tempo/tarih — açılış/varyant TEK SATIRDA', () => {
     render(<GameHistoryList games={[game({
       white_name: 'Ali', black_name: 'Zeynep', tempo_label: '5+3(Yıldırım)',
       opening_name: 'İspanyol Açılışı', variant_name: 'Berlin Defansı',
@@ -35,9 +35,12 @@ describe('GameHistoryList', () => {
     expect(screen.getByText('Ali')).toBeInTheDocument();
     expect(screen.getByText('1-0')).toBeInTheDocument();
     expect(screen.getByText('Zeynep')).toBeInTheDocument();
-    expect(screen.getByText('5+3(Yıldırım)')).toBeInTheDocument();
-    expect(screen.getByText('30.08.2026')).toBeInTheDocument();
+    expect(screen.getByText('5+3(Yıldırım) 30.08.2026')).toBeInTheDocument();
     expect(screen.getByText('İspanyol Açılışı — Berlin Defansı')).toBeInTheDocument();
+    // Hepsi AYNI satırda (sarma yok) — tek bir wrapper div içinde duruyor.
+    const row = screen.getByText('Ali').closest('div');
+    expect(row?.className).toContain('whitespace-nowrap');
+    expect(row).toHaveTextContent('Ali|1-0|Zeynep|5+3(Yıldırım) 30.08.2026|İspanyol Açılışı — Berlin Defansı');
   });
 
   it('puanlı maçta isimlerin yanında maç-sonrası puan ve fark gösterilir', () => {
@@ -64,7 +67,7 @@ describe('GameHistoryList', () => {
 
   it('tempo yoksa (süresiz) "Süresiz" gösterir', () => {
     render(<GameHistoryList games={[game({ tempo_label: null })]} loading={false} onSelect={vi.fn()} />);
-    expect(screen.getByText('Süresiz')).toBeInTheDocument();
+    expect(screen.getByText(/^Süresiz /)).toBeInTheDocument();
   });
 
   it('karta tıklayınca onSelect o maçla çağrılır', () => {

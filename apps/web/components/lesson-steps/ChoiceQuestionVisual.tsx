@@ -9,13 +9,17 @@ import { PaintItemView } from '@/components/PaintItemView';
 
 interface Props {
   exercise: ChoiceTypeConfig;
+  /** Madde 2026-09-06 (ikinci tur/F): sabit tahtanın kart genişliği —
+   *  varsayılan 240 (dersler/diğer pratik modları). SADECE a) Konum Pratiği
+   *  tahtayı büyütmek için farklı bir değer verir. */
+  boardMaxWidth?: number;
 }
 
 /** Çoktan seçmeli sorunun GÖRSEL kısmı — resim veya boş tahta ızgarası.
  *  Yatay yerleşimde tahtanın olduğu alana (`board`) konur; cümle tipi
  *  sorularda hiçbir şey render etmez (görsel yok) — YALNIZCA hoca opsiyonel
  *  bir tahta kurduysa (madde 5, `fen` doluysa) sabit tahta gösterilir. */
-export function ChoiceQuestionVisual({ exercise }: Props) {
+export function ChoiceQuestionVisual({ exercise, boardMaxWidth = 240 }: Props) {
   const { settings } = useSettings();
   const boardColors = getBoardColors(settings.board);
   const pieceSet = getPieceSet(settings.board.pieces);
@@ -26,7 +30,7 @@ export function ChoiceQuestionVisual({ exercise }: Props) {
   return (
     <>
       {exercise.type === 'sentence_question' && exercise.fen && exercise.sentence_show_board !== false && (
-        <div data-testid="sentence-board" className="rounded-xl p-2" style={{ backgroundColor: BOARD_CARD_BG, maxWidth: 240, margin: '0 auto', position: 'relative' }}>
+        <div data-testid="sentence-board" className="rounded-xl p-2" style={{ backgroundColor: BOARD_CARD_BG, maxWidth: boardMaxWidth, margin: '0 auto', position: 'relative' }}>
           <div className="aspect-square" style={BOARD_STYLE}>
             <Chessboard options={{
               position: exercise.fen,

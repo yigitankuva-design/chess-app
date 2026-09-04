@@ -237,13 +237,13 @@ export function BotGame({
     if (studentTime <= 0) {
       setStatus('over');
       clearBotGame(sessionKeyStr);
-      setResultText('⏰ Süren bitti — Bot kazandı.');
+      setResultText('Süren bitti — Bot kazandı.');
       setOutcome('loss');
       onGameEnd('loss');
     } else if (botTime <= 0) {
       setStatus('over');
       clearBotGame(sessionKeyStr);
-      setResultText('⏰ Botun süresi bitti — Kazandın! 🎉');
+      setResultText('Botun süresi bitti — Kazandın!');
       setOutcome('win');
       onGameEnd('win');
     }
@@ -294,11 +294,11 @@ export function BotGame({
     if (chess.isCheckmate()) {
       // Mat olan taraf SIRASI GELEN taraftir; sporcu mat edildiyse kaybetti.
       const studentWon = chess.turn() === botColor;
-      setResultText(studentWon ? '🎉 Kazandın! Mat!' : '😔 Bot kazandı.');
+      setResultText(studentWon ? 'Tebrikler Kazandın' : 'Bot kazandı.');
       setOutcome(studentWon ? 'win' : 'loss');
       onGameEnd(studentWon ? 'win' : 'loss');
     } else {
-      setResultText('🤝 Berabere.');
+      setResultText('Berabere.');
       setOutcome('draw');
       onGameEnd('draw');
     }

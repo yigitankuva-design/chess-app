@@ -238,9 +238,10 @@ function PlayInner() {
   // ── a) Konum Pratiği ────────────────────────────────────────────────────
   if (mode === 'konum-pratigi') {
     return (
-      <main id="main-content" className="pb-12">
-        {/* Madde 2026-09-04 (5): ikon kaldırıldı, başlık ortalandı. */}
-        <p className="font-semibold text-sm px-4 pt-5 max-w-lg mx-auto text-center">Konum Pratiği</p>
+      <main id="main-content" className="pb-12 pt-3">
+        {/* Madde 2026-09-06 (ikinci tur/F): "Konum Pratiği" başlığı artık
+            BoardExercise'in progress satırında ("0/1"/"Soru X/Y" ile aynı
+            satırda) — burada ayrıca çizilmiyor. */}
         {konumQuestions === undefined ? (
           <p className="px-4 pt-3 text-sm t-muted">Yükleniyor...</p>
         ) : (

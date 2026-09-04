@@ -41,6 +41,6 @@ describe('MoveList — hamleye tıklayarak gezinme (madde 1)', () => {
     const rows = Array.from(
       screen.getByLabelText('Hamleler').querySelectorAll('.whitespace-nowrap'),
     ).map((el) => el.textContent!.replace(/\s+/g, ' ').trim());
-    expect(rows).toEqual(['1. e4-e5', '2. Af3-Ac6']);
+    expect(rows).toEqual(['1.e4-e5', '2.Af3-Ac6']);
   });
 });

@@ -17,12 +17,12 @@ describe('MoveList — tahta altındaki notasyon (madde 1/3)', () => {
 
   it('hamleler numaralı satırlar halinde ve TÜRKÇE yazılır', () => {
     render(<MoveList san={['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5']} />);
-    expect(rows()).toEqual(['1. e4-e5', '2. Af3-Ac6', '3. Fc4-Fc5']);
+    expect(rows()).toEqual(['1.e4-e5', '2.Af3-Ac6', '3.Fc4-Fc5']);
   });
 
   it('tek hamlede tire yazılmaz', () => {
     render(<MoveList san={['e4']} />);
-    expect(rows()).toEqual(['1. e4']);
+    expect(rows()).toEqual(['1.e4']);
   });
 
   it('açılış konumundan başlayan maçta numara FEN’den devam eder', () => {
@@ -32,7 +32,7 @@ describe('MoveList — tahta altındaki notasyon (madde 1/3)', () => {
         startFen="r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 3"
       />,
     );
-    expect(rows()).toEqual(['3. …-Af6']);
+    expect(rows()).toEqual(['3.…-Af6']);
   });
 
   it('notasyon kartı tahtayla aynı genişlikte sınırlanır', () => {
@@ -54,7 +54,7 @@ describe('MoveList — madde 2026-09-06 (4): her satırda SABİT 3 hamle çifti'
 
   it('her hamle çifti kendi hücresinde kalır, aralarında virgül YOKTUR', () => {
     render(<MoveList san={['e4', 'e5', 'Nf3', 'Nc6']} />);
-    expect(rows()).toEqual(['1. e4-e5', '2. Af3-Ac6']);
+    expect(rows()).toEqual(['1.e4-e5', '2.Af3-Ac6']);
     expect(screen.getByLabelText('Hamleler').textContent).not.toContain(',');
   });
 });

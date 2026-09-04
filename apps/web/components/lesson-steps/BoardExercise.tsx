@@ -202,6 +202,14 @@ interface Props {
   /** Madde 2026-09-04 (5): talimat kutusundaki 🎯 ikonu render edilmez.
    *  Varsayılan false — SADECE a) Konum Pratiği bunu açar. */
   hideInstructionIcon?: boolean;
+  /** Madde 2026-09-06 (ikinci tur/F): tahtanın kart genişliği — varsayılan
+   *  340 (dersler/diğer pratik modları). SADECE a) Konum Pratiği tahtayı
+   *  büyütmek için farklı bir değer verir. */
+  boardMaxWidth?: number;
+  /** Madde 2026-09-06 (ikinci tur/F): verilirse "0/1"/"Soru X/Y" göstergesiyle
+   *  AYNI satırda, ortada kalın başlık olarak gösterilir — sayfa artık ayrı
+   *  bir başlık satırı çizmez. Varsayılan yok — SADECE a) Konum Pratiği verir. */
+  headerTitle?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -259,6 +267,7 @@ export function BoardExercise({
   exercises, done, onCorrect, onFinish, noRetry = false,
   initialIndex = 0, onIndexChange, initialAnswer = null, initialDoneCount,
   onAnswered, quitSlot, boxedProgress = false, hideInstructionIcon = false,
+  boardMaxWidth = 340, headerTitle,
 }: Props) {
   // Madde 1: click_square/identify_piece sorularinin tahtasi ham
   // react-chessboard cizdigi icin uygulamanin ortak temasini/notasyonunu
@@ -548,7 +557,10 @@ export function BoardExercise({
         >
           <ProgressDots total={total} current={currentIdx} doneCount={doneCount} results={results} />
         </div>
-        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+        {headerTitle && (
+          <p className="font-semibold text-sm text-center flex-1 truncate">{headerTitle}</p>
+        )}
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
           style={{
             background: 'var(--t-surface-2)', color: 'var(--t-muted)',
             ...(boxedProgress ? { border: '1px solid var(--t-border)' } : {}),
@@ -605,7 +617,7 @@ export function BoardExercise({
                 <div
                   data-testid="board-exercise-coord-frame"
                   className="w-full mx-auto p-3 rounded-2xl"
-                  style={{ maxWidth: 340, backgroundColor: BOARD_CARD_BG, position: 'relative' }}
+                  style={{ maxWidth: boardMaxWidth, backgroundColor: BOARD_CARD_BG, position: 'relative' }}
                 >
                   <div className="flex">
                     <div className="grid shrink-0" style={{ gridTemplateRows: 'repeat(8, 1fr)', width: 18 }}>
@@ -640,7 +652,7 @@ export function BoardExercise({
                   ))}
                 </div>
               ) : (
-                <ChoiceQuestionVisual exercise={exercise} />
+                <ChoiceQuestionVisual exercise={exercise} boardMaxWidth={boardMaxWidth} />
               )}
             </div>
           </div>

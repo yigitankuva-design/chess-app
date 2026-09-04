@@ -56,10 +56,13 @@ export function KonumPratigiPractice({ questions }: Props) {
           ilerler (ders içindeki sentence_question'ın aksine, orada retry
           serbest kalır). */}
       {/* Madde 2026-09-04 (5): "0/1"/"Soru X/Y" kenarlıklı kutuda, talimat
-          ikonu olmadan — SADECE bu ekranda. */}
+          ikonu olmadan — SADECE bu ekranda. Madde 2026-09-06 (ikinci tur/F):
+          başlık artık BoardExercise'in progress satırında (aynı sayfadaki
+          ayrı <p>Konum Pratiği</p> kaldırıldı) ve tahta büyütüldü. */}
       <BoardExercise
         exercises={shuffled} done={false} onCorrect={() => {}} noRetry
         boxedProgress hideInstructionIcon
+        headerTitle="Konum Pratiği" boardMaxWidth={360}
       />
     </div>
   );

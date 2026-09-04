@@ -118,6 +118,15 @@ describe('GameMoveList — kart boyutu ve ikon büyüklüğü (madde 2026-08-31/
       expect(svg).toHaveAttribute('height', '20');
     });
   });
+
+  it('madde 2026-09-06 (ikinci tur/A): çerçeve rengi tema uyumlu (var(--t-accent))', () => {
+    setup({ moves: [] });
+    LABELS.forEach((label) => {
+      // jsdom'un toHaveStyle'ı border-color içindeki var()'ı reddedebiliyor —
+      // elemanın KENDİ inline style nesnesini doğrudan okumak daha güvenilir.
+      expect(screen.getByLabelText(label).style.borderColor).toBe('var(--t-accent)');
+    });
+  });
 });
 
 describe('GameMoveList — Notasyon Verilerini Gizle (madde 2026-09-05 (4))', () => {

@@ -63,8 +63,8 @@ const NavBtn = ({
   label, icon, onClick, disabled,
 }: { label: string; icon: IconType; onClick: () => void; disabled?: boolean }) => (
   <button type="button" aria-label={label} onClick={onClick} disabled={disabled}
-    className="flex items-center justify-center rounded-xl t-muted border-2 border-white/20 disabled:opacity-30 hover:bg-white/5 transition-colors flex-shrink-0"
-    style={{ width: 58, height: 43 }}>
+    className="flex items-center justify-center rounded-xl t-muted border-2 disabled:opacity-30 hover:bg-white/5 transition-colors flex-shrink-0"
+    style={{ width: 58, height: 43, borderColor: 'var(--t-accent)' }}>
     <NavIcon type={icon} />
   </button>
 );

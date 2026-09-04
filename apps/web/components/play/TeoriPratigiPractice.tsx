@@ -83,8 +83,16 @@ export function TeoriPratigiPractice({ questions }: Props) {
       )}
 
       {status !== 'idle' && (
-        <>
-          <div className="t-card-i flex flex-col items-center justify-center gap-1.5 py-4 px-2 text-center"
+        /* Madde 2026-09-06 (ikinci tur/G): eskiden İKİ ayrı parça (büyük
+           ✓/✕ kartı + altında 2 buton satırı) idi — Zafer'in görseline göre
+           TEK satırda 3 parça birleştirildi: sol/sağ butonlar + ortada
+           durum kartı, üçü de aynı yükseklikte. */
+        <div className="grid grid-cols-3 gap-2 items-stretch">
+          <button type="button" onClick={retrySame}
+            className="t-card-i py-3 px-2 text-sm font-bold text-center">
+            Teoriyi Tekrar Et
+          </button>
+          <div className="t-card-i flex items-center justify-center py-3 px-2"
             style={{
               borderColor: status === 'success' ? '#16a34a' : '#dc2626',
               background: status === 'success'
@@ -92,22 +100,15 @@ export function TeoriPratigiPractice({ questions }: Props) {
                 : 'color-mix(in srgb, #dc2626 12%, transparent)',
             }}>
             <span role="img" aria-label={status === 'success' ? 'Doğru' : 'Yanlış'}
-              style={{ fontSize: '2.75rem', lineHeight: 1, color: status === 'success' ? '#16a34a' : '#dc2626' }}>
+              style={{ fontSize: '2rem', lineHeight: 1, color: status === 'success' ? '#16a34a' : '#dc2626' }}>
               {status === 'success' ? '✓' : '✕'}
             </span>
           </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={retrySame}
-              className="t-card-i py-3 px-2 text-sm font-bold text-center">
-              Tekrar Pratik Yap
-            </button>
-            <button type="button" onClick={tryDifferent}
-              className="t-card-i py-3 px-2 text-sm font-bold text-center">
-              Yeni Konuyla Pratik Yap
-            </button>
-          </div>
-        </>
+          <button type="button" onClick={tryDifferent}
+            className="t-card-i py-3 px-2 text-sm font-bold text-center">
+            Farklı Teoriye Geç
+          </button>
+        </div>
       )}
     </div>
   );

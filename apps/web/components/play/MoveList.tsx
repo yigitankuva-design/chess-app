@@ -75,11 +75,11 @@ export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
         <div ref={boxRef} className="max-h-32 overflow-y-auto overflow-x-hidden">
           {/* Madde 2026-09-06 (4): NotationCard'daki AYNI sabit 3-sütun grid —
               satır sayısı içerik uzunluğuna göre değil, HER ZAMAN 3 hamle/satır. */}
-          <div className="grid gap-x-1 gap-y-1.5 text-sm font-mono"
+          <div className="grid gap-x-1 gap-y-1.5 text-xs font-mono"
             style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {rows.map((r) => (
               <div key={r.no} className="whitespace-nowrap overflow-hidden text-ellipsis">
-                <span className="t-muted">{r.no}.</span>{' '}
+                <span className="t-muted">{r.no}.</span>
                 {move(r.white, '…')}
                 {r.black ? <>{'-'}{move(r.black, '')}</> : null}
               </div>
