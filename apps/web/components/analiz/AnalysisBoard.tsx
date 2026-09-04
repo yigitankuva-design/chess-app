@@ -16,8 +16,10 @@ export const ANALYSIS_BOARD_MAX_WIDTH = 380;
 // (karmaşık pozisyonlarda arama uzayabiliyordu). Motor artık hangisi önce
 // gelirse (derinlik veya süre) onda durur. Skill YİNE 20 (en güçlü hamle
 // seçimi), sadece arama süresi/derinliği kısıtlandı.
-const ANALYSIS_DEPTH = 14;
-const ANALYSIS_MOVETIME_MS = 700;
+// Madde 2026-09-05 (motor yükseltmesi): NNUE'li motor aynı sürede daha
+// derin/isabetli sonuç verdiği için derinlik/süre artırıldı (14/700ms → 18/1200ms).
+const ANALYSIS_DEPTH = 18;
+const ANALYSIS_MOVETIME_MS = 1200;
 const MULTI_PV = 3;
 // Madde 2026-08-30 (2): her aday hattın devamı en fazla 4 hamle (ply) gösterilir.
 const CONTINUATION_PLIES = 4;

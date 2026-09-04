@@ -6,7 +6,11 @@ export class StockfishEngine {
 
   async init(): Promise<void> {
     if (typeof window === 'undefined') return;
-    this.worker = new Worker('/stockfish/stockfish.js');
+    // Madde 2026-09-05: Stockfish 18, NNUE'li, tek-thread WASM derlemesi
+    // ("lite single") — eski 2018 model NNUE-öncesi motorun yerine (COOP/COEP
+    // header GEREKTİRMEZ, her tarayıcıda çalışır). Protokol (Worker +
+    // postMessage(string)/onmessage UCI) AYNI — bu sınıf değişmedi.
+    this.worker = new Worker('/stockfish/stockfish-18-lite-single.js');
     this.worker.onmessage = (e: MessageEvent) => {
       const line = typeof e.data === 'string' ? e.data : (e.data?.data ?? '');
       this.listeners.forEach((l) => l(line));
@@ -86,8 +90,14 @@ export class StockfishEngine {
    * "Konumu Analiz Et"). `bestMove`den farkı: skill kısıtlaması UYGULANMAZ
    * (çağıran taraf setSkill(20) ile en güçlü seviyeyi ayarlamalı) ve
    * değerlendirme puanı (cp/mat) da döner — sadece hamle değil.
+   *
+   * Madde 2026-09-05: opsiyonel `movetimeMs` eklendi — `analyzeMultiPv`'deki
+   * AYNI güvenlik deseni (derinlik TEK BAŞINA sınır değil, bu süre dolunca da
+   * durur) — karmaşık bir pozisyon zayıf bir cihazda UI'ı süresiz kilitlemesin.
    */
-  async analyze(fen: string, depth = 20): Promise<{ bestMove: string | null; scoreCp: number | null; mate: number | null }> {
+  async analyze(
+    fen: string, depth = 20, movetimeMs?: number,
+  ): Promise<{ bestMove: string | null; scoreCp: number | null; mate: number | null }> {
     return new Promise((resolve) => {
       let scoreCp: number | null = null;
       let mate: number | null = null;
@@ -105,7 +115,7 @@ export class StockfishEngine {
       };
       this.listeners.push(listener);
       this.send(`position fen ${fen}`);
-      this.send(`go depth ${depth}`);
+      this.send(movetimeMs ? `go depth ${depth} movetime ${movetimeMs}` : `go depth ${depth}`);
     });
   }
 

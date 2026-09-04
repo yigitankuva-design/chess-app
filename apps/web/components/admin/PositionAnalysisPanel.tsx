@@ -45,7 +45,10 @@ export function PositionAnalysisPanel({ fen }: Props) {
     }
     const engine = engineRef.current;
     engine.setSkill(20); // madde 2026-08-22: en yüksek güç seviyesi
-    const { bestMove, scoreCp, mate } = await engine.analyze(fen, 20);
+    // Madde 2026-09-05: 5sn güvenlik sınırı eklendi — zayıf bir cihazda
+    // karmaşık pozisyon UI'ı süresiz kilitlemesin (derinlik 20 tek başına
+    // sınır değil artık).
+    const { bestMove, scoreCp, mate } = await engine.analyze(fen, 20, 5000);
 
     let sanMove: string | null = null;
     if (bestMove && bestMove.length >= 4) {

@@ -5,10 +5,12 @@ import { scoreForWhite } from './analysisFormat';
 import type { WhiteScore } from './moveQuality';
 
 /** Madde 2026-09-05 (3): AnalysisBoard'un etkileşimli analizinden (o an
- *  görüntülenen pozisyonu 3 hatla, 700ms) BAĞIMSIZ, daha hafif ayarlar —
- *  bu hook arka planda TÜM geçmişi tek hatla değerlendirir. */
-const EVAL_DEPTH = 14;
-const EVAL_MOVETIME_MS = 400;
+ *  görüntülenen pozisyonu 3 hatla) BAĞIMSIZ, tek hatlı ayarlar — bu hook
+ *  arka planda TÜM geçmişi sırayla değerlendirir. Madde 2026-09-05 (motor
+ *  yükseltmesi): NNUE'li motor aynı sürede daha derin/isabetli sonuç
+ *  verdiği için derinlik/süre artırıldı (14/400ms → 18/800ms). */
+const EVAL_DEPTH = 18;
+const EVAL_MOVETIME_MS = 800;
 
 export interface EvalMove {
   ply: number;

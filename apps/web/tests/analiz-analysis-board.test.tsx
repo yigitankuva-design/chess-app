@@ -38,7 +38,7 @@ beforeEach(() => {
 });
 
 describe('AnalysisBoard', () => {
-  it('mount olunca fen ile analyzeMultiPv çağrılır (skill 20, depth 20, multiPv 3), sonuç 3 satır olarak gösterilir', async () => {
+  it('mount olunca fen ile analyzeMultiPv çağrılır (skill 20, depth 18, multiPv 3), sonuç 3 satır olarak gösterilir', async () => {
     analyzeMultiPv.mockResolvedValue([
       { moveUci: 'e2e4', scoreCp: 40, mate: null, pvUci: ['e2e4', 'e7e5'] },
       { moveUci: 'd2d4', scoreCp: 20, mate: null, pvUci: ['d2d4'] },
@@ -47,7 +47,8 @@ describe('AnalysisBoard', () => {
     render(<AnalysisBoard fen={FEN1} />);
 
     expect(await screen.findByText('1. e4 e5')).toBeInTheDocument();
-    expect(analyzeMultiPv).toHaveBeenCalledWith(FEN1, 14, 3, 700);
+    // Madde 2026-09-05 (motor yükseltmesi): 14/700ms → 18/1200ms.
+    expect(analyzeMultiPv).toHaveBeenCalledWith(FEN1, 18, 3, 1200);
     expect(screen.getByTestId('board')).toHaveAttribute('data-fen', FEN1);
   });
 
@@ -58,7 +59,7 @@ describe('AnalysisBoard', () => {
 
     rerender(<AnalysisBoard fen={FEN2} />);
     await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalledTimes(2));
-    expect(analyzeMultiPv).toHaveBeenLastCalledWith(FEN2, 14, 3, 700);
+    expect(analyzeMultiPv).toHaveBeenLastCalledWith(FEN2, 18, 3, 1200);
   });
 
   it('yarış koşulu: eski (yavaş) isteğin sonucu, yeni fen üzerine YAZILMAZ', async () => {
