@@ -119,11 +119,20 @@ const IconPuzzle = ({ s = 20 }: { s?: number }) => (
 
 /* Dairesel seçim (radio) düğmesi */
 
+// Madde 2026-09-05: "Süresiz Pratik Yap" → "Ödevini Yap" olarak yeniden
+// adlandırıldı — SADECE başlık; slug/işlev DEĞİŞMEDİ (admin/content/lesson
+// ile AYNI karar).
 const PRACTICE_MODES = [
-  { slug: 'suresiz', emoji: '♾️', label: 'Süresiz Pratik Yap', color: '#2dd4bf' },
+  { slug: 'suresiz', emoji: '♾️', label: 'Ödevini Yap',       color: '#2dd4bf' },
   { slug: 'sureli',  emoji: '⏱️', label: 'Süreli Pratik Yap',  color: '#fbbf24' },
   { slug: 'test',    emoji: '📝', label: 'Kendini Test Et',    color: '#a78bfa' },
 ];
+
+// Madde 2026-09-05: "Video İzle" — yeni özellik, şimdilik SADECE görsel kart
+// (admin/content/lesson ile AYNI karar: "içeriğini daha sonra düzenleyeceğiz").
+// PRACTICE_MODES'a KATILMIYOR — kilit zincirine (isModeUnlocked) girmiyor,
+// tıklanamaz.
+const VIDEO_CARD = { emoji: '🎥', label: 'Video İzle', color: '#22d3ee' };
 
 /** Madde 2026-08-25: sayfa yenilenince (F5) Hızlı Erişim'in görünümü
  *  DEĞİŞMESİN diye açılım durumu sessionStorage'da tutulur. v3 — önceki
@@ -675,7 +684,19 @@ export default function ChildHomePage() {
                                       {subOpen && (
                                         <div style={{ marginLeft: 15, paddingLeft: 17, borderLeft: `2px dashed ${SH_LIGHT}`, marginTop: 10 }}>
                                           <div className="grid grid-cols-2 gap-3">
-                                            {PRACTICE_MODES.map((m, idx) => {
+                                            {/* Madde 2026-09-05: Video İzle — henüz sadece görsel kart, kilit
+                                                zincirine (modeLocked) girmiyor, tıklanamaz. */}
+                                            <div style={{
+                                              ...raised(14), padding: '0.85rem 0.5rem', display: 'flex',
+                                              flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
+                                            }}>
+                                              <span className="text-2xl leading-none">{VIDEO_CARD.emoji}</span>
+                                              <span className="text-[0.68rem] font-bold text-center leading-tight"
+                                                style={{ color: VIDEO_CARD.color }}>
+                                                {VIDEO_CARD.label}
+                                              </span>
+                                            </div>
+                                            {PRACTICE_MODES.map((m) => {
                                               const isLocked = modeLocked(sub.stepId, m.slug);
                                               const boxStyle = {
                                                 ...raised(14),
@@ -685,7 +706,6 @@ export default function ChildHomePage() {
                                                 alignItems: 'center',
                                                 gap: '0.35rem',
                                                 textDecoration: 'none',
-                                                gridColumn: idx === PRACTICE_MODES.length - 1 ? '1 / -1' : undefined,
                                                 opacity: isLocked ? 0.45 : 1,
                                               };
                                               const inner = (

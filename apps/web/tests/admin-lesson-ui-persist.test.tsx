@@ -33,8 +33,9 @@ describe('Admin ders sayfası — F5 sonrası pozisyon korunur (madde 2)', () =>
     await waitFor(() => screen.getByText('Piyon Hareketleri'));
 
     fireEvent.click(screen.getByText(/Sorular/));
-    await waitFor(() => screen.getByText('Süresiz Pratik Yap'));
-    fireEvent.click(screen.getByText('Süresiz Pratik Yap'));
+    // Madde 2026-09-05: "Süresiz Pratik Yap" → "Ödevini Yap" (SADECE başlık).
+    await waitFor(() => screen.getByText('Ödevini Yap'));
+    fireEvent.click(screen.getByText('Ödevini Yap'));
 
     await waitFor(() => {
       const raw = sessionStorage.getItem('bsa:admin-ders:7');
@@ -85,17 +86,17 @@ const STEPS_WITH_QUESTIONS = [
 ];
 
 describe('Admin ders sayfası — havuz dairesi zorluk rengi (A grubu madde 4)', () => {
-  it('Süresiz Pratik Yap havuzunda daireler zorluğa göre renklenir', async () => {
+  it('Ödevini Yap havuzunda daireler zorluğa göre renklenir (madde 2026-09-05: eski adı "Süresiz Pratik Yap")', async () => {
     vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({ ok: true, json: () => Promise.resolve(STEPS_WITH_QUESTIONS) }),
     ) as unknown as typeof fetch);
     render(<AdminStepEditorPage />);
     await waitFor(() => screen.getByText('Piyon Hareketleri'));
     fireEvent.click(screen.getByText(/Sorular/));
-    await waitFor(() => screen.getByText('Süresiz Pratik Yap'));
-    fireEvent.click(screen.getByText('Süresiz Pratik Yap'));
-    await waitFor(() => screen.getByText('Süresiz Pratik Yap Soru Havuzu'));
-    fireEvent.click(screen.getByText('Süresiz Pratik Yap Soru Havuzu'));
+    await waitFor(() => screen.getByText('Ödevini Yap'));
+    fireEvent.click(screen.getByText('Ödevini Yap'));
+    await waitFor(() => screen.getByText('Ödevini Yap Soru Havuzu'));
+    fireEvent.click(screen.getByText('Ödevini Yap Soru Havuzu'));
 
     const kolay = await screen.findByText('001');
     const zor = await screen.findByText('002');

@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Madde 4: Süresiz Pratik Yap'taki soru yazma formatı Süreli Pratik Yap ve
- * Kendini Test Et'te de kullanılmalı.
+ * Madde 4: Süresiz Pratik Yap'taki (madde 2026-09-05'ten sonra "Ödevini
+ * Yap") soru yazma formatı Süreli Pratik Yap ve Kendini Test Et'te de
+ * kullanılmalı.
  *
  * Bu YAPISAL bir güvencedir: admin ders sayfası üç modu tek bir EX_MODES
  * listesinden üretir ve hepsi AYNI <ExerciseForm> bileşenini render eder.
@@ -21,7 +22,7 @@ const SRC = readFileSync(
 
 describe('Admin ders sayfası — üç pratik modu aynı formu paylaşır', () => {
   it('üç mod da tek EX_MODES listesinde tanımlıdır', () => {
-    expect(SRC).toContain("label: 'Süresiz Pratik Yap'");
+    expect(SRC).toContain("label: 'Ödevini Yap'");
     expect(SRC).toContain("label: 'Süreli Pratik Yap'");
     expect(SRC).toContain("label: 'Kendini Test Et'");
   });

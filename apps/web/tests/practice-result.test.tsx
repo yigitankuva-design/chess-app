@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PracticeResult } from '@/components/practice/PracticeResult';
 
 const FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const retryHeadline = { text: 'Üzgünüm Yeniden Süresiz Pratik Yapmalısın', tone: 'retry' as const };
+const retryHeadline = { text: 'Üzgünüm Yeniden Ödevini Yapmalısın', tone: 'retry' as const };
 const successHeadline = { text: 'Tebrikler Süreli Pratik Yapabilirsin', tone: 'success' as const };
 
 describe('PracticeResult — madde 7', () => {
@@ -17,7 +17,7 @@ describe('PracticeResult — madde 7', () => {
   it('85 altında büyük başlık KIRMIZI tonda gösterilir', () => {
     render(<PracticeResult correct={4} total={20} score={20} unlocked={null}
       onRetry={vi.fn()} boardFen={FEN} headline={retryHeadline} />);
-    const baslik = screen.getByText('Üzgünüm Yeniden Süresiz Pratik Yapmalısın');
+    const baslik = screen.getByText('Üzgünüm Yeniden Ödevini Yapmalısın');
     expect(baslik).toBeInTheDocument();
     expect((baslik as HTMLElement).style.color).toBe('#dc2626');
   });
@@ -62,6 +62,6 @@ describe('PracticeResult — madde 7', () => {
   it('boardFen boşsa (hiç tahta sorusu yoksa) standart konuma düşer, çökmez', () => {
     render(<PracticeResult correct={10} total={20} score={50} unlocked={null}
       onRetry={vi.fn()} boardFen="" headline={retryHeadline} />);
-    expect(screen.getByText('Üzgünüm Yeniden Süresiz Pratik Yapmalısın')).toBeInTheDocument();
+    expect(screen.getByText('Üzgünüm Yeniden Ödevini Yapmalısın')).toBeInTheDocument();
   });
 });

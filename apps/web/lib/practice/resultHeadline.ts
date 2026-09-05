@@ -2,8 +2,10 @@
 import { UNLOCK_THRESHOLD, unlockedLabel } from './unlock';
 import type { PracticeMode } from './unlock';
 
+// Madde 2026-09-05: "Süresiz Pratik" → "Ödevini" — "Ödevini Yap" adına uygun
+// retry mesajı üretsin diye ("Üzgünüm Yeniden Ödevini Yapmalısın").
 const MODE_TITLE: Record<PracticeMode, string> = {
-  suresiz: 'Süresiz Pratik',
+  suresiz: 'Ödevini',
   sureli: 'Süreli Pratik',
   test: 'Kendini Test Et',
 };

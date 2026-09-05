@@ -16,11 +16,18 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 // Alt konu soruları 3 pratik modunda ayrı listelerde saklanır.
 // 'untimed' = mevcut board_exercises (öğrenci tarafı bununla çalışır — geriye uyumlu).
 // Renkler Hızlı Erişim'deki pratik kartlarıyla aynı (uyumlu tasarım).
+// Madde 2026-09-05: "Süresiz Pratik Yap" → "Ödevini Yap" olarak yeniden
+// adlandırıldı — SADECE başlık; alan/işlev (board_exercises) DEĞİŞMEDİ.
 const EX_MODES: { key: string; field: string; label: string; emoji: string; color: string }[] = [
-  { key: 'untimed', field: 'board_exercises',       label: 'Süresiz Pratik Yap', emoji: '♾️', color: '#2dd4bf' },
+  { key: 'untimed', field: 'board_exercises',       label: 'Ödevini Yap',       emoji: '♾️', color: '#2dd4bf' },
   { key: 'timed',   field: 'board_exercises_timed',  label: 'Süreli Pratik Yap',  emoji: '⏱️', color: '#fbbf24' },
   { key: 'test',    field: 'board_exercises_test',   label: 'Kendini Test Et',    emoji: '📝', color: '#a78bfa' },
 ];
+
+// Madde 2026-09-05: "Video İzle" — yeni özellik, şimdilik SADECE görsel kart
+// (Zafer'in isteği: "içeriğini daha sonra düzenleyeceğiz"). EX_MODES'a
+// KATILMIYOR çünkü henüz gerçek bir veri alanı/işlevi yok — tıklanamaz.
+const VIDEO_CARD = { emoji: '🎥', label: 'Video İzle', color: '#22d3ee' };
 
 interface QuizQuestion { prompt: string; options: string[]; correct_index: number }
 interface StepRow {
@@ -416,8 +423,18 @@ export default function AdminStepEditorPage() {
 
                 {openExercises === s.id && (
                   <div className="mt-3 ml-6 space-y-3">
-                    {/* 3 pratik modu kartı — Hızlı Erişim ile uyumlu renkli tasarım */}
-                    <div className="grid sm:grid-cols-3 gap-2">
+                    {/* Madde 2026-09-05: 2×2 ızgara — Video İzle (henüz sadece
+                        görsel) + 3 pratik modu, Hızlı Erişim ile uyumlu renkli
+                        tasarım. */}
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      <div
+                        className="rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-1 border"
+                        style={{ borderColor: VIDEO_CARD.color, boxShadow: `0 0 16px -8px ${VIDEO_CARD.color}` }}
+                      >
+                        <span className="text-2xl leading-none">{VIDEO_CARD.emoji}</span>
+                        <span className="font-semibold text-sm" style={{ color: VIDEO_CARD.color }}>{VIDEO_CARD.label}</span>
+                        <span className="text-xs n-muted">yakında</span>
+                      </div>
                       {EX_MODES.map((m) => {
                         const count = exercisesOf(s, m.field).length;
                         const active = openMode?.stepId === s.id && openMode.field === m.field;

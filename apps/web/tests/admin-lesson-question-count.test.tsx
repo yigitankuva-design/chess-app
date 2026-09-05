@@ -40,8 +40,9 @@ async function openUntimed(steps: unknown[]) {
   render(<AdminStepEditorPage />);
   await waitFor(() => screen.getByText('Piyon Hareketleri'));
   fireEvent.click(screen.getByText(/Sorular/));
-  await waitFor(() => screen.getByText('Süresiz Pratik Yap'));
-  fireEvent.click(screen.getByText('Süresiz Pratik Yap'));
+  // Madde 2026-09-05: "Süresiz Pratik Yap" → "Ödevini Yap" (SADECE başlık).
+  await waitFor(() => screen.getByText('Ödevini Yap'));
+  fireEvent.click(screen.getByText('Ödevini Yap'));
   await waitFor(() => screen.getByText('Soru Sayısını Belirle'));
 }
 

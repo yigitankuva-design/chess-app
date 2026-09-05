@@ -31,7 +31,8 @@ const MODES: Record<string, {
   /** "Bırak" düğmesinin yazısı — başlıktan türetilmez, açıkça yazılır. */
   quitLabel: string;
 }> = {
-  suresiz: { emoji: '♾️', title: 'Süresiz Pratik Yap', field: 'board_exercises',       timed: false, scored: false, mix: UNTIMED_MIX, quitLabel: 'Süresiz Pratik Yapmayı Bırak' },
+  // Madde 2026-09-05: "Süresiz Pratik Yap" → "Ödevini Yap" — SADECE başlık, field/işlev DEĞİŞMEDİ.
+  suresiz: { emoji: '♾️', title: 'Ödevini Yap', field: 'board_exercises',       timed: false, scored: false, mix: UNTIMED_MIX, quitLabel: 'Ödevini Yapmayı Bırak' },
   sureli:  { emoji: '⏱️', title: 'Süreli Pratik Yap',  field: 'board_exercises_timed', timed: true,  scored: false, mix: TIMED_MIX,   quitLabel: 'Süreli Pratik Yapmayı Bırak' },
   test:    { emoji: '📝', title: 'Kendini Test Et',    field: 'board_exercises_test',  timed: false, scored: true,  mix: TEST_MIX,    quitLabel: 'Testi Bırak' },
 };
@@ -320,7 +321,7 @@ function PratikInner() {
           <p className="font-bold text-sm mb-1">Bu bölüm henüz kilitli</p>
           <p className="text-xs t-muted mb-4">
             {modeKey === 'sureli'
-              ? `Önce "Süresiz Pratik Yap"ta ${prevModeThreshold} puan ve üzeri al.`
+              ? `Önce "Ödevini Yap"ta ${prevModeThreshold} puan ve üzeri al.`
               : modeKey === 'test'
                 ? `Önce "Süreli Pratik Yap"ta ${prevModeThreshold} puan ve üzeri al.`
                 : 'Önce bir önceki alt konuyu tamamla.'}

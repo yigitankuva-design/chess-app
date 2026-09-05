@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { resultHeadline } from '@/lib/practice/resultHeadline';
 
 describe('resultHeadline (madde 7)', () => {
-  it('Süresiz — 85 altı: kırmızı, tekrar Süresiz Pratik uyarısı', () => {
+  it('Süresiz — 85 altı: kırmızı, tekrar Ödevini Yap uyarısı (madde 2026-09-05: yeniden adlandırma)', () => {
     expect(resultHeadline('suresiz', 84)).toEqual({
-      text: 'Üzgünüm Yeniden Süresiz Pratik Yapmalısın', tone: 'retry',
+      text: 'Üzgünüm Yeniden Ödevini Yapmalısın', tone: 'retry',
     });
   });
 
