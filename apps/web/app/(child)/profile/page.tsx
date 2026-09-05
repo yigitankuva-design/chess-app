@@ -9,6 +9,7 @@ import { TIME_GROUPS } from '@/lib/play/levels';
 import { ChessThemeSelector } from '@/components/ChessThemeSelector';
 import { BoardColorSelector } from '@/components/BoardColorSelector';
 import { PieceSetSelector } from '@/components/PieceSetSelector';
+import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
 
 interface Me {
   rank_name: string;
@@ -27,9 +28,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  * SIRAYLA burada gerçek sayfaya aktarılıyor. Bu SADECE ŞEKİLSEL bir
  * aktarım: aşağıdaki tempo/düzey seçimleri gerçekten çalışır (yerel
  * state), ama sayılar/metinler ÖRNEK veridir — gerçek backend bağlantıları
- * (Performans Puanı, maç istatistikleri, ders ilerlemesi, güçlü/zayıf
- * analiz, turnuva geçmişi, hoca notu) ayrı bir işte yapılacak (Zafer'in
- * kararı: "önce şekil, sonra içerik bağlantısı").
+ * (Performans Puanı, maç istatistikleri, güçlü/zayıf analiz, turnuva
+ * geçmişi, hoca notu) ayrı bir işte yapılacak (Zafer'in kararı: "önce
+ * şekil, sonra içerik bağlantısı"). "Ders İlerlemesi" madde 2026-09-05'te
+ * gerçek veriye bağlandı (bkz. components/profile/LessonProgressCard.tsx)
+ * — SADECE "Ödevini Yap" modu; Süreli Pratik Yap/Kendini Test Et için
+ * Zafer görselleri sonra gönderecek, o ikisi "yakında" placeholder'ı gösterir.
  *
  * Kimlik şeridindeki unvan rozeti ve katılım tarihi bilinçli olarak
  * eklenmedi — ikisi de gerçek (Performans Puanı / kayıt) verisine
@@ -89,18 +93,6 @@ const TOURNAMENT_BY_TEMPO: Record<TempoKey, TourSample> = {
   'Yıldırım': { hasData: true, total: 22, winRate: '%59', drawRate: '%14', lossRate: '%27', first: 2, second: 1, third: 3 },
   'Hızlı': { hasData: true, total: 9, winRate: '%44', drawRate: '%22', lossRate: '%34', first: 0, second: 1, third: 1 },
   'Klasik': { hasData: false, total: 0, winRate: '', drawRate: '', lossRate: '', first: 0, second: 0, third: 0 },
-};
-
-// Madde 5: kodlar Zafer'in verdiği sırayla (TD-BD-OD-İD); isimler
-// lib/settings/defaults.ts'teki gerçek düzey adlarıyla AYNI.
-type LevelCode = 'TD' | 'BD' | 'OD' | 'İD';
-const LEVEL_ORDER: LevelCode[] = ['TD', 'BD', 'OD', 'İD'];
-const LEVEL_NAMES: Record<LevelCode, string> = {
-  TD: 'Temel Düzey', BD: 'Başlangıç Düzeyi', OD: 'Orta Düzey', 'İD': 'İleri Düzey',
-};
-const LEVEL_PROGRESS: Record<LevelCode, { total: number; completed: number }> = {
-  TD: { total: 8, completed: 8 }, BD: { total: 12, completed: 7 },
-  OD: { total: 15, completed: 3 }, 'İD': { total: 10, completed: 0 },
 };
 
 const SKILL_AREAS: { label: string; pct: number }[] = [
@@ -225,7 +217,6 @@ export default function ProfilePage() {
   const [ratingTempo, setRatingTempo] = useState<TempoKey>('Yıldırım');
   const [statsTempo, setStatsTempo] = useState<TempoKey>('Yıldırım');
   const [tourTempo, setTourTempo] = useState<TempoKey>('Yıldırım');
-  const [level, setLevel] = useState<LevelCode>('TD');
   const [activePanel, setActivePanel] = useState<SettingPanelId | null>(null);
   function togglePanel(id: SettingPanelId) {
     setActivePanel((cur) => (cur === id ? null : id));
@@ -278,7 +269,6 @@ export default function ProfilePage() {
   const rating = RATING_BY_TEMPO[ratingTempo];
   const stats = STATS_BY_TEMPO[statsTempo];
   const tour = TOURNAMENT_BY_TEMPO[tourTempo];
-  const lvl = LEVEL_PROGRESS[level];
 
   return (
     <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-3">
@@ -350,32 +340,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 5) Ders İlerlemesi — TD/BD/OD/İD, kutucuklar 4. maddeyle AYNI renkte */}
-      <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wide t-muted">Ders İlerlemesi</span>
-          <div className="flex gap-1.5">
-            {LEVEL_ORDER.map((code) => (
-              <button
-                key={code} type="button" onClick={() => setLevel(code)} aria-pressed={level === code}
-                className="font-mono text-xs font-bold px-2.5 py-1 rounded-full transition-colors"
-                style={{
-                  background: level === code ? 'var(--t-accent)' : 'var(--t-surface-2)',
-                  color: level === code ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
-                }}
-              >
-                {code}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="text-sm font-bold mb-2.5">{LEVEL_NAMES[level]} · {lvl.completed}/{lvl.total} konu tamamlandı</p>
-        <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(26px, 1fr))' }}>
-          {Array.from({ length: lvl.total }, (_, i) => (
-            <div key={i} className="aspect-square rounded-md" style={{ background: i < lvl.completed ? 'var(--t-accent)' : 'var(--t-surface-2)' }} />
-          ))}
-        </div>
-      </div>
+      {/* 5) Ders İlerlemesi — madde 2026-09-05: gerçek veriye bağlandı,
+          bkz. components/profile/LessonProgressCard.tsx */}
+      <LessonProgressCard />
 
       {/* 6) Güçlü/Zayıf Yön Analizi — yüzde etiketi çubuğun ucunda */}
       <div className="t-card p-4">

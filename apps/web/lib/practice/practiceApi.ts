@@ -33,9 +33,14 @@ export async function fetchLessonScores(lessonId: number): Promise<ScoreMap | nu
 /**
  * Oturum sonucunu kaydeder. null = kaydedilemedi (token yok / ağ hatası) —
  * sonuç ekranı yine gösterilir, sadece kalıcı kayıt ve kilit açma atlanır.
+ *
+ * `perQuestion` (opsiyonel, madde 2026-09-05): bu oturumdaki HER sorunun
+ * (ekrandaki sırayla) doğru/yanlış listesi — Sporcu Profili "Ödevlerim"
+ * panelindeki soru bazlı yeşil/kırmızı kareler için.
  */
 export async function submitPracticeResult(
   stepId: number, mode: PracticeMode, correct: number, total: number,
+  perQuestion?: boolean[],
 ): Promise<SubmitResult | null> {
   const token = getToken();
   if (!token) return null;
@@ -43,7 +48,39 @@ export async function submitPracticeResult(
     const r = await fetch(`${API_BASE}/practice/steps/${stepId}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ mode, correct, total }),
+      body: JSON.stringify({
+        mode, correct, total, ...(perQuestion ? { per_question: perQuestion } : {}),
+      }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+export interface PracticeDetail {
+  best_score: number;
+  best_correct: number;
+  best_total: number;
+  attempts_count: number;
+  per_question_correct: boolean[] | null;
+  pool_size: number;
+}
+
+/**
+ * Madde 2026-09-05: Sporcu Profili "Ödevlerim" paneli için — bir alt konu +
+ * modun en iyi denemesi (soru bazlı doğru/yanlış dahil) ve güncel havuz
+ * büyüklüğü. null = çekilemedi (token yok / ağ hatası).
+ */
+export async function fetchPracticeDetail(
+  stepId: number, mode: PracticeMode,
+): Promise<PracticeDetail | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/detail?mode=${mode}`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!r.ok) return null;
     return await r.json();

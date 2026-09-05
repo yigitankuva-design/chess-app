@@ -20,14 +20,19 @@ export interface StoredSession<T> {
   /** O ana kadar doğru sayılan soru sayısı — sayfa yenilenince ilerlemenin
    *  ikinci kez sayılmaması için. */
   doneCount: number;
+  /** Madde 2026-09-05: HER sorunun (items sırasıyla) o ana kadarki
+   *  doğru/yanlış durumu — Sporcu Profili "Ödevlerim" paneli için oturum
+   *  bitince sunucuya gönderilir. Henüz cevaplanmamış soru null. Opsiyonel:
+   *  eski kayıtlarda yok, o zaman undefined döner (çağıran sıfırdan doldurur). */
+  perQuestion?: (boolean | null)[];
 }
 
-/** saveSession girdisi: yeni iki alan OPSİYONEL — mevcut çağrı noktaları ve
+/** saveSession girdisi: yeni alanlar OPSİYONEL — mevcut çağrı noktaları ve
  *  testler `{ items, index }` ile derlenmeye devam eder (KURAL #3).
  *  loadSession ise HER ZAMAN normalize edilmiş tam nesneyi döndürür. */
 export type SessionInput<T> =
   Pick<StoredSession<T>, 'items' | 'index'>
-  & Partial<Pick<StoredSession<T>, 'currentAnswer' | 'doneCount'>>;
+  & Partial<Pick<StoredSession<T>, 'currentAnswer' | 'doneCount' | 'perQuestion'>>;
 
 export function sessionKey(stepId: number | string, mode: string): string {
   return `bsa:pratik:${stepId}:${mode}`;
@@ -46,7 +51,9 @@ export function loadSession<T>(key: string): StoredSession<T> | null {
     const currentAnswer = parsed.currentAnswer === 'correct' || parsed.currentAnswer === 'wrong'
       ? parsed.currentAnswer : null;
     const doneCount = Number.isInteger(parsed.doneCount) ? (parsed.doneCount as number) : 0;
-    return { items: parsed.items, index: clampedIndex, currentAnswer, doneCount };
+    const perQuestion = Array.isArray(parsed.perQuestion) && parsed.perQuestion.length === parsed.items.length
+      ? parsed.perQuestion : undefined;
+    return { items: parsed.items, index: clampedIndex, currentAnswer, doneCount, perQuestion };
   } catch {
     return null;
   }

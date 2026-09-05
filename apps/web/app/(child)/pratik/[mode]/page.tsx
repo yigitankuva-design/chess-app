@@ -87,6 +87,10 @@ function PratikInner() {
    *  diye saklanır (madde: 2026-08-21, "Tekrar Dene" de artık farklı sorular
    *  getirir — önceden aynı `exercises` state'ini tekrar kullanıyordu). */
   const poolRef = useRef<{ pool: BoardExerciseConfig[]; resolvedPick: number } | null>(null);
+  /** Madde 2026-09-05: bu oturumdaki HER sorunun (items sırasıyla) doğru/
+   *  yanlış durumu — oturum bitince submitPracticeResult'a eklenir (Sporcu
+   *  Profili "Ödevlerim" panelinin soru bazlı kareleri için). */
+  const perQuestionRef = useRef<(boolean | null)[]>([]);
 
   /** Havuzdan zorluk dağılımına göre YENİ bir set seçer: mümkünse bir önceki
    *  turda gösterilen sorulardan farklı (madde 4/5/6). Hem ilk yüklemede hem
@@ -109,7 +113,10 @@ function PratikInner() {
     setStartAnswer(null);
     setStartDoneCount(0);
     setSolved(0);
-    saveSession(sessionKey(stepId, slug), { items: picked, index: 0, currentAnswer: null, doneCount: 0 });
+    perQuestionRef.current = Array(picked.length).fill(null);
+    saveSession(sessionKey(stepId, slug), {
+      items: picked, index: 0, currentAnswer: null, doneCount: 0, perQuestion: perQuestionRef.current,
+    });
     if (resolvedPick > 0) {
       saveShownCodes(stepId, slug, picked.map((ex) => ex.code ?? '').filter(Boolean));
     }
@@ -167,6 +174,7 @@ function PratikInner() {
           setStartAnswer(saved.currentAnswer);
           setStartDoneCount(saved.doneCount);
           setSolved(saved.doneCount);
+          perQuestionRef.current = saved.perQuestion ?? Array(saved.items.length).fill(null);
           setLoading(false);
           return;
         }
@@ -211,7 +219,10 @@ function PratikInner() {
     const localScore = scorePercent(r.correct, r.total);
     const before = scores?.[stepId]?.[modeKey] ?? 0;
 
-    const saved = await submitPracticeResult(stepId, modeKey, r.correct, r.total);
+    // Madde 2026-09-05: hiç cevaplanmadan bitenler (örn. süre dolması) YANLIŞ
+    // sayılır — doğru sayısı (`r.correct`) zaten bunları saymıyor, tutarlı kalır.
+    const perQuestion = perQuestionRef.current.slice(0, r.total).map((v) => v === true);
+    const saved = await submitPracticeResult(stepId, modeKey, r.correct, r.total, perQuestion);
     const score = saved?.score ?? localScore;
 
     // Kilit YALNIZCA sunucuya yazılabildiyse açılmış sayılır — aksi halde
@@ -380,11 +391,16 @@ function PratikInner() {
             onIndexChange={(i) => {
               if (exercises) saveSession(sessionKey(stepId, slug), {
                 items: exercises, index: i, currentAnswer: null, doneCount: solved,
+                perQuestion: perQuestionRef.current,
               });
             }}
             onAnswered={(index, doneCount, answer) => {
+              if (index < perQuestionRef.current.length) {
+                perQuestionRef.current[index] = answer === 'correct';
+              }
               if (exercises) saveSession(sessionKey(stepId, slug), {
                 items: exercises, index, currentAnswer: answer, doneCount,
+                perQuestion: perQuestionRef.current,
               });
             }}
             quitSlot={(

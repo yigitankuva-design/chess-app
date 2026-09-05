@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Integer, String, DateTime, ForeignKey, UniqueConstraint, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -26,3 +26,8 @@ class ChildPracticeResult(Base):
     best_total: Mapped[int] = mapped_column(Integer, default=0)
     attempts_count: Mapped[int] = mapped_column(Integer, default=0)
     last_played_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Madde 2026-09-05: Sporcu Profili'ndeki "ÖDEVLERİM" panelinin soru
+    # bazlı yeşil/kırmızı kareleri için — EN İYİ denemenin soru sırasına
+    # göre doğru/yanlış listesi (best_correct/best_total ile AYNI denemeye
+    # ait). Hiç deneme yoksa veya en iyi deneme güncellenmediyse None.
+    per_question_correct: Mapped[list | None] = mapped_column(JSON, nullable=True)
