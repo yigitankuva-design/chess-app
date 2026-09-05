@@ -19,6 +19,8 @@ import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import { AnalizPanel } from '@/components/analiz/AnalizPanel';
 import { raised, pressed, PathNode, Branch, SH_LIGHT, VerticalDivider } from '@/components/ui/neumorphic';
+import { listMyAssignments } from '@/lib/assignmentsApi';
+import type { StudentAssignment } from '@/lib/assignmentsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -169,6 +171,9 @@ export default function ChildHomePage() {
   useEffect(() => { listCustomTabs().then(setCustomTabs); }, []);
 
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);
+  /** Madde 2026-09-05: Antrenör → Ödev → Dersler köprüsü — sporcuya
+   *  (bireysel veya sınıfına) atanmış ödevler, "Ödevlerim" bölümünde. */
+  const [assignments, setAssignments] = useState<StudentAssignment[] | null>(null);
   const [openLevel, setOpenLevel] = useState<number | null>(null);
   const [lessonsByLevel, setLessonsByLevel] = useState<Record<number, LessonSummary[]>>({});
   const [openLessonId, setOpenLessonId] = useState<number | null>(null);
@@ -198,6 +203,7 @@ export default function ChildHomePage() {
   function toggleTab(key: TabKey) {
     setOpenTab((prev) => (prev === key ? null : key));
     if (key === 'lessons' && openTab !== 'lessons' && modules === null) loadModules();
+    if (key === 'lessons' && openTab !== 'lessons' && assignments === null) loadAssignments();
     // Dersler dalı
     setOpenLevel(null); setOpenLessonId(null); setOpenSubtopic(null);
     // Maç Yap dalı
@@ -226,6 +232,10 @@ export default function ChildHomePage() {
     } catch {
       setModules([]);
     }
+  }, []);
+
+  const loadAssignments = useCallback(async () => {
+    setAssignments(await listMyAssignments());
   }, []);
 
   const loadLessons = useCallback(async (levelId: number) => {
@@ -293,7 +303,7 @@ export default function ChildHomePage() {
         };
         if (st.openTab !== undefined && st.openTab !== null) {
           setOpenTab(st.openTab);
-          if (st.openTab === 'lessons') loadModules();
+          if (st.openTab === 'lessons') { loadModules(); loadAssignments(); }
           if (typeof st.openTab === 'number') {
             getCustomTab(st.openTab).then((detail) => {
               if (detail) setCustomTabDetails((prev) => ({ ...prev, [st.openTab as number]: detail }));
@@ -546,6 +556,31 @@ export default function ChildHomePage() {
             <p className="text-xs font-bold t-muted uppercase tracking-widest mb-4">
               {L.sections.lessonsPick}
             </p>
+
+            {/* Madde 2026-09-05: Antrenör → Ödev → Dersler köprüsü —
+                antrenörün verdiği ödevler burada, düzey listesinin ÜSTÜNDE. */}
+            {assignments && assignments.length > 0 && (
+              <div style={pressed(14)} className="p-3 mb-4 space-y-2">
+                <p className="text-xs font-bold t-muted uppercase tracking-widest">📌 Ödevlerim</p>
+                {assignments.map((a) => (
+                  <Link key={a.id}
+                    href={a.target_lesson_id ? `/lesson/${a.target_lesson_id}` : `/modules/${a.target_module_id}`}
+                    className="flex items-center gap-2 py-1.5"
+                    style={{ opacity: a.completed ? 0.55 : 1 }}>
+                    <span className="text-sm">{a.completed ? '✅' : '📝'}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-semibold t-text truncate">{a.title}</span>
+                      {a.target_title && (
+                        <span className="block text-xs t-muted truncate">{a.target_title}</span>
+                      )}
+                    </span>
+                    {a.due_date && (
+                      <span className="text-xs t-muted whitespace-nowrap">{a.due_date}</span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
 
             {modules === null && <p className="text-xs t-muted py-1">Düzeyler yükleniyor...</p>}
             {modules?.length === 0 && <p className="text-xs t-muted py-1">Henüz düzey eklenmemiş.</p>}

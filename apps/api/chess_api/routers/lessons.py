@@ -1,12 +1,12 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
     Module, Lesson, LessonStep, ChildLessonStepResult,
-    ChildProfile, ChildLessonProgress, LessonStatus,
+    ChildProfile, ChildLessonProgress, LessonStatus, ClassAssignment,
 )
 from chess_api.schemas.lesson import (
     ModuleResponse, LessonDetailResponse, LessonStepResponse,
@@ -46,6 +46,83 @@ async def module_lessons(module_id: int, db: AsyncSession = Depends(get_db)):
          "estimated_minutes": l.estimated_minutes, "icon": l.icon}
         for l in lessons
     ]
+
+
+@router.get("/assignments", response_model=list[dict])
+async def list_my_assignments(
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-05: sporcunun kendisine (bireysel) veya sınıfına atanmış
+    ödevleri, hedef modül/ders adı ve tamamlanma durumuyla birlikte döner —
+    Hızlı Erişim/Dersler'deki "Ödevlerim" bölümü bunu kullanır."""
+    conditions = [ClassAssignment.target_child_id == child.id]
+    if child.class_id is not None:
+        conditions.append(ClassAssignment.class_id == child.class_id)
+    result = await db.execute(
+        select(ClassAssignment).where(or_(*conditions)).order_by(ClassAssignment.created_at.desc())
+    )
+    assignments = result.scalars().all()
+
+    module_ids = {a.target_module_id for a in assignments if a.target_module_id is not None}
+    lesson_ids = {a.target_lesson_id for a in assignments if a.target_lesson_id is not None}
+    modules: dict[int, Module] = {}
+    if module_ids:
+        rows = (await db.execute(select(Module).where(Module.id.in_(module_ids)))).scalars().all()
+        modules = {m.id: m for m in rows}
+    lessons: dict[int, Lesson] = {}
+    if lesson_ids:
+        rows = (await db.execute(select(Lesson).where(Lesson.id.in_(lesson_ids)))).scalars().all()
+        lessons = {l.id: l for l in rows}
+
+    out = []
+    for a in assignments:
+        completed = await _assignment_completed(db, a, child.id)
+        target_title = None
+        if a.target_lesson_id is not None and a.target_lesson_id in lessons:
+            target_title = lessons[a.target_lesson_id].title
+        elif a.target_module_id is not None and a.target_module_id in modules:
+            target_title = modules[a.target_module_id].name
+        out.append({
+            "id": a.id,
+            "title": a.title,
+            "description": a.description,
+            "due_date": a.due_date.isoformat() if a.due_date else None,
+            "target_module_id": a.target_module_id,
+            "target_lesson_id": a.target_lesson_id,
+            "target_title": target_title,
+            "completed": completed,
+        })
+    return out
+
+
+async def _assignment_completed(db: AsyncSession, assignment: ClassAssignment, child_id: int) -> bool:
+    """Bir ödevin bu sporcu için tamamlanıp tamamlanmadığını `ChildLessonProgress`
+    üzerinden türetir — ödev için AYRI bir takip tablosu YOK. Ders bazlı
+    ödevde tek satır yeter; modül bazlı ödevde modülün TÜM dersleri
+    tamamlanmış olmalı (bkz. `_check_module_completion` ile AYNI mantık)."""
+    if assignment.target_lesson_id is not None:
+        row = await db.execute(
+            select(ChildLessonProgress).where(
+                ChildLessonProgress.child_id == child_id,
+                ChildLessonProgress.lesson_id == assignment.target_lesson_id,
+            )
+        )
+        progress = row.scalar_one_or_none()
+        return bool(progress and progress.status == LessonStatus.completed)
+    if assignment.target_module_id is not None:
+        total = await db.scalar(
+            select(func.count(Lesson.id)).where(Lesson.module_id == assignment.target_module_id)
+        )
+        done = await db.scalar(
+            select(func.count(ChildLessonProgress.id))
+            .join(Lesson, Lesson.id == ChildLessonProgress.lesson_id)
+            .where(Lesson.module_id == assignment.target_module_id,
+                   ChildLessonProgress.child_id == child_id,
+                   ChildLessonProgress.status == LessonStatus.completed)
+        )
+        return bool(total and done and total == done)
+    return False
 
 
 @router.get("/lessons/{lesson_id}", response_model=LessonDetailResponse)

@@ -8,6 +8,7 @@ import {
 } from '@/lib/customTabsApi';
 import type { CustomTabSection, PositionPoolEntry, PositionPoolStep } from '@/lib/customTabsApi';
 import { AltKonuPositionPoolFields } from './AltKonuPositionPoolFields';
+import { AssignHomeworkPanel } from './AssignHomeworkPanel';
 
 /** Madde 2026-08-24: "Antrenör" sekmesindeki "Dersler" alt sekmesi ve TÜM
  *  altındaki Düzey/Konu/Alt Konu düğümleri özel bir moda girer — Kopyala
@@ -345,6 +346,10 @@ export function NestedSectionTree({
                       onDeleteGroup={(groupId) => deletePositionPoolGroup(s, groupId)}
                       onReorder={(nextPool) => reorderPositionPool(s, nextPool)}
                     />
+                    {/* Madde 2026-09-05: Antrenör → Ödev → Dersler köprüsü —
+                        bu Alt Konu'yla ilgili Dersler içeriğini sınıfa/tek
+                        sporcuya ödev olarak ver. */}
+                    <AssignHomeworkPanel sourceSectionId={s.id} sourceSectionTitle={s.title} />
                   </div>
                 ) : (
                   /* Bu bölümün KENDİ alt sekmeleri — iç içe (sınırsız derinlik).

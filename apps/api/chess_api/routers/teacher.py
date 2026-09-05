@@ -23,6 +23,9 @@ class CreateAssignmentRequest(BaseModel):
     target_module_id: int | None = None
     target_lesson_id: int | None = None
     due_date: str | None = None  # ISO date string
+    # Madde 2026-09-05: bu ödev Antrenör'de bir Alt Konu anlatılırken
+    # verildiyse, o düğümün id'si — izlenebilirlik için (opsiyonel).
+    source_custom_tab_section_id: int | None = None
 
 
 class CreateSurveyRequest(BaseModel):
@@ -166,6 +169,13 @@ async def remove_student(
     return {"ok": True}
 
 
+def _ensure_has_target(payload: CreateAssignmentRequest):
+    """Madde 2026-09-05: bir ödev Dersler'de bir yere işaret ETMELİDİR —
+    modül veya ders (ikisi de olabilir, ama en az biri şart)."""
+    if payload.target_module_id is None and payload.target_lesson_id is None:
+        raise HTTPException(422, "Ödev bir modül veya ders hedeflemeli")
+
+
 @router.post("/classes/{class_id}/assignments", status_code=201)
 async def create_assignment(
     class_id: int,
@@ -177,18 +187,97 @@ async def create_assignment(
     cls = await db.get(Class, class_id)
     if not cls or cls.teacher_user_id != current.id:
         raise HTTPException(403)
+    _ensure_has_target(payload)
     assignment = ClassAssignment(
+        teacher_user_id=current.id,
         class_id=class_id,
         title=payload.title,
         description=payload.description,
         target_module_id=payload.target_module_id,
         target_lesson_id=payload.target_lesson_id,
+        source_custom_tab_section_id=payload.source_custom_tab_section_id,
         due_date=date_type.fromisoformat(payload.due_date) if payload.due_date else None,
     )
     db.add(assignment)
     await db.commit()
     await db.refresh(assignment)
     return {"id": assignment.id}
+
+
+@router.post("/students/{child_id}/assignments", status_code=201)
+async def create_individual_assignment(
+    child_id: int,
+    payload: CreateAssignmentRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-05: sınıf yerine TEK bir sporcuya doğrudan ödev ata —
+    `/classes/{id}/assignments` ile AYNI desen, sadece class_id yerine
+    target_child_id doldurulur."""
+    _ensure_teacher(current)
+    _ensure_has_target(payload)
+    child = await db.get(ChildProfile, child_id)
+    if not child:
+        raise HTTPException(404, "Child not found")
+    assignment = ClassAssignment(
+        teacher_user_id=current.id,
+        target_child_id=child_id,
+        title=payload.title,
+        description=payload.description,
+        target_module_id=payload.target_module_id,
+        target_lesson_id=payload.target_lesson_id,
+        source_custom_tab_section_id=payload.source_custom_tab_section_id,
+        due_date=date_type.fromisoformat(payload.due_date) if payload.due_date else None,
+    )
+    db.add(assignment)
+    await db.commit()
+    await db.refresh(assignment)
+    return {"id": assignment.id}
+
+
+@router.get("/assignments")
+async def list_my_assignments(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-05: Zafer'in (bu öğretmen hesabının) verdiği TÜM
+    ödevler — sınıfa ve bireysel olanlar birlikte, en yeni önce."""
+    _ensure_teacher(current)
+    result = await db.execute(
+        select(ClassAssignment)
+        .where(ClassAssignment.teacher_user_id == current.id)
+        .order_by(ClassAssignment.created_at.desc())
+    )
+    assignments = result.scalars().all()
+
+    class_ids = {a.class_id for a in assignments if a.class_id is not None}
+    class_names: dict[int, str] = {}
+    if class_ids:
+        cls_result = await db.execute(select(Class).where(Class.id.in_(class_ids)))
+        class_names = {c.id: c.name for c in cls_result.scalars().all()}
+
+    child_ids = {a.target_child_id for a in assignments if a.target_child_id is not None}
+    child_names: dict[int, str] = {}
+    if child_ids:
+        child_result = await db.execute(select(ChildProfile).where(ChildProfile.id.in_(child_ids)))
+        child_names = {c.id: c.display_name for c in child_result.scalars().all()}
+
+    return [
+        {
+            "id": a.id,
+            "title": a.title,
+            "description": a.description,
+            "due_date": a.due_date.isoformat() if a.due_date else None,
+            "target_module_id": a.target_module_id,
+            "target_lesson_id": a.target_lesson_id,
+            "class_id": a.class_id,
+            "class_name": class_names.get(a.class_id) if a.class_id else None,
+            "target_child_id": a.target_child_id,
+            "target_child_name": child_names.get(a.target_child_id) if a.target_child_id else None,
+            "source_custom_tab_section_id": a.source_custom_tab_section_id,
+        }
+        for a in assignments
+    ]
 
 
 @router.get("/classes/{class_id}/leaderboard")

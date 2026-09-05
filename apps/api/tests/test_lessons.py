@@ -86,3 +86,82 @@ async def test_explanation_step_always_correct(client, seeded_lesson):
     )
     assert response.status_code == 200
     assert response.json()["correct"] is True
+
+
+# ---------------------------------------------------------------------------
+# Madde 2026-09-05: "Ödevlerim" — sporcunun kendisine (bireysel) ve sınıfına
+# atanmış ödevleri görmesi (Antrenör → Ödev → Dersler köprüsü).
+# ---------------------------------------------------------------------------
+
+async def test_list_assignments_individual(client, child_auth, seeded_lesson):
+    child_token, child_id = child_auth
+    teacher_token = await _teacher_token(client)
+    r = await client.post(
+        f"/teacher/students/{child_id}/assignments",
+        headers={"Authorization": f"Bearer {teacher_token}"},
+        json={"title": "Bireysel Ödev", "target_lesson_id": seeded_lesson["lesson_id"]},
+    )
+    assert r.status_code == 201, r.text
+
+    r = await client.get("/assignments", headers={"Authorization": f"Bearer {child_token}"})
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "Bireysel Ödev"
+    assert data[0]["target_title"] == "Test Ders"
+    assert data[0]["completed"] is False
+
+
+async def test_assignment_marked_completed_after_lesson_complete(client, child_auth, seeded_lesson):
+    child_token, child_id = child_auth
+    teacher_token = await _teacher_token(client)
+    await client.post(
+        f"/teacher/students/{child_id}/assignments",
+        headers={"Authorization": f"Bearer {teacher_token}"},
+        json={"title": "Ödev", "target_lesson_id": seeded_lesson["lesson_id"]},
+    )
+
+    await client.post(f"/lessons/{seeded_lesson['lesson_id']}/complete",
+                       headers={"Authorization": f"Bearer {child_token}"})
+
+    r = await client.get("/assignments", headers={"Authorization": f"Bearer {child_token}"})
+    assert r.json()[0]["completed"] is True
+
+
+async def test_list_assignments_module_level_needs_all_lessons_done(client, child_auth, db):
+    from chess_api.models import Module, Lesson
+
+    module = Module(order_index=2, name="Çok Dersli Modül", description="d", icon="i")
+    db.add(module); await db.flush()
+    lesson1 = Lesson(module_id=module.id, order_index=1, title="D1", estimated_minutes=5)
+    lesson2 = Lesson(module_id=module.id, order_index=2, title="D2", estimated_minutes=5)
+    db.add_all([lesson1, lesson2]); await db.commit()
+
+    child_token, child_id = child_auth
+    teacher_token = await _teacher_token(client)
+    await client.post(
+        f"/teacher/students/{child_id}/assignments",
+        headers={"Authorization": f"Bearer {teacher_token}"},
+        json={"title": "Modül Ödevi", "target_module_id": module.id},
+    )
+
+    r = await client.get("/assignments", headers={"Authorization": f"Bearer {child_token}"})
+    assert r.json()[0]["completed"] is False
+
+    await client.post(f"/lessons/{lesson1.id}/complete", headers={"Authorization": f"Bearer {child_token}"})
+    r = await client.get("/assignments", headers={"Authorization": f"Bearer {child_token}"})
+    assert r.json()[0]["completed"] is False  # sadece 1/2 tamamlandı
+
+    await client.post(f"/lessons/{lesson2.id}/complete", headers={"Authorization": f"Bearer {child_token}"})
+    r = await client.get("/assignments", headers={"Authorization": f"Bearer {child_token}"})
+    assert r.json()[0]["completed"] is True  # ikisi de tamamlandı
+
+
+async def _teacher_token(client) -> str:
+    # Her test kendi (bellek içi) veritabanıyla izole çalışır (bkz. conftest
+    # db_engine fixture'ı) — e-posta çakışması olmaz, sabit e-posta güvenli.
+    r = await client.post("/auth/teacher/signup", json={
+        "email": "assign_teacher@t.com", "password": "teacherpass123", "name": "Teacher",
+    })
+    assert r.status_code == 201, r.text
+    return r.json()["access_token"]

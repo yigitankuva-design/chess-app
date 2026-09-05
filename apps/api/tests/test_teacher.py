@@ -83,15 +83,102 @@ async def test_teacher_create_assignment(client):
     r = await client.post("/teacher/classes", headers=auth(token), json={"name": "Sınıf A"})
     class_id = r.json()["id"]
 
-    # Create assignment
+    # Create assignment — madde 2026-09-05: bir modül/ders hedeflemeli.
     r = await client.post(
         f"/teacher/classes/{class_id}/assignments",
         headers=auth(token),
-        json={"title": "Hafta 1 Ödevi", "description": "Temel hareketler", "due_date": "2026-06-01"},
+        json={
+            "title": "Hafta 1 Ödevi", "description": "Temel hareketler",
+            "due_date": "2026-06-01", "target_module_id": 1,
+        },
     )
     assert r.status_code == 201
     data = r.json()
     assert "id" in data
+
+
+@pytest.mark.asyncio
+async def test_teacher_create_assignment_requires_target(client):
+    """Madde 2026-09-05: ödev bir modül veya ders hedeflemeli — ikisi de
+    eksikse 422 döner."""
+    token = await _teacher_signup(client, "teacher_notarget@t.com")
+    r = await client.post("/teacher/classes", headers=auth(token), json={"name": "Sınıf T"})
+    class_id = r.json()["id"]
+
+    r = await client.post(
+        f"/teacher/classes/{class_id}/assignments",
+        headers=auth(token),
+        json={"title": "Hedefsiz Ödev"},
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_teacher_create_individual_assignment(client, db):
+    """Madde 2026-09-05: öğretmen sınıf yerine TEK bir sporcuya doğrudan
+    ödev atayabilir."""
+    from chess_api.models import Module, Lesson
+
+    module = Module(order_index=1, name="M", description="d", icon="i")
+    db.add(module); await db.flush()
+    lesson = Lesson(module_id=module.id, order_index=1, title="L", estimated_minutes=8)
+    db.add(lesson); await db.commit()
+
+    teacher_token = await _teacher_signup(client, "teacher_indiv@t.com")
+    parent_token = await _parent_signup(client, "parent_indiv@t.com")
+    child_id = await _create_child(client, parent_token, "Elif")
+
+    r = await client.post(
+        f"/teacher/students/{child_id}/assignments",
+        headers=auth(teacher_token),
+        json={"title": "Bireysel Ödev", "target_lesson_id": lesson.id},
+    )
+    assert r.status_code == 201, r.text
+    assert "id" in r.json()
+
+
+@pytest.mark.asyncio
+async def test_teacher_create_individual_assignment_unknown_child_404(client):
+    token = await _teacher_signup(client, "teacher_indiv404@t.com")
+    r = await client.post(
+        "/teacher/students/999999/assignments",
+        headers=auth(token),
+        json={"title": "Ödev", "target_module_id": 1},
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_teacher_list_assignments(client, db):
+    """Madde 2026-09-05: öğretmen verdiği TÜM ödevleri (sınıf + bireysel)
+    tek uçtan görebilir; sınıf/öğrenci adları çözülmüş gelir."""
+    from chess_api.models import Module
+
+    module = Module(order_index=1, name="M", description="d", icon="i")
+    db.add(module); await db.commit()
+
+    teacher_token = await _teacher_signup(client, "teacher_list_assign@t.com")
+    parent_token = await _parent_signup(client, "parent_list_assign@t.com")
+    child_id = await _create_child(client, parent_token, "Can")
+
+    r = await client.post("/teacher/classes", headers=auth(teacher_token), json={"name": "Sınıf L"})
+    class_id = r.json()["id"]
+    await client.post(
+        f"/teacher/classes/{class_id}/assignments", headers=auth(teacher_token),
+        json={"title": "Sınıf Ödevi", "target_module_id": module.id},
+    )
+    await client.post(
+        f"/teacher/students/{child_id}/assignments", headers=auth(teacher_token),
+        json={"title": "Bireysel Ödev", "target_module_id": module.id},
+    )
+
+    r = await client.get("/teacher/assignments", headers=auth(teacher_token))
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 2
+    by_title = {a["title"]: a for a in data}
+    assert by_title["Sınıf Ödevi"]["class_name"] == "Sınıf L"
+    assert by_title["Bireysel Ödev"]["target_child_name"] == "Can"
 
 
 @pytest.mark.asyncio
