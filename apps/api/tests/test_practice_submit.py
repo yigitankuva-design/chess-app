@@ -1,5 +1,7 @@
 import pytest
-from chess_api.models import Module, Lesson, LessonStep, LessonStepType
+from datetime import datetime, timedelta
+from sqlalchemy import select
+from chess_api.models import Module, Lesson, LessonStep, LessonStepType, ChildPracticeAttempt
 
 
 async def _make_step(db) -> int:
@@ -208,3 +210,83 @@ async def test_pool_size_admin_soru_sayisini_belirlediyse_onu_kullanir(client, c
     r = await client.get(f"/practice/steps/{step.id}/detail",
                          headers={"Authorization": f"Bearer {token}"}, params={"mode": "suresiz"})
     assert r.json()["pool_size"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Madde 2026-09-06 (Görsel 6/7): her deneme child_practice_attempts'e AYRICA
+# (best'i etkilemeden) kaydedilir — Süreli Pratik Yap istatistikleri ve
+# Kendini Test Et "Sınav-N" geçmişi buradan gelir.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_her_gonderim_ayrica_attempt_olarak_kaydedilir(client, child_auth, db):
+    token, _ = child_auth
+    step_id = await _make_step(db)
+    h = {"Authorization": f"Bearer {token}"}
+    await client.post(f"/practice/steps/{step_id}/submit", headers=h,
+                      json={"mode": "test", "correct": 5, "total": 10})
+    await client.post(f"/practice/steps/{step_id}/submit", headers=h,
+                      json={"mode": "test", "correct": 8, "total": 10})
+
+    rows = (await db.execute(
+        select(ChildPracticeAttempt).where(ChildPracticeAttempt.lesson_step_id == step_id)
+        .order_by(ChildPracticeAttempt.attempt_no)
+    )).scalars().all()
+    assert len(rows) == 2
+    assert rows[0].attempt_no == 1 and rows[0].correct_count == 5
+    assert rows[1].attempt_no == 2 and rows[1].correct_count == 8
+
+
+@pytest.mark.asyncio
+async def test_list_attempts_sinav_sirasiyla_doner(client, child_auth, db):
+    token, _ = child_auth
+    step_id = await _make_step(db)
+    h = {"Authorization": f"Bearer {token}"}
+    await client.post(f"/practice/steps/{step_id}/submit", headers=h,
+                      json={"mode": "test", "correct": 3, "total": 5, "per_question": [True, True, True, False, False]})
+    await client.post(f"/practice/steps/{step_id}/submit", headers=h,
+                      json={"mode": "test", "correct": 5, "total": 5, "per_question": [True] * 5})
+
+    r = await client.get(f"/practice/steps/{step_id}/attempts", headers=h, params={"mode": "test"})
+    assert r.status_code == 200
+    attempts = r.json()["attempts"]
+    assert len(attempts) == 2
+    assert attempts[0]["attempt_no"] == 1
+    assert attempts[0]["per_question_correct"] == [True, True, True, False, False]
+    assert attempts[1]["attempt_no"] == 2
+    assert attempts[1]["correct_count"] == 5
+
+
+@pytest.mark.asyncio
+async def test_attempts_summary_takvim_donemlerine_gore_toplar(client, child_auth, db):
+    token, child_id = child_auth
+    step_id = await _make_step(db)
+    now = datetime.utcnow()
+
+    # Bugün: 1 deneme (10 soru, 8 doğru).
+    db.add(ChildPracticeAttempt(child_id=child_id, lesson_step_id=step_id,
+                                mode="sureli", attempt_no=1, correct_count=8, total_count=10,
+                                created_at=now))
+    # Bu ayın/haftanın KESİN dışında bir tarih (ayın 1'inden 32 gün önce —
+    # ayın son günü hangi haftaya denk gelirse gelsin güvenle dışarıda kalır),
+    # ama aynı yıl içindeyse yıllığa girmeli.
+    definitely_before = (now.replace(day=1) - timedelta(days=32))
+    db.add(ChildPracticeAttempt(child_id=child_id, lesson_step_id=step_id,
+                                mode="sureli", attempt_no=2, correct_count=2, total_count=10,
+                                created_at=definitely_before))
+    await db.commit()
+
+    r = await client.get(f"/practice/steps/{step_id}/attempts-summary",
+                         headers={"Authorization": f"Bearer {token}"}, params={"mode": "sureli"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["daily"]["total"] == 10
+    assert data["daily"]["correct"] == 8
+    assert data["daily"]["success_rate"] == 80
+    assert data["weekly"]["total"] == 10
+    assert data["monthly"]["total"] == 10
+    # Yıllık: aynı yıl içindeyse geçen(ki) deneme de dahil olmalı.
+    if definitely_before.year == now.year:
+        assert data["yearly"]["total"] == 20
+    else:
+        assert data["yearly"]["total"] == 10

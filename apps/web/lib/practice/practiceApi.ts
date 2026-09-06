@@ -88,3 +88,50 @@ export async function fetchPracticeDetail(
     return null;
   }
 }
+
+export interface PeriodStat { total: number; correct: number; wrong: number; success_rate: number }
+export interface AttemptsSummary { daily: PeriodStat; weekly: PeriodStat; monthly: PeriodStat; yearly: PeriodStat }
+
+/** Madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" — günlük/haftalık/aylık/
+ *  yıllık istatistik (takvim dönemleri). null = çekilemedi. */
+export async function fetchAttemptsSummary(
+  stepId: number, mode: PracticeMode,
+): Promise<AttemptsSummary | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/attempts-summary?mode=${mode}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+export interface AttemptRow {
+  attempt_no: number;
+  correct_count: number;
+  total_count: number;
+  per_question_correct: boolean[] | null;
+}
+
+/** Madde 2026-09-06 (Görsel 7): "Kendini Test Et" — bu alt konudaki TÜM
+ *  denemeler ("Sınav-1", "Sınav-2", ...), attempt_no sırasıyla. */
+export async function fetchAttempts(
+  stepId: number, mode: PracticeMode,
+): Promise<AttemptRow[] | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/attempts?mode=${mode}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.attempts ?? [];
+  } catch {
+    return null;
+  }
+}

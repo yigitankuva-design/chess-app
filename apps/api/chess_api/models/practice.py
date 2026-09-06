@@ -31,3 +31,28 @@ class ChildPracticeResult(Base):
     # göre doğru/yanlış listesi (best_correct/best_total ile AYNI denemeye
     # ait). Hiç deneme yoksa veya en iyi deneme güncellenmediyse None.
     per_question_correct: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+
+class ChildPracticeAttempt(Base):
+    """Madde 2026-09-06 (Görsel 6/7): Bir çocuğun bir ALT KONU × pratik
+    modundaki HER DENEMESİ (best değil, TÜM geçmiş) — ayrı bir tablo,
+    ChildPracticeResult'ı (en iyi deneme) hiç etkilemez (KURAL #3).
+
+    - Süreli Pratik Yap (Görsel 6): günlük/haftalık/aylık/yıllık istatistik
+      bu tablonun `created_at`'ine göre toplanır.
+    - Kendini Test Et (Görsel 7): her satır bir "Sınav-N" sekmesi —
+      `attempt_no` sırasına göre listelenir, her birinin kendi
+      `per_question_correct`'i vardır.
+    """
+
+    __tablename__ = "child_practice_attempts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    child_id: Mapped[int] = mapped_column(ForeignKey("child_profiles.id"), index=True)
+    lesson_step_id: Mapped[int] = mapped_column(ForeignKey("lesson_steps.id"), index=True)
+    mode: Mapped[str] = mapped_column(String(16))  # suresiz | sureli | test
+    attempt_no: Mapped[int] = mapped_column(Integer)  # bu (child, step, mode) için 1'den başlar
+    correct_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_count: Mapped[int] = mapped_column(Integer, default=0)
+    per_question_correct: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

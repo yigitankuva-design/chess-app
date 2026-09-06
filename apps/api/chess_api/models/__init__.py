@@ -15,7 +15,7 @@ from chess_api.models.parent import (
     ParentTimeLimit, ChildActivityLog, ParentSurvey, ParentSurveyResponse,
 )
 from chess_api.models.app_settings import AppSettings
-from chess_api.models.practice import ChildPracticeResult
+from chess_api.models.practice import ChildPracticeResult, ChildPracticeAttempt
 from chess_api.models.opening import Opening, OpeningVariant, OpeningType
 from chess_api.models.fun_activity import FunActivity
 from chess_api.models.pool_image import PoolImage
@@ -29,7 +29,7 @@ __all__ = [
     "Tournament", "TournamentStatus", "TournamentType", "TournamentParticipant", "TournamentPairing",
     "ChildTempoRating",
     "AppSettings",
-    "ChildPracticeResult",
+    "ChildPracticeResult", "ChildPracticeAttempt",
     "Opening", "OpeningVariant", "OpeningType",
     "FunActivity",
     "PoolImage",

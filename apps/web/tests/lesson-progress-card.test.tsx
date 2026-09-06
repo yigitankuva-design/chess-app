@@ -5,9 +5,13 @@ vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'tok' }));
 
 const fetchLessonScores = vi.fn();
 const fetchPracticeDetail = vi.fn();
+const fetchAttemptsSummary = vi.fn();
+const fetchAttempts = vi.fn();
 vi.mock('@/lib/practice/practiceApi', () => ({
   fetchLessonScores: (...args: unknown[]) => fetchLessonScores(...args),
   fetchPracticeDetail: (...args: unknown[]) => fetchPracticeDetail(...args),
+  fetchAttemptsSummary: (...args: unknown[]) => fetchAttemptsSummary(...args),
+  fetchAttempts: (...args: unknown[]) => fetchAttempts(...args),
 }));
 
 import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
@@ -43,6 +47,18 @@ beforeEach(() => {
     best_score: 80, best_correct: 4, best_total: 5, attempts_count: 1,
     per_question_correct: [true, true, false, true, true], pool_size: 5,
   });
+  fetchAttemptsSummary.mockReset();
+  fetchAttemptsSummary.mockResolvedValue({
+    daily: { total: 12, correct: 9, wrong: 3, success_rate: 75 },
+    weekly: { total: 12, correct: 9, wrong: 3, success_rate: 75 },
+    monthly: { total: 12, correct: 9, wrong: 3, success_rate: 75 },
+    yearly: { total: 12, correct: 9, wrong: 3, success_rate: 75 },
+  });
+  fetchAttempts.mockReset();
+  fetchAttempts.mockResolvedValue([
+    { attempt_no: 1, correct_count: 4, total_count: 8, per_question_correct: [true, false, true, false, true, true, true, false] },
+    { attempt_no: 2, correct_count: 8, total_count: 8, per_question_correct: Array(8).fill(true) },
+  ]);
 });
 
 describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (madde 2026-09-05)', () => {
@@ -90,7 +106,7 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     expect(screen.getByText(/Tahtanın Genel Özellikleri - 1 konusuna ait/)).toBeInTheDocument();
   });
 
-  it('"Süreli Pratik Yap" veya "Kendini Test Et" seçilince "yakında" mesajı gösterir, gerçek veri çekmez', async () => {
+  it('madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" seçilince Günlük/Haftalık/Aylık/Yıllık tablosu gösterilir', async () => {
     stubFetch();
     render(<LessonProgressCard />);
     await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
@@ -99,8 +115,33 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Süreli Pratik Yap'));
 
-    await waitFor(() => screen.getByText(/yakında/));
+    await waitFor(() => expect(fetchAttemptsSummary).toHaveBeenCalledWith(100, 'sureli'));
+    expect(await screen.findByText('Günlük: 12')).toBeInTheDocument();
+    expect(screen.getByText('Haftalık: 12')).toBeInTheDocument();
+    expect(screen.getByText('Aylık: 12')).toBeInTheDocument();
+    expect(screen.getByText('Yıllık: 12')).toBeInTheDocument();
+    expect(screen.getAllByText('%75').length).toBe(4);
     expect(fetchPracticeDetail).not.toHaveBeenCalled();
+  });
+
+  it('madde 2026-09-06 (Görsel 7): "Kendini Test Et" seçilince Sınav-N sekmeleri ve soru bazlı kareler gösterilir', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Kendini Test Et'));
+
+    await waitFor(() => expect(fetchAttempts).toHaveBeenCalledWith(100, 'test'));
+    expect(await screen.findByText('Sınav - 1')).toBeInTheDocument();
+    expect(screen.getByText('Sınav - 2')).toBeInTheDocument();
+    // Varsayılan seçili: Sınav-1 (4/8 doğru, eşik 85 → başarısız mesajı).
+    expect(screen.getByText(/kritik eşiğin altındadır/)).toBeInTheDocument();
+
+    // Sınav-2'ye geçilince (8/8, %100) başarı mesajı gösterilir.
+    fireEvent.click(screen.getByText('Sınav - 2'));
+    expect(screen.getByText(/başarı eşiğinin üzerinde/)).toBeInTheDocument();
   });
 
   it('madde 2026-09-06 (Görsel 5): "Ders İlerlemesi" başlığının kapsayıcısı alt çizgi taşır', async () => {

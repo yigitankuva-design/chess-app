@@ -1,12 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import ChildProfile, LessonStep
-from chess_api.models.practice import ChildPracticeResult
+from chess_api.models.practice import ChildPracticeResult, ChildPracticeAttempt
 
 VALID_MODES = {"suresiz", "sureli", "test"}
 
@@ -122,6 +122,26 @@ async def submit_practice(
             row.best_total = payload.total
             row.per_question_correct = payload.per_question
 
+    # Madde 2026-09-06 (Görsel 6/7): ChildPracticeResult (en iyi deneme)
+    # AYRICA, bu denemenin kendisi de TAM GEÇMİŞ olarak child_practice_attempts'e
+    # eklenir — Süreli Pratik Yap'ın günlük/haftalık/aylık/yıllık istatistiği ve
+    # Kendini Test Et'in "Sınav-N" sekmeleri buradan gelir. best_* güncellemesini
+    # ETKİLEMEZ, ayrı bir kayıt.
+    prev_attempts = await db.scalar(
+        select(func.count(ChildPracticeAttempt.id)).where(
+            ChildPracticeAttempt.child_id == child.id,
+            ChildPracticeAttempt.lesson_step_id == step_id,
+            ChildPracticeAttempt.mode == payload.mode,
+        )
+    )
+    db.add(ChildPracticeAttempt(
+        child_id=child.id, lesson_step_id=step_id, mode=payload.mode,
+        attempt_no=(prev_attempts or 0) + 1,
+        correct_count=payload.correct, total_count=payload.total,
+        per_question_correct=payload.per_question,
+        created_at=datetime.utcnow(),
+    ))
+
     await db.commit()
     return SubmitResponse(score=score, best_score=row.best_score, improved=improved)
 
@@ -152,6 +172,102 @@ async def practice_detail(
         best_total=row.best_total, attempts_count=row.attempts_count,
         per_question_correct=row.per_question_correct, pool_size=pool_size,
     )
+
+
+class PeriodStat(BaseModel):
+    total: int
+    correct: int
+    wrong: int
+    success_rate: int  # 0..100, hiç deneme yoksa 0
+
+
+def _period_stat(rows: list[ChildPracticeAttempt]) -> PeriodStat:
+    total = sum(r.total_count for r in rows)
+    correct = sum(r.correct_count for r in rows)
+    rate = round(correct / total * 100) if total > 0 else 0
+    return PeriodStat(total=total, correct=correct, wrong=total - correct, success_rate=rate)
+
+
+class AttemptsSummaryResponse(BaseModel):
+    daily: PeriodStat
+    weekly: PeriodStat
+    monthly: PeriodStat
+    yearly: PeriodStat
+
+
+@router.get("/steps/{step_id}/attempts-summary", response_model=AttemptsSummaryResponse)
+async def attempts_summary(
+    step_id: int,
+    mode: str = "sureli",
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" için günlük/haftalık/
+    aylık/yıllık istatistik — TAKVİM dönemleri (bugün / bu hafta Pzt-Paz /
+    bu ay / bu yıl), madde 4'teki "aynı hafta günü" mantığından FARKLI (o
+    sadece "Bu Hafta" kartına özel — burada Zafer'in görseli standart
+    dönemleri gösteriyor)."""
+    if mode not in VALID_MODES:
+        raise HTTPException(status_code=400, detail="Invalid mode")
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=today_start.weekday())
+    month_start = today_start.replace(day=1)
+    year_start = today_start.replace(month=1, day=1)
+
+    rows = (await db.execute(
+        select(ChildPracticeAttempt).where(
+            ChildPracticeAttempt.child_id == child.id,
+            ChildPracticeAttempt.lesson_step_id == step_id,
+            ChildPracticeAttempt.mode == mode,
+        )
+    )).scalars().all()
+
+    return AttemptsSummaryResponse(
+        daily=_period_stat([r for r in rows if r.created_at >= today_start]),
+        weekly=_period_stat([r for r in rows if r.created_at >= week_start]),
+        monthly=_period_stat([r for r in rows if r.created_at >= month_start]),
+        yearly=_period_stat([r for r in rows if r.created_at >= year_start]),
+    )
+
+
+class AttemptRow(BaseModel):
+    attempt_no: int
+    correct_count: int
+    total_count: int
+    per_question_correct: list[bool] | None = None
+
+
+class AttemptsResponse(BaseModel):
+    attempts: list[AttemptRow]
+
+
+@router.get("/steps/{step_id}/attempts", response_model=AttemptsResponse)
+async def list_attempts(
+    step_id: int,
+    mode: str = "test",
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-06 (Görsel 7): "Kendini Test Et" — bu alt konudaki TÜM
+    denemeler, attempt_no sırasıyla ("Sınav-1", "Sınav-2", ...). Sporcu
+    geçtiği anda zincirdeki bir sonraki alt konu açılır (unlock.ts) — yeni
+    "Sınav-N+1" deneme sporcu tekrar oynamadıkça KENDİLİĞİNDEN oluşmaz."""
+    if mode not in VALID_MODES:
+        raise HTTPException(status_code=400, detail="Invalid mode")
+    rows = (await db.execute(
+        select(ChildPracticeAttempt).where(
+            ChildPracticeAttempt.child_id == child.id,
+            ChildPracticeAttempt.lesson_step_id == step_id,
+            ChildPracticeAttempt.mode == mode,
+        ).order_by(ChildPracticeAttempt.attempt_no)
+    )).scalars().all()
+    return AttemptsResponse(attempts=[
+        AttemptRow(
+            attempt_no=r.attempt_no, correct_count=r.correct_count,
+            total_count=r.total_count, per_question_correct=r.per_question_correct,
+        ) for r in rows
+    ])
 
 
 class ScoreRow(BaseModel):

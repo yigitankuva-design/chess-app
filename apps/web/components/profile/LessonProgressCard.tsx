@@ -4,8 +4,8 @@ import {
   isSubtopicUnlocked, isLessonCompleted, thresholdFor,
 } from '@/lib/practice/unlock';
 import type { PracticeMode, ScoreMap, ThresholdMap } from '@/lib/practice/unlock';
-import { fetchLessonScores, fetchPracticeDetail } from '@/lib/practice/practiceApi';
-import type { PracticeDetail } from '@/lib/practice/practiceApi';
+import { fetchLessonScores, fetchPracticeDetail, fetchAttemptsSummary, fetchAttempts } from '@/lib/practice/practiceApi';
+import type { PracticeDetail, AttemptsSummary, AttemptRow } from '@/lib/practice/practiceApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -15,11 +15,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  * Konu (1-8 kutucuk) → Alt Konu → mod (Ödevini Yap/Süreli Pratik Yap/
  * Kendini Test Et) → soru bazlı yeşil/kırmızı kare.
  *
- * Kapsam bilinçli olarak DAR: SADECE "Ödevini Yap" (suresiz) gerçek veriye
- * bağlı — Zafer'in kararı, Süreli Pratik Yap/Kendini Test Et için görselleri
- * SONRA gönderecek. Hiyerarşinin TAMAMI (4 seviye, 3 mod sekmesi) burada
- * kuruludur; diğer 2 mod "yakında" placeholder'ı gösterir (Video İzle
- * kartıyla AYNI desen — bkz. app/admin/content/lesson/[lessonId]/page.tsx).
+ * Madde 2026-09-06 (Görsel 6/7): "Süreli Pratik Yap" ve "Kendini Test Et"
+ * de artık gerçek veriye bağlı — üçü de TAMAMLANDI:
+ *   - Ödevini Yap: en iyi denemenin soru bazlı yeşil/kırmızı kareleri.
+ *   - Süreli Pratik Yap: Günlük/Haftalık/Aylık/Yıllık istatistik tablosu
+ *     (child_practice_attempts'in TAKVİM dönemlerine göre toplamı).
+ *   - Kendini Test Et: her deneme kendi "Sınav-N" sekmesi, seçilenin soru
+ *     bazlı kareleri gösterilir.
  */
 
 // Kodlar Zafer'in verdiği sırayla (TD-BD-OD-İD); isimler gerçek modül
@@ -54,6 +56,13 @@ export function LessonProgressCard() {
   const [openMode, setOpenMode] = useState<PracticeMode | null>(null);
   const [practiceDetail, setPracticeDetail] = useState<PracticeDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  /** Madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" — Günlük/Haftalık/Aylık/Yıllık. */
+  const [attemptsSummary, setAttemptsSummary] = useState<AttemptsSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  /** Madde 2026-09-06 (Görsel 7): "Kendini Test Et" — "Sınav-N" geçmişi. */
+  const [attempts, setAttempts] = useState<AttemptRow[] | null>(null);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
+  const [selectedAttemptIdx, setSelectedAttemptIdx] = useState(0);
 
   useEffect(() => {
     fetch(`${API_BASE}/modules`)
@@ -119,6 +128,8 @@ export function LessonProgressCard() {
     setOpenSubtopic(null);
     setOpenMode(null);
     setPracticeDetail(null);
+    setAttemptsSummary(null);
+    setAttempts(null);
   }
 
   function toggleLesson(lessonId: number) {
@@ -126,22 +137,41 @@ export function LessonProgressCard() {
     setOpenSubtopic(null);
     setOpenMode(null);
     setPracticeDetail(null);
+    setAttemptsSummary(null);
+    setAttempts(null);
   }
 
   function toggleSubtopic(lessonId: number, sub: Subtopic) {
     setOpenSubtopic((prev) => (prev?.stepId === sub.stepId ? null : { lessonId, stepId: sub.stepId, title: sub.title }));
     setOpenMode(null);
     setPracticeDetail(null);
+    setAttemptsSummary(null);
+    setAttempts(null);
   }
 
   function selectMode(mode: PracticeMode) {
     setOpenMode((prev) => (prev === mode ? null : mode));
     setPracticeDetail(null);
-    if (mode !== 'suresiz' || !openSubtopic) return;
-    setDetailLoading(true);
-    fetchPracticeDetail(openSubtopic.stepId, 'suresiz')
-      .then(setPracticeDetail)
-      .finally(() => setDetailLoading(false));
+    setAttemptsSummary(null);
+    setAttempts(null);
+    if (!openSubtopic) return;
+    if (mode === 'suresiz') {
+      setDetailLoading(true);
+      fetchPracticeDetail(openSubtopic.stepId, 'suresiz')
+        .then(setPracticeDetail)
+        .finally(() => setDetailLoading(false));
+    } else if (mode === 'sureli') {
+      setSummaryLoading(true);
+      fetchAttemptsSummary(openSubtopic.stepId, 'sureli')
+        .then(setAttemptsSummary)
+        .finally(() => setSummaryLoading(false));
+    } else if (mode === 'test') {
+      setAttemptsLoading(true);
+      setSelectedAttemptIdx(0);
+      fetchAttempts(openSubtopic.stepId, 'test')
+        .then(setAttempts)
+        .finally(() => setAttemptsLoading(false));
+    }
   }
 
   const openLessonSubs = openLessonId != null ? subtopicsByLesson[openLessonId] : undefined;
@@ -270,11 +300,80 @@ export function LessonProgressCard() {
         );
       })()}
 
-      {openMode && openMode !== 'suresiz' && (
-        <div className="mt-3 pt-3 border-t text-center py-4" style={{ borderColor: 'var(--t-border)' }}>
-          <p className="text-sm t-muted">
-            {MODE_TABS.find((m) => m.slug === openMode)?.label} için Ödevlerim görünümü yakında.
-          </p>
+      {openMode === 'sureli' && (
+        <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--t-border)' }}>
+          {summaryLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
+          {!summaryLoading && attemptsSummary && (
+            <div className="flex flex-col">
+              {([
+                ['Günlük', attemptsSummary.daily],
+                ['Haftalık', attemptsSummary.weekly],
+                ['Aylık', attemptsSummary.monthly],
+                ['Yıllık', attemptsSummary.yearly],
+              ] as const).map(([label, stat], i) => (
+                <div key={label}
+                  className="flex items-center justify-between gap-2 py-2 text-xs"
+                  style={{ borderTop: i === 0 ? 'none' : '1px solid var(--t-border)' }}>
+                  <span className="font-bold">{label}: {stat.total}</span>
+                  <span>Doğru Sayısı: <b style={{ color: 'var(--t-ok-text)' }}>{stat.correct}</b></span>
+                  <span>Yanlış Sayısı: <b style={{ color: 'var(--t-err-text)' }}>{stat.wrong}</b></span>
+                  <span>Başarı Oranı: <b>%{stat.success_rate}</b></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {openMode === 'test' && (
+        <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--t-border)' }}>
+          {attemptsLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
+          {!attemptsLoading && attempts && attempts.length === 0 && (
+            <p className="text-xs t-muted py-1 text-center">Bu alt konuda henüz bir sınav denemesi yok.</p>
+          )}
+          {!attemptsLoading && attempts && attempts.length > 0 && (() => {
+            const selected = attempts[selectedAttemptIdx] ?? attempts[0];
+            const testThreshold = openSubtopic ? thresholdFor(openLessonThresholds, openSubtopic.stepId, 'test') : 85;
+            const selectedScore = selected.total_count > 0
+              ? Math.round((selected.correct_count / selected.total_count) * 100) : 0;
+            const passed = selectedScore >= testThreshold;
+            return (
+              <>
+                <div className="flex gap-1.5 flex-wrap mb-3">
+                  {attempts.map((a, i) => (
+                    <button
+                      key={a.attempt_no} type="button" onClick={() => setSelectedAttemptIdx(i)}
+                      aria-pressed={i === selectedAttemptIdx}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                      style={{
+                        background: i === selectedAttemptIdx ? 'var(--t-accent)' : 'var(--t-surface-2)',
+                        color: i === selectedAttemptIdx ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
+                      }}
+                    >
+                      Sınav - {a.attempt_no}
+                    </button>
+                  ))}
+                </div>
+                {selected.total_count > 0 && (
+                  <div
+                    className="grid gap-1.5 mx-auto mb-3"
+                    style={{ gridTemplateColumns: `repeat(${Math.min(selected.total_count, 8)}, 22px)`, maxWidth: '100%' }}
+                  >
+                    {Array.from({ length: selected.total_count }, (_, i) => {
+                      const result = selected.per_question_correct?.[i];
+                      const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
+                      return <div key={i} className="aspect-square rounded-md" style={{ background: bg }} />;
+                    })}
+                  </div>
+                )}
+                <p className="text-xs text-center" style={{ color: passed ? 'var(--t-ok-text)' : 'var(--t-err-text)' }}>
+                  {passed
+                    ? 'Tebrikler, sınav performansınız başarı eşiğinin üzerinde.'
+                    : 'Maalesef sınav performansınız kritik eşiğin altındadır. Başarı sınırını geçmek için yeniden sınava girebilirsiniz.'}
+                </p>
+              </>
+            );
+          })()}
         </div>
       )}
 
