@@ -31,12 +31,10 @@ async def list_badges(
     ]
 
 
-@router.get("/me")
-async def my_progress(
-    child: ChildProfile = Depends(get_current_child),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get current child's rank, XP, and badge progress."""
+async def _compute_progress(child: ChildProfile, db: AsyncSession) -> dict:
+    """`/me`'nin gövdesi — madde 2026-09-07 (GRUP B): antrenörün salt-okunur
+    öğrenci-profili uçları (teacher.py) da AYNI mantığı kullanır diye
+    ayrı bir fonksiyona çıkarıldı. Davranış DEĞİŞMEDİ (KURAL #3)."""
     cr = (await db.execute(
         select(ChildRank).where(ChildRank.child_id == child.id)
     )).scalar_one_or_none()
@@ -77,3 +75,12 @@ async def my_progress(
         # Madde 2026-09-06: Profil kimlik şeridinde üyelik tarihi gösterimi.
         "member_since": child.created_at.date().isoformat(),
     }
+
+
+@router.get("/me")
+async def my_progress(
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current child's rank, XP, and badge progress."""
+    return await _compute_progress(child, db)

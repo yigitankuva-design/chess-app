@@ -10,12 +10,19 @@ export interface SubmitResult { score: number; best_score: number; improved: boo
  * Dersin tüm alt konuları için en iyi skorlar.
  * null = "kilit sistemi uygulanamaz" (token yok / sunucu erişilemiyor) →
  * çağıran taraf her şeyi AÇIK kabul eder (KURAL #3: kimse dışarıda kalmaz).
+ *
+ * `childId` verilirse (madde 2026-09-07, GRUP B: antrenörün salt-okunur
+ * Sporcu Profili görünümü) `/teacher/students/{childId}/practice/...`'e
+ * gider — antrenörün KENDİ token'ıyla, sadece uç değişir.
  */
-export async function fetchLessonScores(lessonId: number): Promise<ScoreMap | null> {
+export async function fetchLessonScores(lessonId: number, childId?: number): Promise<ScoreMap | null> {
   const token = getToken();
   if (!token) return null;
   try {
-    const r = await fetch(`${API_BASE}/practice/lessons/${lessonId}/scores`, {
+    const path = childId != null
+      ? `/teacher/students/${childId}/practice/lessons/${lessonId}/scores`
+      : `/practice/lessons/${lessonId}/scores`;
+    const r = await fetch(`${API_BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!r.ok) return null;
@@ -74,12 +81,15 @@ export interface PracticeDetail {
  * büyüklüğü. null = çekilemedi (token yok / ağ hatası).
  */
 export async function fetchPracticeDetail(
-  stepId: number, mode: PracticeMode,
+  stepId: number, mode: PracticeMode, childId?: number,
 ): Promise<PracticeDetail | null> {
   const token = getToken();
   if (!token) return null;
   try {
-    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/detail?mode=${mode}`, {
+    const path = childId != null
+      ? `/teacher/students/${childId}/practice/steps/${stepId}/detail?mode=${mode}`
+      : `/practice/steps/${stepId}/detail?mode=${mode}`;
+    const r = await fetch(`${API_BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!r.ok) return null;
@@ -95,12 +105,15 @@ export interface AttemptsSummary { daily: PeriodStat; weekly: PeriodStat; monthl
 /** Madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" — günlük/haftalık/aylık/
  *  yıllık istatistik (takvim dönemleri). null = çekilemedi. */
 export async function fetchAttemptsSummary(
-  stepId: number, mode: PracticeMode,
+  stepId: number, mode: PracticeMode, childId?: number,
 ): Promise<AttemptsSummary | null> {
   const token = getToken();
   if (!token) return null;
   try {
-    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/attempts-summary?mode=${mode}`, {
+    const path = childId != null
+      ? `/teacher/students/${childId}/practice/steps/${stepId}/attempts-summary?mode=${mode}`
+      : `/practice/steps/${stepId}/attempts-summary?mode=${mode}`;
+    const r = await fetch(`${API_BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!r.ok) return null;
@@ -120,12 +133,15 @@ export interface AttemptRow {
 /** Madde 2026-09-06 (Görsel 7): "Kendini Test Et" — bu alt konudaki TÜM
  *  denemeler ("Sınav-1", "Sınav-2", ...), attempt_no sırasıyla. */
 export async function fetchAttempts(
-  stepId: number, mode: PracticeMode,
+  stepId: number, mode: PracticeMode, childId?: number,
 ): Promise<AttemptRow[] | null> {
   const token = getToken();
   if (!token) return null;
   try {
-    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/attempts?mode=${mode}`, {
+    const path = childId != null
+      ? `/teacher/students/${childId}/practice/steps/${stepId}/attempts?mode=${mode}`
+      : `/practice/steps/${stepId}/attempts?mode=${mode}`;
+    const r = await fetch(`${API_BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!r.ok) return null;

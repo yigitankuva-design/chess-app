@@ -62,13 +62,13 @@ class DaySummaryResponse(BaseModel):
     monthly: dict
 
 
-@router.get("/day-summary", response_model=DaySummaryResponse)
-async def day_summary(
-    date_str: str | None = None,
-    child: ChildProfile = Depends(get_current_child),
-    db: AsyncSession = Depends(get_db),
-):
-    """`date_str` verilmezse bugün kullanılır (ISO: YYYY-MM-DD)."""
+async def _compute_day_summary(
+    child: ChildProfile, date_str: str | None, db: AsyncSession,
+) -> DaySummaryResponse:
+    """`day_summary`'nin gövdesi — madde 2026-09-07 (GRUP B): antrenörün
+    salt-okunur öğrenci-profili uçları (teacher.py) da AYNI mantığı
+    kullanır diye ayrı bir fonksiyona çıkarıldı. Davranış DEĞİŞMEDİ
+    (KURAL #3). `date_str` verilmezse bugün kullanılır (ISO: YYYY-MM-DD)."""
     try:
         target = date.fromisoformat(date_str) if date_str else date.today()
     except ValueError:
@@ -119,3 +119,13 @@ async def day_summary(
         date=target.isoformat(), week_start=week_start.isoformat(),
         week_days=week_days, daily=daily, monthly=monthly,
     )
+
+
+@router.get("/day-summary", response_model=DaySummaryResponse)
+async def day_summary(
+    date_str: str | None = None,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """`date_str` verilmezse bugün kullanılır (ISO: YYYY-MM-DD)."""
+    return await _compute_day_summary(child, date_str, db)

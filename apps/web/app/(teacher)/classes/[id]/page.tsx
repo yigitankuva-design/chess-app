@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getToken } from '@/lib/auth-storage';
 import { Leaderboard } from '@/components/Leaderboard';
 import { AssignmentForm } from '@/components/AssignmentForm';
@@ -165,10 +166,12 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                     {students.map(s => (
                       <div key={s.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
                         <span className="text-2xl w-8 text-center">{avatarEmoji(s.avatar)}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm">{s.display_name}</p>
+                        {/* Madde 2026-09-07: sporcu ismine tıklanınca GERÇEK Sporcu
+                            Profili (salt-okunur) açılır — bkz. app/(teacher)/students/[id]/page.tsx. */}
+                        <Link href={`/students/${s.id}`} className="flex-1 min-w-0 hover:opacity-70 transition-opacity">
+                          <p className="font-semibold text-sm underline decoration-dotted underline-offset-2">{s.display_name}</p>
                           <p className="text-xs text-gray-400">{s.age} yaş</p>
-                        </div>
+                        </Link>
                         <button
                           onClick={() => handleRemove(s.id)}
                           disabled={removingId === s.id}

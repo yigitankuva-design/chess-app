@@ -30,11 +30,20 @@ export interface DaySummary {
   monthly: { play_seconds: number; lessons_seconds: number; practice_seconds: number };
 }
 
-export async function fetchDaySummary(dateStr?: string): Promise<DaySummary | null> {
+/**
+ * `childId` verilirse (madde 2026-09-07, GRUP B: antrenörün salt-okunur
+ * Sporcu Profili görünümü) `/teacher/students/{childId}/day-summary`'ye
+ * gider — antrenörün KENDİ token'ıyla (getToken() aynı kalır, sadece uç
+ * değişir). Verilmezse mevcut davranış (kendi çocuk token'ı).
+ */
+export async function fetchDaySummary(dateStr?: string, childId?: number): Promise<DaySummary | null> {
   try {
     const token = getToken();
     const qs = dateStr ? `?date_str=${encodeURIComponent(dateStr)}` : '';
-    const r = await fetch(`${API_BASE}/activity/day-summary${qs}`, {
+    const path = childId != null
+      ? `/teacher/students/${childId}/day-summary${qs}`
+      : `/activity/day-summary${qs}`;
+    const r = await fetch(`${API_BASE}${path}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!r.ok) return null;

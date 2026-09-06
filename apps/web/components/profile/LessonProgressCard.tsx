@@ -63,7 +63,15 @@ interface ModuleSummary { id: number; name: string; lessons_count: number }
 interface LessonSummary { id: number; order_index: number; title: string }
 interface Subtopic { stepId: number; title: string }
 
-export function LessonProgressCard() {
+interface LessonProgressCardProps {
+  /** Madde 2026-09-07 (GRUP B): antrenörün salt-okunur Sporcu Profili
+   *  görünümü — verilirse skor/deneme uçları `/teacher/students/{childId}/
+   *  practice/...`'e gider (bkz. lib/practice/practiceApi.ts). Verilmezse
+   *  mevcut davranış (kendi çocuk token'ı) DEĞİŞMEZ. */
+  childId?: number;
+}
+
+export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
   const [level, setLevel] = useState<LevelCode>('TD');
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);
   const [lessonsByModule, setLessonsByModule] = useState<Record<number, LessonSummary[]>>({});
@@ -111,12 +119,12 @@ export function LessonProgressCard() {
         if (Object.keys(entry).length > 0) thresholds[s.id] = entry;
       }
       setThresholdsByLesson((prev) => ({ ...prev, [lessonId]: thresholds }));
-      const scoreMap = await fetchLessonScores(lessonId);
+      const scoreMap = await fetchLessonScores(lessonId, childId);
       setScoresByLesson((prev) => ({ ...prev, [lessonId]: scoreMap }));
     } catch {
       setSubtopicsByLesson((prev) => ({ ...prev, [lessonId]: [] }));
     }
-  }, []);
+  }, [childId]);
 
   // Madde 10 ile AYNI mantık (home/page.tsx): bir düzeyin dersleri gelince,
   // HEPSİNİN alt konu+skor bilgisi ÖNCEDEN çekilir — hem "N/N konu
@@ -177,18 +185,18 @@ export function LessonProgressCard() {
     if (!openSubtopic) return;
     if (mode === 'suresiz') {
       setDetailLoading(true);
-      fetchPracticeDetail(openSubtopic.stepId, 'suresiz')
+      fetchPracticeDetail(openSubtopic.stepId, 'suresiz', childId)
         .then(setPracticeDetail)
         .finally(() => setDetailLoading(false));
     } else if (mode === 'sureli') {
       setSummaryLoading(true);
-      fetchAttemptsSummary(openSubtopic.stepId, 'sureli')
+      fetchAttemptsSummary(openSubtopic.stepId, 'sureli', childId)
         .then(setAttemptsSummary)
         .finally(() => setSummaryLoading(false));
     } else if (mode === 'test') {
       setAttemptsLoading(true);
       setSelectedAttemptIdx(0);
-      fetchAttempts(openSubtopic.stepId, 'test')
+      fetchAttempts(openSubtopic.stepId, 'test', childId)
         .then(setAttempts)
         .finally(() => setAttemptsLoading(false));
     }

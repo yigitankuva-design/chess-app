@@ -146,14 +146,11 @@ async def submit_practice(
     return SubmitResponse(score=score, best_score=row.best_score, improved=improved)
 
 
-@router.get("/steps/{step_id}/detail", response_model=DetailResponse)
-async def practice_detail(
-    step_id: int,
-    mode: str = "suresiz",
-    child: ChildProfile = Depends(get_current_child),
-    db: AsyncSession = Depends(get_db),
-):
-    """Tek bir alt konu+mod için en iyi sonuç. Kayıt yoksa sıfırlarla döner.
+async def _compute_practice_detail(child_id: int, step_id: int, mode: str, db: AsyncSession) -> DetailResponse:
+    """`practice_detail`'ın gövdesi — madde 2026-09-07 (GRUP B): antrenörün
+    salt-okunur öğrenci-profili uçları (teacher.py) da AYNI mantığı
+    kullanır diye ayrı bir fonksiyona çıkarıldı. Davranış DEĞİŞMEDİ
+    (KURAL #3).
 
     pool_size HER ZAMAN hesaplanır (kayıt olsun olmasın) — madde 2026-09-05:
     Sporcu Profili "Ödevlerim" paneli hiç denenmemiş bir alt konuda bile
@@ -164,7 +161,7 @@ async def practice_detail(
     if step is None:
         raise HTTPException(status_code=404, detail="Lesson step not found")
     pool_size = _pool_size(step, mode)
-    row = await _get_row(db, child.id, step_id, mode)
+    row = await _get_row(db, child_id, step_id, mode)
     if row is None:
         return DetailResponse(best_score=0, best_correct=0, best_total=0, attempts_count=0, pool_size=pool_size)
     return DetailResponse(
@@ -172,6 +169,17 @@ async def practice_detail(
         best_total=row.best_total, attempts_count=row.attempts_count,
         per_question_correct=row.per_question_correct, pool_size=pool_size,
     )
+
+
+@router.get("/steps/{step_id}/detail", response_model=DetailResponse)
+async def practice_detail(
+    step_id: int,
+    mode: str = "suresiz",
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Tek bir alt konu+mod için en iyi sonuç. Kayıt yoksa sıfırlarla döner."""
+    return await _compute_practice_detail(child.id, step_id, mode, db)
 
 
 class PeriodStat(BaseModel):
@@ -195,18 +203,11 @@ class AttemptsSummaryResponse(BaseModel):
     yearly: PeriodStat
 
 
-@router.get("/steps/{step_id}/attempts-summary", response_model=AttemptsSummaryResponse)
-async def attempts_summary(
-    step_id: int,
-    mode: str = "sureli",
-    child: ChildProfile = Depends(get_current_child),
-    db: AsyncSession = Depends(get_db),
-):
-    """Madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" için günlük/haftalık/
-    aylık/yıllık istatistik — TAKVİM dönemleri (bugün / bu hafta Pzt-Paz /
-    bu ay / bu yıl), madde 4'teki "aynı hafta günü" mantığından FARKLI (o
-    sadece "Bu Hafta" kartına özel — burada Zafer'in görseli standart
-    dönemleri gösteriyor)."""
+async def _compute_attempts_summary(child_id: int, step_id: int, mode: str, db: AsyncSession) -> AttemptsSummaryResponse:
+    """`attempts_summary`'nin gövdesi — madde 2026-09-07 (GRUP B): antrenörün
+    salt-okunur öğrenci-profili uçları (teacher.py) da AYNI mantığı
+    kullanır diye ayrı bir fonksiyona çıkarıldı. Davranış DEĞİŞMEDİ
+    (KURAL #3)."""
     if mode not in VALID_MODES:
         raise HTTPException(status_code=400, detail="Invalid mode")
     now = datetime.utcnow()
@@ -217,7 +218,7 @@ async def attempts_summary(
 
     rows = (await db.execute(
         select(ChildPracticeAttempt).where(
-            ChildPracticeAttempt.child_id == child.id,
+            ChildPracticeAttempt.child_id == child_id,
             ChildPracticeAttempt.lesson_step_id == step_id,
             ChildPracticeAttempt.mode == mode,
         )
@@ -231,6 +232,21 @@ async def attempts_summary(
     )
 
 
+@router.get("/steps/{step_id}/attempts-summary", response_model=AttemptsSummaryResponse)
+async def attempts_summary(
+    step_id: int,
+    mode: str = "sureli",
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" için günlük/haftalık/
+    aylık/yıllık istatistik — TAKVİM dönemleri (bugün / bu hafta Pzt-Paz /
+    bu ay / bu yıl), madde 4'teki "aynı hafta günü" mantığından FARKLI (o
+    sadece "Bu Hafta" kartına özel — burada Zafer'in görseli standart
+    dönemleri gösteriyor)."""
+    return await _compute_attempts_summary(child.id, step_id, mode, db)
+
+
 class AttemptRow(BaseModel):
     attempt_no: int
     correct_count: int
@@ -240,6 +256,28 @@ class AttemptRow(BaseModel):
 
 class AttemptsResponse(BaseModel):
     attempts: list[AttemptRow]
+
+
+async def _compute_attempts(child_id: int, step_id: int, mode: str, db: AsyncSession) -> AttemptsResponse:
+    """`list_attempts`'ın gövdesi — madde 2026-09-07 (GRUP B): antrenörün
+    salt-okunur öğrenci-profili uçları (teacher.py) da AYNI mantığı
+    kullanır diye ayrı bir fonksiyona çıkarıldı. Davranış DEĞİŞMEDİ
+    (KURAL #3)."""
+    if mode not in VALID_MODES:
+        raise HTTPException(status_code=400, detail="Invalid mode")
+    rows = (await db.execute(
+        select(ChildPracticeAttempt).where(
+            ChildPracticeAttempt.child_id == child_id,
+            ChildPracticeAttempt.lesson_step_id == step_id,
+            ChildPracticeAttempt.mode == mode,
+        ).order_by(ChildPracticeAttempt.attempt_no)
+    )).scalars().all()
+    return AttemptsResponse(attempts=[
+        AttemptRow(
+            attempt_no=r.attempt_no, correct_count=r.correct_count,
+            total_count=r.total_count, per_question_correct=r.per_question_correct,
+        ) for r in rows
+    ])
 
 
 @router.get("/steps/{step_id}/attempts", response_model=AttemptsResponse)
@@ -253,21 +291,7 @@ async def list_attempts(
     denemeler, attempt_no sırasıyla ("Sınav-1", "Sınav-2", ...). Sporcu
     geçtiği anda zincirdeki bir sonraki alt konu açılır (unlock.ts) — yeni
     "Sınav-N+1" deneme sporcu tekrar oynamadıkça KENDİLİĞİNDEN oluşmaz."""
-    if mode not in VALID_MODES:
-        raise HTTPException(status_code=400, detail="Invalid mode")
-    rows = (await db.execute(
-        select(ChildPracticeAttempt).where(
-            ChildPracticeAttempt.child_id == child.id,
-            ChildPracticeAttempt.lesson_step_id == step_id,
-            ChildPracticeAttempt.mode == mode,
-        ).order_by(ChildPracticeAttempt.attempt_no)
-    )).scalars().all()
-    return AttemptsResponse(attempts=[
-        AttemptRow(
-            attempt_no=r.attempt_no, correct_count=r.correct_count,
-            total_count=r.total_count, per_question_correct=r.per_question_correct,
-        ) for r in rows
-    ])
+    return await _compute_attempts(child.id, step_id, mode, db)
 
 
 class ScoreRow(BaseModel):
@@ -280,6 +304,26 @@ class ScoresResponse(BaseModel):
     scores: list[ScoreRow]
 
 
+async def _compute_lesson_scores(child_id: int, lesson_id: int, db: AsyncSession) -> ScoresResponse:
+    """`lesson_scores`'un gövdesi — madde 2026-09-07 (GRUP B): antrenörün
+    salt-okunur öğrenci-profili uçları (teacher.py) da AYNI mantığı
+    kullanır diye ayrı bir fonksiyona çıkarıldı. Davranış DEĞİŞMEDİ
+    (KURAL #3)."""
+    q = (
+        select(ChildPracticeResult)
+        .join(LessonStep, ChildPracticeResult.lesson_step_id == LessonStep.id)
+        .where(
+            LessonStep.lesson_id == lesson_id,
+            ChildPracticeResult.child_id == child_id,
+        )
+    )
+    rows = (await db.execute(q)).scalars().all()
+    return ScoresResponse(scores=[
+        ScoreRow(step_id=r.lesson_step_id, mode=r.mode, best_score=r.best_score)
+        for r in rows
+    ])
+
+
 @router.get("/lessons/{lesson_id}/scores", response_model=ScoresResponse)
 async def lesson_scores(
     lesson_id: int,
@@ -290,16 +334,4 @@ async def lesson_scores(
 
     Frontend bunu ScoreMap'e çevirip kilitleri hesaplar (bkz. lib/practice/unlock.ts).
     """
-    q = (
-        select(ChildPracticeResult)
-        .join(LessonStep, ChildPracticeResult.lesson_step_id == LessonStep.id)
-        .where(
-            LessonStep.lesson_id == lesson_id,
-            ChildPracticeResult.child_id == child.id,
-        )
-    )
-    rows = (await db.execute(q)).scalars().all()
-    return ScoresResponse(scores=[
-        ScoreRow(step_id=r.lesson_step_id, mode=r.mode, best_score=r.best_score)
-        for r in rows
-    ])
+    return await _compute_lesson_scores(child.id, lesson_id, db)

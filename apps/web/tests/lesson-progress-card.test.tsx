@@ -101,7 +101,9 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Ödevini Yap'));
 
-    await waitFor(() => expect(fetchPracticeDetail).toHaveBeenCalledWith(100, 'suresiz'));
+    // Madde 2026-09-07 (GRUP B): 3. argüman opsiyonel childId — burada
+    // undefined (kendi profilim modu, antrenör görünümü DEĞİL).
+    await waitFor(() => expect(fetchPracticeDetail).toHaveBeenCalledWith(100, 'suresiz', undefined));
     await waitFor(() => screen.getByText('Ödevlerim'));
     expect(screen.getByText(/Tahtanın Genel Özellikleri - 1 konusuna ait/)).toBeInTheDocument();
   });
@@ -115,7 +117,7 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Süreli Pratik Yap'));
 
-    await waitFor(() => expect(fetchAttemptsSummary).toHaveBeenCalledWith(100, 'sureli'));
+    await waitFor(() => expect(fetchAttemptsSummary).toHaveBeenCalledWith(100, 'sureli', undefined));
     expect(await screen.findByText('Günlük: 12')).toBeInTheDocument();
     expect(screen.getByText('Haftalık: 12')).toBeInTheDocument();
     expect(screen.getByText('Aylık: 12')).toBeInTheDocument();
@@ -133,7 +135,7 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Kendini Test Et'));
 
-    await waitFor(() => expect(fetchAttempts).toHaveBeenCalledWith(100, 'test'));
+    await waitFor(() => expect(fetchAttempts).toHaveBeenCalledWith(100, 'test', undefined));
     expect(await screen.findByText('Sınav - 1')).toBeInTheDocument();
     expect(screen.getByText('Sınav - 2')).toBeInTheDocument();
     // Varsayılan seçili: Sınav-1 (4/8 doğru, eşik 85 → başarısız mesajı).

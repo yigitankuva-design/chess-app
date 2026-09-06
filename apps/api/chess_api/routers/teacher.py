@@ -8,6 +8,12 @@ from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
 from chess_api.models import User, UserRole, Class, ClassAssignment, ChildProfile, ParentSurvey
 from chess_api.services.leaderboard import class_leaderboard
+from chess_api.routers.gamification import _compute_progress
+from chess_api.routers.activity import _compute_day_summary
+from chess_api.routers.practice import (
+    _compute_lesson_scores, _compute_practice_detail,
+    _compute_attempts_summary, _compute_attempts,
+)
 from pydantic import BaseModel, Field
 
 _ALPHABET = string.ascii_uppercase + string.digits
@@ -126,6 +132,104 @@ async def search_students(
         }
         for c in children
     ]
+
+
+async def _get_child_for_teacher(
+    child_id: int, current: User, db: AsyncSession,
+) -> ChildProfile:
+    """Madde 2026-09-07 (GRUP B): antrenör bir sporcunun GERÇEK Sporcu
+    Profili'ni (salt-okunur) görüntüleyebilsin diye — bu çocuğun antrenörün
+    KENDİ öğrencisi olduğunu doğrular (`class_students` ile AYNI desen:
+    `child.teacher_user_id` DOĞRUDAN bu antrenöre bağlıysa YA DA
+    `child.class_id`'nin sınıfı bu antrenöre aitse izin verilir)."""
+    _ensure_teacher(current)
+    child = await db.get(ChildProfile, child_id)
+    if not child:
+        raise HTTPException(404, "Child not found")
+    allowed = child.teacher_user_id == current.id
+    if not allowed and child.class_id is not None:
+        cls = await db.get(Class, child.class_id)
+        allowed = cls is not None and cls.teacher_user_id == current.id
+    if not allowed:
+        raise HTTPException(403, "Not your student")
+    return child
+
+
+@router.get("/students/{child_id}/profile-summary")
+async def student_profile_summary(
+    child_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """`/gamification/me` ile AYNI veri + antrenör görünümü için isim/avatar
+    (çocuğun kendi ekranında bunlar zaten cihazından geliyor — antrenör
+    görünümünde sunucudan gelmesi gerekir, bkz. ProfileView.tsx)."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    progress = await _compute_progress(child, db)
+    return {**progress, "display_name": child.display_name, "avatar": child.avatar}
+
+
+@router.get("/students/{child_id}/day-summary")
+async def student_day_summary(
+    child_id: int,
+    date_str: str | None = None,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """`/activity/day-summary` ile AYNI veri — antrenörün salt-okunur görünümü."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    return await _compute_day_summary(child, date_str, db)
+
+
+@router.get("/students/{child_id}/practice/lessons/{lesson_id}/scores")
+async def student_lesson_scores(
+    child_id: int,
+    lesson_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """`/practice/lessons/{id}/scores` ile AYNI veri — antrenörün salt-okunur görünümü."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    return await _compute_lesson_scores(child.id, lesson_id, db)
+
+
+@router.get("/students/{child_id}/practice/steps/{step_id}/detail")
+async def student_practice_detail(
+    child_id: int,
+    step_id: int,
+    mode: str = "suresiz",
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """`/practice/steps/{id}/detail` ile AYNI veri — antrenörün salt-okunur görünümü."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    return await _compute_practice_detail(child.id, step_id, mode, db)
+
+
+@router.get("/students/{child_id}/practice/steps/{step_id}/attempts-summary")
+async def student_attempts_summary(
+    child_id: int,
+    step_id: int,
+    mode: str = "sureli",
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """`/practice/steps/{id}/attempts-summary` ile AYNI veri — antrenörün salt-okunur görünümü."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    return await _compute_attempts_summary(child.id, step_id, mode, db)
+
+
+@router.get("/students/{child_id}/practice/steps/{step_id}/attempts")
+async def student_attempts(
+    child_id: int,
+    step_id: int,
+    mode: str = "test",
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """`/practice/steps/{id}/attempts` ile AYNI veri — antrenörün salt-okunur görünümü."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    return await _compute_attempts(child.id, step_id, mode, db)
 
 
 @router.post("/classes/{class_id}/students/{child_id}", status_code=200)

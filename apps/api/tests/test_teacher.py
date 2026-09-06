@@ -271,6 +271,120 @@ async def test_non_teacher_cannot_create_class(client):
 
 
 @pytest.mark.asyncio
+async def test_teacher_views_student_profile_summary_not_enrolled_403(client, child_auth):
+    """Madde 2026-09-07 (GRUP B): öğrenci antrenörün sınıfında/kendi öğrencisi
+    DEĞİLSE profile-summary 403 döner — kimse görüşünmediği bir sporcunun
+    profiline erişemez."""
+    _token, child_id = child_auth
+    teacher_token = await _teacher_signup(client, "teacher_profile@t.com")
+
+    r = await client.get(
+        f"/teacher/students/{child_id}/profile-summary", headers=auth(teacher_token),
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_teacher_views_own_students_profile_and_practice_data(client, db):
+    """Antrenörün sınıfındaki bir öğrencinin profile-summary, day-summary,
+    lesson scores, practice detail, attempts-summary ve attempts uçları —
+    hepsi ilgili /gamification, /activity, /practice uçlarıyla AYNI veriyi
+    döner (KURAL #3: mevcut uçlar değişmedi, sadece antrenör-taraflı ikizleri
+    eklendi)."""
+    from tests.test_practice_submit import _make_step
+
+    teacher_token = await _teacher_signup(client, "teacher_view_data@t.com")
+    parent_token = await _parent_signup(client, "parent_view_data@t.com")
+    child_id = await _create_child(client, parent_token, "Emir")
+
+    r = await client.post("/teacher/classes", headers=auth(teacher_token), json={"name": "Sınıf V"})
+    class_id = r.json()["id"]
+    join_code = r.json()["join_code"]
+    await client.post(
+        f"/parent/children/{child_id}/join-class",
+        headers=auth(parent_token), params={"join_code": join_code},
+    )
+
+    # Çocuk PIN ile giriş yapıp bir pratik sonucu göndersin (gerçek veri).
+    await client.post("/auth/device/register", headers=auth(parent_token),
+                      json={"device_fingerprint": "devview", "name": "T"})
+    r = await client.post("/auth/child/pin", json={
+        "child_profile_id": child_id, "pin": "1234", "device_fingerprint": "devview",
+    })
+    child_token = r.json()["access_token"]
+    step_id = await _make_step(db)
+    r = await client.post(
+        f"/practice/steps/{step_id}/submit", headers=auth(child_token),
+        json={"mode": "suresiz", "correct": 18, "total": 20},
+    )
+    assert r.status_code == 200
+
+    # 1) profile-summary — /gamification/me ile aynı şekil.
+    r = await client.get(f"/teacher/students/{child_id}/profile-summary", headers=auth(teacher_token))
+    assert r.status_code == 200
+    assert "member_since" in r.json()
+
+    # 2) day-summary — /activity/day-summary ile aynı şekil.
+    r = await client.get(f"/teacher/students/{child_id}/day-summary", headers=auth(teacher_token))
+    assert r.status_code == 200
+    assert "week_days" in r.json()
+
+    # 3) lesson scores — az önce gönderilen deneme skoru görünür.
+    from chess_api.models import LessonStep
+    step = await db.get(LessonStep, step_id)
+    r = await client.get(
+        f"/teacher/students/{child_id}/practice/lessons/{step.lesson_id}/scores",
+        headers=auth(teacher_token),
+    )
+    assert r.status_code == 200
+    scores = r.json()["scores"]
+    assert any(s["step_id"] == step_id and s["best_score"] == 90 for s in scores)
+
+    # 4) practice detail.
+    r = await client.get(
+        f"/teacher/students/{child_id}/practice/steps/{step_id}/detail?mode=suresiz",
+        headers=auth(teacher_token),
+    )
+    assert r.status_code == 200
+    assert r.json()["best_score"] == 90
+
+    # 5) attempts-summary.
+    r = await client.get(
+        f"/teacher/students/{child_id}/practice/steps/{step_id}/attempts-summary?mode=suresiz",
+        headers=auth(teacher_token),
+    )
+    assert r.status_code == 200
+    assert r.json()["daily"]["total"] == 20
+
+    # 6) attempts.
+    r = await client.get(
+        f"/teacher/students/{child_id}/practice/steps/{step_id}/attempts?mode=suresiz",
+        headers=auth(teacher_token),
+    )
+    assert r.status_code == 200
+    assert len(r.json()["attempts"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_teacher_cannot_view_other_teachers_student_profile(client):
+    """Antrenör A, kendi sınıfında OLMAYAN bir öğrencinin profilini göremez (403)."""
+    teacher_a = await _teacher_signup(client, "teacher_view_a@t.com")
+    teacher_b = await _teacher_signup(client, "teacher_view_b@t.com")
+    parent_token = await _parent_signup(client, "parent_view_b@t.com")
+    child_id = await _create_child(client, parent_token, "Yabancı")
+
+    r = await client.post("/teacher/classes", headers=auth(teacher_b), json={"name": "Sınıf B"})
+    join_code = r.json()["join_code"]
+    await client.post(
+        f"/parent/children/{child_id}/join-class",
+        headers=auth(parent_token), params={"join_code": join_code},
+    )
+
+    r = await client.get(f"/teacher/students/{child_id}/profile-summary", headers=auth(teacher_a))
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_teacher_cannot_access_other_teachers_class(client):
     """Teacher A cannot access Teacher B's class."""
     token_a = await _teacher_signup(client, "teacher_a@t.com")
