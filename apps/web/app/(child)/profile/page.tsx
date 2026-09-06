@@ -112,11 +112,13 @@ const TOURNAMENT_BY_TEMPO: Record<TempoKey, TourSample> = {
   'Klasik': { hasData: false, total: 0, winRate: '', drawRate: '', lossRate: '', first: 0, second: 0, third: 0 },
 };
 
+/** Madde 2026-09-07: Zafer'in görseline göre etiketler "...Performansı"
+ *  olarak yeniden adlandırıldı ("Kazanç Konumunu Sonuçlandırma" aynı kaldı). */
 const SKILL_AREAS: { label: string; pct: number }[] = [
-  { label: 'Açılış Teorisi', pct: 74 },
-  { label: 'Taktik Becerisi', pct: 61 },
+  { label: 'Açılış Performansı', pct: 74 },
+  { label: 'Taktik Performansı', pct: 61 },
   { label: 'Kazanç Konumunu Sonuçlandırma', pct: 45 },
-  { label: 'Oyun Sonu Tekniği', pct: 38 },
+  { label: 'Oyun Sonu Performansı', pct: 38 },
 ];
 
 const WEEK_DAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
@@ -381,7 +383,7 @@ export default function ProfilePage() {
           "Haftalık" yerine "Aylık" — ay içindeki AYNI HAFTA GÜNÜNÜN toplamı. */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-2.5 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
-          <span className="text-xs font-bold uppercase tracking-wide t-muted">Bu Hafta</span>
+          <span className="text-xs font-bold uppercase tracking-wide t-muted">Aktiflik Durumu - Bu Hafta</span>
           <span className="text-xs font-bold" style={{ color: 'var(--t-accent)' }}>
             {(daySummary?.week_days ?? []).filter((d) => d.has_activity).length} gün çalıştı
           </span>
@@ -430,9 +432,13 @@ export default function ProfilePage() {
           bkz. components/profile/LessonProgressCard.tsx */}
       <LessonProgressCard />
 
-      {/* 6) Güçlü/Zayıf Yön Analizi — yüzde etiketi çubuğun ucunda */}
+      {/* 6) Güçlü/Zayıf Yön Analizi — yüzde etiketi çubuğun ucunda.
+          Madde 2026-09-07: başlığın altına ayırıcı çizgi (diğer kartlarla
+          AYNI desen) + alt başlıklar "...Performansı" olarak yeniden adlandırıldı. */}
       <div className="t-card p-4">
-        <span className="text-xs font-bold uppercase tracking-wide t-muted">Güçlü / Zayıf Yön Analizi</span>
+        <div className="pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
+          <span className="text-xs font-bold uppercase tracking-wide t-muted">Güçlü / Zayıf Yön Analizi</span>
+        </div>
         <div className="flex flex-col gap-4 mt-3">
           {SKILL_AREAS.map((s) => (
             <div key={s.label}>

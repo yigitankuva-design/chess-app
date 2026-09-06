@@ -57,7 +57,8 @@ describe('Profil sayfası — "Bu Hafta" gerçek Maç Yap/Dersler/Pratik Yap sü
   it('kaç gün çalıştığı gerçek veriden hesaplanır (3 gün) ve başlığın altı çizgi taşır', async () => {
     render(<ProfilePage />);
     await waitFor(() => screen.getByText('3 gün çalıştı'));
-    const title = screen.getByText('Bu Hafta');
+    // Madde 2026-09-07: başlık "Bu Hafta" → "Aktiflik Durumu - Bu Hafta".
+    const title = screen.getByText('Aktiflik Durumu - Bu Hafta');
     const row = title.closest<HTMLElement>('div.flex.items-center.justify-between');
     expect(row?.className).toContain('border-b');
   });

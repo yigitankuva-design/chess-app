@@ -67,12 +67,16 @@ export function AltKonuWalkthrough({ pool }: Props) {
                   aria-label={`Adım ${i + 1}`}
                   aria-pressed={active}
                   onClick={() => setStepIdx(i)}
-                  className="flex items-center justify-center rounded-full font-bold text-sm flex-shrink-0 transition-colors"
+                  className="flex items-center justify-center rounded-full text-sm flex-shrink-0 transition-colors"
                   style={{
                     width: 40, height: 40,
-                    border: active ? '2px solid rgb(34 211 238)' : '2px solid rgba(255,255,255,0.4)',
-                    background: active ? 'rgba(34,211,238,0.15)' : 'transparent',
-                    color: active ? 'rgb(165 243 252)' : undefined,
+                    // Madde 2026-09-07: seçili daire eskiden cyan/mavi idi —
+                    // Zafer telefonda net görünmediğini söyledi. Yeşil zemin +
+                    // kalın siyah rakam ile değiştirildi (kontrast çok daha net).
+                    border: active ? '2px solid #16a34a' : '2px solid rgba(255,255,255,0.4)',
+                    background: active ? '#22c55e' : 'transparent',
+                    color: active ? '#0a0a0a' : undefined,
+                    fontWeight: active ? 800 : 700,
                   }}>
                   {i + 1}
                 </button>

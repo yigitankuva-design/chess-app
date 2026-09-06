@@ -135,4 +135,18 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     // Sayaç satırının yüksekliği (32px) + altındaki boşluk (8px) kadar aşağı iner.
     expect(kart1.parentElement).toHaveStyle({ marginTop: '40px' });
   });
+
+  it('madde 2026-09-07: seçili adım dairesi artık yeşil zemin + kalın siyah rakam (eski cyan telefonda net görünmüyordu)', () => {
+    const pool = [
+      group('g1', '001', [
+        { id: 's1', fen: FEN, sentence: 'Adım 1', turn: 'w' },
+        { id: 's2', fen: FEN2, sentence: 'Adım 2', turn: 'w' },
+      ]),
+    ];
+    render(<AltKonuWalkthrough pool={pool} />);
+    const active = screen.getByLabelText('Adım 1');
+    expect(active).toHaveStyle({ background: '#22c55e', color: '#0a0a0a', fontWeight: '800' });
+    const inactive = screen.getByLabelText('Adım 2');
+    expect(inactive).not.toHaveStyle({ background: '#22c55e' });
+  });
 });

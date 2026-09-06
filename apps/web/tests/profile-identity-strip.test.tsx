@@ -72,3 +72,26 @@ describe('Profil sayfası — kart başlıklarının altında ayırıcı çizgi 
     expect(tile?.className).toContain('text-center');
   });
 });
+
+describe('Profil sayfası — Güçlü/Zayıf Yön Analizi (madde 2026-09-07)', () => {
+  beforeEach(stubFetch);
+
+  it('başlığın kapsayıcısı alt çizgi (border-b) taşır', async () => {
+    render(<ProfilePage />);
+    const title = await screen.findByText('Güçlü / Zayıf Yön Analizi');
+    const row = title.closest<HTMLElement>('div.border-b');
+    expect(row?.className).toContain('border-b');
+  });
+
+  it('alt başlıklar "...Performansı" olarak gösterilir ("Kazanç Konumunu Sonuçlandırma" aynı kalır)', async () => {
+    render(<ProfilePage />);
+    await screen.findByText('Güçlü / Zayıf Yön Analizi');
+    expect(screen.getByText('Açılış Performansı')).toBeInTheDocument();
+    expect(screen.getByText('Taktik Performansı')).toBeInTheDocument();
+    expect(screen.getByText('Oyun Sonu Performansı')).toBeInTheDocument();
+    expect(screen.getByText('Kazanç Konumunu Sonuçlandırma')).toBeInTheDocument();
+    expect(screen.queryByText('Açılış Teorisi')).not.toBeInTheDocument();
+    expect(screen.queryByText('Taktik Becerisi')).not.toBeInTheDocument();
+    expect(screen.queryByText('Oyun Sonu Tekniği')).not.toBeInTheDocument();
+  });
+});
