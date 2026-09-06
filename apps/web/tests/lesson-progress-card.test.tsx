@@ -173,4 +173,57 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     const sentence = await screen.findByText(/Tahtanın Genel Özellikleri - 1 konusuna ait/);
     expect(sentence.parentElement?.className).toContain('text-center');
   });
+
+  it('madde 2026-09-06 (Görsel 5 - v2): seçili modun içeriği "Merkez Kavramı" kartından ÖNCE görünür (Ödevini Yap sekmesinin hemen altında)', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Ödevini Yap'));
+
+    const odevlerim = await screen.findByText('Ödevlerim');
+    // Alt Konu henüz kilitli olduğu için "🔒 Merkez Kavramı" olarak render
+    // edilir (bkz. toggleSubtopic/locked mantığı) — tam eşleşme yerine regex.
+    const merkezKavrami = screen.getByText(/Merkez Kavramı/);
+    // merkezKavrami, odevlerim'den SONRA geliyorsa (FOLLOWING) demek ki
+    // "Ödevlerim" içeriği doğru yerde — "Merkez Kavramı" kartının ÜSTÜNDE.
+    expect(
+      odevlerim.compareDocumentPosition(merkezKavrami) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('madde 2026-09-06 (Görsel 6 - v2): istatistik satırında "Doğru Sayısı"/"Yanlış Sayısı" yerine kısaltılmış "Doğru"/"Yanlış" kullanılır', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Süreli Pratik Yap'));
+
+    await screen.findByText('Günlük: 12');
+    expect(screen.getAllByText(/^Doğru:/).length).toBe(4);
+    expect(screen.getAllByText(/^Yanlış:/).length).toBe(4);
+    expect(screen.queryByText(/Doğru Sayısı/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Yanlış Sayısı/)).not.toBeInTheDocument();
+  });
+
+  it('madde 2026-09-06 (Görsel 6 - v2): istatistik satırının 4 sütunu her satırda AYNI grid tanımını kullanır (simetrik hizalama)', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Süreli Pratik Yap'));
+
+    const gunluk = await screen.findByText('Günlük: 12');
+    const yillik = screen.getByText('Yıllık: 12');
+    const gunlukRow = gunluk.closest<HTMLElement>('div.grid');
+    const yillikRow = yillik.closest<HTMLElement>('div.grid');
+    expect(gunlukRow?.style.gridTemplateColumns).toBe(yillikRow?.style.gridTemplateColumns);
+    expect(gunlukRow?.style.gridTemplateColumns).toBeTruthy();
+  });
 });

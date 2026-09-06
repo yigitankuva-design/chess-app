@@ -40,6 +40,12 @@ describe('Profil sayfası — kimlik şeridi (madde 2026-09-06, Görsel 1)', () 
     expect(screen.getByText(/Türkiye/)).toBeInTheDocument();
     expect(screen.getByText(/Üyelik tarihi 7 Ağu 2018/)).toBeInTheDocument();
   });
+
+  it('madde 2026-09-06 (Görsel 1 - v2): "Bozüyük Satranç Akademisi" sabit metni artık gösterilmez', async () => {
+    render(<ProfilePage />);
+    await waitFor(() => screen.getByText('Test Sporcu'));
+    expect(screen.queryByText(/Bozüyük Satranç Akademisi/)).not.toBeInTheDocument();
+  });
 });
 
 describe('Profil sayfası — kart başlıklarının altında ayırıcı çizgi (madde 2026-09-06, Görsel 2/3)', () => {

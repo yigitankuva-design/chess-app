@@ -52,6 +52,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  * (`/gamification/me`'nin yeni `member_since` alanı, ChildProfile.created_at)
  * eklendi — unvan rozeti eklenmedi (Performans Puanı hâlâ örnek veri,
  * ona bağlı gerçekmiş gibi görünen bir rozet olurdu).
+ * Madde 2026-09-06 (Görsel 1 - v2): "Bozüyük Satranç Akademisi" sabit
+ * metni kaldırıldı (Zafer: kimlik şeridinde artık sadece isim solda,
+ * bayrak+ülke sağ üstte, üyelik tarihi sağ altta kalacak).
  * Hoca notunun METNİ de aynı sebeple placeholder — "Zafer Hoca" gerçek
  * bir kişi, ona ait uydurma bir geri bildirim yazılmadı.
  *
@@ -323,7 +326,6 @@ export default function ProfilePage() {
         </div>
         <div className="min-w-0 flex-1">
           {athleteName && <p className="font-bold text-lg leading-tight truncate">{athleteName}</p>}
-          <p className="text-sm t-muted mt-0.5">Bozüyük Satranç Akademisi</p>
         </div>
         <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
         <div className="flex-shrink-0 text-sm">

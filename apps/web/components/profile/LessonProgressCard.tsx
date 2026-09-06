@@ -22,6 +22,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  *     (child_practice_attempts'in TAKVİM dönemlerine göre toplamı).
  *   - Kendini Test Et: her deneme kendi "Sınav-N" sekmesi, seçilenin soru
  *     bazlı kareleri gösterilir.
+ *
+ * Madde 2026-09-06 (v2 düzeltmeleri — Zafer'in yeni görselleri):
+ *   - Görsel 5: seçili modun (Ödevini Yap/Süreli Pratik Yap/Kendini Test Et)
+ *     içeriği ÖNCEDEN tüm Alt Konu listesinin en altına render ediliyordu
+ *     (yanlış yerdeydi). Artık ilgili Alt Konu'nun kendi mod-sekmeleri
+ *     satırının HEMEN ALTINDA, bir sonraki Alt Konu kartının ÜSTÜNDE.
+ *   - Görsel 6: "Süreli Pratik Yap" istatistik satırı mobilde sığmayıp alt
+ *     satıra kayıyordu — "Doğru Sayısı"/"Yanlış Sayısı" kısaltıldı
+ *     ("Doğru"/"Yanlış") ve 4 sütun (bkz. STAT_ROW_COLS) her satırda AYNI
+ *     genişlikte tutulup satırlar arasında hizalandı (simetrik görünüm).
  */
 
 // Kodlar Zafer'in verdiği sırayla (TD-BD-OD-İD); isimler gerçek modül
@@ -38,6 +48,16 @@ const MODE_TABS: { slug: PracticeMode; label: string }[] = [
   { slug: 'sureli', label: 'Süreli Pratik Yap' },
   { slug: 'test', label: 'Kendini Test Et' },
 ];
+
+/**
+ * Madde 2026-09-06 (Görsel 6 - v2): "Süreli Pratik Yap" istatistik satırı
+ * (Günlük/Haftalık/Aylık/Yıllık) — 4 sütun DAİMA aynı genişlikte olsun diye
+ * (satırlar arasında hizalı/simetrik görünsün) tüm satırlarda AYNI grid
+ * tanımı kullanılır. Genişlikler eşit DEĞİL (1fr yerine) — "Başarı Oranı"
+ * en uzun etiket olduğu için ona biraz daha pay verilir, dar (mobil)
+ * ekranlarda metin alt satıra kaymasın diye.
+ */
+const STAT_ROW_COLS = '1fr 0.85fr 0.85fr 1.5fr';
 
 interface ModuleSummary { id: number; name: string; lessons_count: number }
 interface LessonSummary { id: number; order_index: number; title: string }
@@ -276,21 +296,140 @@ export function LessonProgressCard() {
                   </button>
 
                   {subOpen && (
-                    <div className="grid grid-cols-3 gap-1.5 mt-1.5 mb-2">
-                      {MODE_TABS.map((m) => (
-                        <button
-                          key={m.slug} type="button" onClick={() => selectMode(m.slug)}
-                          aria-pressed={openMode === m.slug}
-                          className="px-2 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                          style={{
-                            background: openMode === m.slug ? 'var(--t-accent)' : 'var(--t-surface-2)',
-                            color: openMode === m.slug ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
-                          }}
-                        >
-                          {m.label}
-                        </button>
-                      ))}
-                    </div>
+                    <>
+                      <div className="grid grid-cols-3 gap-1.5 mt-1.5 mb-2">
+                        {MODE_TABS.map((m) => (
+                          <button
+                            key={m.slug} type="button" onClick={() => selectMode(m.slug)}
+                            aria-pressed={openMode === m.slug}
+                            className="px-2 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            style={{
+                              background: openMode === m.slug ? 'var(--t-accent)' : 'var(--t-surface-2)',
+                              color: openMode === m.slug ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
+                            }}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Madde 2026-09-06 (Görsel 5 - v2): seçili modun içeriği
+                          artık "Ödevini Yap" (mod sekmeleri) kartının HEMEN
+                          ALTINDA ve bir sonraki Alt Konu kartının ÜSTÜNDE —
+                          önceden tüm Alt Konu listesinin en altına render
+                          ediliyordu, o yüzden yanlış yerde görünüyordu. */}
+                      {openMode === 'sureli' && (
+                        <div className="mb-2 pt-2 border-t" style={{ borderColor: 'var(--t-border)' }}>
+                          {summaryLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
+                          {!summaryLoading && attemptsSummary && (
+                            <div className="flex flex-col">
+                              {([
+                                ['Günlük', attemptsSummary.daily],
+                                ['Haftalık', attemptsSummary.weekly],
+                                ['Aylık', attemptsSummary.monthly],
+                                ['Yıllık', attemptsSummary.yearly],
+                              ] as const).map(([label, stat], i) => (
+                                <div key={label}
+                                  className="grid items-center gap-1 py-2"
+                                  style={{
+                                    gridTemplateColumns: STAT_ROW_COLS,
+                                    borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
+                                  }}>
+                                  <span className="text-[11px] font-bold whitespace-nowrap">{label}: {stat.total}</span>
+                                  <span className="text-[11px] whitespace-nowrap">Doğru: <b style={{ color: 'var(--t-ok-text)' }}>{stat.correct}</b></span>
+                                  <span className="text-[11px] whitespace-nowrap">Yanlış: <b style={{ color: 'var(--t-err-text)' }}>{stat.wrong}</b></span>
+                                  <span className="text-[11px] whitespace-nowrap text-right">Başarı Oranı: <b>%{stat.success_rate}</b></span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {openMode === 'test' && (
+                        <div className="mb-2 pt-2 border-t" style={{ borderColor: 'var(--t-border)' }}>
+                          {attemptsLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
+                          {!attemptsLoading && attempts && attempts.length === 0 && (
+                            <p className="text-xs t-muted py-1 text-center">Bu alt konuda henüz bir sınav denemesi yok.</p>
+                          )}
+                          {!attemptsLoading && attempts && attempts.length > 0 && (() => {
+                            const selected = attempts[selectedAttemptIdx] ?? attempts[0];
+                            const testThreshold = openSubtopic ? thresholdFor(openLessonThresholds, openSubtopic.stepId, 'test') : 85;
+                            const selectedScore = selected.total_count > 0
+                              ? Math.round((selected.correct_count / selected.total_count) * 100) : 0;
+                            const passed = selectedScore >= testThreshold;
+                            return (
+                              <>
+                                <div className="flex gap-1.5 flex-wrap mb-3">
+                                  {attempts.map((a, i) => (
+                                    <button
+                                      key={a.attempt_no} type="button" onClick={() => setSelectedAttemptIdx(i)}
+                                      aria-pressed={i === selectedAttemptIdx}
+                                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                      style={{
+                                        background: i === selectedAttemptIdx ? 'var(--t-accent)' : 'var(--t-surface-2)',
+                                        color: i === selectedAttemptIdx ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
+                                      }}
+                                    >
+                                      Sınav - {a.attempt_no}
+                                    </button>
+                                  ))}
+                                </div>
+                                {selected.total_count > 0 && (
+                                  <div
+                                    className="grid gap-1.5 mx-auto mb-3"
+                                    style={{ gridTemplateColumns: `repeat(${Math.min(selected.total_count, 8)}, 22px)`, maxWidth: '100%' }}
+                                  >
+                                    {Array.from({ length: selected.total_count }, (_, i) => {
+                                      const result = selected.per_question_correct?.[i];
+                                      const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
+                                      return <div key={i} className="aspect-square rounded-md" style={{ background: bg }} />;
+                                    })}
+                                  </div>
+                                )}
+                                <p className="text-xs text-center" style={{ color: passed ? 'var(--t-ok-text)' : 'var(--t-err-text)' }}>
+                                  {passed
+                                    ? 'Tebrikler, sınav performansınız başarı eşiğinin üzerinde.'
+                                    : 'Maalesef sınav performansınız kritik eşiğin altındadır. Başarı sınırını geçmek için yeniden sınava girebilirsiniz.'}
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {openMode === 'suresiz' && openSubtopic && (
+                        <div className="mb-2 pt-2 border-t" style={{ borderColor: 'var(--t-border)' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold uppercase tracking-wide t-muted">Ödevlerim</span>
+                          </div>
+                          {detailLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
+                          {!detailLoading && practiceDetail && (
+                            /* Madde 2026-09-06 (Görsel 5): cümle + kare kartlar ortalanır. */
+                            <div className="text-center">
+                              <p className="text-sm font-bold italic mb-2">
+                                {openSubtopic.title} - {(lessons ?? []).findIndex((l) => l.id === openLessonId) + 1} konusuna ait
+                                ödev {suresizCompleted ? 'tamamlanmıştır' : 'tamamlanmamıştır'}.
+                              </p>
+                              {practiceDetail.pool_size === 0 ? (
+                                <p className="text-xs t-muted py-1">Bu alt konu için henüz soru eklenmedi.</p>
+                              ) : (
+                                <div
+                                  className="grid gap-1.5 mx-auto"
+                                  style={{ gridTemplateColumns: `repeat(${Math.min(practiceDetail.pool_size, 5)}, 22px)`, maxWidth: '100%' }}
+                                >
+                                  {Array.from({ length: practiceDetail.pool_size }, (_, i) => {
+                                    const result = practiceDetail.per_question_correct?.[i];
+                                    const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
+                                    return <div key={i} className="aspect-square rounded-md" style={{ background: bg }} />;
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );
@@ -299,115 +438,6 @@ export function LessonProgressCard() {
         </div>
         );
       })()}
-
-      {openMode === 'sureli' && (
-        <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--t-border)' }}>
-          {summaryLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
-          {!summaryLoading && attemptsSummary && (
-            <div className="flex flex-col">
-              {([
-                ['Günlük', attemptsSummary.daily],
-                ['Haftalık', attemptsSummary.weekly],
-                ['Aylık', attemptsSummary.monthly],
-                ['Yıllık', attemptsSummary.yearly],
-              ] as const).map(([label, stat], i) => (
-                <div key={label}
-                  className="flex items-center justify-between gap-2 py-2 text-xs"
-                  style={{ borderTop: i === 0 ? 'none' : '1px solid var(--t-border)' }}>
-                  <span className="font-bold">{label}: {stat.total}</span>
-                  <span>Doğru Sayısı: <b style={{ color: 'var(--t-ok-text)' }}>{stat.correct}</b></span>
-                  <span>Yanlış Sayısı: <b style={{ color: 'var(--t-err-text)' }}>{stat.wrong}</b></span>
-                  <span>Başarı Oranı: <b>%{stat.success_rate}</b></span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {openMode === 'test' && (
-        <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--t-border)' }}>
-          {attemptsLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
-          {!attemptsLoading && attempts && attempts.length === 0 && (
-            <p className="text-xs t-muted py-1 text-center">Bu alt konuda henüz bir sınav denemesi yok.</p>
-          )}
-          {!attemptsLoading && attempts && attempts.length > 0 && (() => {
-            const selected = attempts[selectedAttemptIdx] ?? attempts[0];
-            const testThreshold = openSubtopic ? thresholdFor(openLessonThresholds, openSubtopic.stepId, 'test') : 85;
-            const selectedScore = selected.total_count > 0
-              ? Math.round((selected.correct_count / selected.total_count) * 100) : 0;
-            const passed = selectedScore >= testThreshold;
-            return (
-              <>
-                <div className="flex gap-1.5 flex-wrap mb-3">
-                  {attempts.map((a, i) => (
-                    <button
-                      key={a.attempt_no} type="button" onClick={() => setSelectedAttemptIdx(i)}
-                      aria-pressed={i === selectedAttemptIdx}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                      style={{
-                        background: i === selectedAttemptIdx ? 'var(--t-accent)' : 'var(--t-surface-2)',
-                        color: i === selectedAttemptIdx ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
-                      }}
-                    >
-                      Sınav - {a.attempt_no}
-                    </button>
-                  ))}
-                </div>
-                {selected.total_count > 0 && (
-                  <div
-                    className="grid gap-1.5 mx-auto mb-3"
-                    style={{ gridTemplateColumns: `repeat(${Math.min(selected.total_count, 8)}, 22px)`, maxWidth: '100%' }}
-                  >
-                    {Array.from({ length: selected.total_count }, (_, i) => {
-                      const result = selected.per_question_correct?.[i];
-                      const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
-                      return <div key={i} className="aspect-square rounded-md" style={{ background: bg }} />;
-                    })}
-                  </div>
-                )}
-                <p className="text-xs text-center" style={{ color: passed ? 'var(--t-ok-text)' : 'var(--t-err-text)' }}>
-                  {passed
-                    ? 'Tebrikler, sınav performansınız başarı eşiğinin üzerinde.'
-                    : 'Maalesef sınav performansınız kritik eşiğin altındadır. Başarı sınırını geçmek için yeniden sınava girebilirsiniz.'}
-                </p>
-              </>
-            );
-          })()}
-        </div>
-      )}
-
-      {openMode === 'suresiz' && openSubtopic && (
-        <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--t-border)' }}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wide t-muted">Ödevlerim</span>
-          </div>
-          {detailLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
-          {!detailLoading && practiceDetail && (
-            /* Madde 2026-09-06 (Görsel 5): cümle + kare kartlar ortalanır. */
-            <div className="text-center">
-              <p className="text-sm font-bold italic mb-2">
-                {openSubtopic.title} - {(lessons ?? []).findIndex((l) => l.id === openLessonId) + 1} konusuna ait
-                ödev {suresizCompleted ? 'tamamlanmıştır' : 'tamamlanmamıştır'}.
-              </p>
-              {practiceDetail.pool_size === 0 ? (
-                <p className="text-xs t-muted py-1">Bu alt konu için henüz soru eklenmedi.</p>
-              ) : (
-                <div
-                  className="grid gap-1.5 mx-auto"
-                  style={{ gridTemplateColumns: `repeat(${Math.min(practiceDetail.pool_size, 5)}, 22px)`, maxWidth: '100%' }}
-                >
-                  {Array.from({ length: practiceDetail.pool_size }, (_, i) => {
-                    const result = practiceDetail.per_question_correct?.[i];
-                    const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
-                    return <div key={i} className="aspect-square rounded-md" style={{ background: bg }} />;
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
