@@ -16,6 +16,17 @@ export interface MyProgress {
    *  döndürmez (çocuk zaten kendi adını/avatarını cihazından biliyor). */
   display_name?: string;
   avatar?: string;
+  /** Madde 2026-09-07 (GRUP C): kimlik kartları — hepsi doldurulmadıysa null. */
+  photo_data_url: string | null;
+  province: string | null;
+  athlete_phone: string | null;
+  athlete_email: string | null;
+  father_name: string | null;
+  father_phone: string | null;
+  father_email: string | null;
+  mother_name: string | null;
+  mother_phone: string | null;
+  mother_email: string | null;
 }
 
 /**
@@ -38,5 +49,28 @@ export async function fetchMyProgress(childId?: number): Promise<MyProgress | nu
     return await r.json();
   } catch {
     return null;
+  }
+}
+
+/**
+ * Madde 2026-09-07 (GRUP C): sporcu kendi profil fotoğrafını yükler
+ * (dairesel foto alanına tıklayınca cihazdan/kameradan seçilen görsel,
+ * istemci tarafında küçültülüp bir "data:image/...;base64,..." string'e
+ * çevrilmiş hâlde buraya gelir — bkz. components/profile/ProfileView.tsx
+ * resizeImageToDataUrl). Başarısızsa false — sayfa ikon avatarı göstermeye
+ * devam eder (KURAL #3: fotoğraf yoksa mevcut davranış bozulmaz).
+ */
+export async function uploadMyPhoto(photoDataUrl: string): Promise<boolean> {
+  try {
+    const token = getToken();
+    if (!token) return false;
+    const r = await fetch(`${API_BASE}/children/me/photo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ photo_data_url: photoDataUrl }),
+    });
+    return r.ok;
+  } catch {
+    return false;
   }
 }

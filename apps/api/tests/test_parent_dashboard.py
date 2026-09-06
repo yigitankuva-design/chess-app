@@ -26,6 +26,16 @@ async def test_child_summary(client):
     assert data["rank_name"] == "Piyon"
 
 
+async def test_child_summary_includes_contact_info_fields_null_by_default(client):
+    """Madde 2026-09-07 (GRUP C): kimlik kartları alanları doldurulmadıysa
+    summary'de null gelir."""
+    token, cid = await _parent_with_child(client)
+    r = await client.get(f"/parent/children/{cid}/summary", headers={"Authorization": f"Bearer {token}"})
+    data = r.json()
+    assert data["province"] is None
+    assert data["father_phone"] is None
+
+
 async def test_set_time_limit(client):
     token, cid = await _parent_with_child(client)
     r = await client.post(f"/parent/children/{cid}/time-limit",

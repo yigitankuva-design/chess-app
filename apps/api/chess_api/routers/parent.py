@@ -30,6 +30,23 @@ class TimeLimitRequest(BaseModel):
     daily_minutes: int
 
 
+class ContactInfoRequest(BaseModel):
+    """Madde 2026-09-07 (GRUP C): Sporcu Profili "İletişim Bilgileri" kartı —
+    veli kendi çocuğu için il + sporcu/baba/anne iletişim bilgilerini girer.
+    Hepsi opsiyonel; gönderilmeyen alan DEĞİŞTİRİLMEZ (kısmi güncelleme,
+    PATCH semantiği) — None YERİNE alanın hiç GÖNDERİLMEMESİ ile ayırt
+    edilir (bkz. exclude_unset kullanımı aşağıda)."""
+    province: str | None = None
+    athlete_phone: str | None = None
+    athlete_email: str | None = None
+    father_name: str | None = None
+    father_phone: str | None = None
+    father_email: str | None = None
+    mother_name: str | None = None
+    mother_phone: str | None = None
+    mother_email: str | None = None
+
+
 class SurveyResponseRequest(BaseModel):
     answers: dict
     child_id: int | None = None
@@ -91,6 +108,17 @@ async def child_summary(child_id: int, current: User = Depends(get_current_user)
         "rank_name": rank_name,
         "xp_total": xp_total,
         "daily_minutes_limit": limit_row.daily_minutes_limit if limit_row else None,
+        # Madde 2026-09-07 (GRUP C): veli, Sporcu Profili "İletişim Bilgileri"
+        # kartının verisini bu sayfadan girer — mevcut form buradan ön-doldurulur.
+        "province": child.province,
+        "athlete_phone": child.athlete_phone,
+        "athlete_email": child.athlete_email,
+        "father_name": child.father_name,
+        "father_phone": child.father_phone,
+        "father_email": child.father_email,
+        "mother_name": child.mother_name,
+        "mother_phone": child.mother_phone,
+        "mother_email": child.mother_email,
         "activity_7days": [
             {
                 "date": log.date.isoformat(),
@@ -120,6 +148,22 @@ async def set_time_limit(
         db.add(ParentTimeLimit(child_id=child_id, daily_minutes_limit=payload.daily_minutes))
     await db.commit()
     return {"daily_minutes": payload.daily_minutes}
+
+
+@router.patch("/children/{child_id}/contact-info")
+async def update_contact_info(
+    child_id: int, payload: ContactInfoRequest,
+    current: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-07 (GRUP C): Sporcu Profili "İletişim Bilgileri" kartı —
+    veli kendi çocuğunun il + sporcu/baba/anne iletişim bilgilerini girer/
+    günceller. Gönderilmeyen alanlar DEĞİŞMEZ (kısmi güncelleme)."""
+    _ensure_parent(current)
+    child = await _own_child(db, current, child_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(child, field, value)
+    await db.commit()
+    return {"ok": True}
 
 
 @router.get("/surveys")

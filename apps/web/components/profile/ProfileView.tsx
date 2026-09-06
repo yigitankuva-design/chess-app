@@ -12,8 +12,9 @@ import { PieceSetSelector } from '@/components/PieceSetSelector';
 import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
 import { fetchDaySummary } from '@/lib/activity/activityApi';
 import type { DaySummary } from '@/lib/activity/activityApi';
-import { fetchMyProgress } from '@/lib/gamification/meApi';
+import { fetchMyProgress, uploadMyPhoto } from '@/lib/gamification/meApi';
 import type { MyProgress } from '@/lib/gamification/meApi';
+import { resizeImageToDataUrl } from '@/lib/image/resizeImage';
 
 /** "2018-08-07" → "7 Ağu 2018" (Zafer'in görselindeki biçim). */
 function formatMemberSince(iso: string): string {
@@ -201,6 +202,41 @@ function ChatIcon() {
   );
 }
 
+/** Madde 2026-09-07 (GRUP C): "İletişim Bilgileri" kartı — Zafer'in
+ *  görselindeki hazır ikonlar yerine kendi çizdiğimiz basit çizgi-ikonlar
+ *  (ChatIcon ile AYNI stil: stroke tabanlı, tek renk). */
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.6 10.8c1.2 2.4 3.2 4.4 5.6 5.6l1.9-1.9c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V19c0 .6-.4 1-1 1C10.6 20 4 13.4 4 5c0-.6.4-1 1-1h3.1c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3.5 6.5l8.5 6 8.5-6" />
+    </svg>
+  );
+}
+
+/** Madde 2026-09-07 (GRUP C): 3 tıklanabilir pill — Sporcu/Baba/Anne. */
+type ContactPerson = 'sporcu' | 'baba' | 'anne';
+const CONTACT_PILLS: { id: ContactPerson; label: string }[] = [
+  { id: 'sporcu', label: 'Sporcu' },
+  { id: 'baba', label: 'Baba' },
+  { id: 'anne', label: 'Anne' },
+];
+
+/** Seçili kişinin telefon/e-posta çifti — `MyProgress`'in ilgili alanları. */
+function contactFor(me: MyProgress, person: ContactPerson): { phone: string | null; email: string | null } {
+  if (person === 'sporcu') return { phone: me.athlete_phone, email: me.athlete_email };
+  if (person === 'baba') return { phone: me.father_phone, email: me.father_email };
+  return { phone: me.mother_phone, email: me.mother_email };
+}
+
 // Madde (2): alt sıradaki 4 ayar kartı — id, ikon, etiket ve panel başlığı.
 type SettingPanelId = 'theme' | 'board-color' | 'pieces' | 'language';
 const SETTING_CARDS: { id: SettingPanelId; emoji: string; label: string }[] = [
@@ -265,6 +301,33 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
     setActivePanel((cur) => (cur === id ? null : id));
   }
 
+  /** Madde 2026-09-07 (GRUP C): "İletişim Bilgileri" kartı — seçili kişi. */
+  const [contactTab, setContactTab] = useState<ContactPerson | null>(null);
+
+  /** Madde 2026-09-07 (GRUP C): fotoğraf yükleme — dairesel alana tıklayınca
+   *  cihazdan/kameradan görsel seçilir, küçültülüp sunucuya gönderilir.
+   *  Başarısızsa mevcut fotoğraf/ikon değişmeden kalır (KURAL #3). */
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  async function handlePhotoSelected(file: File | undefined) {
+    if (!file || readOnly) return;
+    setPhotoUploading(true);
+    setPhotoError(false);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      const ok = await uploadMyPhoto(dataUrl);
+      if (ok) {
+        setMe((prev) => (prev ? { ...prev, photo_data_url: dataUrl } : prev));
+      } else {
+        setPhotoError(true);
+      }
+    } catch {
+      setPhotoError(true);
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
   /** Madde 2026-09-06 (Görsel 4): "Bu Hafta" — gerçek Maç Yap/Dersler/Pratik
    *  Yap süresi. Bir güne tıklanınca o günün özeti YENİDEN çekilir. */
   const [daySummary, setDaySummary] = useState<DaySummary | null>(null);
@@ -327,24 +390,98 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
   return (
     <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-3">
 
-      {/* 1) Kimlik şeridi — madde 2026-09-06 (Görsel 1): Türkiye bayrağı +
-          üyelik tarihi eklendi. Ülke akademi tek ülke olduğu için (Türkiye)
-          SABİT gösteriliyor — gerçek bir "ülke" alanı yok, açılmadı. */}
+      {/* 1) Sporcu ismi + fotoğraf/ikon — madde 2026-09-07 (GRUP C):
+          kimlik şeridi 3 karta bölündü. Fotoğraf alanı SADECE kendi profilinde
+          (readOnly değilken) tıklanabilir — antrenör görünümünde salt-okunur. */}
       <div className="t-card p-4 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
-          {avatarEmoji(resolvedAvatarId)}
-        </div>
+        {readOnly ? (
+          <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
+            {me.photo_data_url
+              ? <img src={me.photo_data_url} alt={athleteName ?? 'Sporcu fotoğrafı'} className="w-full h-full object-cover" />
+              : avatarEmoji(resolvedAvatarId)}
+          </div>
+        ) : (
+          <label
+            className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden cursor-pointer relative"
+            style={{ background: 'var(--t-surface-2)' }}
+            title="Fotoğraf yükle"
+          >
+            {me.photo_data_url
+              ? <img src={me.photo_data_url} alt={athleteName ?? 'Sporcu fotoğrafı'} className="w-full h-full object-cover" />
+              : avatarEmoji(resolvedAvatarId)}
+            {photoUploading && (
+              <span className="absolute inset-0 flex items-center justify-center text-xs" style={{ background: 'rgba(0,0,0,0.4)', color: '#fff' }}>
+                …
+              </span>
+            )}
+            <input
+              type="file" accept="image/*" capture="user" className="hidden"
+              aria-label="Fotoğraf yükle"
+              onChange={(e) => { void handlePhotoSelected(e.target.files?.[0]); e.target.value = ''; }}
+            />
+          </label>
+        )}
         <div className="min-w-0 flex-1">
           {athleteName && <p className="font-bold text-lg leading-tight truncate">{athleteName}</p>}
-        </div>
-        <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
-        <div className="flex-shrink-0 text-sm">
-          <p className="font-semibold flex items-center gap-1.5">🇹🇷 Türkiye</p>
-          <p className="t-muted mt-0.5 whitespace-nowrap">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
+          {photoError && <p className="text-xs mt-0.5" style={{ color: 'var(--t-err-text)' }}>Fotoğraf yüklenemedi, tekrar dene.</p>}
         </div>
       </div>
 
-      {/* 2) Performans Puanı — madde 2026-09-06 (Görsel 2): başlığın altına ayırıcı çizgi. */}
+      {/* 2) Ülke + il + üyelik tarihi — madde 2026-09-07 (GRUP C). Ülke akademi
+          tek ülke olduğu için (Türkiye) SABİT — gerçek bir "ülke" alanı yok. */}
+      <div className="t-card p-4 flex items-center gap-2">
+        <span className="text-2xl flex-shrink-0">🇹🇷</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">
+            Türkiye{me.province && <span className="t-muted font-normal"> ({me.province})</span>}
+          </p>
+          <p className="t-muted mt-0.5">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
+        </div>
+      </div>
+
+      {/* 3) İletişim Bilgileri — madde 2026-09-07 (GRUP C): başlık altı çizgi,
+          sağda Sporcu/Baba/Anne pill'leri; seçilen kişinin telefon/e-postası
+          çizginin ALTINDA gösterilir. */}
+      <div className="t-card p-4">
+        <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
+          <span className="text-xs font-bold uppercase tracking-wide t-muted">İletişim Bilgileri</span>
+          <div className="flex gap-1.5">
+            {CONTACT_PILLS.map((p) => (
+              <button
+                key={p.id} type="button"
+                onClick={() => setContactTab((cur) => (cur === p.id ? null : p.id))}
+                aria-pressed={contactTab === p.id}
+                className="px-2.5 py-1 rounded-full text-xs font-bold transition-colors"
+                style={{
+                  background: contactTab === p.id ? 'var(--t-accent)' : 'var(--t-surface-2)',
+                  color: contactTab === p.id ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {contactTab ? (() => {
+          const { phone, email } = contactFor(me, contactTab);
+          return (
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center gap-2.5">
+                <PhoneIcon />
+                <span className={phone ? undefined : 't-muted italic'}>{phone ?? 'Telefon girilmedi'}</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <MailIcon />
+                <span className={email ? undefined : 't-muted italic'}>{email ?? 'E-posta girilmedi'}</span>
+              </div>
+            </div>
+          );
+        })() : (
+          <p className="text-xs t-muted text-center py-2">Bilgileri görmek için yukarıdan birini seç.</p>
+        )}
+      </div>
+
+      {/* 4) Performans Puanı — madde 2026-09-06 (Görsel 2): başlığın altına ayırıcı çizgi. */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Performans Puanı</span>
@@ -366,7 +503,7 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
         )}
       </div>
 
-      {/* 3) Genel Maç İstatistikleri — 2. maddeyle AYNI kart tasarımı.
+      {/* 5) Genel Maç İstatistikleri — 4. maddeyle AYNI kart tasarımı.
           Madde 2026-09-06 (Görsel 3): başlığın altına ayırıcı çizgi. */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
@@ -385,7 +522,7 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
         )}
       </div>
 
-      {/* 4) Aktivite/süreklilik göstergesi — madde 2026-09-06 (Görsel 4):
+      {/* 6) Aktivite/süreklilik göstergesi — madde 2026-09-06 (Görsel 4):
           başlığın altına ayırıcı çizgi; 7 gün kutusu artık TIKLANABİLİR
           (seçili günün Maç Yap/Dersler/Pratik Yap süresi altta gösterilir);
           "Haftalık" yerine "Aylık" — ay içindeki AYNI HAFTA GÜNÜNÜN toplamı. */}
@@ -436,11 +573,11 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
         )}
       </div>
 
-      {/* 5) Ders İlerlemesi — madde 2026-09-05: gerçek veriye bağlandı,
+      {/* 7) Ders İlerlemesi — madde 2026-09-05: gerçek veriye bağlandı,
           bkz. components/profile/LessonProgressCard.tsx */}
       <LessonProgressCard childId={childId} />
 
-      {/* 6) Güçlü/Zayıf Yön Analizi — yüzde etiketi çubuğun ucunda.
+      {/* 8) Güçlü/Zayıf Yön Analizi — yüzde etiketi çubuğun ucunda.
           Madde 2026-09-07: başlığın altına ayırıcı çizgi (diğer kartlarla
           AYNI desen) + alt başlıklar "...Performansı" olarak yeniden adlandırıldı. */}
       <div className="t-card p-4">
@@ -465,7 +602,7 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
         </div>
       </div>
 
-      {/* 7) Turnuva Geçmişi — 2. maddeyle AYNI kart tasarımı */}
+      {/* 9) Turnuva Geçmişi — 4. maddeyle AYNI kart tasarımı */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Turnuva Geçmişi</span>
@@ -490,7 +627,7 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
         )}
       </div>
 
-      {/* 8) Hoca notu/geri bildirimi */}
+      {/* 10) Hoca notu/geri bildirimi */}
       <div className="t-card p-4 flex gap-3">
         <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
           <ChatIcon />

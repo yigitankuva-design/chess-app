@@ -74,6 +74,19 @@ async def _compute_progress(child: ChildProfile, db: AsyncSession) -> dict:
         "badges_total": total_badges or 0,
         # Madde 2026-09-06: Profil kimlik şeridinde üyelik tarihi gösterimi.
         "member_since": child.created_at.date().isoformat(),
+        # Madde 2026-09-07 (GRUP C): kimlik kartları — fotoğraf/il/iletişim.
+        # Hepsi NULL olabilir (veli henüz doldurmadıysa) — frontend bunu
+        # zaten "ikon avatar göster"/"iletişim bilgisi eksik" olarak yorumlar.
+        "photo_data_url": child.photo_data_url,
+        "province": child.province,
+        "athlete_phone": child.athlete_phone,
+        "athlete_email": child.athlete_email,
+        "father_name": child.father_name,
+        "father_phone": child.father_phone,
+        "father_email": child.father_email,
+        "mother_name": child.mother_name,
+        "mother_phone": child.mother_phone,
+        "mother_email": child.mother_email,
     }
 
 
