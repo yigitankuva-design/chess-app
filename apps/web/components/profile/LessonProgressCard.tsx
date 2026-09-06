@@ -154,7 +154,7 @@ export function LessonProgressCard() {
 
   return (
     <div className="t-card p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
         <span className="text-xs font-bold uppercase tracking-wide t-muted">Ders İlerlemesi</span>
         <div className="flex gap-1.5">
           {LEVEL_ORDER.map((code) => (
@@ -178,7 +178,8 @@ export function LessonProgressCard() {
       {lessons === undefined && <p className="text-xs t-muted py-1">Yükleniyor...</p>}
       {lessons?.length === 0 && <p className="text-xs t-muted py-1">Bu düzeyde henüz ders yok.</p>}
 
-      <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))' }}>
+      {/* Madde 2026-09-06 (Görsel 5): sabit 4'lü satır ızgarası (auto-fill DEĞİL). */}
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {(lessons ?? []).map((l, i) => {
           const subs = subtopicsByLesson[l.id];
           const done = subs
@@ -282,9 +283,10 @@ export function LessonProgressCard() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold uppercase tracking-wide t-muted">Ödevlerim</span>
           </div>
-          {detailLoading && <p className="text-xs t-muted py-1">Yükleniyor...</p>}
+          {detailLoading && <p className="text-xs t-muted py-1 text-center">Yükleniyor...</p>}
           {!detailLoading && practiceDetail && (
-            <>
+            /* Madde 2026-09-06 (Görsel 5): cümle + kare kartlar ortalanır. */
+            <div className="text-center">
               <p className="text-sm font-bold italic mb-2">
                 {openSubtopic.title} - {(lessons ?? []).findIndex((l) => l.id === openLessonId) + 1} konusuna ait
                 ödev {suresizCompleted ? 'tamamlanmıştır' : 'tamamlanmamıştır'}.
@@ -292,7 +294,10 @@ export function LessonProgressCard() {
               {practiceDetail.pool_size === 0 ? (
                 <p className="text-xs t-muted py-1">Bu alt konu için henüz soru eklenmedi.</p>
               ) : (
-                <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))' }}>
+                <div
+                  className="grid gap-1.5 mx-auto"
+                  style={{ gridTemplateColumns: `repeat(${Math.min(practiceDetail.pool_size, 5)}, 22px)`, maxWidth: '100%' }}
+                >
                   {Array.from({ length: practiceDetail.pool_size }, (_, i) => {
                     const result = practiceDetail.per_question_correct?.[i];
                     const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
@@ -300,7 +305,7 @@ export function LessonProgressCard() {
                   })}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       )}

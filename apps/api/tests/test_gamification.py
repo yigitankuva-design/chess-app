@@ -55,6 +55,8 @@ async def test_me_endpoint_returns_progress(client, child_auth):
     assert "next_rank_xp" in data
     assert "badges_earned" in data
     assert "badges_total" in data
+    # Madde 2026-09-06: Profil kimlik şeridi — üyelik tarihi.
+    assert "member_since" in data
 
     # New child should have 0 XP and 0 badges
     assert data["xp_total"] == 0

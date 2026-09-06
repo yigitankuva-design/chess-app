@@ -17,7 +17,7 @@ vi.mock('@/lib/auth-storage', () => ({
 
 const ME = {
   rank_name: 'Çaylak', rank_icon: '🐣', xp_total: 10, next_rank_xp: 100,
-  badges_earned: 1, badges_total: 5,
+  badges_earned: 1, badges_total: 5, member_since: '2018-08-07',
 };
 
 function stubFetch() {

@@ -74,4 +74,6 @@ async def my_progress(
         "next_rank_xp": next_xp,
         "badges_earned": earned_count or 0,
         "badges_total": total_badges or 0,
+        # Madde 2026-09-06: Profil kimlik şeridinde üyelik tarihi gösterimi.
+        "member_since": child.created_at.date().isoformat(),
     }

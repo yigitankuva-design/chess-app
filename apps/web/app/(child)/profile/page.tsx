@@ -18,6 +18,16 @@ interface Me {
   next_rank_xp: number;
   badges_earned: number;
   badges_total: number;
+  /** Madde 2026-09-06 (Görsel 1): kimlik şeridinde üyelik tarihi. */
+  member_since: string;
+}
+
+/** "2018-08-07" → "7 Ağu 2018" (Zafer'in görselindeki biçim). */
+function formatMemberSince(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -35,9 +45,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  * — SADECE "Ödevini Yap" modu; Süreli Pratik Yap/Kendini Test Et için
  * Zafer görselleri sonra gönderecek, o ikisi "yakında" placeholder'ı gösterir.
  *
- * Kimlik şeridindeki unvan rozeti ve katılım tarihi bilinçli olarak
- * eklenmedi — ikisi de gerçek (Performans Puanı / kayıt) verisine
- * bağlanmadan sporcuya ait gerçekmiş gibi görünen bir bilgi olurdu.
+ * Madde 2026-09-06 (Görsel 1): kimlik şeridine ülke (Türkiye — akademi
+ * tek ülke olduğu için SABİT, gerçek bir alan açılmadı) ve üyelik tarihi
+ * (`/gamification/me`'nin yeni `member_since` alanı, ChildProfile.created_at)
+ * eklendi — unvan rozeti eklenmedi (Performans Puanı hâlâ örnek veri,
+ * ona bağlı gerçekmiş gibi görünen bir rozet olurdu).
  * Hoca notunun METNİ de aynı sebeple placeholder — "Zafer Hoca" gerçek
  * bir kişi, ona ait uydurma bir geri bildirim yazılmadı.
  *
@@ -130,7 +142,8 @@ function TempoSelector({ value, onChange }: { value: TempoKey; onChange: (t: Tem
 function StatTile({ label, value, tone }: { label: string; value: string | number; tone?: 'ok' | 'err' }) {
   const color = tone === 'ok' ? 'var(--t-ok-text)' : tone === 'err' ? 'var(--t-err-text)' : 'var(--t-text-1)';
   return (
-    <div className="rounded-xl p-3" style={{ background: 'var(--t-surface-2)' }}>
+    // Madde 2026-09-06 (Görsel 3): kart içeriği ortalanır.
+    <div className="rounded-xl p-3 text-center" style={{ background: 'var(--t-surface-2)' }}>
       <div className="text-[11px] font-bold uppercase tracking-wide t-muted">{label}</div>
       <div className="font-mono tabular-nums text-xl font-bold mt-0.5" style={{ color }}>{value}</div>
     </div>
@@ -273,7 +286,9 @@ export default function ProfilePage() {
   return (
     <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-3">
 
-      {/* 1) Kimlik şeridi */}
+      {/* 1) Kimlik şeridi — madde 2026-09-06 (Görsel 1): Türkiye bayrağı +
+          üyelik tarihi eklendi. Ülke akademi tek ülke olduğu için (Türkiye)
+          SABİT gösteriliyor — gerçek bir "ülke" alanı yok, açılmadı. */}
       <div className="t-card p-4 flex items-center gap-4">
         <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
           {avatarEmoji(avatarId)}
@@ -282,11 +297,16 @@ export default function ProfilePage() {
           {athleteName && <p className="font-bold text-lg leading-tight truncate">{athleteName}</p>}
           <p className="text-sm t-muted mt-0.5">Bozüyük Satranç Akademisi</p>
         </div>
+        <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
+        <div className="flex-shrink-0 text-sm">
+          <p className="font-semibold flex items-center gap-1.5">🇹🇷 Türkiye</p>
+          <p className="t-muted mt-0.5 whitespace-nowrap">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
+        </div>
       </div>
 
-      {/* 2) Performans Puanı */}
+      {/* 2) Performans Puanı — madde 2026-09-06 (Görsel 2): başlığın altına ayırıcı çizgi. */}
       <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Performans Puanı</span>
           <TempoSelector value={ratingTempo} onChange={setRatingTempo} />
         </div>
@@ -306,9 +326,10 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* 3) Genel Maç İstatistikleri — 2. maddeyle AYNI kart tasarımı */}
+      {/* 3) Genel Maç İstatistikleri — 2. maddeyle AYNI kart tasarımı.
+          Madde 2026-09-06 (Görsel 3): başlığın altına ayırıcı çizgi. */}
       <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Genel Maç İstatistikleri</span>
           <TempoSelector value={statsTempo} onChange={setStatsTempo} />
         </div>

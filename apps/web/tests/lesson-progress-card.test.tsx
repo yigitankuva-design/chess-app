@@ -102,4 +102,34 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     await waitFor(() => screen.getByText(/yakında/));
     expect(fetchPracticeDetail).not.toHaveBeenCalled();
   });
+
+  it('madde 2026-09-06 (Görsel 5): "Ders İlerlemesi" başlığının kapsayıcısı alt çizgi taşır', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    const title = await screen.findByText('Ders İlerlemesi');
+    const row = title.closest<HTMLElement>('div.flex.items-center.justify-between');
+    expect(row?.className).toContain('border-b');
+  });
+
+  it('madde 2026-09-06 (Görsel 5): Konu kutucukları sabit 4\'lü ızgarada dizilir', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    const button = await screen.findByLabelText('1. konu: Tahta ve Taşlar');
+    // button > .text-center (i) > grid (Konu ızgarası)
+    const grid = button.parentElement?.parentElement;
+    expect(grid?.style.gridTemplateColumns).toBe('repeat(4, 1fr)');
+  });
+
+  it('madde 2026-09-06 (Görsel 5): "Ödevini Yap" cümlesi ve kareler ortalanmış bir kapsayıcıda durur', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Ödevini Yap'));
+
+    const sentence = await screen.findByText(/Tahtanın Genel Özellikleri - 1 konusuna ait/);
+    expect(sentence.parentElement?.className).toContain('text-center');
+  });
 });
