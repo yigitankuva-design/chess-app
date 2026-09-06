@@ -10,6 +10,8 @@ import { ChessThemeSelector } from '@/components/ChessThemeSelector';
 import { BoardColorSelector } from '@/components/BoardColorSelector';
 import { PieceSetSelector } from '@/components/PieceSetSelector';
 import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
+import { fetchDaySummary } from '@/lib/activity/activityApi';
+import type { DaySummary } from '@/lib/activity/activityApi';
 
 interface Me {
   rank_name: string;
@@ -115,7 +117,25 @@ const SKILL_AREAS: { label: string; pct: number }[] = [
 ];
 
 const WEEK_DAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
-const ACTIVE_WEEK_DAYS = new Set([0, 1, 3, 4, 5]); // madde 4: 5 gün çalıştı
+
+/** Madde 2026-09-06 (Görsel 4): 3 kategori — gerçek Maç Yap/Dersler/Pratik
+ *  Yap süresi (ChildActivityLog'un yeni sütunları). İkon eşleşmesi Hızlı
+ *  Erişim'deki ikonlarla BİREBİR aynı değil (Pratik Yap admin'den serbestçe
+ *  ikon alan bir özel sekme) — burada sabit, temsili emoji kullanıldı. */
+const ACTIVITY_CATEGORIES: { key: 'play_seconds' | 'lessons_seconds' | 'practice_seconds'; label: string; emoji: string }[] = [
+  { key: 'play_seconds', label: 'Maç Yap', emoji: '⚔️' },
+  { key: 'lessons_seconds', label: 'Dersler', emoji: '📚' },
+  { key: 'practice_seconds', label: 'Pratik Yap', emoji: '🌠' },
+];
+
+/** 9000 → "2 saat 30 dk"; 0 → "0 dk". */
+function formatDuration(totalSeconds: number): string {
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes} dk`;
+  return `${hours} saat ${minutes} dk`;
+}
 
 // Sakin Panel'in kendi madalya renkleri (mevcut turnuva podyum renklerinden
 // daha yumuşak/mat) — sadece bu sayfadaki PodiumTile'larda kullanılıyor,
@@ -235,6 +255,14 @@ export default function ProfilePage() {
     setActivePanel((cur) => (cur === id ? null : id));
   }
 
+  /** Madde 2026-09-06 (Görsel 4): "Bu Hafta" — gerçek Maç Yap/Dersler/Pratik
+   *  Yap süresi. Bir güne tıklanınca o günün özeti YENİDEN çekilir. */
+  const [daySummary, setDaySummary] = useState<DaySummary | null>(null);
+  function loadDaySummary(dateStr?: string) {
+    fetchDaySummary(dateStr).then(setDaySummary);
+  }
+  useEffect(() => { loadDaySummary(); }, []);
+
   useEffect(() => {
     setAthleteName(getAthleteName());
   }, []);
@@ -345,20 +373,55 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* 4) Aktivite/süreklilik göstergesi — haftalık, 7 renkli kutu */}
+      {/* 4) Aktivite/süreklilik göstergesi — madde 2026-09-06 (Görsel 4):
+          başlığın altına ayırıcı çizgi; 7 gün kutusu artık TIKLANABİLİR
+          (seçili günün Maç Yap/Dersler/Pratik Yap süresi altta gösterilir);
+          "Haftalık" yerine "Aylık" — ay içindeki AYNI HAFTA GÜNÜNÜN toplamı. */}
       <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center justify-between mb-2.5 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Bu Hafta</span>
-          <span className="text-xs font-bold" style={{ color: 'var(--t-accent)' }}>5 gün çalıştı</span>
+          <span className="text-xs font-bold" style={{ color: 'var(--t-accent)' }}>
+            {(daySummary?.week_days ?? []).filter((d) => d.has_activity).length} gün çalıştı
+          </span>
         </div>
         <div className="flex gap-2">
-          {WEEK_DAYS.map((d, i) => (
-            <div key={d} className="flex-1 text-center">
-              <div className="w-full aspect-square rounded-lg" style={{ background: ACTIVE_WEEK_DAYS.has(i) ? 'var(--t-accent)' : 'var(--t-surface-2)' }} />
-              <div className="text-[10px] t-muted mt-1">{d}</div>
-            </div>
+          {(daySummary?.week_days ?? WEEK_DAYS.map((_, i) => ({ date: '', weekday: i, has_activity: false }))).map((d, i) => (
+            <button
+              key={d.date || i}
+              type="button"
+              onClick={() => d.date && loadDaySummary(d.date)}
+              aria-pressed={daySummary?.date === d.date}
+              className="flex-1 text-center"
+            >
+              <div
+                className="w-full aspect-square rounded-lg"
+                style={{
+                  background: d.has_activity ? 'var(--t-accent)' : 'var(--t-surface-2)',
+                  outline: daySummary?.date === d.date ? '2px solid var(--t-accent)' : 'none',
+                  outlineOffset: '2px',
+                }}
+              />
+              <div className="text-[10px] t-muted mt-1">{WEEK_DAYS[i]}</div>
+            </button>
           ))}
         </div>
+
+        {daySummary?.daily && daySummary?.monthly && (
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t" style={{ borderColor: 'var(--t-border)' }}>
+            {ACTIVITY_CATEGORIES.map((c) => (
+              <div key={c.key} className="rounded-xl p-2.5 text-center" style={{ background: 'var(--t-surface-2)' }}>
+                <p className="text-lg leading-none mb-1">{c.emoji}</p>
+                <p className="text-[11px] font-bold t-muted mb-1">{c.label}</p>
+                <p className="text-[11px] t-text">
+                  Günlük: <span className="font-bold">{formatDuration(daySummary.daily[c.key])}</span>
+                </p>
+                <p className="text-[11px] t-text">
+                  Aylık: <span className="font-bold">{formatDuration(daySummary.monthly[c.key])}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 5) Ders İlerlemesi — madde 2026-09-05: gerçek veriye bağlandı,

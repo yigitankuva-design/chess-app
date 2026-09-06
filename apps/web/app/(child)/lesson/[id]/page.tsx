@@ -1,9 +1,10 @@
 'use client';
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth-storage';
 import { LessonPlayer } from '@/components/LessonPlayer';
 import type { LessonStep } from '@/lib/stores/lesson-store';
+import { logActivityTime } from '@/lib/activity/activityApi';
 
 interface LessonDetail {
   id: number;
@@ -20,6 +21,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   const router = useRouter();
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Madde 2026-09-06: Sporcu Profili "Bu Hafta" — Dersler süresi. */
+  const startedAtRef = useRef(Date.now());
 
   useEffect(() => {
     fetch(`${API_BASE}/lessons/${id}`)
@@ -53,6 +56,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
     } catch { /* ignore */ }
+    void logActivityTime('lessons', (Date.now() - startedAtRef.current) / 1000);
     router.push(`/modules/${lesson.module_id}`);
   };
 

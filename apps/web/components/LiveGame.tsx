@@ -22,6 +22,7 @@ import { useMoveHistoryNav } from '@/lib/chess/useMoveHistoryNav';
 import { HistoryBanner } from '@/components/play/HistoryBanner';
 import { resolvePremove } from '@/lib/play/premove';
 import type { Premove } from '@/lib/play/premove';
+import { logActivityTime } from '@/lib/activity/activityApi';
 
 interface Props {
   gameId: number;
@@ -57,6 +58,15 @@ export function LiveGame({ gameId, myColor, tournamentId, berserkAvailable }: Pr
   const chessRef = useRef(new Chess());
   const [fen, setFen] = useState(chessRef.current.fen());
   const [status, setStatus] = useState<'active' | 'over'>('active');
+  /** Madde 2026-09-06: Sporcu Profili "Bu Hafta" — Maç Yap süresi (BotGame
+   *  ile AYNI desen). */
+  const gameStartRef = useRef(Date.now());
+  const timeLoggedRef = useRef(false);
+  useEffect(() => {
+    if (status !== 'over' || timeLoggedRef.current) return;
+    timeLoggedRef.current = true;
+    void logActivityTime('play', (Date.now() - gameStartRef.current) / 1000);
+  }, [status]);
   const [info, setInfo] = useState<string>('');
   const [rawResult, setRawResult] = useState<string | undefined>(undefined);
   /** Madde 3 (2026-08-20): "Tekrar Oyna" — ben teklif ettim, rakip bekleniyor. */

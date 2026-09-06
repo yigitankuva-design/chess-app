@@ -31,6 +31,7 @@ import { HistoryBanner } from '@/components/play/HistoryBanner';
 import { resolvePremove } from '@/lib/play/premove';
 import type { Premove } from '@/lib/play/premove';
 import { shouldBlunder, pickBlunderMove } from '@/lib/play/blunder';
+import { logActivityTime } from '@/lib/activity/activityApi';
 
 export interface TimeControl {
   base: number;       // seconds on the clock at start
@@ -172,6 +173,17 @@ export function BotGame({
   const tc = timeControl ?? null;
   const [whiteTime, setWhiteTime] = useState(restoredRef.current?.whiteTime ?? (tc ? tc.base : 0));
   const [blackTime, setBlackTime] = useState(restoredRef.current?.blackTime ?? (tc ? tc.base : 0));
+
+  /** Madde 2026-09-06: Sporcu Profili "Bu Hafta" — Maç Yap süresi. Oturum
+   *  açılışından (mount) maç bitişine kadarki süre TEK SEFER gönderilir
+   *  (birden fazla setStatus('over') çağrı noktası var, guard bunları tekilleştirir). */
+  const gameStartRef = useRef(Date.now());
+  const timeLoggedRef = useRef(false);
+  useEffect(() => {
+    if (status !== 'over' || timeLoggedRef.current) return;
+    timeLoggedRef.current = true;
+    void logActivityTime('play', (Date.now() - gameStartRef.current) / 1000);
+  }, [status]);
 
   // ── Engine + backend game setup ──────────────────────────────────────────
   useEffect(() => {

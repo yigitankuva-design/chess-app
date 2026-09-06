@@ -16,6 +16,19 @@ async def a_child(db):
     return child.id
 
 
+async def test_log_activity_category_seconds(db, a_child):
+    """Madde 2026-09-06: play_seconds/lessons_seconds/practice_seconds ayrı
+    ayrı tutulur, AMA total_seconds'a da eklenir (geriye uyumluluk)."""
+    await log_activity(db, a_child, play_seconds=300)
+    await log_activity(db, a_child, lessons_seconds=120)
+    await log_activity(db, a_child, practice_seconds=60)
+    log = (await db.execute(select(ChildActivityLog).where(ChildActivityLog.child_id == a_child))).scalar_one()
+    assert log.play_seconds == 300
+    assert log.lessons_seconds == 120
+    assert log.practice_seconds == 60
+    assert log.total_seconds == 480
+
+
 async def test_log_activity_upserts(db, a_child):
     await log_activity(db, a_child, time_seconds=120, puzzles=1)
     await log_activity(db, a_child, time_seconds=60, puzzles=2)

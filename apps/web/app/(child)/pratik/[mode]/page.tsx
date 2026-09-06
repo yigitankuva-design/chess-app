@@ -17,6 +17,7 @@ import { scorePercent } from '@/lib/practice/scoring';
 import { isModeUnlocked, unlockedLabel, thresholdFor, PRACTICE_MODE_FIELDS } from '@/lib/practice/unlock';
 import type { PracticeMode, ScoreMap, ThresholdMap } from '@/lib/practice/unlock';
 import { fetchLessonScores, submitPracticeResult } from '@/lib/practice/practiceApi';
+import { logActivityTime } from '@/lib/activity/activityApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -91,6 +92,8 @@ function PratikInner() {
    *  yanlış durumu — oturum bitince submitPracticeResult'a eklenir (Sporcu
    *  Profili "Ödevlerim" panelinin soru bazlı kareleri için). */
   const perQuestionRef = useRef<(boolean | null)[]>([]);
+  /** Madde 2026-09-06: Sporcu Profili "Bu Hafta" — Pratik Yap süresi. */
+  const startedAtRef = useRef(Date.now());
 
   /** Havuzdan zorluk dağılımına göre YENİ bir set seçer: mümkünse bir önceki
    *  turda gösterilen sorulardan farklı (madde 4/5/6). Hem ilk yüklemede hem
@@ -240,6 +243,7 @@ function PratikInner() {
     // hazırlanır (aksi halde bitmiş setin SON sorusuyla karşılaşılıyordu).
     clearSession(sessionKey(stepId, slug));
     setFinished({ correct: r.correct, total: r.total, score });
+    void logActivityTime('practice', (Date.now() - startedAtRef.current) / 1000);
   }
 
   /** Pratiği YARIDA bırak: hiçbir şey kaydedilmez, sunucuya yazılmaz.

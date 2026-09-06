@@ -13,7 +13,13 @@ class ParentTimeLimit(Base):
 
 
 class ChildActivityLog(Base):
-    """Per-day, per-child totals for limit enforcement + weekly summary."""
+    """Per-day, per-child totals for limit enforcement + weekly summary.
+
+    Madde 2026-09-06 (Sporcu Profili "Bu Hafta" — Görsel 4): `total_seconds`
+    tek başına Maç Yap/Dersler/Pratik Yap ayrımı yapamıyordu. 3 yeni sütun
+    EKLENDİ, `total_seconds` KALDI (geriye uyumluluk — eski limit kontrolü
+    hâlâ ona bakar) ve her üçü de ayrıca `total_seconds`'a eklenmeye devam
+    eder (bkz. activity_logger.py)."""
     __tablename__ = "child_activity_logs"
     id: Mapped[int] = mapped_column(primary_key=True)
     child_id: Mapped[int] = mapped_column(ForeignKey("child_profiles.id"), index=True)
@@ -22,6 +28,9 @@ class ChildActivityLog(Base):
     lessons_completed: Mapped[int] = mapped_column(Integer, default=0)
     puzzles_solved: Mapped[int] = mapped_column(Integer, default=0)
     games_played: Mapped[int] = mapped_column(Integer, default=0)
+    play_seconds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    lessons_seconds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    practice_seconds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class ParentSurvey(Base):

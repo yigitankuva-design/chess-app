@@ -21,9 +21,13 @@ const ME = {
 };
 
 function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(() =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve(ME) })
-  ) as unknown as typeof fetch);
+  // Madde 2026-09-06: sayfa artık /activity/day-summary'yi de çekiyor —
+  // o uca ME şeklini dönmek daySummary.week_days.filter(...) çökmesine yol
+  // açar; ilgisiz istekleri "veri yok" (ok:false) olarak yanıtlıyoruz.
+  vi.stubGlobal('fetch', vi.fn((url: string) => {
+    if (url.includes('/activity/day-summary')) return Promise.resolve({ ok: false, json: async () => null });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(ME) });
+  }) as unknown as typeof fetch);
 }
 
 describe('Profil sayfası — alt ayar kartları (Tema/Tahta Rengi/Taş/Dil/Çıkış)', () => {
