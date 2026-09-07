@@ -8,7 +8,6 @@ import {
 } from '@/lib/customTabsApi';
 import type { CustomTabSection, PositionPoolEntry, PositionPoolStep } from '@/lib/customTabsApi';
 import { AltKonuPositionPoolFields } from './AltKonuPositionPoolFields';
-import { AssignHomeworkPanel } from './AssignHomeworkPanel';
 
 /** Madde 2026-08-24: "Antrenör" (bugünkü adıyla "Çalışmalar") sekmesindeki
  *  "Dersler" alt sekmesi ve TÜM altındaki Düzey/Konu/Alt Konu düğümleri
@@ -362,10 +361,13 @@ export function NestedSectionTree({
                       onDeleteGroup={(groupId) => deletePositionPoolGroup(s, groupId)}
                       onReorder={(nextPool) => reorderPositionPool(s, nextPool)}
                     />
-                    {/* Madde 2026-09-05: Antrenör → Ödev → Dersler köprüsü —
-                        bu Alt Konu'yla ilgili Dersler içeriğini sınıfa/tek
-                        sporcuya ödev olarak ver. */}
-                    <AssignHomeworkPanel sourceSectionId={s.id} sourceSectionTitle={s.title} />
+                    {/* Madde 2026-09-08: "Ödev Olarak Ver" alanı bu ekrandan
+                        (Admin/Sekmeler) KALDIRILDI (Zafer'in isteği) — ödev
+                        verme artık SADECE antrenörün kendi Alt Konu anlatım
+                        ekranındaki "Ödev Gönder" ikonundan yapılıyor (bkz.
+                        AltKonuWalkthrough.tsx, AYNI AssignHomeworkPanel
+                        bileşeni ama özel bir tetikleyiciyle — KURAL #3,
+                        o kullanım ETKİLENMEDİ). */}
                   </div>
                 ) : (
                   /* Bu bölümün KENDİ alt sekmeleri — iç içe (sınırsız derinlik).

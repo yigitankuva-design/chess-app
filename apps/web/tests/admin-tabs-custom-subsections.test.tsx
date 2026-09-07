@@ -512,6 +512,10 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
 
     await waitFor(() => screen.getByText('Konum Havuzu'));
     expect(screen.getByText('Buton Ekle')).toBeInTheDocument();
+    // Madde 2026-09-08: "Ödev Olarak Ver" bu ekrandan (Admin/Sekmeler)
+    // kaldırıldı — ödev verme artık SADECE antrenörün Alt Konu anlatım
+    // ekranındaki "Ödev Gönder" ikonundan yapılıyor.
+    expect(screen.queryByText('📌 Ödev Olarak Ver')).not.toBeInTheDocument();
   });
 
   it('Alt Konu\'da Buton Ekle → cümle → Konumu Kaydet → Havuza Ekle ile doğru bölüme (id 203) konum grubu eklenir', async () => {
