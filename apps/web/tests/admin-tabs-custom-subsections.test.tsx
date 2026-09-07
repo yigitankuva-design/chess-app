@@ -270,6 +270,37 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     });
   });
 
+  it('madde 2026-09-08: sekme "Pratik" olarak yeniden adlandırılmış olsa da (kind=\'pratik_yap\' ile) eksik sabit alt sekmeler yine oluşturulur', async () => {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 9, order_index: 1, label: 'Pratik', emoji: '🧩', kind: 'pratik_yap' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 9, label: 'Pratik', emoji: '🧩', kind: 'pratik_yap', sections: [],
+    });
+    (createCustomTabSection as ReturnType<typeof vi.fn>).mockImplementation(
+      (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
+        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
+      }),
+    );
+
+    render(<AdminTabsPage />);
+    // Not: getByText(/Pratik/) burada BİRDEN FAZLA eşleşiyor — "Dersler" sabit
+    // kartının alt yazısı da "...Alt Konu → Pratik" metnini içeriyor. Bu yüzden
+    // doğrudan sekmeye özgü aria-label'ı bekliyoruz.
+    await waitFor(() => screen.getByLabelText('Pratik sekmesini aç'));
+    fireEvent.click(screen.getByLabelText('Pratik sekmesini aç'));
+
+    await waitFor(() => {
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Açılış Pratiği Yap', '', [], undefined, undefined, 'opening');
+    });
+    await waitFor(() => {
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Kazanç Konumunu Pratik Yap', '', [], undefined, undefined, 'kazanc');
+    });
+    await waitFor(() => {
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Oyunsonu Pratiği Yap', '', [], undefined, undefined, 'oyunsonu');
+    });
+  });
+
   it('sabit sekmeler zaten varsa TEKRAR oluşturulmaz', async () => {
     (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: 9, order_index: 1, label: 'Pratik Yap', emoji: '🧩' },

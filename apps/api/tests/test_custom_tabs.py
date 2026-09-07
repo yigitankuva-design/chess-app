@@ -6,7 +6,9 @@ def test_custom_tab_modeli_tablo_adi_ve_alanlari():
 
     assert CustomTab.__tablename__ == "custom_tabs"
     cols = set(CustomTab.__table__.columns.keys())
-    assert cols == {"id", "order_index", "label", "emoji"}
+    # Madde 2026-09-08: kind — "Pratik Yap" gibi kokten/ozel sekmelerin
+    # basliktan bagimsiz kalici kimligi (bkz. CustomTabKind migration).
+    assert cols == {"id", "order_index", "label", "emoji", "kind"}
 
 
 def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():

@@ -124,6 +124,14 @@ describe('CustomTabPanel', () => {
     expect(screen.queryByText('Açılış Pratiği Yap')).not.toBeInTheDocument();
   });
 
+  it('madde 2026-09-08: sekme "Pratik" olarak yeniden adlandırılmış olsa da (kind=\'pratik_yap\' ile) özel arayüz çalışmaya devam eder', () => {
+    const renamed: CustomTabDetail = { ...PRATIK, label: 'Pratik', kind: 'pratik_yap' };
+    render(<CustomTabPanel tab={renamed} />);
+    expect(screen.queryByTestId('opening-practice')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Açılış Pratiği Yap'));
+    expect(screen.getByTestId('opening-practice')).toBeInTheDocument();
+  });
+
   it('iç içe alt sekme sporcu tarafında da açılıp kapanır (madde: 2026-08-22, Antrenör/Sınıflar ihtiyacı)', () => {
     const tab: CustomTabDetail = {
       id: 3, label: 'Antrenör', emoji: '🎓',

@@ -6,6 +6,22 @@
 export const PRATIK_YAP_LABEL = 'Pratik Yap';
 
 /**
+ * Madde 2026-09-08: "Dersler" bölümünde yaşanan AYNI sorun — bu sekmenin
+ * özel arayüzü (bota karşı pratik, Açılış/Kazanç/Oyunsonu) ÖNCEDEN
+ * SADECE sekmenin BAŞLIĞININ tam olarak "Pratik Yap" olmasına bakılarak
+ * tanınıyordu. Zafer bunu "Pratik" olarak yeniden adlandırınca özellik
+ * SESSİZCE kayboldu (bkz. CustomTabPanel.tsx, admin/settings/tabs/page.tsx).
+ * Artık `kind==='pratik_yap'` KALICI işaretine bakılıyor (backend migration
+ * CustomTabKind, section_kind ile AYNI desen) — eski başlık kontrolü YEDEK
+ * olarak kalıyor (migration'ı henüz almamış ortamlar/testler için).
+ */
+export const PRATIK_YAP_KIND = 'pratik_yap';
+
+export function isPratikYapTab(tab: { kind?: string | null; label: string }): boolean {
+  return tab.kind === PRATIK_YAP_KIND || tab.label === PRATIK_YAP_LABEL;
+}
+
+/**
  * Madde 2026-09-02 (1): Zafer'in isteğiyle 3 sabit alt sekme (Açılış/
  * Kazanç/Oyunsonu) diğer CustomTabSection kayıtlarıyla AYNI şekilde gerçek
  * bir kayıt — order_index'i var, admin Yukarı/Aşağı ile serbestçe sıralar.

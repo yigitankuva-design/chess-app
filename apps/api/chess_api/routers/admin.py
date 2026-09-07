@@ -1650,7 +1650,7 @@ async def create_custom_tab(
     db.add(tab)
     await db.commit()
     await db.refresh(tab)
-    return {"id": tab.id, "order_index": tab.order_index, "label": tab.label, "emoji": tab.emoji}
+    return {"id": tab.id, "order_index": tab.order_index, "label": tab.label, "emoji": tab.emoji, "kind": tab.kind}
 
 
 @router.patch("/custom-tabs/{tab_id}")
@@ -1672,7 +1672,7 @@ async def update_custom_tab(
         tab.emoji = payload.emoji
     await db.commit()
     await db.refresh(tab)
-    return {"id": tab.id, "order_index": tab.order_index, "label": tab.label, "emoji": tab.emoji}
+    return {"id": tab.id, "order_index": tab.order_index, "label": tab.label, "emoji": tab.emoji, "kind": tab.kind}
 
 
 @router.delete("/custom-tabs/{tab_id}")

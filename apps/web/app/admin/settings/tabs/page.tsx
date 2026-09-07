@@ -22,8 +22,8 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
 import {
-  PRATIK_YAP_LABEL, FIXED_SECTIONS, OPENING_KIND, OYUNSONU_KIND, KAZANC_KIND,
-  isFixedSection, sectionEmoji, sortPratikSections,
+  FIXED_SECTIONS, OPENING_KIND, OYUNSONU_KIND, KAZANC_KIND,
+  isFixedSection, sectionEmoji, sortPratikSections, isPratikYapTab,
 } from '@/lib/customTabs/pratikYap';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -225,7 +225,7 @@ export default function AdminTabsPage() {
         // section_kind'e göre yapılır (title'a DEĞİL) — admin bir sabit
         // sekmeyi yeniden adlandırmış olsa bile YANLIŞLIKLA ikinci bir kopya
         // oluşturulmaz.
-        if (detail.label === PRATIK_YAP_LABEL) {
+        if (isPratikYapTab(detail)) {
           const hadOpeningRow = detail.sections.some((s) => s.section_kind === OPENING_KIND);
           for (const f of FIXED_SECTIONS) {
             if (detail.sections.some((s) => s.section_kind === f.kind)) continue;
@@ -760,7 +760,7 @@ export default function AdminTabsPage() {
           const color = CUSTOM_TAB_COLORS[i % CUSTOM_TAB_COLORS.length];
           const open = openKey === c.id;
           const detail = customTabDetails[c.id];
-          const isPratikYap = c.label === 'Pratik Yap';
+          const isPratikYap = isPratikYapTab(c);
           return (
             <div key={c.id} className="neon-card p-4" style={{ borderColor: color }}>
               <div className="flex items-center gap-3">

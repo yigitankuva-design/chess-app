@@ -12,6 +12,16 @@ class CustomTab(Base):
     order_index: Mapped[int] = mapped_column(Integer)
     label: Mapped[str] = mapped_column(String(60))
     emoji: Mapped[str] = mapped_column(String(10))
+    # Madde 2026-09-08: "Pratik Yap" sekmesinin özel arayüzü (bota karşı
+    # pratik, Açılış/Kazanç/Oyunsonu) ÖNCEDEN sekmenin BAŞLIĞININ tam olarak
+    # "Pratik Yap" olmasına bakılarak tanınıyordu — Zafer bunu "Pratik"
+    # olarak yeniden adlandırınca (CustomTabSection.section_kind'e AYNI
+    # sebeple eklenen kalıcı işaretle AYNI mantık) bu özellik SESSİZCE
+    # kayboldu. `kind` bu sekmenin KALICI kimliğidir — `label` SADECE
+    # görüntülenen isimdir, serbestçe değiştirilebilir. NULLABLE — hoca'nın
+    # kendi sıradan sekmelerinde boş kalır. BİR KEZ oluşturulunca DEĞİŞMEZ;
+    # PATCH ile güncellenemez (bkz. CustomTabSection.section_kind ile AYNI kural).
+    kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
 class CustomTabSection(Base):

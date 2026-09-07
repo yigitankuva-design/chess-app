@@ -6,6 +6,7 @@ import { OpeningPractice } from '@/components/play/OpeningPractice';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 import {
   sectionEmoji, sortPratikSections, OPENING_KIND, OYUNSONU_KIND, OYUNSONU_CATEGORIES, groupByCategory,
+  isPratikYapTab,
 } from '@/lib/customTabs/pratikYap';
 import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
@@ -51,7 +52,7 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
   /** "Oyunsonu Pratiği Yap" içinde seçilen kategori — null = kategori listesi gösterilir. */
   const [openCategory, setOpenCategory] = useState<string | null>(null);
-  const isPratikYap = tab.label === 'Pratik Yap';
+  const isPratikYap = isPratikYapTab(tab);
 
   if (!isPratikYap) {
     return (

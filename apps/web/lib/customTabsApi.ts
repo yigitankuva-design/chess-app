@@ -7,6 +7,10 @@ export interface CustomTabSummary {
   order_index: number;
   label: string;
   emoji: string;
+  /** Madde 2026-09-08: "Pratik Yap" gibi köklü/özel sekmelerin KALICI kimliği
+   *  — `label` SADECE görüntülenen isimdir, serbestçe değiştirilebilir.
+   *  Sıradan (hoca'nın kendi eklediği) sekmelerde null. */
+  kind?: string | null;
 }
 
 export interface CustomTabSection {
@@ -92,6 +96,8 @@ export interface CustomTabDetail {
   id: number;
   label: string;
   emoji: string;
+  /** Bkz. CustomTabSummary.kind — AYNI alan, sekme detayında da gelir. */
+  kind?: string | null;
   sections: CustomTabSection[];
 }
 

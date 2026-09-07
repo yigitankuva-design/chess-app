@@ -15,7 +15,10 @@ async def list_custom_tabs(db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(
         select(CustomTab).order_by(CustomTab.order_index)
     )).scalars().all()
-    return [{"id": t.id, "order_index": t.order_index, "label": t.label, "emoji": t.emoji} for t in rows]
+    return [
+        {"id": t.id, "order_index": t.order_index, "label": t.label, "emoji": t.emoji, "kind": t.kind}
+        for t in rows
+    ]
 
 
 @router.get("/custom-tabs/{tab_id}")
@@ -33,7 +36,7 @@ async def get_custom_tab(tab_id: int, db: AsyncSession = Depends(get_db)):
         .order_by(CustomTabSection.order_index)
     )).scalars().all()
     return {
-        "id": tab.id, "label": tab.label, "emoji": tab.emoji,
+        "id": tab.id, "label": tab.label, "emoji": tab.emoji, "kind": tab.kind,
         "sections": [
             {"id": s.id, "order_index": s.order_index, "title": s.title, "body": s.body,
              "images": s.images, "practice_positions": s.practice_positions, "emoji": s.emoji,
