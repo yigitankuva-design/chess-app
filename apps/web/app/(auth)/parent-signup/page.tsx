@@ -75,13 +75,13 @@ export default function SignupPage() {
             role === 'parent' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
           }`}>
             <input type="radio" value="parent" {...register('role')} className="sr-only" />
-            👤 Veli
+            👤 Üye
           </label>
           <label className={`cursor-pointer border rounded-lg p-3 text-center text-sm font-medium transition-colors ${
             role === 'teacher' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
           }`}>
             <input type="radio" value="teacher" {...register('role')} className="sr-only" />
-            🎓 Öğretmen
+            🎓 Antrenör
           </label>
         </div>
       </div>
