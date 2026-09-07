@@ -1,10 +1,12 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
-  listMyClasses, searchStudents, listAdminModules, listAdminModuleLessons,
+  listMyClasses, searchStudents, listAdminModules, listAdminModuleLessons, listLessonSteps,
   createClassAssignment, createIndividualAssignment,
 } from '@/lib/assignmentsApi';
-import type { TeacherClass, StudentSearchResult, AdminModuleSummary, AdminLessonSummary } from '@/lib/assignmentsApi';
+import type {
+  TeacherClass, StudentSearchResult, AdminModuleSummary, AdminLessonSummary, LessonStepSummary,
+} from '@/lib/assignmentsApi';
 
 type Hedef = 'class' | 'student';
 
@@ -13,15 +15,24 @@ interface Props {
    *  birlikte kaydedilir (izlenebilirlik). */
   sourceSectionId: number;
   sourceSectionTitle: string;
+  /**
+   * Madde 2026-09-07 (GRUP D): verilirse panelin varsayılan "📌 Ödev
+   * Olarak Ver" satırı YERİNE bu render edilir — `open`/`toggle` panelin
+   * açık/kapalı durumunu kontrol eder (bkz. AltKonuWalkthrough'daki özel
+   * "Ödev Gönder" ikonu). Verilmezse mevcut davranış AYNEN kalır
+   * (NestedSectionTree kullanımı ETKİLENMEZ — KURAL #3).
+   */
+  renderTrigger?: (open: boolean, toggle: () => void) => ReactNode;
 }
 
 /**
  * Madde 2026-09-05: Antrenör → Ödev → Dersler köprüsü. Zafer bu Alt Konu'yu
- * anlattıktan sonra, Dersler müfredatından bir modül/ders seçip sınıfa veya
- * tek bir sporcuya ödev olarak verebilir. Varsayılan KAPALI — "📌 Ödev
- * Olarak Ver" ile açılır, diğer akordiyonlarla AYNI desen.
+ * anlattıktan sonra, Dersler müfredatından bir modül/ders (madde 2026-09-07:
+ * opsiyonel olarak dersin BELİRLİ bir Alt Konusu) seçip sınıfa veya tek bir
+ * sporcuya ödev olarak verebilir. Varsayılan KAPALI — "📌 Ödev Olarak Ver"
+ * ile açılır, diğer akordiyonlarla AYNI desen.
  */
-export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle }: Props) {
+export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle, renderTrigger }: Props) {
   const [open, setOpen] = useState(false);
   const [hedef, setHedef] = useState<Hedef>('class');
 
@@ -37,6 +48,9 @@ export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle }: Pro
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
   const [lessons, setLessons] = useState<AdminLessonSummary[]>([]);
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
+  /** Madde 2026-09-07 (GRUP D): dersin Alt Konuları — opsiyonel, granüler hedef. */
+  const [steps, setSteps] = useState<LessonStepSummary[]>([]);
+  const [selectedStepId, setSelectedStepId] = useState<number | null>(null);
 
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -58,6 +72,12 @@ export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle }: Pro
     listAdminModuleLessons(selectedModuleId).then(setLessons);
   }, [selectedModuleId]);
 
+  useEffect(() => {
+    if (selectedLessonId === null) { setSteps([]); setSelectedStepId(null); return; }
+    setSelectedStepId(null);
+    listLessonSteps(selectedLessonId).then(setSteps);
+  }, [selectedLessonId]);
+
   async function doSearch() {
     if (!studentQuery.trim()) return;
     setSearching(true);
@@ -68,7 +88,7 @@ export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle }: Pro
 
   function resetForm() {
     setSelectedClassId(null); setSelectedStudent(null); setStudentQuery(''); setStudentResults([]);
-    setSelectedModuleId(null); setSelectedLessonId(null);
+    setSelectedModuleId(null); setSelectedLessonId(null); setSelectedStepId(null);
     setTitle(''); setDueDate(''); setDescription('');
   }
 
@@ -83,6 +103,7 @@ export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle }: Pro
       description: description.trim() || null,
       target_module_id: selectedModuleId,
       target_lesson_id: selectedLessonId,
+      target_lesson_step_id: selectedStepId,
       due_date: dueDate || null,
       source_custom_tab_section_id: sourceSectionId,
     };
@@ -104,14 +125,18 @@ export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle }: Pro
     color: active ? 'rgb(103 232 249)' : 'rgba(255,255,255,0.8)',
   }) as const;
 
+  const toggle = () => setOpen((p) => !p);
+
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.03] mt-2">
-      <button type="button" onClick={() => setOpen((p) => !p)}
-        aria-expanded={open}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
-        <span className="text-sm font-semibold n-text flex-1">📌 Ödev Olarak Ver</span>
-        <span className="text-xs n-muted">{open ? '▴' : '▾'}</span>
-      </button>
+      {renderTrigger ? renderTrigger(open, toggle) : (
+        <button type="button" onClick={toggle}
+          aria-expanded={open}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
+          <span className="text-sm font-semibold n-text flex-1">📌 Ödev Olarak Ver</span>
+          <span className="text-xs n-muted">{open ? '▴' : '▾'}</span>
+        </button>
+      )}
 
       {open && (
         <div className="px-3 pb-3 space-y-3 border-t border-white/10 pt-3">
@@ -184,6 +209,17 @@ export function AssignHomeworkPanel({ sourceSectionId, sourceSectionTitle }: Pro
               className="neon-input text-sm" aria-label="Hedef ders (opsiyonel)">
               <option value="">Tüm modül</option>
               {lessons.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
+            </select>
+          )}
+
+          {/* Madde 2026-09-07 (GRUP D): ders seçilince Alt Konu (opsiyonel,
+              en granüler hedef) — seçilirse o Alt Konu'nun "Ödevini Yap"
+              sekmesi sporcu tarafında aktifleşir. */}
+          {selectedLessonId !== null && steps.length > 0 && (
+            <select value={selectedStepId ?? ''} onChange={(e) => setSelectedStepId(e.target.value ? Number(e.target.value) : null)}
+              className="neon-input text-sm" aria-label="Hedef Alt Konu (opsiyonel)">
+              <option value="">Tüm ders</option>
+              {steps.map((s) => <option key={s.stepId} value={s.stepId}>{s.title}</option>)}
             </select>
           )}
 

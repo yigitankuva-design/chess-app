@@ -28,6 +28,10 @@ class CreateAssignmentRequest(BaseModel):
     description: str | None = None
     target_module_id: int | None = None
     target_lesson_id: int | None = None
+    # Madde 2026-09-07 (GRUP D): DERS İÇİNDEKİ belirli bir Alt Konu
+    # (lesson_step) hedeflenirse, o Alt Konu'nun "Ödevini Yap" sekmesi
+    # sporcu tarafında aktifleşir (bkz. GET /assignments/my-active-step-ids).
+    target_lesson_step_id: int | None = None
     due_date: str | None = None  # ISO date string
     # Madde 2026-09-05: bu ödev Antrenör'de bir Alt Konu anlatılırken
     # verildiyse, o düğümün id'si — izlenebilirlik için (opsiyonel).
@@ -275,9 +279,14 @@ async def remove_student(
 
 def _ensure_has_target(payload: CreateAssignmentRequest):
     """Madde 2026-09-05: bir ödev Dersler'de bir yere işaret ETMELİDİR —
-    modül veya ders (ikisi de olabilir, ama en az biri şart)."""
-    if payload.target_module_id is None and payload.target_lesson_id is None:
-        raise HTTPException(422, "Ödev bir modül veya ders hedeflemeli")
+    modül, ders veya (madde 2026-09-07, GRUP D) belirli bir Alt Konu
+    (lesson_step) — en az biri şart."""
+    if (
+        payload.target_module_id is None
+        and payload.target_lesson_id is None
+        and payload.target_lesson_step_id is None
+    ):
+        raise HTTPException(422, "Ödev bir modül, ders veya Alt Konu hedeflemeli")
 
 
 @router.post("/classes/{class_id}/assignments", status_code=201)
@@ -299,6 +308,7 @@ async def create_assignment(
         description=payload.description,
         target_module_id=payload.target_module_id,
         target_lesson_id=payload.target_lesson_id,
+        target_lesson_step_id=payload.target_lesson_step_id,
         source_custom_tab_section_id=payload.source_custom_tab_section_id,
         due_date=date_type.fromisoformat(payload.due_date) if payload.due_date else None,
     )
@@ -330,6 +340,7 @@ async def create_individual_assignment(
         description=payload.description,
         target_module_id=payload.target_module_id,
         target_lesson_id=payload.target_lesson_id,
+        target_lesson_step_id=payload.target_lesson_step_id,
         source_custom_tab_section_id=payload.source_custom_tab_section_id,
         due_date=date_type.fromisoformat(payload.due_date) if payload.due_date else None,
     )
@@ -374,6 +385,7 @@ async def list_my_assignments(
             "due_date": a.due_date.isoformat() if a.due_date else None,
             "target_module_id": a.target_module_id,
             "target_lesson_id": a.target_lesson_id,
+            "target_lesson_step_id": a.target_lesson_step_id,
             "class_id": a.class_id,
             "class_name": class_names.get(a.class_id) if a.class_id else None,
             "target_child_id": a.target_child_id,

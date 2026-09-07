@@ -16,6 +16,13 @@ vi.mock('@/components/ChessBoard', () => ({
   ),
 }));
 
+// Madde 2026-09-07 (GRUP D): "Ödev Gönder" ikonu role'e göre koşullu —
+// mockRole test başına değiştirilebilir.
+let mockRole: 'teacher' | 'athlete' | null = null;
+vi.mock('@/lib/auth-context', () => ({
+  useAuth: () => ({ login: vi.fn(), logout: vi.fn(), token: 'tok', role: mockRole, userId: 1 }),
+}));
+
 import { AltKonuWalkthrough } from '@/components/custom/AltKonuWalkthrough';
 
 const FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -24,6 +31,8 @@ const FEN2 = '8/8/8/4k3/8/8/4P3/4K3 w - - 0 1';
 function group(id: string, code: string, steps: PositionPoolEntry['steps']): PositionPoolEntry {
   return { id, code, steps };
 }
+
+beforeEach(() => { mockRole = null; });
 
 describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-08-26)', () => {
   it('havuz boşken bilgi mesajı gösterir', () => {
@@ -148,5 +157,27 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     expect(active).toHaveStyle({ background: '#22c55e', color: '#0a0a0a', fontWeight: '800' });
     const inactive = screen.getByLabelText('Adım 2');
     expect(inactive).not.toHaveStyle({ background: '#22c55e' });
+  });
+});
+
+describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D)', () => {
+  const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
+
+  it('antrenör (role=teacher) + sourceSectionId/Title verilince ikon görünür', () => {
+    mockRole = 'teacher';
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    expect(screen.getByLabelText('Ödev Gönder')).toBeInTheDocument();
+  });
+
+  it('sporcu (role=athlete) görünümünde ikon GÖSTERİLMEZ', () => {
+    mockRole = 'athlete';
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
+  });
+
+  it('sourceSectionId/Title verilmezse antrenör olsa bile ikon GÖSTERİLMEZ', () => {
+    mockRole = 'teacher';
+    render(<AltKonuWalkthrough pool={pool} />);
+    expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
   });
 });

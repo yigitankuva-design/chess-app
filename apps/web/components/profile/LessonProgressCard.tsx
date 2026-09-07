@@ -6,6 +6,7 @@ import {
 import type { PracticeMode, ScoreMap, ThresholdMap } from '@/lib/practice/unlock';
 import { fetchLessonScores, fetchPracticeDetail, fetchAttemptsSummary, fetchAttempts } from '@/lib/practice/practiceApi';
 import type { PracticeDetail, AttemptsSummary, AttemptRow } from '@/lib/practice/practiceApi';
+import { fetchMyActiveStepIds } from '@/lib/assignmentsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -32,6 +33,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  *     satıra kayıyordu — "Doğru Sayısı"/"Yanlış Sayısı" kısaltıldı
  *     ("Doğru"/"Yanlış") ve 4 sütun (bkz. STAT_ROW_COLS) her satırda AYNI
  *     genişlikte tutulup satırlar arasında hizalandı (simetrik görünüm).
+ *
+ * Madde 2026-09-07 (GRUP D): Antrenör'ün "Ödev Gönder" ikonuyla verdiği bir
+ * Alt Konu ödevi (bkz. lib/assignmentsApi.ts fetchMyActiveStepIds) bu Alt
+ * Konu'nun normal zincir kilidini EZER (assignedStepIds'te olan bir alt
+ * konu her zaman tıklanabilir) ve "Ödevini Yap" pill'i, sporcu henüz
+ * geçmediyse MAVİ görünür — geçince mevcut "tamamlandı" (var(--t-accent))
+ * rengine döner (yeni renk İCAT EDİLMEDİ). Sadece kendi profilinde
+ * (childId YOKKEN) çalışır — antrenör görünümünde bu uç child-token
+ * gerektirdiği için çağrılmaz (KURAL #3: mevcut davranış bozulmaz).
  */
 
 // Kodlar Zafer'in verdiği sırayla (TD-BD-OD-İD); isimler gerçek modül
@@ -91,6 +101,14 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
   const [attempts, setAttempts] = useState<AttemptRow[] | null>(null);
   const [attemptsLoading, setAttemptsLoading] = useState(false);
   const [selectedAttemptIdx, setSelectedAttemptIdx] = useState(0);
+  /** Madde 2026-09-07 (GRUP D): Antrenör'ün Alt Konu bazlı ödev verdiği
+   *  lesson_step id'leri — boş küme = normal kilit davranışı (KURAL #3). */
+  const [assignedStepIds, setAssignedStepIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (childId != null) return; // antrenör görünümü: child-token gerektiren uç, atlanır.
+    fetchMyActiveStepIds().then(setAssignedStepIds);
+  }, [childId]);
 
   useEffect(() => {
     fetch(`${API_BASE}/modules`)
@@ -284,8 +302,14 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
           <div className="flex flex-col gap-1.5">
             {openLessonSubs?.map((sub) => {
               const subOpen = openSubtopic?.stepId === sub.stepId;
+              // Madde 2026-09-07 (GRUP D): Antrenör'ün Alt Konu bazlı ödevi
+              // varsa (assignedStepIds), normal zincir kilidi EZİLİR.
+              const assigned = assignedStepIds.has(sub.stepId);
               const locked = openLessonScores != null
-                && !isSubtopicUnlocked(orderedStepIds, sub.stepId, openLessonScores, openLessonThresholds);
+                && !isSubtopicUnlocked(orderedStepIds, sub.stepId, openLessonScores, openLessonThresholds)
+                && !assigned;
+              const suresizScore = openLessonScores?.[sub.stepId]?.suresiz ?? 0;
+              const subSuresizDone = suresizScore >= thresholdFor(openLessonThresholds, sub.stepId, 'suresiz');
               return (
                 <div key={sub.stepId}>
                   <button
@@ -306,19 +330,31 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
                   {subOpen && (
                     <>
                       <div className="grid grid-cols-3 gap-1.5 mt-1.5 mb-2">
-                        {MODE_TABS.map((m) => (
-                          <button
-                            key={m.slug} type="button" onClick={() => selectMode(m.slug)}
-                            aria-pressed={openMode === m.slug}
-                            className="px-2 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                            style={{
-                              background: openMode === m.slug ? 'var(--t-accent)' : 'var(--t-surface-2)',
-                              color: openMode === m.slug ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
-                            }}
-                          >
-                            {m.label}
-                          </button>
-                        ))}
+                        {MODE_TABS.map((m) => {
+                          // Madde 2026-09-07 (GRUP D): "Ödevini Yap" pill'i —
+                          // ödev atanmış VE henüz geçilmemişse MAVİ, geçilmişse
+                          // mevcut "tamamlandı" (var(--t-accent)) rengi. Ödev
+                          // atanmamışsa davranış AYNEN eskisi gibi (KURAL #3).
+                          let background = openMode === m.slug ? 'var(--t-accent)' : 'var(--t-surface-2)';
+                          let color = openMode === m.slug ? 'var(--t-accent-fg)' : 'var(--t-text-2)';
+                          if (m.slug === 'suresiz' && assigned) {
+                            if (subSuresizDone) {
+                              background = 'var(--t-accent)'; color = 'var(--t-accent-fg)';
+                            } else {
+                              background = '#3b82f6'; color = '#fff';
+                            }
+                          }
+                          return (
+                            <button
+                              key={m.slug} type="button" onClick={() => selectMode(m.slug)}
+                              aria-pressed={openMode === m.slug}
+                              className="px-2 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                              style={{ background, color }}
+                            >
+                              {m.label}
+                            </button>
+                          );
+                        })}
                       </div>
 
                       {/* Madde 2026-09-06 (Görsel 5 - v2): seçili modun içeriği

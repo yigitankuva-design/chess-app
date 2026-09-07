@@ -65,7 +65,14 @@ export default function AltKonuPage() {
           ))}
         </div>
       )}
-      <AltKonuWalkthrough pool={section.position_pool ?? []} />
+      {/* Madde 2026-09-07 (GRUP D): antrenör "Ödev Gönder" ikonunu görebilsin
+          diye bu bölümün id/başlığı geçiriliyor — AltKonuWalkthrough bunu
+          SADECE role === 'teacher' iken kullanır (çocuk görmez). */}
+      <AltKonuWalkthrough
+        pool={section.position_pool ?? []}
+        sourceSectionId={section.id}
+        sourceSectionTitle={section.title}
+      />
     </main>
   );
 }

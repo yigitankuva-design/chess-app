@@ -4,9 +4,30 @@ import type { Square } from 'chess.js';
 import { ChessBoard } from '@/components/ChessBoard';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 import type { PositionPoolEntry } from '@/lib/customTabsApi';
+import { useAuth } from '@/lib/auth-context';
+import { AssignHomeworkPanel } from '@/components/admin/AssignHomeworkPanel';
 
 interface Props {
   pool: PositionPoolEntry[];
+  /**
+   * Madde 2026-09-07 (GRUP D): "Ödev Gönder" ikonu SADECE antrenör (`role
+   * === 'teacher'`) bu Alt Konu'yu görüntülerken ve bu iki prop verilmişken
+   * gösterilir — çocuk kendi "Hızlı Erişim" görünümünde ikonu GÖRMEZ.
+   * (bkz. app/(child)/custom/[id]/alt-konu/[sectionId]/page.tsx)
+   */
+  sourceSectionId?: number;
+  sourceSectionTitle?: string;
+}
+
+/** Madde 2026-09-07 (GRUP D): özel tasarım "gönder" ikonu (kağıt uçak) —
+ *  internetten alınmamış, ChatIcon/PhoneIcon ile AYNI çizgi-ikon ailesi. */
+function SendHomeworkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12l16-8-6 16-3-6-7-2z" />
+      <path d="M20 4l-9 9" />
+    </svg>
+  );
 }
 
 /** Madde 2026-08-25: tahta %75 büyütüldü (240px → 420px) — antrenör
@@ -28,7 +49,8 @@ const COUNTER_ROW_OFFSET = 32 + 8;
  *    cümle) arasında gezinir — antrenör konuyu anlatırken sırayla tıklar.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
-export function AltKonuWalkthrough({ pool }: Props) {
+export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle }: Props) {
+  const auth = useAuth();
   const [groupIdx, setGroupIdx] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
   /** Madde 2026-08-25: bu sayfaya ÖZEL, YEREL bir tercih — BotGame/LiveGame'in
@@ -114,6 +136,31 @@ export function AltKonuWalkthrough({ pool }: Props) {
           <ChessBoard fen={step.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
         </div>
       </div>
+
+      {/* Madde 2026-09-07 (GRUP D): "Ödev Gönder" — SADECE antrenör görünümünde.
+          AssignHomeworkPanel'in mevcut form mantığı (sınıf/öğrenci seç, Alt
+          Konu hedefle, gönder) AYNEN kullanılır — sadece tetikleyici GÖRSELİ
+          bu özel ikonla değiştiriliyor (renderTrigger), form davranışı
+          NestedSectionTree'deki kullanımla AYNI (KURAL #3). */}
+      {auth.role === 'teacher' && sourceSectionId != null && sourceSectionTitle != null && (
+        <div className="w-full mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH + 52 }}>
+          <AssignHomeworkPanel
+            sourceSectionId={sourceSectionId}
+            sourceSectionTitle={sourceSectionTitle}
+            renderTrigger={(open, toggle) => (
+              <button
+                type="button" onClick={toggle} aria-expanded={open}
+                aria-label="Ödev Gönder"
+                title="Ödev Gönder"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+                style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.25)' }}
+              >
+                <SendHomeworkIcon />
+              </button>
+            )}
+          />
+        </div>
+      )}
 
       <div className="t-card-i p-3 w-full mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH + 52 }}>
         <p className="text-sm text-center">{step.sentence}</p>

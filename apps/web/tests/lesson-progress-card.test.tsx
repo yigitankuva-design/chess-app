@@ -14,6 +14,12 @@ vi.mock('@/lib/practice/practiceApi', () => ({
   fetchAttempts: (...args: unknown[]) => fetchAttempts(...args),
 }));
 
+// Madde 2026-09-07 (GRUP D): Antrenör'ün Alt Konu bazlı ödev ataması.
+const fetchMyActiveStepIds = vi.fn();
+vi.mock('@/lib/assignmentsApi', () => ({
+  fetchMyActiveStepIds: (...args: unknown[]) => fetchMyActiveStepIds(...args),
+}));
+
 import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
 
 const MODULES = [
@@ -59,6 +65,8 @@ beforeEach(() => {
     { attempt_no: 1, correct_count: 4, total_count: 8, per_question_correct: [true, false, true, false, true, true, true, false] },
     { attempt_no: 2, correct_count: 8, total_count: 8, per_question_correct: Array(8).fill(true) },
   ]);
+  fetchMyActiveStepIds.mockReset();
+  fetchMyActiveStepIds.mockResolvedValue(new Set());
 });
 
 describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (madde 2026-09-05)', () => {
@@ -227,5 +235,68 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     const yillikRow = yillik.closest<HTMLElement>('div.grid');
     expect(gunlukRow?.style.gridTemplateColumns).toBe(yillikRow?.style.gridTemplateColumns);
     expect(gunlukRow?.style.gridTemplateColumns).toBeTruthy();
+  });
+});
+
+describe('LessonProgressCard — "Ödev Gönder" ile Ödevini Yap aktivasyonu (madde 2026-09-07, GRUP D)', () => {
+  it('normalde kilitli bir Alt Konu, ödev atanınca kilitsiz görünür ve tıklanabilir', async () => {
+    // Varsayılan fetchLessonScores boş {} döner → "Merkez Kavramı" (101)
+    // normalde kilitli (önceki alt konunun test skoru yok).
+    fetchMyActiveStepIds.mockResolvedValue(new Set([101]));
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText(/Merkez Kavramı/));
+
+    // 🔒 ön eki YOK — normal (kilitsiz) görünüm.
+    expect(screen.getByText('Merkez Kavramı')).toBeInTheDocument();
+    expect(screen.queryByText(/🔒 Merkez Kavramı/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Merkez Kavramı'));
+    expect(await screen.findByText('Ödevini Yap')).toBeInTheDocument();
+  });
+
+  it('atanmış ve HENÜZ geçilmemiş Alt Konu\'da "Ödevini Yap" pill\'i mavi görünür', async () => {
+    fetchMyActiveStepIds.mockResolvedValue(new Set([101]));
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText(/Merkez Kavramı/));
+    fireEvent.click(screen.getByText('Merkez Kavramı'));
+
+    const odevPill = await screen.findByText('Ödevini Yap');
+    expect(odevPill).toHaveStyle({ background: '#3b82f6', color: '#fff' });
+  });
+
+  it('atanmış ama ZATEN GEÇİLMİŞ Alt Konu\'da pill mevcut "tamamlandı" (var(--t-accent)) rengini kullanır, mavi DEĞİL', async () => {
+    fetchMyActiveStepIds.mockResolvedValue(new Set([101]));
+    fetchLessonScores.mockResolvedValue({ 101: { suresiz: 90 } });
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText(/Merkez Kavramı/));
+    fireEvent.click(screen.getByText('Merkez Kavramı'));
+
+    const odevPill = await screen.findByText('Ödevini Yap');
+    // NOT: toHaveStyle (getComputedStyle) jsdom'da "background: var(--x)"
+    // shorthand'ını çözemiyor (bare var() longhand'a düşmüyor) — inline
+    // style'ı DOĞRUDAN okuyoruz (element.style bunu ÇÖZMEDEN, yazıldığı
+    // gibi geri verir — bkz. #3b82f6 testindeki toHaveStyle'ın çalıştığı
+    // durumla farkı: o literal hex, bu bare var()).
+    expect(odevPill.style.background).toBe('var(--t-accent)');
+    expect(odevPill.style.background).not.toBe('#3b82f6');
+  });
+
+  it('ödev atanmamış bir Alt Konu normal kilit davranışını KORUR (regresyon)', async () => {
+    fetchMyActiveStepIds.mockResolvedValue(new Set()); // hiçbir şey atanmadı
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText(/🔒 Merkez Kavramı/));
+    expect(screen.getByText(/🔒 Merkez Kavramı/)).toBeInTheDocument();
   });
 });

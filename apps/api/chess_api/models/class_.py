@@ -30,6 +30,13 @@ class ClassAssignment(Base):
     )
     target_module_id: Mapped[int | None] = mapped_column(ForeignKey("modules.id"), nullable=True)
     target_lesson_id: Mapped[int | None] = mapped_column(ForeignKey("lessons.id"), nullable=True)
+    # Madde 2026-09-07 (GRUP D): DERS İÇİNDEKİ belirli bir Alt Konu (lesson_step)
+    # hedeflenirse — bu doluysa, o Alt Konu'nun "Ödevini Yap" sekmesi sporcu
+    # tarafında (normal zincir kilidini EZEREK) aktifleşir, bkz.
+    # GET /assignments/my-active-step-ids ve LessonProgressCard. Eski
+    # target_module_id/target_lesson_id davranışı BOZULMADI (KURAL #3) —
+    # bu üçüncü, daha GRANÜLER bir hedefleme seçeneği.
+    target_lesson_step_id: Mapped[int | None] = mapped_column(ForeignKey("lesson_steps.id"), nullable=True)
     source_custom_tab_section_id: Mapped[int | None] = mapped_column(
         ForeignKey("custom_tab_sections.id"), nullable=True,
     )

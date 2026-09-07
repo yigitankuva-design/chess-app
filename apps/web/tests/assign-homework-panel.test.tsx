@@ -12,13 +12,16 @@ vi.mock('@/lib/assignmentsApi', () => ({
   listAdminModuleLessons: vi.fn(() => Promise.resolve([
     { id: 5, module_id: 1, order_index: 1, title: 'Açık Oyunlar', estimated_minutes: 8 },
   ])),
+  listLessonSteps: vi.fn(() => Promise.resolve([
+    { stepId: 50, title: 'Merkez Kavramı' },
+  ])),
   createClassAssignment: vi.fn(() => Promise.resolve({ id: 100 })),
   createIndividualAssignment: vi.fn(() => Promise.resolve({ id: 101 })),
 }));
 
 import { AssignHomeworkPanel } from '@/components/admin/AssignHomeworkPanel';
 import {
-  listMyClasses, searchStudents, createClassAssignment, createIndividualAssignment,
+  listMyClasses, searchStudents, listLessonSteps, createClassAssignment, createIndividualAssignment,
 } from '@/lib/assignmentsApi';
 
 function setup() {
@@ -79,5 +82,45 @@ describe('AssignHomeworkPanel — Antrenör → Ödev → Dersler köprüsü (ma
       title: 'Bireysel Ödev',
       source_custom_tab_section_id: 42,
     })));
+  });
+
+  it('madde 2026-09-07 (GRUP D): ders seçilince Alt Konu (opsiyonel) listelenir, seçilince target_lesson_step_id gönderilir', async () => {
+    setup();
+    fireEvent.click(screen.getByText('📌 Ödev Olarak Ver'));
+    await screen.findByText('Modül seç…');
+
+    fireEvent.change(screen.getByLabelText('Hedef sınıf'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Hedef modül'), { target: { value: '1' } });
+    fireEvent.change(await screen.findByLabelText('Hedef ders (opsiyonel)'), { target: { value: '5' } });
+    await waitFor(() => expect(listLessonSteps).toHaveBeenCalledWith(5));
+
+    fireEvent.change(await screen.findByLabelText('Hedef Alt Konu (opsiyonel)'), { target: { value: '50' } });
+    fireEvent.change(screen.getByPlaceholderText('Ödev başlığı'), { target: { value: 'Merkez Kavramı Ödevi' } });
+
+    fireEvent.click(screen.getByText('Ödevi Ver'));
+    await waitFor(() => expect(createClassAssignment).toHaveBeenCalledWith(1, expect.objectContaining({
+      title: 'Merkez Kavramı Ödevi',
+      target_lesson_id: 5,
+      target_lesson_step_id: 50,
+    })));
+  });
+
+  it('madde 2026-09-07 (GRUP D): renderTrigger verilince özel tetikleyici render edilir, varsayılan satır GÖRÜNMEZ', async () => {
+    render(
+      <AssignHomeworkPanel
+        sourceSectionId={42} sourceSectionTitle="İtalyan Açılışı"
+        renderTrigger={(open, toggle) => (
+          <button type="button" onClick={toggle} aria-label="Ödev Gönder">
+            {open ? 'Açık' : 'Kapalı'}
+          </button>
+        )}
+      />,
+    );
+    expect(screen.queryByText('📌 Ödev Olarak Ver')).not.toBeInTheDocument();
+    const trigger = screen.getByLabelText('Ödev Gönder');
+    expect(trigger).toHaveTextContent('Kapalı');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveTextContent('Açık');
+    expect(await screen.findByText('Modül seç…')).toBeInTheDocument();
   });
 });

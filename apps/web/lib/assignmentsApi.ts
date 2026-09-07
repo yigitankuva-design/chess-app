@@ -38,11 +38,23 @@ export interface AdminLessonSummary {
   estimated_minutes: number;
 }
 
+/** Madde 2026-09-07 (GRUP D): bir dersin Alt Konuları — "Ödev Ver" formunun
+ *  3. (opsiyonel) Alt Konu seçicisi. LessonProgressCard'ın kullandığı AYNI
+ *  `/lessons/{id}` ucu; Alt Konu = `type === 'explanation'` adımlar. */
+export interface LessonStepSummary {
+  stepId: number;
+  title: string;
+}
+
 export interface CreateAssignmentPayload {
   title: string;
   description?: string | null;
   target_module_id?: number | null;
   target_lesson_id?: number | null;
+  /** Madde 2026-09-07 (GRUP D): DERS İÇİNDEKİ belirli bir Alt Konu
+   *  (lesson_step) hedeflenirse, o Alt Konu'nun "Ödevini Yap" sekmesi
+   *  sporcu tarafında aktifleşir (bkz. fetchMyActiveStepIds). */
+  target_lesson_step_id?: number | null;
   due_date?: string | null;
   /** Bu ödevin Antrenör'de HANGİ Alt Konu anlatılırken verildiği. */
   source_custom_tab_section_id?: number | null;
@@ -92,6 +104,22 @@ export async function listAdminModuleLessons(moduleId: number): Promise<AdminLes
     const r = await fetch(`${API_BASE}/admin/modules/${moduleId}/lessons`, { headers: authHeaders() });
     if (!r.ok) return [];
     return await r.json();
+  } catch {
+    return [];
+  }
+}
+
+/** Madde 2026-09-07 (GRUP D): seçilen dersin Alt Konuları — "Ödev Ver"
+ *  formunun 3. (opsiyonel) seçici. `/lessons/{id}` HERKESE AÇIK bir uç
+ *  (LessonProgressCard da aynı şekilde token'sız çağırıyor). */
+export async function listLessonSteps(lessonId: number): Promise<LessonStepSummary[]> {
+  try {
+    const r = await fetch(`${API_BASE}/lessons/${lessonId}`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    return ((data.steps ?? []) as { id: number; type: string; content_json?: { title?: string } }[])
+      .filter((s) => s.type === 'explanation' && s.content_json?.title)
+      .map((s) => ({ stepId: s.id, title: s.content_json!.title! }));
   } catch {
     return [];
   }
@@ -147,5 +175,29 @@ export async function listMyAssignments(): Promise<StudentAssignment[]> {
     return await r.json();
   } catch {
     return [];
+  }
+}
+
+/**
+ * Madde 2026-09-07 (GRUP D): sporcunun (sınıfına ya da doğrudan kendisine)
+ * Alt Konu bazlı ödev verilmiş TÜM lesson_step id'leri — LessonProgressCard
+ * bunu `/practice/lessons/{id}/scores` gibi diğer verilerle birleştirip
+ * hangi Alt Konu'nun normal zincir kilidini EZECEĞİNİ ve "Ödevini Yap"
+ * pill'inin mavi mi tamamlandı mı görüneceğini hesaplar. Boş küme = normal
+ * davranış (KURAL #3 — bu uç hiç çağrılmasa/başarısız olsa bile mevcut
+ * kilit mantığı DEĞİŞMEZ).
+ */
+export async function fetchMyActiveStepIds(): Promise<Set<number>> {
+  try {
+    const token = getToken();
+    if (!token) return new Set();
+    const r = await fetch(`${API_BASE}/assignments/my-active-step-ids`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return new Set();
+    const data = await r.json();
+    return new Set((data.step_ids ?? []) as number[]);
+  } catch {
+    return new Set();
   }
 }

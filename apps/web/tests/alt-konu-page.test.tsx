@@ -11,6 +11,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }));
 vi.mock('@/lib/customTabsApi', () => ({ getCustomTab: vi.fn() }));
+// Madde 2026-09-07 (GRUP D): AltKonuWalkthrough artık useAuth() çağırıyor
+// ("Ödev Gönder" ikonu role === 'teacher' iken görünür) — mockRole test
+// başına değiştirilebilir, varsayılan null (çocuk).
+let mockRole: 'teacher' | null = null;
+vi.mock('@/lib/auth-context', () => ({
+  useAuth: () => ({ login: vi.fn(), logout: vi.fn(), token: null, role: mockRole, userId: null }),
+}));
 vi.mock('@/lib/customTabs/pendingOpenPath', () => ({ writePendingOpenPath }));
 // Madde 2026-09-04 (4): sayfa artık kendi "Geri" butonunu ÇİZMİYOR — özel
 // geri mantığını useBackOverride'a kaydediyor (AppNav'ın TEK butonu okur).
@@ -46,6 +53,8 @@ function mockDersHierarchy() {
     ],
   });
 }
+
+beforeEach(() => { mockRole = null; });
 
 describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08-26)', () => {
   it('bölüm başlığı, yazı, Konum Havuzu sayacı ve aktif adımın cümlesi gösterilir', async () => {
@@ -103,5 +112,21 @@ describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08
     render(<AltKonuPage />);
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
     expect(screen.queryByLabelText('Geri')).not.toBeInTheDocument();
+  });
+
+  it('madde 2026-09-07 (GRUP D): antrenör görünümünde "Ödev Gönder" ikonu bu bölümün id/başlığıyla görünür', async () => {
+    mockRole = 'teacher';
+    mockDersHierarchy();
+    render(<AltKonuPage />);
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(screen.getByLabelText('Ödev Gönder')).toBeInTheDocument();
+  });
+
+  it('sporcu görünümünde "Ödev Gönder" ikonu GÖSTERİLMEZ', async () => {
+    mockRole = null;
+    mockDersHierarchy();
+    render(<AltKonuPage />);
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
   });
 });
