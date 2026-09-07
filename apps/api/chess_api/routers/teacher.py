@@ -159,6 +159,33 @@ async def _get_child_for_teacher(
     return child
 
 
+@router.get("/me/profile-summary")
+async def teacher_profile_summary(
+    current: User = Depends(get_current_user),
+):
+    """Madde 2026-09-07 (Antrenör Paneli): antrenörün KENDİ Profil sayfası
+    (`/coach/profile`) sporcunun ProfileView'ını (bkz. components/profile/
+    ProfileView.tsx) aynen kullanıyor — o bileşen `/gamification/me`'nin
+    döndürdüğü `MyProgress` şeklini bekliyor. Antrenörün rütbe/XP/rozet/
+    fotoğraf/il/iletişim sistemi YOK (bunlar SADECE ChildProfile'da) — bu
+    yüzden burada sadece gerçekten var olan alanlar (isim, üyelik tarihi)
+    doldurulur, geri kalanı NULL/0 döner. ProfileView bunları zaten
+    "ikon avatar göster"/"bilgi eksik" olarak gösteriyor (KURAL #3)."""
+    _ensure_teacher(current)
+    return {
+        "rank_name": "", "rank_icon": "", "xp_total": 0, "next_rank_xp": 0,
+        "badges_earned": 0, "badges_total": 0,
+        "member_since": current.created_at.date().isoformat(),
+        "display_name": current.name,
+        "avatar": "default",
+        "photo_data_url": None,
+        "province": None,
+        "athlete_phone": None, "athlete_email": None,
+        "father_name": None, "father_phone": None, "father_email": None,
+        "mother_name": None, "mother_phone": None, "mother_email": None,
+    }
+
+
 @router.get("/students/{child_id}/profile-summary")
 async def student_profile_summary(
     child_id: int,

@@ -53,6 +53,27 @@ export async function fetchMyProgress(childId?: number): Promise<MyProgress | nu
 }
 
 /**
+ * Madde 2026-09-07 (Antrenör Paneli): antrenörün KENDİ Profil sayfası
+ * (`/coach/profile`) `fetchMyProgress`'i DEĞİL bunu çağırır — antrenörün
+ * rütbe/XP/rozet sistemi yok, `/teacher/me/profile-summary` sadece
+ * gerçekten var olan alanları (isim, üyelik tarihi) doldurup geri kalanını
+ * null/0 döner. Sporcunun kendi `/gamification/me` akışına (fetchMyProgress)
+ * KASITLI OLARAK dokunulmadı (KURAL #3).
+ */
+export async function fetchTeacherProgress(): Promise<MyProgress | null> {
+  try {
+    const token = getToken();
+    const r = await fetch(`${API_BASE}/teacher/me/profile-summary`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Madde 2026-09-07 (GRUP C): sporcu kendi profil fotoğrafını yükler
  * (dairesel foto alanına tıklayınca cihazdan/kameradan seçilen görsel,
  * istemci tarafında küçültülüp bir "data:image/...;base64,..." string'e

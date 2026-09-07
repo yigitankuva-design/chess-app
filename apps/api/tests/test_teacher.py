@@ -409,3 +409,31 @@ async def test_teacher_cannot_access_other_teachers_class(client):
     # Teacher B tries to access leaderboard of Teacher A's class
     r = await client.get(f"/teacher/classes/{class_id}/leaderboard", headers=auth(token_b))
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_teacher_own_profile_summary(client):
+    """Madde 2026-09-07 (Antrenör Paneli, 3): /teacher/me/profile-summary —
+    antrenörün KENDİ Profil sayfası (/coach/profile) için — isim ve üyelik
+    tarihi gerçek, rütbe/rozet/kimlik-kartı alanları null/0 (antrenör
+    hesabında bu sistem yok, ProfileView zaten bunu "bilgi eksik" gösterir)."""
+    token = await _teacher_signup(client, "profile_me@t.com")
+    r = await client.get("/teacher/me/profile-summary", headers=auth(token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["display_name"] == "Teacher"
+    assert "member_since" in body and body["member_since"]
+    assert body["photo_data_url"] is None
+    assert body["province"] is None
+    assert body["athlete_phone"] is None
+    assert body["father_name"] is None
+    assert body["mother_name"] is None
+    assert body["xp_total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_teacher_own_profile_summary_requires_teacher_role(client):
+    """Bir veli (parent) token'ıyla çağrılırsa 403 döner."""
+    parent_token = await _parent_signup(client, "not_a_teacher@t.com")
+    r = await client.get("/teacher/me/profile-summary", headers=auth(parent_token))
+    assert r.status_code == 403
