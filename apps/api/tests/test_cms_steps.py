@@ -1,13 +1,23 @@
 import pytest
 from sqlalchemy import select, func
+from chess_api.models import User, UserRole
 from chess_api.models.module import Module, Lesson, LessonStep, LessonStepType
 
 
-async def _teacher_token(client, email="cst@t.com"):
+async def _teacher_token(client, db, email="cst@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 async def _lesson(db, order=1, name="M"):
@@ -25,7 +35,7 @@ async def _lesson(db, order=1, name="M"):
 @pytest.mark.asyncio
 async def test_add_explanation_step(client, db):
     m, les = await _lesson(db, order=20)
-    tok = await _teacher_token(client)
+    tok = await _teacher_token(client, db)
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "explanation",
@@ -41,7 +51,7 @@ async def test_add_explanation_step(client, db):
 async def test_add_quiz_step_matches_player_shape(client, db):
     """Oynatıcı {questions:[{prompt, options, correct_index}]} bekliyor — birebir olmalı."""
     m, les = await _lesson(db, order=21)
-    tok = await _teacher_token(client, email="cst2@t.com")
+    tok = await _teacher_token(client, db, email="cst2@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "quiz", "content_json": {"questions": [
@@ -57,7 +67,7 @@ async def test_add_quiz_step_matches_player_shape(client, db):
 @pytest.mark.asyncio
 async def test_quiz_validation_rejects_bad_correct_index(client, db):
     m, les = await _lesson(db, order=22)
-    tok = await _teacher_token(client, email="cst3@t.com")
+    tok = await _teacher_token(client, db, email="cst3@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "quiz", "content_json": {"questions": [
@@ -69,7 +79,7 @@ async def test_quiz_validation_rejects_bad_correct_index(client, db):
 @pytest.mark.asyncio
 async def test_quiz_validation_rejects_empty_questions(client, db):
     m, les = await _lesson(db, order=23)
-    tok = await _teacher_token(client, email="cst4@t.com")
+    tok = await _teacher_token(client, db, email="cst4@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "quiz", "content_json": {"questions": []}})
@@ -79,7 +89,7 @@ async def test_quiz_validation_rejects_empty_questions(client, db):
 @pytest.mark.asyncio
 async def test_invalid_step_type_rejected(client, db):
     m, les = await _lesson(db, order=24)
-    tok = await _teacher_token(client, email="cst5@t.com")
+    tok = await _teacher_token(client, db, email="cst5@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "sarki_soyle", "content_json": {}})
@@ -89,7 +99,7 @@ async def test_invalid_step_type_rejected(client, db):
 @pytest.mark.asyncio
 async def test_list_steps(client, db):
     m, les = await _lesson(db, order=25)
-    tok = await _teacher_token(client, email="cst6@t.com")
+    tok = await _teacher_token(client, db, email="cst6@t.com")
     await client.post(f"/admin/lessons/{les.id}/steps",
                       headers={"Authorization": f"Bearer {tok}"},
                       json={"type": "explanation", "content_json": {"title": "A", "body": "b"}})
@@ -115,7 +125,7 @@ async def test_step_endpoints_require_teacher(client, db):
 @pytest.mark.asyncio
 async def test_update_step_content(client, db):
     m, les = await _lesson(db, order=30)
-    tok = await _teacher_token(client, email="csu1@t.com")
+    tok = await _teacher_token(client, db, email="csu1@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "explanation", "content_json": {"title": "Eski", "body": "b"}})
@@ -130,7 +140,7 @@ async def test_update_step_content(client, db):
 @pytest.mark.asyncio
 async def test_update_step_validates_content(client, db):
     m, les = await _lesson(db, order=31)
-    tok = await _teacher_token(client, email="csu2@t.com")
+    tok = await _teacher_token(client, db, email="csu2@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "quiz", "content_json": {"questions": [
@@ -147,7 +157,7 @@ async def test_update_step_validates_content(client, db):
 async def test_move_step_to_another_lesson(client, db):
     m1, les1 = await _lesson(db, order=32, name="M32")
     m2, les2 = await _lesson(db, order=33, name="M33")
-    tok = await _teacher_token(client, email="csu3@t.com")
+    tok = await _teacher_token(client, db, email="csu3@t.com")
     r = await client.post(f"/admin/lessons/{les1.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "explanation", "content_json": {"title": "T", "body": "b"}})
@@ -162,7 +172,7 @@ async def test_move_step_to_another_lesson(client, db):
 @pytest.mark.asyncio
 async def test_reorder_steps(client, db):
     m, les = await _lesson(db, order=34)
-    tok = await _teacher_token(client, email="csu4@t.com")
+    tok = await _teacher_token(client, db, email="csu4@t.com")
     ids = []
     for t in ["A", "B", "C"]:
         r = await client.post(f"/admin/lessons/{les.id}/steps",
@@ -187,7 +197,7 @@ async def test_delete_step_removes_its_results_but_keeps_lesson_progress(client,
     from chess_api.models.progress import LessonStatus, ChildLessonStepResult
 
     m, les = await _lesson(db, order=35)
-    tok = await _teacher_token(client, email="csu5@t.com")
+    tok = await _teacher_token(client, db, email="csu5@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "explanation", "content_json": {"title": "T", "body": "b"}})

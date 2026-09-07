@@ -1,18 +1,28 @@
 import pytest
 from sqlalchemy import select
 from chess_api.models.module import Module, Lesson
+from chess_api.models import User, UserRole
 
 
-async def _teacher_token(client, email="cmm@t.com"):
+async def _teacher_token(client, db, email="cmm@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 @pytest.mark.asyncio
 async def test_create_module(client, db):
-    tok = await _teacher_token(client)
+    tok = await _teacher_token(client, db)
     r = await client.post("/admin/modules", headers={"Authorization": f"Bearer {tok}"},
                           json={"name": "Yeni Duzey", "description": "aciklama", "icon": "star"})
     assert r.status_code == 201
@@ -23,7 +33,7 @@ async def test_create_module(client, db):
 
 @pytest.mark.asyncio
 async def test_update_module(client, db):
-    tok = await _teacher_token(client, email="cmm2@t.com")
+    tok = await _teacher_token(client, db, email="cmm2@t.com")
     r = await client.post("/admin/modules", headers={"Authorization": f"Bearer {tok}"},
                           json={"name": "Eski", "description": "d", "icon": "pawn"})
     mid = r.json()["id"]
@@ -36,7 +46,7 @@ async def test_update_module(client, db):
 @pytest.mark.asyncio
 async def test_reorder_modules_no_unique_clash(client, db):
     """modules.order_index UNIQUE — sıralama iki aşamalı olmalı, çakışmamalı."""
-    tok = await _teacher_token(client, email="cmm3@t.com")
+    tok = await _teacher_token(client, db, email="cmm3@t.com")
     ids = []
     for n in ["A", "B", "C"]:
         r = await client.post("/admin/modules", headers={"Authorization": f"Bearer {tok}"},
@@ -54,7 +64,7 @@ async def test_reorder_modules_no_unique_clash(client, db):
 
 @pytest.mark.asyncio
 async def test_delete_module_blocked_when_has_lessons(client, db):
-    tok = await _teacher_token(client, email="cmm4@t.com")
+    tok = await _teacher_token(client, db, email="cmm4@t.com")
     r = await client.post("/admin/modules", headers={"Authorization": f"Bearer {tok}"},
                           json={"name": "Dolu", "description": "d", "icon": "pawn"})
     mid = r.json()["id"]
@@ -66,7 +76,7 @@ async def test_delete_module_blocked_when_has_lessons(client, db):
 
 @pytest.mark.asyncio
 async def test_delete_empty_module_ok(client, db):
-    tok = await _teacher_token(client, email="cmm5@t.com")
+    tok = await _teacher_token(client, db, email="cmm5@t.com")
     r = await client.post("/admin/modules", headers={"Authorization": f"Bearer {tok}"},
                           json={"name": "Bos", "description": "d", "icon": "pawn"})
     mid = r.json()["id"]

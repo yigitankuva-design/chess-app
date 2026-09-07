@@ -34,11 +34,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
    *  düğmesiyle açılır. Masaüstünde (md+) her zaman görünür kalır. */
   const [navOpen, setNavOpen] = useState(false);
 
+  // Madde 2026-09-07 (Antrenör Paneli, 5): gerçek yönetici artık AYRI bir
+  // rol (admin) — sıradan bir antrenör (role=teacher) hesabı bu paneli
+  // ARTIK göremez, kendi /coach paneline yönlendirilir. `hydrated` çözülene
+  // kadar karar VERMEYİZ (bkz. lib/auth-context.tsx doc-comment'i) —
+  // yoksa geçerli bir yönetici bile F5'te yanlışlıkla dışarı atılır.
   useEffect(() => {
+    if (!auth.hydrated) return;
     const token = getToken();
-    if (!token) { router.replace('/'); return; }
+    if (!token || auth.role !== 'admin') { router.replace('/'); return; }
     setReady(true);
-  }, [router]);
+  }, [router, auth.hydrated, auth.role]);
 
   // Sayfa değişince (bir menü öğesine tıklanınca) mobil menü otomatik kapanır.
   useEffect(() => { setNavOpen(false); }, [pathname]);

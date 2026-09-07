@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { saveAthleteName } from '@/lib/auth-storage';
+import { saveAthleteName, saveTeacherName } from '@/lib/auth-storage';
 
 const schema = z.object({
   email: z.string().email(),
@@ -30,8 +30,16 @@ export default function HomePage() {
     try {
       const res = await apiClient.login(data);
       auth.login(res.access_token, res.role, res.user_id);
-      if (res.role === 'teacher') {
+      // Madde 2026-09-07 (Antrenör Paneli, 5): gerçek yönetici artık AYRI
+      // bir rol (admin) — SADECE bu rol /admin'e girer. Sıradan antrenör
+      // hesapları (role=teacher) kendi Hızlı Erişim kopyasına (/coach) gider.
+      if (res.role === 'admin') {
         router.push('/admin');
+        return;
+      }
+      if (res.role === 'teacher') {
+        saveTeacherName(res.name);
+        router.push('/coach');
         return;
       }
       // Veli: hesap token'ı kaydedildi; sporcu oturumuna geç

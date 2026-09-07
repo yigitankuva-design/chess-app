@@ -1,14 +1,24 @@
 import pytest
 from sqlalchemy import select, func
+from chess_api.models import User, UserRole
 from chess_api.models import ChildProfile, ChildLessonProgress, Device
 from chess_api.models.progress import LessonStatus
 
 
-async def _teacher_token(client, email="teach@t.com"):
+async def _teacher_token(client, db, email="teach@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 async def _parent_with_child(client, email="par@t.com"):
@@ -30,9 +40,9 @@ async def test_admin_parents_requires_teacher(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_lists_parents_with_child_count(client):
+async def test_admin_lists_parents_with_child_count(client, db):
     await _parent_with_child(client, email="p1@t.com")
-    ttok = await _teacher_token(client)
+    ttok = await _teacher_token(client, db)
     r = await client.get("/admin/parents", headers={"Authorization": f"Bearer {ttok}"})
     assert r.status_code == 200
     rows = r.json()
@@ -42,9 +52,16 @@ async def test_admin_lists_parents_with_child_count(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_overview_counts(client):
+async def test_admin_overview_counts(client, db):
     await _parent_with_child(client, email="p2@t.com")
-    ttok = await _teacher_token(client, email="t2@t.com")
+    # Madde 2026-09-07 (Antrenör Paneli, 5): total_teachers artık GERÇEK
+    # antrenör hesaplarını (role=teacher) sayıyor — _teacher_token()'ın
+    # oluşturduğu hesap ARTIK admin'e yükseltiliyor, o yüzden sayaç için
+    # AYRI, sıradan bir antrenör hesabı da lazım.
+    await client.post("/auth/teacher/signup", json={
+        "email": "plain_teacher@t.com", "password": "guvenli12345", "name": "Antrenör",
+    })
+    ttok = await _teacher_token(client, db, email="t2@t.com")
     r = await client.get("/admin/overview", headers={"Authorization": f"Bearer {ttok}"})
     assert r.status_code == 200
     body = r.json()
@@ -54,9 +71,9 @@ async def test_admin_overview_counts(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_reset_password_then_login(client):
+async def test_admin_reset_password_then_login(client, db):
     _, pid = await _parent_with_child(client, email="reset@t.com")
-    ttok = await _teacher_token(client, email="t3@t.com")
+    ttok = await _teacher_token(client, db, email="t3@t.com")
     r = await client.post(f"/admin/parents/{pid}/reset-password",
                           headers={"Authorization": f"Bearer {ttok}"},
                           json={"new_password": "yeniSifre123"})
@@ -70,9 +87,9 @@ async def test_admin_reset_password_then_login(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_delete_parent(client):
+async def test_admin_delete_parent(client, db):
     _, pid = await _parent_with_child(client, email="del@t.com")
-    ttok = await _teacher_token(client, email="t4@t.com")
+    ttok = await _teacher_token(client, db, email="t4@t.com")
     r = await client.delete(f"/admin/parents/{pid}",
                             headers={"Authorization": f"Bearer {ttok}"})
     assert r.status_code == 200
@@ -94,7 +111,7 @@ async def test_admin_delete_parent_with_dependent_records(client, db):
     db.add(Device(parent_user_id=pid, device_fingerprint="dep-dev", name="D"))
     await db.commit()
 
-    ttok = await _teacher_token(client, email="tdeps@t.com")
+    ttok = await _teacher_token(client, db, email="tdeps@t.com")
     r = await client.delete(f"/admin/parents/{pid}",
                             headers={"Authorization": f"Bearer {ttok}"})
     assert r.status_code == 200
@@ -114,8 +131,8 @@ async def test_admin_delete_parent_with_dependent_records(client, db):
 
 
 @pytest.mark.asyncio
-async def test_admin_module_lessons(client):
-    ttok = await _teacher_token(client, email="tlessons@t.com")
+async def test_admin_module_lessons(client, db):
+    ttok = await _teacher_token(client, db, email="tlessons@t.com")
     # Bilinmeyen modül 404
     r = await client.get("/admin/modules/999999/lessons",
                          headers={"Authorization": f"Bearer {ttok}"})
@@ -132,10 +149,10 @@ async def test_admin_module_lessons(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_module_description_roundtrips(client):
+async def test_admin_module_description_roundtrips(client, db):
     """Madde 2026-09-05 (1): Module.description GET /admin/content'te döner ve
     PATCH /admin/modules/{id} ile güncellenebilir (Düzey tanımları özelliği)."""
-    ttok = await _teacher_token(client, email="tdesc@t.com")
+    ttok = await _teacher_token(client, db, email="tdesc@t.com")
     h = {"Authorization": f"Bearer {ttok}"}
 
     r = await client.post("/admin/modules", headers=h,
@@ -158,11 +175,11 @@ async def test_admin_module_description_roundtrips(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_module_topics_roundtrips(client):
+async def test_admin_module_topics_roundtrips(client, db):
     """Madde 2026-09-07 (2): Module.topics (başlığın 3. satırı) GET
     /admin/content'te döner ve PATCH /admin/modules/{id} ile güncellenebilir
     — description ile AYNI opsiyonel-boş desen."""
-    ttok = await _teacher_token(client, email="ttopics@t.com")
+    ttok = await _teacher_token(client, db, email="ttopics@t.com")
     h = {"Authorization": f"Bearer {ttok}"}
 
     r = await client.post("/admin/modules", headers=h,
@@ -184,14 +201,14 @@ async def test_admin_module_topics_roundtrips(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_module_tab_kopyala_yapistir_temizlenir(client):
+async def test_admin_module_tab_kopyala_yapistir_temizlenir(client, db):
     """BUG FIX (2026-09-08): Zafer bir tablodan kopyala-yapıştır yaparken
     "isim" alanına TAB karakteriyle isim+açıklama birleşik yapıştırmıştı
     (ör. "Temel Düzey\\t(Anasınıfı...)") — başlık tek karışık satır olarak
     görünmeye başladı (bkz. modules.topics migration ModuleFieldsDataFix).
     Artık name/description/topics'teki tab/satır sonu tek boşluğa çevrilip
     kırpılıyor, bu hata BİR DAHA sessizce oluşamaz."""
-    ttok = await _teacher_token(client, email="ttab@t.com")
+    ttok = await _teacher_token(client, db, email="ttab@t.com")
     h = {"Authorization": f"Bearer {ttok}"}
 
     r = await client.post("/admin/modules", headers=h, json={
@@ -211,8 +228,8 @@ async def test_admin_module_tab_kopyala_yapistir_temizlenir(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_cannot_delete_teacher(client):
-    ttok = await _teacher_token(client, email="t5@t.com")
+async def test_admin_cannot_delete_teacher(client, db):
+    ttok = await _teacher_token(client, db, email="t5@t.com")
     # Başka bir teacher hedefle
     r = await client.post("/auth/teacher/signup", json={
         "email": "victim@t.com", "password": "guvenli12345", "name": "Vv",

@@ -16,14 +16,17 @@ import { pressed } from '@/components/ui/neumorphic';
 export default function CoachProfilePage() {
   const router = useRouter();
   const auth = useAuth();
-  const { role } = auth;
+  const { role, hydrated } = auth;
   const [authReady, setAuthReady] = useState(false);
   const [teacherName, setTeacherName] = useState<string | null>(null);
 
+  // bkz. lib/auth-context.tsx `hydrated` doc-comment'i — role henüz
+  // çözülmeden karar verirsek F5'te geçerli antrenör bile dışarı atılır.
   useEffect(() => {
+    if (!hydrated) return;
     if (!getToken() || role !== 'teacher') { router.replace('/'); return; }
     setAuthReady(true);
-  }, [role, router]);
+  }, [role, hydrated, router]);
 
   useEffect(() => { setTeacherName(getTeacherName()); }, []);
 

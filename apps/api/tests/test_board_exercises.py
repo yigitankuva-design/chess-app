@@ -1,12 +1,22 @@
 import pytest
 from chess_api.models.module import Module, Lesson
+from chess_api.models import User, UserRole
 
 
-async def _teacher_token(client, email="be@t.com"):
+async def _teacher_token(client, db, email="be@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 async def _lesson(db, order=1):
@@ -34,7 +44,7 @@ async def _post_step(client, tok, lesson_id, exercises):
 async def test_kingless_teaching_positions_accepted(client, db):
     """EN KRİTİK: Zafer'in gerçek FEN'leri şahsız — reddedilmemeli (is_valid kullanılmamalı)."""
     les = await _lesson(db, order=40)
-    tok = await _teacher_token(client, email="be1@t.com")
+    tok = await _teacher_token(client, db, email="be1@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "click_square", "instruction": "Koyu kareye tikla",
          "fen": "8/8/8/8/8/8/8/8 w - - 0 1", "target_squares": ["a1", "c3"]},
@@ -50,7 +60,7 @@ async def test_kingless_teaching_positions_accepted(client, db):
 @pytest.mark.asyncio
 async def test_explanation_without_exercises_still_ok(client, db):
     les = await _lesson(db, order=41)
-    tok = await _teacher_token(client, email="be2@t.com")
+    tok = await _teacher_token(client, db, email="be2@t.com")
     r = await client.post(f"/admin/lessons/{les.id}/steps",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"type": "explanation", "content_json": {"title": "T", "body": "b"}})
@@ -60,7 +70,7 @@ async def test_explanation_without_exercises_still_ok(client, db):
 @pytest.mark.asyncio
 async def test_unparseable_fen_rejected(client, db):
     les = await _lesson(db, order=42)
-    tok = await _teacher_token(client, email="be3@t.com")
+    tok = await _teacher_token(client, db, email="be3@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "click_square", "instruction": "x", "fen": "bu-fen-degil", "target_squares": ["a1"]},
     ])
@@ -70,7 +80,7 @@ async def test_unparseable_fen_rejected(client, db):
 @pytest.mark.asyncio
 async def test_empty_instruction_rejected(client, db):
     les = await _lesson(db, order=43)
-    tok = await _teacher_token(client, email="be4@t.com")
+    tok = await _teacher_token(client, db, email="be4@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "click_square", "instruction": "", "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
          "target_squares": ["a1"]},
@@ -81,7 +91,7 @@ async def test_empty_instruction_rejected(client, db):
 @pytest.mark.asyncio
 async def test_click_square_bad_targets_rejected(client, db):
     les = await _lesson(db, order=44)
-    tok = await _teacher_token(client, email="be5@t.com")
+    tok = await _teacher_token(client, db, email="be5@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "click_square", "instruction": "x", "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
          "target_squares": []},
@@ -98,7 +108,7 @@ async def test_click_square_bad_targets_rejected(client, db):
 async def test_move_piece_validations(client, db):
     """Eski format (piece_square/target_squares) artık kabul edilmiyor — moves gerekli."""
     les = await _lesson(db, order=45)
-    tok = await _teacher_token(client, email="be6@t.com")
+    tok = await _teacher_token(client, db, email="be6@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x", "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
          "piece_square": "e2", "target_squares": ["e4"]},
@@ -110,7 +120,7 @@ async def test_move_piece_validations(client, db):
 async def test_promotion_move_accepted_as_san(client, db):
     """Terfi artık SAN ile ifade edilebiliyor (e8=Q) — eski from/to modelinde imkansızdı."""
     les = await _lesson(db, order=46)
-    tok = await _teacher_token(client, email="be7@t.com")
+    tok = await _teacher_token(client, db, email="be7@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x", "fen": "k7/4P3/8/8/8/8/8/4K3 w - - 0 1",
          "moves": ["e8=Q"]},
@@ -121,7 +131,7 @@ async def test_promotion_move_accepted_as_san(client, db):
 @pytest.mark.asyncio
 async def test_identify_piece_validations(client, db):
     les = await _lesson(db, order=47)
-    tok = await _teacher_token(client, email="be8@t.com")
+    tok = await _teacher_token(client, db, email="be8@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "identify_piece", "instruction": "x", "fen": "8/8/8/8/4n3/8/8/8 b - - 0 1",
          "highlight_square": "e4", "options": ["A", "B"], "correct_index": 5},
@@ -142,7 +152,7 @@ async def test_identify_piece_validations(client, db):
 @pytest.mark.asyncio
 async def test_unknown_exercise_type_rejected(client, db):
     les = await _lesson(db, order=48)
-    tok = await _teacher_token(client, email="be9@t.com")
+    tok = await _teacher_token(client, db, email="be9@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "sarki_soyle", "instruction": "x", "fen": "8/8/8/8/8/8/8/8 w - - 0 1"},
     ])
@@ -153,7 +163,7 @@ async def test_unknown_exercise_type_rejected(client, db):
 async def test_timed_and_test_mode_fields_accepted_and_validated(client, db):
     """3 pratik modu (board_exercises / _timed / _test) ayrı listelerde saklanır ve doğrulanır."""
     les = await _lesson(db, order=71)
-    tok = await _teacher_token(client, email="be_modes@t.com")
+    tok = await _teacher_token(client, db, email="be_modes@t.com")
     valid = {"type": "click_square", "instruction": "Koyu kareye tikla",
              "fen": "8/8/8/8/8/8/8/8 w - - 0 1", "target_squares": ["a1"]}
     # Üç mod da geçerli veriyle kabul edilir
@@ -174,7 +184,7 @@ async def test_timed_and_test_mode_fields_accepted_and_validated(client, db):
 async def test_invalid_exercise_in_timed_mode_rejected(client, db):
     """Süreli mod listesindeki geçersiz soru da reddedilmeli (doğrulama tüm modlara uygulanır)."""
     les = await _lesson(db, order=72)
-    tok = await _teacher_token(client, email="be_timedbad@t.com")
+    tok = await _teacher_token(client, db, email="be_timedbad@t.com")
     r = await client.post(
         f"/admin/lessons/{les.id}/steps",
         headers={"Authorization": f"Bearer {tok}"},
@@ -218,7 +228,7 @@ def test_data_uri_size_check_rejects_non_string():
 @pytest.mark.asyncio
 async def test_sentence_question_accepted(client, db):
     les = await _lesson(db, order=90)
-    tok = await _teacher_token(client, email="be_sentence@t.com")
+    tok = await _teacher_token(client, db, email="be_sentence@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "sentence_question", "instruction": "Atın hareket şekli nasıldır?",
          "answer_kind": "sentence", "options": ["L şeklinde", "Düz çizgide"], "correct_index": 0},
@@ -229,7 +239,7 @@ async def test_sentence_question_accepted(client, db):
 @pytest.mark.asyncio
 async def test_sentence_question_without_text_rejected(client, db):
     les = await _lesson(db, order=91)
-    tok = await _teacher_token(client, email="be_sentence2@t.com")
+    tok = await _teacher_token(client, db, email="be_sentence2@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "sentence_question", "instruction": "",
          "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 0},
@@ -240,7 +250,7 @@ async def test_sentence_question_without_text_rejected(client, db):
 @pytest.mark.asyncio
 async def test_image_question_requires_prompt_image(client, db):
     les = await _lesson(db, order=92)
-    tok = await _teacher_token(client, email="be_image@t.com")
+    tok = await _teacher_token(client, db, email="be_image@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "",
          "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 0},
@@ -252,7 +262,7 @@ async def test_image_question_requires_prompt_image(client, db):
 async def test_image_question_accepted_with_empty_instruction(client, db):
     """Görüntü sorusunda instruction opsiyonel — boş olabilir."""
     les = await _lesson(db, order=93)
-    tok = await _teacher_token(client, email="be_image2@t.com")
+    tok = await _teacher_token(client, db, email="be_image2@t.com")
     small_img = "data:image/jpeg;base64," + ("A" * 100)
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "", "prompt_image": small_img,
@@ -264,7 +274,7 @@ async def test_image_question_accepted_with_empty_instruction(client, db):
 @pytest.mark.asyncio
 async def test_choice_question_bad_option_count_rejected(client, db):
     les = await _lesson(db, order=94)
-    tok = await _teacher_token(client, email="be_optcount@t.com")
+    tok = await _teacher_token(client, db, email="be_optcount@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "sentence_question", "instruction": "x",
          "answer_kind": "sentence", "options": ["Tek"], "correct_index": 0},
@@ -280,7 +290,7 @@ async def test_choice_question_bad_option_count_rejected(client, db):
 @pytest.mark.asyncio
 async def test_choice_question_bad_correct_index_rejected(client, db):
     les = await _lesson(db, order=95)
-    tok = await _teacher_token(client, email="be_ci@t.com")
+    tok = await _teacher_token(client, db, email="be_ci@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "sentence_question", "instruction": "x",
          "answer_kind": "sentence", "options": ["A", "B"], "correct_index": 5},
@@ -291,7 +301,7 @@ async def test_choice_question_bad_correct_index_rejected(client, db):
 @pytest.mark.asyncio
 async def test_choice_question_invalid_answer_kind_rejected(client, db):
     les = await _lesson(db, order=96)
-    tok = await _teacher_token(client, email="be_ak@t.com")
+    tok = await _teacher_token(client, db, email="be_ak@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "sentence_question", "instruction": "x",
          "answer_kind": "video", "options": ["A", "B"], "correct_index": 0},
@@ -302,7 +312,7 @@ async def test_choice_question_invalid_answer_kind_rejected(client, db):
 @pytest.mark.asyncio
 async def test_choice_question_empty_sentence_option_rejected(client, db):
     les = await _lesson(db, order=97)
-    tok = await _teacher_token(client, email="be_empty@t.com")
+    tok = await _teacher_token(client, db, email="be_empty@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "sentence_question", "instruction": "x",
          "answer_kind": "sentence", "options": ["A", ""], "correct_index": 0},
@@ -313,7 +323,7 @@ async def test_choice_question_empty_sentence_option_rejected(client, db):
 @pytest.mark.asyncio
 async def test_choice_question_oversized_option_image_rejected(client, db):
     les = await _lesson(db, order=98)
-    tok = await _teacher_token(client, email="be_optimg@t.com")
+    tok = await _teacher_token(client, db, email="be_optimg@t.com")
     huge_img = "data:image/jpeg;base64," + ("A" * 500_000)
     small_img = "data:image/jpeg;base64," + ("A" * 100)
     r = await _post_step(client, tok, les.id, [
@@ -327,7 +337,7 @@ async def test_choice_question_oversized_option_image_rejected(client, db):
 async def test_mixed_board_and_choice_types_in_same_pool_accepted(client, db):
     """Konum + Cümle + Görüntü soruları aynı havuzda karışık kabul edilmeli."""
     les = await _lesson(db, order=99)
-    tok = await _teacher_token(client, email="be_mixed@t.com")
+    tok = await _teacher_token(client, db, email="be_mixed@t.com")
     small_img = "data:image/jpeg;base64," + ("A" * 100)
     r = await _post_step(client, tok, les.id, [
         {"type": "click_square", "instruction": "Koyu kareye tikla",
@@ -344,7 +354,7 @@ async def test_mixed_board_and_choice_types_in_same_pool_accepted(client, db):
 async def test_move_piece_valid_move_sequence_accepted(client, db):
     """İki taraflı pozisyonda çoklu hamle dizisi kabul edilir."""
     les = await _lesson(db, order=110)
-    tok = await _teacher_token(client, email="mp_ok@t.com")
+    tok = await _teacher_token(client, db, email="mp_ok@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "Taktigi oyna",
          "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": ["Rh4", "Kf8"]},
@@ -356,7 +366,7 @@ async def test_move_piece_valid_move_sequence_accepted(client, db):
 async def test_move_piece_kingless_teaching_position_accepted(client, db):
     """EN KRİTİK: Zafer'in şahsız öğretim pozisyonları reddedilmemeli."""
     les = await _lesson(db, order=111)
-    tok = await _teacher_token(client, email="mp_kingless@t.com")
+    tok = await _teacher_token(client, db, email="mp_kingless@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "Piyonu ilerlet",
          "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1", "moves": ["e4"]},
@@ -367,7 +377,7 @@ async def test_move_piece_kingless_teaching_position_accepted(client, db):
 @pytest.mark.asyncio
 async def test_move_piece_empty_moves_rejected(client, db):
     les = await _lesson(db, order=112)
-    tok = await _teacher_token(client, email="mp_empty@t.com")
+    tok = await _teacher_token(client, db, email="mp_empty@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x",
          "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": []},
@@ -378,7 +388,7 @@ async def test_move_piece_empty_moves_rejected(client, db):
 @pytest.mark.asyncio
 async def test_move_piece_illegal_san_rejected(client, db):
     les = await _lesson(db, order=113)
-    tok = await _teacher_token(client, email="mp_illegal@t.com")
+    tok = await _teacher_token(client, db, email="mp_illegal@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x",
          "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": ["Qh8"]},
@@ -389,7 +399,7 @@ async def test_move_piece_illegal_san_rejected(client, db):
 @pytest.mark.asyncio
 async def test_move_piece_garbage_san_rejected(client, db):
     les = await _lesson(db, order=114)
-    tok = await _teacher_token(client, email="mp_garbage@t.com")
+    tok = await _teacher_token(client, db, email="mp_garbage@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x",
          "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": ["zz9"]},
@@ -401,7 +411,7 @@ async def test_move_piece_garbage_san_rejected(client, db):
 async def test_move_piece_out_of_turn_move_rejected(client, db):
     """Tek renkli pozisyonda ikinci bir beyaz hamle sıraya aykırı — reddedilmeli."""
     les = await _lesson(db, order=115)
-    tok = await _teacher_token(client, email="mp_turn@t.com")
+    tok = await _teacher_token(client, db, email="mp_turn@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x",
          "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1", "moves": ["e4", "e5"]},
@@ -412,7 +422,7 @@ async def test_move_piece_out_of_turn_move_rejected(client, db):
 @pytest.mark.asyncio
 async def test_move_piece_non_string_move_rejected(client, db):
     les = await _lesson(db, order=116)
-    tok = await _teacher_token(client, email="mp_nonstr@t.com")
+    tok = await _teacher_token(client, db, email="mp_nonstr@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "move_piece", "instruction": "x",
          "fen": "6k1/8/5K2/8/5R2/8/8/8 w - - 0 1", "moves": [42]},
@@ -426,7 +436,7 @@ async def test_yeni_soru_tipleri_uc_modda_da_kabul_edilir(client, db):
     kullanılabilmeli. Üç liste de AYNI doğrulamadan geçiyor (admin.py:686) —
     bu test o güvenceyi kilitler."""
     les = await _lesson(db, order=73)
-    tok = await _teacher_token(client, email="be_newtypes@t.com")
+    tok = await _teacher_token(client, db, email="be_newtypes@t.com")
     sentence = {"type": "sentence_question", "instruction": "Atın hareketi?",
                 "answer_kind": "sentence", "options": ["L şeklinde", "Düz"],
                 "correct_index": 0}
@@ -450,7 +460,7 @@ async def test_yeni_soru_tipleri_uc_modda_da_kabul_edilir(client, db):
 async def test_gecersiz_cumle_sorusu_kendini_test_modunda_da_reddedilir(client, db):
     """Kendini Test Et listesindeki bozuk Cümle sorusu da reddedilmeli."""
     les = await _lesson(db, order=74)
-    tok = await _teacher_token(client, email="be_testbad@t.com")
+    tok = await _teacher_token(client, db, email="be_testbad@t.com")
     r = await client.post(
         f"/admin/lessons/{les.id}/steps",
         headers={"Authorization": f"Bearer {tok}"},
@@ -468,7 +478,7 @@ async def test_gecersiz_cumle_sorusu_kendini_test_modunda_da_reddedilir(client, 
 @pytest.mark.asyncio
 async def test_image_question_accepts_placement_fields(client, db):
     les = await _lesson(db, order=200)
-    tok = await _teacher_token(client, email="placement1@t.com")
+    tok = await _teacher_token(client, db, email="placement1@t.com")
     small_img = "data:image/png;base64," + "A" * 100
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "Fili şu kareye sür",
@@ -484,7 +494,7 @@ async def test_image_question_accepts_placement_fields(client, db):
 async def test_image_question_placement_fields_optional(client, db):
     """Eski sorular gibi hiç placement alanı göndermeden de kabul edilmeli (KURAL #3)."""
     les = await _lesson(db, order=201)
-    tok = await _teacher_token(client, email="placement2@t.com")
+    tok = await _teacher_token(client, db, email="placement2@t.com")
     small_img = "data:image/png;base64," + "A" * 100
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
@@ -496,7 +506,7 @@ async def test_image_question_placement_fields_optional(client, db):
 @pytest.mark.asyncio
 async def test_image_question_rejects_out_of_range_placement(client, db):
     les = await _lesson(db, order=202)
-    tok = await _teacher_token(client, email="placement3@t.com")
+    tok = await _teacher_token(client, db, email="placement3@t.com")
     small_img = "data:image/png;base64," + "A" * 100
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
@@ -509,7 +519,7 @@ async def test_image_question_rejects_out_of_range_placement(client, db):
 @pytest.mark.asyncio
 async def test_image_question_rejects_non_bool_show_board(client, db):
     les = await _lesson(db, order=203)
-    tok = await _teacher_token(client, email="placement4@t.com")
+    tok = await _teacher_token(client, db, email="placement4@t.com")
     small_img = "data:image/png;base64," + "A" * 100
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
@@ -522,7 +532,7 @@ async def test_image_question_rejects_non_bool_show_board(client, db):
 @pytest.mark.asyncio
 async def test_image_question_accepts_prompt_images_array(client, db):
     les = await _lesson(db, order=210)
-    tok = await _teacher_token(client, email="multi1@t.com")
+    tok = await _teacher_token(client, db, email="multi1@t.com")
     img_a = "data:image/png;base64," + "A" * 100
     img_b = "data:image/png;base64," + "B" * 100
     r = await _post_step(client, tok, les.id, [
@@ -539,7 +549,7 @@ async def test_image_question_accepts_prompt_images_array(client, db):
 @pytest.mark.asyncio
 async def test_image_question_rejects_empty_prompt_images(client, db):
     les = await _lesson(db, order=211)
-    tok = await _teacher_token(client, email="multi2@t.com")
+    tok = await _teacher_token(client, db, email="multi2@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "Soru", "prompt_images": [],
          "answer_kind": "sentence", "options": ["a", "b"], "correct_index": 0},
@@ -550,7 +560,7 @@ async def test_image_question_rejects_empty_prompt_images(client, db):
 @pytest.mark.asyncio
 async def test_image_question_rejects_out_of_range_element_in_prompt_images(client, db):
     les = await _lesson(db, order=212)
-    tok = await _teacher_token(client, email="multi3@t.com")
+    tok = await _teacher_token(client, db, email="multi3@t.com")
     img_a = "data:image/png;base64," + "A" * 100
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "Soru",
@@ -564,7 +574,7 @@ async def test_image_question_rejects_out_of_range_element_in_prompt_images(clie
 async def test_image_question_legacy_prompt_image_still_accepted(client, db):
     """Eski tekil format hâlâ çalışmalı — geriye uyumluluk (KURAL #3)."""
     les = await _lesson(db, order=213)
-    tok = await _teacher_token(client, email="multi4@t.com")
+    tok = await _teacher_token(client, db, email="multi4@t.com")
     small_img = "data:image/png;base64," + "A" * 100
     r = await _post_step(client, tok, les.id, [
         {"type": "image_question", "instruction": "Soru", "prompt_image": small_img,
@@ -577,7 +587,7 @@ async def test_image_question_legacy_prompt_image_still_accepted(client, db):
 async def test_click_square_accepts_click_mode(client, db):
     """click_mode 'all' kabul edilmeli (madde 2)."""
     les = await _lesson(db, order=301)
-    tok = await _teacher_token(client, email="cm1@t.com")
+    tok = await _teacher_token(client, db, email="cm1@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "click_square", "instruction": "hepsi",
          "fen": "8/8/8/8/4P3/8/8/8 w - - 0 1",
@@ -590,7 +600,7 @@ async def test_click_square_accepts_click_mode(client, db):
 async def test_click_square_rejects_bad_click_mode(client, db):
     """Geçersiz click_mode reddedilmeli."""
     les = await _lesson(db, order=302)
-    tok = await _teacher_token(client, email="cm2@t.com")
+    tok = await _teacher_token(client, db, email="cm2@t.com")
     r = await _post_step(client, tok, les.id, [
         {"type": "click_square", "instruction": "x",
          "fen": "8/8/8/8/4P3/8/8/8 w - - 0 1",

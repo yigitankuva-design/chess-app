@@ -1,13 +1,23 @@
 import pytest
 from sqlalchemy import select, func
+from chess_api.models import User, UserRole
 from chess_api.models.module import Module, Lesson, LessonStep, LessonStepType
 
 
-async def _teacher_token(client, email="cmst@t.com"):
+async def _teacher_token(client, db, email="cmst@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 async def _module(db, order=1, name="Temel"):
@@ -47,7 +57,7 @@ async def test_existing_lessons_default_published(db):
 @pytest.mark.asyncio
 async def test_create_lesson_starts_as_draft(client, db):
     m = await _module(db, order=10, name="M10")
-    tok = await _teacher_token(client, email="cl1@t.com")
+    tok = await _teacher_token(client, db, email="cl1@t.com")
     r = await client.post(f"/admin/modules/{m.id}/lessons",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"title": "Yeni Ders", "estimated_minutes": 12})
@@ -60,7 +70,7 @@ async def test_create_lesson_starts_as_draft(client, db):
 @pytest.mark.asyncio
 async def test_publish_and_unpublish_lesson(client, db):
     m = await _module(db, order=11, name="M11")
-    tok = await _teacher_token(client, email="cl2@t.com")
+    tok = await _teacher_token(client, db, email="cl2@t.com")
     r = await client.post(f"/admin/modules/{m.id}/lessons",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"title": "D", "estimated_minutes": 10})
@@ -81,7 +91,7 @@ async def test_publish_and_unpublish_lesson(client, db):
 async def test_move_lesson_to_another_module(client, db):
     m1 = await _module(db, order=12, name="M12")
     m2 = await _module(db, order=13, name="M13")
-    tok = await _teacher_token(client, email="cl3@t.com")
+    tok = await _teacher_token(client, db, email="cl3@t.com")
     r = await client.post(f"/admin/modules/{m1.id}/lessons",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"title": "Tasinacak", "estimated_minutes": 10})
@@ -99,7 +109,7 @@ async def test_delete_lesson_blocked_when_progress_exists(client, db):
     from chess_api.models.progress import LessonStatus
 
     m = await _module(db, order=14, name="M14")
-    tok = await _teacher_token(client, email="cl4@t.com")
+    tok = await _teacher_token(client, db, email="cl4@t.com")
     r = await client.post(f"/admin/modules/{m.id}/lessons",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"title": "Ilerlemeli", "estimated_minutes": 10})
@@ -120,7 +130,7 @@ async def test_delete_lesson_blocked_when_progress_exists(client, db):
 @pytest.mark.asyncio
 async def test_delete_lesson_without_progress_ok(client, db):
     m = await _module(db, order=15, name="M15")
-    tok = await _teacher_token(client, email="cl5@t.com")
+    tok = await _teacher_token(client, db, email="cl5@t.com")
     r = await client.post(f"/admin/modules/{m.id}/lessons",
                           headers={"Authorization": f"Bearer {tok}"},
                           json={"title": "Bos Ders", "estimated_minutes": 10})
@@ -140,7 +150,7 @@ async def test_delete_lesson_without_progress_ok(client, db):
 @pytest.mark.asyncio
 async def test_admin_lessons_list_shows_drafts(client, db):
     m = await _module(db, order=16, name="M16")
-    tok = await _teacher_token(client, email="cl6@t.com")
+    tok = await _teacher_token(client, db, email="cl6@t.com")
     await client.post(f"/admin/modules/{m.id}/lessons",
                       headers={"Authorization": f"Bearer {tok}"},
                       json={"title": "Taslak Ders", "estimated_minutes": 10})

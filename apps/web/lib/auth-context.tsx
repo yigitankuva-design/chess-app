@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getToken, saveToken, clearAuth } from './auth-storage';
 
-type Role = 'parent' | 'teacher' | 'child' | 'athlete' | null;
+type Role = 'parent' | 'teacher' | 'child' | 'athlete' | 'admin' | null;
 
 interface AuthState {
   token: string | null;
@@ -11,6 +11,15 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
+  /** Madde 2026-09-07 (Antrenör Paneli, 5): sessionStorage'daki token'ın
+   *  okunup çözülmesi bir `useEffect` içinde olur — İLK render'da HENÜZ
+   *  çalışmamıştır. Bir sayfa `role`'e bakıp YÖNLENDİRME kararı veriyorsa
+   *  (ör. "/coach"un teacher koruması) bunu `hydrated` GERÇEKTEN `true`
+   *  olana kadar ERTELEMELİ — yoksa geçerli bir token'la gelen kullanıcı
+   *  bile `role` henüz `null`ken (React child effect'leri PARENT'tan ÖNCE
+   *  çalışır — bu Provider'ın kendi effect'i çalışmadan) YANLIŞLIKLA
+   *  dışarı atılır. */
+  hydrated: boolean;
   login: (token: string, role: Role, userId: number) => void;
   logout: () => void;
 }
@@ -37,6 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     token: null, role: null, userId: null,
   });
+  // Madde 2026-09-07 (Antrenör Paneli, 5): aşağıdaki effect bitene kadar
+  // false — bkz. AuthContextValue.hydrated doc-comment'i.
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -48,11 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearAuth();
       }
     }
+    setHydrated(true);
   }, []);
 
   return (
     <AuthContext.Provider value={{
       ...state,
+      hydrated,
       login: (token, role, userId) => {
         saveToken(token);
         setState({ token, role, userId });

@@ -1,13 +1,23 @@
 import pytest
+from chess_api.models import User, UserRole
 
 VALID_FEN = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1"
 
 
-async def _teacher_token(client, email="op@t.com"):
+async def _teacher_token(client, db, email="op@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 async def _create_type(client, h, name="Tür"):
@@ -26,8 +36,8 @@ def _flat_openings(list_body):
 
 
 @pytest.mark.asyncio
-async def test_ogretmen_acilis_ekler(client):
-    tok = await _teacher_token(client, "op1@t.com")
+async def test_ogretmen_acilis_ekler(client, db):
+    tok = await _teacher_token(client, db, "op1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     r = await client.post("/admin/openings", headers=h,
@@ -38,10 +48,10 @@ async def test_ogretmen_acilis_ekler(client):
 
 
 @pytest.mark.asyncio
-async def test_acilis_listesi_herkese_acik_ve_varyantsiz_bos_liste_doner(client):
+async def test_acilis_listesi_herkese_acik_ve_varyantsiz_bos_liste_doner(client, db):
     """Sporcu acilis listesini gorebilmeli (mac kurarken secer). Varyant
     eklenmemis bir acilisin 'variants' alani BOS DIZIDIR."""
-    tok = await _teacher_token(client, "op2@t.com")
+    tok = await _teacher_token(client, db, "op2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     await client.post("/admin/openings", headers=h, json={"name": "Sicilya", "opening_type_id": tid})
@@ -54,8 +64,8 @@ async def test_acilis_listesi_herkese_acik_ve_varyantsiz_bos_liste_doner(client)
 
 
 @pytest.mark.asyncio
-async def test_bos_isim_reddedilir(client):
-    tok = await _teacher_token(client, "op4@t.com")
+async def test_bos_isim_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "op4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     r = await client.post("/admin/openings", headers=h,
@@ -64,8 +74,8 @@ async def test_bos_isim_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_olmayan_tur_ile_acilis_eklenemez(client):
-    tok = await _teacher_token(client, "op4b@t.com")
+async def test_olmayan_tur_ile_acilis_eklenemez(client, db):
+    tok = await _teacher_token(client, db, "op4b@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     r = await client.post("/admin/openings", headers=h,
                           json={"name": "X", "opening_type_id": 999999})
@@ -73,8 +83,8 @@ async def test_olmayan_tur_ile_acilis_eklenemez(client):
 
 
 @pytest.mark.asyncio
-async def test_ogretmen_acilis_siler_ve_varyantlari_da_gider(client):
-    tok = await _teacher_token(client, "op5@t.com")
+async def test_ogretmen_acilis_siler_ve_varyantlari_da_gider(client, db):
+    tok = await _teacher_token(client, db, "op5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     created = await client.post("/admin/openings", headers=h,
@@ -97,8 +107,8 @@ async def test_tokensiz_ekleme_engellenir(client):
 # ── Madde 7: duzenleme ──────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_ogretmen_acilisi_duzenler(client):
-    tok = await _teacher_token(client, "op6@t.com")
+async def test_ogretmen_acilisi_duzenler(client, db):
+    tok = await _teacher_token(client, db, "op6@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     created = await client.post("/admin/openings", headers=h,
@@ -114,8 +124,8 @@ async def test_ogretmen_acilisi_duzenler(client):
 
 
 @pytest.mark.asyncio
-async def test_olmayan_acilisi_duzenlemek_404_doner(client):
-    tok = await _teacher_token(client, "op8@t.com")
+async def test_olmayan_acilisi_duzenlemek_404_doner(client, db):
+    tok = await _teacher_token(client, db, "op8@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     r = await client.patch("/admin/openings/999999", headers=h, json={"name": "A"})
     assert r.status_code == 404
@@ -124,8 +134,8 @@ async def test_olmayan_acilisi_duzenlemek_404_doner(client):
 # ── Madde 8: siralama ────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_yeni_acilislar_ekleme_sirasinda_listelenir(client):
-    tok = await _teacher_token(client, "op9@t.com")
+async def test_yeni_acilislar_ekleme_sirasinda_listelenir(client, db):
+    tok = await _teacher_token(client, db, "op9@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     await client.post("/admin/openings", headers=h, json={"name": "Birinci", "opening_type_id": tid})
@@ -136,8 +146,8 @@ async def test_yeni_acilislar_ekleme_sirasinda_listelenir(client):
 
 
 @pytest.mark.asyncio
-async def test_asagi_tasima_komsuyla_yer_degistirir(client):
-    tok = await _teacher_token(client, "op10@t.com")
+async def test_asagi_tasima_komsuyla_yer_degistirir(client, db):
+    tok = await _teacher_token(client, db, "op10@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     a = await client.post("/admin/openings", headers=h, json={"name": "A", "opening_type_id": tid})
@@ -153,8 +163,8 @@ async def test_asagi_tasima_komsuyla_yer_degistirir(client):
 
 
 @pytest.mark.asyncio
-async def test_yukari_tasima_komsuyla_yer_degistirir(client):
-    tok = await _teacher_token(client, "op11@t.com")
+async def test_yukari_tasima_komsuyla_yer_degistirir(client, db):
+    tok = await _teacher_token(client, db, "op11@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     await client.post("/admin/openings", headers=h, json={"name": "A", "opening_type_id": tid})
@@ -169,10 +179,10 @@ async def test_yukari_tasima_komsuyla_yer_degistirir(client):
 
 
 @pytest.mark.asyncio
-async def test_TUZAK_listenin_ucundaki_tasima_sessizce_hicbir_sey_yapmaz(client):
+async def test_TUZAK_listenin_ucundaki_tasima_sessizce_hicbir_sey_yapmaz(client, db):
     """En basttaki acilis yukari, en sondaki asagi tasinmaya calisilirsa
     hata FIRLATILMAZ — cagiran zaten en ucta oldugunu bilir."""
-    tok = await _teacher_token(client, "op12@t.com")
+    tok = await _teacher_token(client, db, "op12@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     a = await client.post("/admin/openings", headers=h, json={"name": "A", "opening_type_id": tid})
@@ -193,8 +203,8 @@ async def test_TUZAK_listenin_ucundaki_tasima_sessizce_hicbir_sey_yapmaz(client)
 # ── Açılış Türleri (madde: 2026-08-20) ───────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_tur_eklenir_ve_listede_doner(client):
-    tok = await _teacher_token(client, "ot1@t.com")
+async def test_tur_eklenir_ve_listede_doner(client, db):
+    tok = await _teacher_token(client, db, "ot1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     r = await client.post("/admin/opening-types", headers=h, json={"name": "e4'lü Açılışlar"})
     assert r.status_code == 201
@@ -205,16 +215,16 @@ async def test_tur_eklenir_ve_listede_doner(client):
 
 
 @pytest.mark.asyncio
-async def test_tur_bos_isim_reddedilir(client):
-    tok = await _teacher_token(client, "ot2@t.com")
+async def test_tur_bos_isim_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "ot2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     r = await client.post("/admin/opening-types", headers=h, json={"name": "  "})
     assert r.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_tur_duzenlenir(client):
-    tok = await _teacher_token(client, "ot3@t.com")
+async def test_tur_duzenlenir(client, db):
+    tok = await _teacher_token(client, db, "ot3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h, "Eski Ad")
     r = await client.patch(f"/admin/opening-types/{tid}", headers=h, json={"name": "Yeni Ad"})
@@ -224,16 +234,16 @@ async def test_tur_duzenlenir(client):
 
 
 @pytest.mark.asyncio
-async def test_olmayan_tur_duzenlemek_404_doner(client):
-    tok = await _teacher_token(client, "ot4@t.com")
+async def test_olmayan_tur_duzenlemek_404_doner(client, db):
+    tok = await _teacher_token(client, db, "ot4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     r = await client.patch("/admin/opening-types/999999", headers=h, json={"name": "A"})
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_tur_silinince_altindaki_acilis_ve_varyantlar_da_gider(client):
-    tok = await _teacher_token(client, "ot5@t.com")
+async def test_tur_silinince_altindaki_acilis_ve_varyantlar_da_gider(client, db):
+    tok = await _teacher_token(client, db, "ot5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     oid = (await client.post("/admin/openings", headers=h,
@@ -249,8 +259,8 @@ async def test_tur_silinince_altindaki_acilis_ve_varyantlar_da_gider(client):
 
 
 @pytest.mark.asyncio
-async def test_tur_silinirken_bos_turde_hata_olmaz(client):
-    tok = await _teacher_token(client, "ot6@t.com")
+async def test_tur_silinirken_bos_turde_hata_olmaz(client, db):
+    tok = await _teacher_token(client, db, "ot6@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     r = await client.delete(f"/admin/opening-types/{tid}", headers=h)
@@ -264,8 +274,8 @@ async def test_tur_tokensiz_islemler_engellenir(client):
 
 
 @pytest.mark.asyncio
-async def test_duzenlemede_tur_degistirilebilir(client):
-    tok = await _teacher_token(client, "ot7@t.com")
+async def test_duzenlemede_tur_degistirilebilir(client, db):
+    tok = await _teacher_token(client, db, "ot7@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid1 = await _create_type(client, h, "Tür 1")
     tid2 = await _create_type(client, h, "Tür 2")
@@ -278,9 +288,9 @@ async def test_duzenlemede_tur_degistirilebilir(client):
 
 
 @pytest.mark.asyncio
-async def test_duzenlemede_tur_gonderilmezse_korunur(client):
+async def test_duzenlemede_tur_gonderilmezse_korunur(client, db):
     """Eski istemci opening_type_id gondermezse mevcut tur SILINMEZ."""
-    tok = await _teacher_token(client, "ot8@t.com")
+    tok = await _teacher_token(client, db, "ot8@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     created = await client.post("/admin/openings", headers=h,
@@ -291,8 +301,8 @@ async def test_duzenlemede_tur_gonderilmezse_korunur(client):
 
 
 @pytest.mark.asyncio
-async def test_duzenlemede_olmayan_tur_404_doner(client):
-    tok = await _teacher_token(client, "ot9@t.com")
+async def test_duzenlemede_olmayan_tur_404_doner(client, db):
+    tok = await _teacher_token(client, db, "ot9@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     created = await client.post("/admin/openings", headers=h,
@@ -306,8 +316,8 @@ async def test_duzenlemede_olmayan_tur_404_doner(client):
 # ── Varyantlar (madde: 2026-08-20) ──────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_varyant_eklenir_ve_listede_ic_ice_doner(client):
-    tok = await _teacher_token(client, "ov1@t.com")
+async def test_varyant_eklenir_ve_listede_ic_ice_doner(client, db):
+    tok = await _teacher_token(client, db, "ov1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     created = await client.post("/admin/openings", headers=h,
@@ -325,8 +335,8 @@ async def test_varyant_eklenir_ve_listede_ic_ice_doner(client):
 
 
 @pytest.mark.asyncio
-async def test_birden_fazla_varyant_eklenme_sirasinda_doner(client):
-    tok = await _teacher_token(client, "ov2@t.com")
+async def test_birden_fazla_varyant_eklenme_sirasinda_doner(client, db):
+    tok = await _teacher_token(client, db, "ov2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     oid = (await client.post("/admin/openings", headers=h,
@@ -341,8 +351,8 @@ async def test_birden_fazla_varyant_eklenme_sirasinda_doner(client):
 
 
 @pytest.mark.asyncio
-async def test_varyant_gecersiz_fen_reddedilir(client):
-    tok = await _teacher_token(client, "ov3@t.com")
+async def test_varyant_gecersiz_fen_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "ov3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     oid = (await client.post("/admin/openings", headers=h,
@@ -353,8 +363,8 @@ async def test_varyant_gecersiz_fen_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_varyant_bos_isim_reddedilir(client):
-    tok = await _teacher_token(client, "ov4@t.com")
+async def test_varyant_bos_isim_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "ov4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     oid = (await client.post("/admin/openings", headers=h,
@@ -365,8 +375,8 @@ async def test_varyant_bos_isim_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_olmayan_acilisa_varyant_eklenemez(client):
-    tok = await _teacher_token(client, "ov5@t.com")
+async def test_olmayan_acilisa_varyant_eklenemez(client, db):
+    tok = await _teacher_token(client, db, "ov5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     r = await client.post("/admin/openings/999999/variants", headers=h,
                           json={"name": "Y", "start_fen": VALID_FEN})
@@ -374,8 +384,8 @@ async def test_olmayan_acilisa_varyant_eklenemez(client):
 
 
 @pytest.mark.asyncio
-async def test_varyant_duzenlenir(client):
-    tok = await _teacher_token(client, "ov6@t.com")
+async def test_varyant_duzenlenir(client, db):
+    tok = await _teacher_token(client, db, "ov6@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     oid = (await client.post("/admin/openings", headers=h,
@@ -388,8 +398,8 @@ async def test_varyant_duzenlenir(client):
 
 
 @pytest.mark.asyncio
-async def test_varyant_silinir(client):
-    tok = await _teacher_token(client, "ov7@t.com")
+async def test_varyant_silinir(client, db):
+    tok = await _teacher_token(client, db, "ov7@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     oid = (await client.post("/admin/openings", headers=h,
@@ -403,8 +413,8 @@ async def test_varyant_silinir(client):
 
 
 @pytest.mark.asyncio
-async def test_varyant_tokensiz_islemler_engellenir(client):
-    tok = await _teacher_token(client, "ov8@t.com")
+async def test_varyant_tokensiz_islemler_engellenir(client, db):
+    tok = await _teacher_token(client, db, "ov8@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tid = await _create_type(client, h)
     oid = (await client.post("/admin/openings", headers=h,

@@ -1,15 +1,25 @@
 import pytest
 from sqlalchemy import select, func
 from chess_api.models.module import Module, Lesson, LessonStep, LessonStepType
+from chess_api.models import User, UserRole
 from chess_api.models import ChildProfile, ChildLessonProgress
 from chess_api.models.progress import LessonStatus
 
 
-async def _teacher_token(client, email="ct@t.com"):
+async def _teacher_token(client, db, email="ct@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 async def _seed(db):
@@ -32,7 +42,7 @@ async def _seed(db):
 @pytest.mark.asyncio
 async def test_export_returns_tree_with_ids(client, db):
     m, les, st = await _seed(db)
-    tok = await _teacher_token(client)
+    tok = await _teacher_token(client, db)
     r = await client.get("/admin/content/export", headers={"Authorization": f"Bearer {tok}"})
     assert r.status_code == 200
     body = r.json()
@@ -61,7 +71,7 @@ async def test_export_requires_teacher(client, db):
 @pytest.mark.asyncio
 async def test_import_updates_existing_and_creates_new(client, db):
     m, les, st = await _seed(db)
-    tok = await _teacher_token(client, email="ci1@t.com")
+    tok = await _teacher_token(client, db, email="ci1@t.com")
     payload = {
         "version": 1,
         "modules": [{
@@ -108,7 +118,7 @@ async def test_import_preserves_child_progress(client, db):
     db.add(ChildLessonProgress(child_id=child.id, lesson_id=les.id, status=LessonStatus.completed))
     await db.commit()
 
-    tok = await _teacher_token(client, email="ci2@t.com")
+    tok = await _teacher_token(client, db, email="ci2@t.com")
     payload = {
         "version": 1,
         "modules": [{
@@ -132,7 +142,7 @@ async def test_import_preserves_child_progress(client, db):
 async def test_import_does_not_delete_missing(client, db):
     """JSON'da olmayan mevcut ders silinmemeli."""
     m, les, st = await _seed(db)
-    tok = await _teacher_token(client, email="ci3@t.com")
+    tok = await _teacher_token(client, db, email="ci3@t.com")
     payload = {
         "version": 1,
         "modules": [{
@@ -159,7 +169,7 @@ async def test_import_requires_teacher_and_valid_version(client, db):
                            json={"version": 1, "modules": []})
     assert r2.status_code == 403
 
-    tok = await _teacher_token(client, email="ci4@t.com")
+    tok = await _teacher_token(client, db, email="ci4@t.com")
     r3 = await client.post("/admin/content/import",
                            headers={"Authorization": f"Bearer {tok}"},
                            json={"version": 99, "modules": []})

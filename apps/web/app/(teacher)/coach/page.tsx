@@ -168,17 +168,21 @@ interface Subtopic { stepId: number; title: string; icon?: string }
  */
 export default function CoachHomePage() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, hydrated } = useAuth();
   const { settings } = useSettings();
   const activeCount = usePresenceCount();
   const [authReady, setAuthReady] = useState(false);
   // Antrenör paneli SADECE teacher rolüyle açılabilir — token yoksa/başka
-  // rolse ana giriş ekranına yönlendirilir (madde 2026-09-04 (4)'teki
-  // `(teacher)/classes` sayfalarındaki AYNI koruma deseni).
+  // rolse ana giriş ekranına yönlendirilir. `hydrated` çözülene kadar
+  // KARAR VERMEYİZ — yoksa AuthProvider kendi token'ı henüz OKUMADAN
+  // (role hâlâ ilk değeri null) geçerli bir antrenör bile sayfa
+  // yenilenince (F5) yanlışlıkla dışarı atılır (bkz. lib/auth-context.tsx
+  // `hydrated` doc-comment'i).
   useEffect(() => {
+    if (!hydrated) return;
     if (!getToken() || role !== 'teacher') { router.replace('/'); return; }
     setAuthReady(true);
-  }, [role, router]);
+  }, [role, hydrated, router]);
   // Tek seferde yalnızca bir sekme açık (akordiyon)
   // Sayı değer = Zafer hocanın eklediği özel sekmenin id'si — yerleşik
   // sekmelerle AYNI akordiyona girer (aynı anda tek sekme açık).

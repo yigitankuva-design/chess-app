@@ -1,3 +1,6 @@
+from chess_api.models import User, UserRole
+
+
 def test_custom_tab_modeli_tablo_adi_ve_alanlari():
     from chess_api.models import CustomTab
 
@@ -35,21 +38,30 @@ async def test_bos_liste_bos_dizi_doner(client):
 
 
 @pytest.mark.asyncio
-async def test_olmayan_sekme_404_doner(client):
+async def test_olmayan_sekme_404_doner(client, db):
     r = await client.get("/custom-tabs/999999")
     assert r.status_code == 404
 
 
-async def _teacher_token(client, email="ct@t.com"):
+async def _teacher_token(client, db, email="ct@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 @pytest.mark.asyncio
-async def test_ogretmen_sekme_ekler_emoji_otomatik_atanir(client):
-    tok = await _teacher_token(client, "ct1@t.com")
+async def test_ogretmen_sekme_ekler_emoji_otomatik_atanir(client, db):
+    tok = await _teacher_token(client, db, "ct1@t.com")
     r = await client.post("/admin/custom-tabs", headers={"Authorization": f"Bearer {tok}"},
                           json={"label": "Turnuvalar"})
     assert r.status_code == 201
@@ -59,8 +71,8 @@ async def test_ogretmen_sekme_ekler_emoji_otomatik_atanir(client):
 
 
 @pytest.mark.asyncio
-async def test_ikinci_sekme_farkli_emoji_alir(client):
-    tok = await _teacher_token(client, "ct2@t.com")
+async def test_ikinci_sekme_farkli_emoji_alir(client, db):
+    tok = await _teacher_token(client, db, "ct2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     await client.post("/admin/custom-tabs", headers=h, json={"label": "Birinci"})
     r = await client.post("/admin/custom-tabs", headers=h, json={"label": "İkinci"})
@@ -74,16 +86,16 @@ async def test_tokensiz_sekme_ekleme_engellenir(client):
 
 
 @pytest.mark.asyncio
-async def test_bos_etiketle_sekme_reddedilir(client):
-    tok = await _teacher_token(client, "ct3@t.com")
+async def test_bos_etiketle_sekme_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "ct3@t.com")
     r = await client.post("/admin/custom-tabs", headers={"Authorization": f"Bearer {tok}"},
                           json={"label": "  "})
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_sekme_silinince_bolumleri_de_silinir(client):
-    tok = await _teacher_token(client, "ct4@t.com")
+async def test_sekme_silinince_bolumleri_de_silinir(client, db):
+    tok = await _teacher_token(client, db, "ct4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = await client.post("/admin/custom-tabs", headers=h, json={"label": "Silinecek"})
     tab_id = tab.json()["id"]
@@ -100,8 +112,8 @@ async def test_sekme_silinince_bolumleri_de_silinir(client):
 
 
 @pytest.mark.asyncio
-async def test_sekme_siralamasi_degistirilebilir(client):
-    tok = await _teacher_token(client, "ct5@t.com")
+async def test_sekme_siralamasi_degistirilebilir(client, db):
+    tok = await _teacher_token(client, db, "ct5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     a = (await client.post("/admin/custom-tabs", headers=h, json={"label": "A"})).json()
     b = (await client.post("/admin/custom-tabs", headers=h, json={"label": "B"})).json()
@@ -115,8 +127,8 @@ async def test_sekme_siralamasi_degistirilebilir(client):
 
 
 @pytest.mark.asyncio
-async def test_bolum_guncellenir(client):
-    tok = await _teacher_token(client, "cts1@t.com")
+async def test_bolum_guncellenir(client, db):
+    tok = await _teacher_token(client, db, "cts1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -130,8 +142,8 @@ async def test_bolum_guncellenir(client):
 
 
 @pytest.mark.asyncio
-async def test_bolum_silinir(client):
-    tok = await _teacher_token(client, "cts2@t.com")
+async def test_bolum_silinir(client, db):
+    tok = await _teacher_token(client, db, "cts2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -145,8 +157,8 @@ async def test_bolum_silinir(client):
 
 
 @pytest.mark.asyncio
-async def test_bolum_siralamasi_degistirilebilir(client):
-    tok = await _teacher_token(client, "cts3@t.com")
+async def test_bolum_siralamasi_degistirilebilir(client, db):
+    tok = await _teacher_token(client, db, "cts3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
     s1 = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -163,8 +175,8 @@ async def test_bolum_siralamasi_degistirilebilir(client):
 
 
 @pytest.mark.asyncio
-async def test_cok_buyuk_bolum_gorseli_reddedilir(client):
-    tok = await _teacher_token(client, "cts4@t.com")
+async def test_cok_buyuk_bolum_gorseli_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "cts4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Sekme"})).json()
     huge = "data:image/png;base64," + ("A" * 400_001)
@@ -174,8 +186,8 @@ async def test_cok_buyuk_bolum_gorseli_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_konum_havuzu_kaydedilir(client):
-    tok = await _teacher_token(client, "ctp1@t.com")
+async def test_konum_havuzu_kaydedilir(client, db):
+    tok = await _teacher_token(client, db, "ctp1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -192,8 +204,8 @@ async def test_konum_havuzu_kaydedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_konum_havuzu_bos_id_reddedilir(client):
-    tok = await _teacher_token(client, "ctp2@t.com")
+async def test_konum_havuzu_bos_id_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "ctp2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -205,8 +217,8 @@ async def test_konum_havuzu_bos_id_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_konum_kategori_alani_korunur(client):
-    tok = await _teacher_token(client, "ctp4@t.com")
+async def test_konum_kategori_alani_korunur(client, db):
+    tok = await _teacher_token(client, db, "ctp4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -226,8 +238,8 @@ async def test_konum_kategori_alani_korunur(client):
 
 
 @pytest.mark.asyncio
-async def test_konum_kodu_korunur(client):
-    tok = await _teacher_token(client, "ctp5@t.com")
+async def test_konum_kodu_korunur(client, db):
+    tok = await _teacher_token(client, db, "ctp5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -247,8 +259,8 @@ async def test_konum_kodu_korunur(client):
 
 
 @pytest.mark.asyncio
-async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client):
-    tok = await _teacher_token(client, "ctp3@t.com")
+async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client, db):
+    tok = await _teacher_token(client, db, "ctp3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -266,8 +278,8 @@ async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client):
 # ── Iç içe (nested) alt sekmeler — madde: 2026-08-22, "Antrenör"/"Sınıflar" ihtiyacı ──
 
 @pytest.mark.asyncio
-async def test_parent_id_ile_cocuk_bolum_eklenir(client):
-    tok = await _teacher_token(client, "ctn1@t.com")
+async def test_parent_id_ile_cocuk_bolum_eklenir(client, db):
+    tok = await _teacher_token(client, db, "ctn1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     parent = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -285,8 +297,8 @@ async def test_parent_id_ile_cocuk_bolum_eklenir(client):
 
 
 @pytest.mark.asyncio
-async def test_ic_ice_2_seviye_calisir(client):
-    tok = await _teacher_token(client, "ctn2@t.com")
+async def test_ic_ice_2_seviye_calisir(client, db):
+    tok = await _teacher_token(client, db, "ctn2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     a = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -299,8 +311,8 @@ async def test_ic_ice_2_seviye_calisir(client):
 
 
 @pytest.mark.asyncio
-async def test_baska_sekmenin_bolumune_parent_verilirse_404(client):
-    tok = await _teacher_token(client, "ctn3@t.com")
+async def test_baska_sekmenin_bolumune_parent_verilirse_404(client, db):
+    tok = await _teacher_token(client, db, "ctn3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab1 = (await client.post("/admin/custom-tabs", headers=h, json={"label": "A"})).json()
     tab2 = (await client.post("/admin/custom-tabs", headers=h, json={"label": "B"})).json()
@@ -313,8 +325,8 @@ async def test_baska_sekmenin_bolumune_parent_verilirse_404(client):
 
 
 @pytest.mark.asyncio
-async def test_bolum_silinince_torunlari_da_silinir(client):
-    tok = await _teacher_token(client, "ctn4@t.com")
+async def test_bolum_silinince_torunlari_da_silinir(client, db):
+    tok = await _teacher_token(client, db, "ctn4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     a = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -335,8 +347,8 @@ async def test_bolum_silinince_torunlari_da_silinir(client):
 
 
 @pytest.mark.asyncio
-async def test_kardes_siralamasi_parent_bazinda_ayri_tutulur(client):
-    tok = await _teacher_token(client, "ctn5@t.com")
+async def test_kardes_siralamasi_parent_bazinda_ayri_tutulur(client, db):
+    tok = await _teacher_token(client, db, "ctn5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     a = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -359,8 +371,8 @@ async def test_kardes_siralamasi_parent_bazinda_ayri_tutulur(client):
 # ── Bölüm YAPISINI kopyalama — madde: 2026-08-24, "Sınıf 1"→"Sınıf 2" ihtiyacı ──
 
 @pytest.mark.asyncio
-async def test_yapraksiz_bolum_kopyalanir(client):
-    tok = await _teacher_token(client, "ctd1@t.com")
+async def test_yapraksiz_bolum_kopyalanir(client, db):
+    tok = await _teacher_token(client, db, "ctd1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -379,8 +391,8 @@ async def test_yapraksiz_bolum_kopyalanir(client):
 
 
 @pytest.mark.asyncio
-async def test_bos_yeni_ad_reddedilir(client):
-    tok = await _teacher_token(client, "ctd2@t.com")
+async def test_bos_yeni_ad_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "ctd2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -392,8 +404,8 @@ async def test_bos_yeni_ad_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_ic_ice_yapi_kopyalanir_yazi_ve_gorsel_bos_kalir(client):
-    tok = await _teacher_token(client, "ctd3@t.com")
+async def test_ic_ice_yapi_kopyalanir_yazi_ve_gorsel_bos_kalir(client, db):
+    tok = await _teacher_token(client, db, "ctd3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     root = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -436,8 +448,8 @@ async def test_ic_ice_yapi_kopyalanir_yazi_ve_gorsel_bos_kalir(client):
 
 
 @pytest.mark.asyncio
-async def test_kopya_kardestir_ve_bagimsizdir(client):
-    tok = await _teacher_token(client, "ctd4@t.com")
+async def test_kopya_kardestir_ve_bagimsizdir(client, db):
+    tok = await _teacher_token(client, db, "ctd4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     parent = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -459,8 +471,8 @@ async def test_kopya_kardestir_ve_bagimsizdir(client):
 
 
 @pytest.mark.asyncio
-async def test_olmayan_bolum_kopyalanamaz(client):
-    tok = await _teacher_token(client, "ctd5@t.com")
+async def test_olmayan_bolum_kopyalanamaz(client, db):
+    tok = await _teacher_token(client, db, "ctd5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     r = await client.post("/admin/custom-tab-sections/999999/duplicate", headers=h,
                           json={"new_title": "Yeni"})
@@ -475,8 +487,8 @@ FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 # ── Alt Konu: Konum Havuzu (gruplu — kod + numaralı adımlar) — madde: 2026-08-26 ──
 
 @pytest.mark.asyncio
-async def test_konum_havuzu_grubu_kaydedilir(client):
-    tok = await _teacher_token(client, "cty1@t.com")
+async def test_konum_havuzu_grubu_kaydedilir(client, db):
+    tok = await _teacher_token(client, db, "cty1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -501,8 +513,8 @@ async def test_konum_havuzu_grubu_kaydedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_adimsiz_grup_reddedilir(client):
-    tok = await _teacher_token(client, "cty2@t.com")
+async def test_adimsiz_grup_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "cty2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -514,8 +526,8 @@ async def test_adimsiz_grup_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_gecersiz_fenli_adim_reddedilir(client):
-    tok = await _teacher_token(client, "cty3@t.com")
+async def test_gecersiz_fenli_adim_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "cty3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -530,8 +542,8 @@ async def test_gecersiz_fenli_adim_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_bos_cumleli_adim_reddedilir(client):
-    tok = await _teacher_token(client, "cty4@t.com")
+async def test_bos_cumleli_adim_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "cty4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -546,8 +558,8 @@ async def test_bos_cumleli_adim_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_gecersiz_hamle_sirasi_reddedilir(client):
-    tok = await _teacher_token(client, "cty5@t.com")
+async def test_gecersiz_hamle_sirasi_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "cty5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -562,10 +574,10 @@ async def test_gecersiz_hamle_sirasi_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_havuz_gruplari_yeniden_siralanabilir(client):
+async def test_havuz_gruplari_yeniden_siralanabilir(client, db):
     """Madde 2026-08-26 (madde 1): havuzdaki gruplar sırası değiştirilebilir —
     tam dizi yeni sırayla PATCH edilir (mevcut TÜM-DİZİ-PATCH deseniyle AYNI)."""
-    tok = await _teacher_token(client, "cty6@t.com")
+    tok = await _teacher_token(client, db, "cty6@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -582,8 +594,8 @@ async def test_havuz_gruplari_yeniden_siralanabilir(client):
 
 
 @pytest.mark.asyncio
-async def test_kopyalanan_bolumde_konum_havuzu_bos_baslar(client):
-    tok = await _teacher_token(client, "cty7@t.com")
+async def test_kopyalanan_bolumde_konum_havuzu_bos_baslar(client, db):
+    tok = await _teacher_token(client, db, "cty7@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Antrenör"})).json()
     src = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -600,10 +612,10 @@ async def test_kopyalanan_bolumde_konum_havuzu_bos_baslar(client):
 
 
 @pytest.mark.asyncio
-async def test_section_kind_olusturma_sirasinda_verilir_ve_donulur(client):
+async def test_section_kind_olusturma_sirasinda_verilir_ve_donulur(client, db):
     """Madde 2026-09-02: Pratik Yap'in sabit bolumleri (Acilis/Kazanc/
     Oyunsonu) section_kind ile olusturulur, yanit onu geri doner."""
-    tok = await _teacher_token(client, "sk1@t.com")
+    tok = await _teacher_token(client, db, "sk1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     r = await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -618,12 +630,12 @@ async def test_section_kind_olusturma_sirasinda_verilir_ve_donulur(client):
 
 
 @pytest.mark.asyncio
-async def test_section_kind_ad_degisse_bile_ayni_kalir_patch_ile_degistirilemez(client):
+async def test_section_kind_ad_degisse_bile_ayni_kalir_patch_ile_degistirilemez(client, db):
     """Madde 2026-09-02: section_kind, PATCH sirasinda GONDERILSE BILE
     degismez — schema'da alan yok, sessizce yok sayilir. Boylece admin
     basligi serbestce degistirebilir ama ozel davranis (section_kind'e
     bagli) bozulmaz."""
-    tok = await _teacher_token(client, "sk2@t.com")
+    tok = await _teacher_token(client, db, "sk2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -643,10 +655,10 @@ async def test_section_kind_ad_degisse_bile_ayni_kalir_patch_ile_degistirilemez(
 
 
 @pytest.mark.asyncio
-async def test_genel_gorunum_section_kind_iceriyor(client):
+async def test_genel_gorunum_section_kind_iceriyor(client, db):
     """Sporcu tarafinin okudugu genel /custom-tabs/{id} da section_kind
     doner — CustomTabPanel bu alana bakarak Acilis/Oyunsonu'nu tanir."""
-    tok = await _teacher_token(client, "sk3@t.com")
+    tok = await _teacher_token(client, db, "sk3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -662,8 +674,8 @@ KP_FEN = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1"
 
 
 @pytest.mark.asyncio
-async def test_konum_pratigi_sorusu_kaydedilir(client):
-    tok = await _teacher_token(client, "kp1@t.com")
+async def test_konum_pratigi_sorusu_kaydedilir(client, db):
+    tok = await _teacher_token(client, db, "kp1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -689,8 +701,8 @@ async def test_konum_pratigi_sorusu_kaydedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_konum_pratigi_gecersiz_fen_reddedilir(client):
-    tok = await _teacher_token(client, "kp2@t.com")
+async def test_konum_pratigi_gecersiz_fen_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "kp2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -706,8 +718,8 @@ async def test_konum_pratigi_gecersiz_fen_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_konum_pratigi_dogru_sik_disariysa_reddedilir(client):
-    tok = await _teacher_token(client, "kp3@t.com")
+async def test_konum_pratigi_dogru_sik_disariysa_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "kp3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -723,9 +735,9 @@ async def test_konum_pratigi_dogru_sik_disariysa_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_konum_pratigi_tek_sik_reddedilir(client):
+async def test_konum_pratigi_tek_sik_reddedilir(client, db):
     """2/3/4 şık zorunlu — tek şıklı soru anlamsız (madde: Zafer'in 2/3/4 seçim isteği)."""
-    tok = await _teacher_token(client, "kp4@t.com")
+    tok = await _teacher_token(client, db, "kp4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -741,8 +753,8 @@ async def test_konum_pratigi_tek_sik_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_teori_pratigi_sorusu_kaydedilir(client):
-    tok = await _teacher_token(client, "tp1@t.com")
+async def test_teori_pratigi_sorusu_kaydedilir(client, db):
+    tok = await _teacher_token(client, db, "tp1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -768,8 +780,8 @@ async def test_teori_pratigi_sorusu_kaydedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_teori_pratigi_gecersiz_hamle_sirasi_reddedilir(client):
-    tok = await _teacher_token(client, "tp2@t.com")
+async def test_teori_pratigi_gecersiz_hamle_sirasi_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "tp2@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -785,8 +797,8 @@ async def test_teori_pratigi_gecersiz_hamle_sirasi_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_teori_pratigi_bos_hamle_listesi_reddedilir(client):
-    tok = await _teacher_token(client, "tp3@t.com")
+async def test_teori_pratigi_bos_hamle_listesi_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "tp3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -802,8 +814,8 @@ async def test_teori_pratigi_bos_hamle_listesi_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_teori_pratigi_gecersiz_fen_reddedilir(client):
-    tok = await _teacher_token(client, "tp4@t.com")
+async def test_teori_pratigi_gecersiz_fen_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "tp4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
@@ -819,9 +831,9 @@ async def test_teori_pratigi_gecersiz_fen_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_genel_gorunum_konum_ve_teori_pratigi_havuzlarini_icerir(client):
+async def test_genel_gorunum_konum_ve_teori_pratigi_havuzlarini_icerir(client, db):
     """Sporcu tarafinin okudugu /custom-tabs/{id} da iki yeni havuzu doner."""
-    tok = await _teacher_token(client, "kt1@t.com")
+    tok = await _teacher_token(client, db, "kt1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik Yap"})).json()
     section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,

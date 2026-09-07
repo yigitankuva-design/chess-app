@@ -34,8 +34,11 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 def _ensure_admin(u: User):
-    if u.role != UserRole.teacher:
-        raise HTTPException(status_code=403, detail="Admin (teacher) only")
+    # Madde 2026-09-07 (Antrenör Paneli, 5): gerçek yönetici artık "teacher"
+    # rolünden AYRI — sıradan bir antrenör hesabı (role=teacher) bu panele
+    # ARTIK giremez, kendi /coach paneline yönlendirilir.
+    if u.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Admin only")
 
 
 @router.get("/parents", response_model=list[AdminParentSummary])

@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { saveAthleteName } from '@/lib/auth-storage';
+import { saveAthleteName, saveTeacherName } from '@/lib/auth-storage';
 
 const schema = z.object({
   role: z.enum(['parent', 'teacher']),
@@ -42,7 +42,10 @@ export default function SignupPage() {
       if (role === 'teacher') {
         const res = await apiClient.teacherSignup(base);
         auth.login(res.access_token, res.role, res.user_id);
-        router.push('/classes');
+        // Madde 2026-09-07 (Antrenör Paneli, 1): antrenör hesabı artık
+        // /classes'a DEĞİL, sporcu Hızlı Erişim'in kopyası olan /coach'a gider.
+        saveTeacherName(res.name);
+        router.push('/coach');
         return;
       }
       const res = await apiClient.parentSignup({ ...base, athlete_name: athlete_name?.trim() });

@@ -11,8 +11,14 @@ const replace = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace }) }));
 
 let mockRole: 'teacher' | null = 'teacher';
+// Madde 2026-09-07 (Antrenör Paneli, 5): AuthProvider'ın token'ı okuyup
+// role'ü çözmesi bir effect'te olur — `hydrated` bunun BİTTİĞİNİ işaretler.
+// Testler varsayılan olarak "zaten çözülmüş" (true) durumu temsil eder;
+// aşağıdaki özel test `hydrated=false` iken YANLIŞ yönlendirme OLMADIĞINI
+// doğrular (bkz. lib/auth-context.tsx doc-comment'i).
+let mockHydrated = true;
 vi.mock('@/lib/auth-context', () => ({
-  useAuth: () => ({ role: mockRole, token: 'tok', userId: 1, login: vi.fn(), logout: vi.fn() }),
+  useAuth: () => ({ role: mockRole, hydrated: mockHydrated, token: 'tok', userId: 1, login: vi.fn(), logout: vi.fn() }),
 }));
 
 let mockToken: string | null = 'tok';
@@ -44,6 +50,7 @@ vi.mock('@/lib/customTabsApi', () => ({
 
 beforeEach(() => {
   mockRole = 'teacher';
+  mockHydrated = true;
   mockToken = 'tok';
   replace.mockClear();
   global.fetch = vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })) as never;
@@ -83,6 +90,17 @@ describe('Antrenör Paneli — /coach (sporcu Hızlı Erişim kopyası)', () => 
     mockRole = null;
     render(<CoachHomePage />);
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/'));
+    expect(screen.queryByText('Maç Yap')).not.toBeInTheDocument();
+  });
+
+  it('madde 2026-09-07 (5) — auth HENÜZ hydrated olmadan (F5 anındaki gerçek durum) geçerli antrenör YANLIŞLIKLA dışarı atılmaz', async () => {
+    // AuthProvider'ın kendi token-çözme effect'i henüz bitmedi (rol hâlâ
+    // ilk değeri olabilir) — bu ANDA sayfa "Yükleniyor..." göstermeli,
+    // ASLA router.replace('/') çağırmamalı.
+    mockHydrated = false;
+    render(<CoachHomePage />);
+    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
     expect(screen.queryByText('Maç Yap')).not.toBeInTheDocument();
   });
 });

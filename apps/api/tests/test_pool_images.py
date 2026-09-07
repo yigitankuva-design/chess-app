@@ -1,5 +1,6 @@
 import pytest
 
+from chess_api.models import User, UserRole
 from chess_api.pool_categories import POOL_CATEGORIES
 
 # Küçük ama geçerli bir data-URI (1x1 saydam PNG)
@@ -43,23 +44,32 @@ async def test_bos_havuz_bos_liste_doner(client):
 
 
 @pytest.mark.asyncio
-async def test_havuz_listesi_kimlik_dogrulamasi_gerektirmez(client):
+async def test_havuz_listesi_kimlik_dogrulamasi_gerektirmez(client, db):
     """Liste admin panelinde token'lı çağrılır ama uç /openings gibi açıktır —
     ayrı bir yetki katmanı eklemenin faydası yok, veri gizli değil."""
     r = await client.get("/pool-images")
     assert r.status_code == 200
 
 
-async def _teacher_token(client, email="pool@t.com"):
+async def _teacher_token(client, db, email="pool@t.com"):
     r = await client.post("/auth/teacher/signup", json={
         "email": email, "password": "guvenli12345", "name": "Teacher",
     })
-    return r.json()["access_token"]
+    body = r.json()
+    # Madde 2026-09-07 (Antrenör Paneli, 5): _ensure_admin artık
+    # role==admin istiyor — bu testler /admin/* uçlarını gerçek
+    # yönetici gibi çağırmak istiyor, o yüzden DB'de doğrudan
+    # yükseltiyoruz (JWT'nin kendisi hâlâ "teacher" diyor ama
+    # get_current_user her zaman DB'deki GÜNCEL role'e bakar).
+    user = await db.get(User, body["user_id"])
+    user.role = UserRole.admin
+    await db.commit()
+    return body["access_token"]
 
 
 @pytest.mark.asyncio
-async def test_ogretmen_havuza_gorsel_ekler(client):
-    tok = await _teacher_token(client, "pool1@t.com")
+async def test_ogretmen_havuza_gorsel_ekler(client, db):
+    tok = await _teacher_token(client, db, "pool1@t.com")
     r = await client.post("/admin/pool-images", headers={"Authorization": f"Bearer {tok}"},
                           json={"category": "Hayvanlar", "data_uri": TINY_PNG})
     assert r.status_code == 201
@@ -76,24 +86,24 @@ async def test_tokensiz_ekleme_engellenir(client):
 
 
 @pytest.mark.asyncio
-async def test_gecersiz_kategori_reddedilir(client):
-    tok = await _teacher_token(client, "pool2@t.com")
+async def test_gecersiz_kategori_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "pool2@t.com")
     r = await client.post("/admin/pool-images", headers={"Authorization": f"Bearer {tok}"},
                           json={"category": "Uydurma Kategori", "data_uri": TINY_PNG})
     assert r.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_gorsel_olmayan_data_uri_reddedilir(client):
-    tok = await _teacher_token(client, "pool3@t.com")
+async def test_gorsel_olmayan_data_uri_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "pool3@t.com")
     r = await client.post("/admin/pool-images", headers={"Authorization": f"Bearer {tok}"},
                           json={"category": "Hayvanlar", "data_uri": "bu bir gorsel degil"})
     assert r.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_cok_buyuk_gorsel_reddedilir(client):
-    tok = await _teacher_token(client, "pool4@t.com")
+async def test_cok_buyuk_gorsel_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "pool4@t.com")
     huge = "data:image/png;base64," + ("A" * 400_001)
     r = await client.post("/admin/pool-images", headers={"Authorization": f"Bearer {tok}"},
                           json={"category": "Hayvanlar", "data_uri": huge})
@@ -101,9 +111,9 @@ async def test_cok_buyuk_gorsel_reddedilir(client):
 
 
 @pytest.mark.asyncio
-async def test_ayni_gorsel_ikinci_kez_yeni_satir_eklemez(client):
+async def test_ayni_gorsel_ikinci_kez_yeni_satir_eklemez(client, db):
     """Dedup = birebir bayt eslesmesi. Ikinci POST 200 doner ve created=False."""
-    tok = await _teacher_token(client, "pool5@t.com")
+    tok = await _teacher_token(client, db, "pool5@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     first = await client.post("/admin/pool-images", headers=h,
                               json={"category": "Hayvanlar", "data_uri": TINY_PNG})
@@ -118,8 +128,8 @@ async def test_ayni_gorsel_ikinci_kez_yeni_satir_eklemez(client):
 
 
 @pytest.mark.asyncio
-async def test_ayni_gorsel_farkli_kategoride_ayri_kayittir(client):
-    tok = await _teacher_token(client, "pool6@t.com")
+async def test_ayni_gorsel_farkli_kategoride_ayri_kayittir(client, db):
+    tok = await _teacher_token(client, db, "pool6@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     await client.post("/admin/pool-images", headers=h,
                       json={"category": "Hayvanlar", "data_uri": TINY_PNG})
@@ -130,8 +140,8 @@ async def test_ayni_gorsel_farkli_kategoride_ayri_kayittir(client):
 
 
 @pytest.mark.asyncio
-async def test_kategori_filtresi_calisir(client):
-    tok = await _teacher_token(client, "pool7@t.com")
+async def test_kategori_filtresi_calisir(client, db):
+    tok = await _teacher_token(client, db, "pool7@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     await client.post("/admin/pool-images", headers=h,
                       json={"category": "Hayvanlar", "data_uri": TINY_PNG})
@@ -142,8 +152,8 @@ async def test_kategori_filtresi_calisir(client):
 
 
 @pytest.mark.asyncio
-async def test_ogretmen_havuzdan_gorsel_siler(client):
-    tok = await _teacher_token(client, "pooldel1@t.com")
+async def test_ogretmen_havuzdan_gorsel_siler(client, db):
+    tok = await _teacher_token(client, db, "pooldel1@t.com")
     h = {"Authorization": f"Bearer {tok}"}
     created = await client.post("/admin/pool-images", headers=h,
                                 json={"category": "Hayvanlar", "data_uri": TINY_PNG})
@@ -158,8 +168,8 @@ async def test_ogretmen_havuzdan_gorsel_siler(client):
 
 
 @pytest.mark.asyncio
-async def test_tokensiz_silme_engellenir(client):
-    tok = await _teacher_token(client, "pooldel2@t.com")
+async def test_tokensiz_silme_engellenir(client, db):
+    tok = await _teacher_token(client, db, "pooldel2@t.com")
     created = await client.post("/admin/pool-images",
                                 headers={"Authorization": f"Bearer {tok}"},
                                 json={"category": "Hayvanlar", "data_uri": TINY_PNG})
@@ -174,22 +184,22 @@ async def test_tokensiz_silme_engellenir(client):
 
 
 @pytest.mark.asyncio
-async def test_olmayan_gorsel_silinmeye_calisilirsa_404(client):
-    tok = await _teacher_token(client, "pooldel3@t.com")
+async def test_olmayan_gorsel_silinmeye_calisilirsa_404(client, db):
+    tok = await _teacher_token(client, db, "pooldel3@t.com")
     r = await client.delete("/admin/pool-images/999999",
                             headers={"Authorization": f"Bearer {tok}"})
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_bir_gorseli_silmek_digerlerini_etkilemez(client):
+async def test_bir_gorseli_silmek_digerlerini_etkilemez(client, db):
     """İki kayıt ekle, birini sil — diğeri yerinde kalmalı.
 
     Dedup (category, data_uri) ÇİFTİ üzerinden çalıştığı için aynı görseli iki
     FARKLI kategoriye eklemek iki ayrı satır üretir — sahte bir ikinci görsel
     uydurmaya gerek yok.
     """
-    tok = await _teacher_token(client, "pooldel4@t.com")
+    tok = await _teacher_token(client, db, "pooldel4@t.com")
     h = {"Authorization": f"Bearer {tok}"}
 
     first = await client.post("/admin/pool-images", headers=h,

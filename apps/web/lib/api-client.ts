@@ -34,7 +34,7 @@ export interface AuthResponse {
   access_token: string;
   token_type: string;
   user_id: number;
-  role: 'parent' | 'teacher' | 'athlete';
+  role: 'parent' | 'teacher' | 'athlete' | 'admin';
   name: string;
 }
 
