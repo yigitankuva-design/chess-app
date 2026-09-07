@@ -10,6 +10,11 @@ class UserRole(str, enum.Enum):
     parent = "parent"
     teacher = "teacher"
     athlete = "athlete"
+    # Madde 2026-09-07 (Antrenör Paneli, 5): gerçek yönetici (Zafer) artık
+    # "teacher" rolünden AYRI — Kayıt Ol formundan asla üretilemez, sadece
+    # veritabanında elle atanır. "teacher" bundan böyle SADECE kendi
+    # antrenör panelini kullanan sıradan antrenör hesaplarını ifade eder.
+    admin = "admin"
 
 
 class User(Base):
