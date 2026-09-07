@@ -6,6 +6,7 @@ import type { CustomTabDetail, CustomTabSection } from '@/lib/customTabsApi';
 import { AltKonuWalkthrough } from '@/components/custom/AltKonuWalkthrough';
 import { writePendingOpenPath } from '@/lib/customTabs/pendingOpenPath';
 import { useBackOverride } from '@/lib/nav/backOverride';
+import { useAuth } from '@/lib/auth-context';
 
 /**
  * Madde 2026-08-25: Antrenör/Dersler/Düzey/Konu/Alt Konu'ya tıklanınca havuza
@@ -16,6 +17,7 @@ import { useBackOverride } from '@/lib/nav/backOverride';
 export default function AltKonuPage() {
   const params = useParams();
   const router = useRouter();
+  const { role } = useAuth();
   const tabId = Number(params.id);
   const sectionId = Number(params.sectionId);
   const [tab, setTab] = useState<CustomTabDetail | null | undefined>(undefined);
@@ -42,7 +44,10 @@ export default function AltKonuPage() {
       current = parent;
     }
     writePendingOpenPath({ tabId, path: ancestorPath });
-    router.push('/home');
+    // Madde 2026-09-07 (Antrenör Paneli, 4): antrenör bu sayfaya /coach
+    // üzerinden geldiyse "Geri" onu /home'a (sporcu sayfası) DEĞİL, kendi
+    // /coach sayfasına döndürür.
+    router.push(role === 'teacher' ? '/coach' : '/home');
   }
 
   // Hook'lar KOŞULSUZ çağrılmalı — erken return'lerden ÖNCE. Bölüm henüz

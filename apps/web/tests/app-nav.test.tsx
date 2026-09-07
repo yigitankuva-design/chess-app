@@ -9,6 +9,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ back, push }),
 }));
 
+// Madde 2026-09-07 (Antrenör Paneli, 4): AppNav artık role'e göre
+// homePath/profilePath hesaplıyor — useAuth() mock'lanmalı.
+let mockRole: 'teacher' | null = null;
+vi.mock('@/lib/auth-context', () => ({
+  useAuth: () => ({ role: mockRole, token: null, userId: null, login: vi.fn(), logout: vi.fn() }),
+}));
+
 import { AppNav } from '@/components/ui/AppNav';
 import { BackOverrideProvider, useBackOverride } from '@/lib/nav/backOverride';
 
@@ -16,6 +23,7 @@ describe('AppNav — madde 2026-09-04 (4): uygulama genelinde TEK geri butonu', 
   beforeEach(() => {
     back.mockClear();
     push.mockClear();
+    mockRole = null;
     // jsdom varsayılanı: history.length genelde 1 — "geçmiş var" senaryosunu
     // test etmek için bazı testlerde ayrıca ayarlanır.
     Object.defineProperty(window, 'history', {
@@ -80,5 +88,21 @@ describe('AppNav — madde 2026-09-04 (4): uygulama genelinde TEK geri butonu', 
     expect(customBack).toHaveBeenCalledTimes(1);
     expect(back).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('Antrenör Paneli (madde 2026-09-07, 4): teacher rolünde paylaşılan bir alt sayfada (/analiz) geçmiş yokken /coach\'a döner, /home\'a DEĞİL', () => {
+    mockRole = 'teacher';
+    pathname = '/analiz';
+    Object.defineProperty(window, 'history', { value: { length: 1 }, writable: true, configurable: true });
+    render(<AppNav />);
+    fireEvent.click(screen.getByLabelText('Geri'));
+    expect(push).toHaveBeenCalledWith('/coach');
+  });
+
+  it('Antrenör Paneli: /coach sayfasında sağ üstteki ikon /coach/profile\'a gider', () => {
+    mockRole = 'teacher';
+    pathname = '/coach';
+    render(<AppNav />);
+    expect(screen.getByLabelText('Profil').closest('a')).toHaveAttribute('href', '/coach/profile');
   });
 });

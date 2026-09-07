@@ -1,6 +1,7 @@
 const TOKEN_KEY = 'chess_app_token';
 const FINGERPRINT_KEY = 'chess_app_device_fp';
 const ATHLETE_NAME_KEY = 'bea_athlete_name';
+const TEACHER_NAME_KEY = 'bea_teacher_name';
 
 
 /**
@@ -26,6 +27,7 @@ export function clearAuth(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(ATHLETE_NAME_KEY);
+  sessionStorage.removeItem(TEACHER_NAME_KEY);
 }
 
 
@@ -38,6 +40,20 @@ export function saveAthleteName(name: string): void {
 export function getAthleteName(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem(ATHLETE_NAME_KEY);
+}
+
+
+/** Madde 2026-09-07 (Antrenör Paneli): Antrenör paneli kimlik şeridinde
+ *  gösterilecek ad — antrenörün kendi giriş/kayıt yanıtındaki `name` alanı. */
+export function saveTeacherName(name: string): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(TEACHER_NAME_KEY, name);
+}
+
+
+export function getTeacherName(): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(TEACHER_NAME_KEY);
 }
 
 

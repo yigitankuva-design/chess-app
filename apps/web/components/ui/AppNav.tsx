@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useBackOverrideHandler } from '@/lib/nav/backOverride';
+import { useAuth } from '@/lib/auth-context';
 
 interface NavConfig {
   title: string;
@@ -11,41 +12,51 @@ interface NavConfig {
   rightIcon: 'home' | 'profile';
 }
 
-function getConfig(pathname: string): NavConfig {
-  if (pathname === '/home')
-    return { title: '', back: null, rightHref: '/profile', rightIcon: 'profile' };
+/**
+ * Madde 2026-09-07 (Antrenör Paneli, 4): Antrenör paneli (`/coach`) sporcu
+ * Hızlı Erişim'i (`/home`) ile AYNI paylaşılan alt sayfaları (Dersler,
+ * Maç Yap, Analiz Et, Eğlence, Pratik, özel sekmeler) kullanıyor — bu
+ * sayfalar hangi hesap türünden açıldığını BİLMEZ. `homePath`/`profilePath`
+ * çağıran hesabın rolüne göre değişir ki "Geri"/"Ana Sayfa" antrenörü
+ * yanlışlıkla sporcunun `/home` sayfasına düşürmesin.
+ */
+function getConfig(pathname: string, homePath: string, profilePath: string): NavConfig {
+  if (pathname === homePath)
+    return { title: '', back: null, rightHref: profilePath, rightIcon: 'profile' };
   if (pathname.startsWith('/lesson/'))
-    return { title: 'Ders', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Ders', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/modules/'))
-    return { title: 'Dersler', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Dersler', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/play/online/'))
-    return { title: 'Online Oyun', back: '/play/online', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Online Oyun', back: '/play/online', rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/play/online'))
-    return { title: 'Online Oyna', back: '/play', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Online Oyna', back: '/play', rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/play'))
-    return { title: 'Oyna', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Oyna', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/puzzle'))
-    return { title: 'Bulmaca', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Bulmaca', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/analiz'))
-    return { title: 'Analiz Et', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Analiz Et', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/eglence'))
-    return { title: 'Eğlence', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Eğlence', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/pratik'))
-    return { title: 'Pratik', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Pratik', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/daily'))
-    return { title: 'Günün Bulmacası', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Günün Bulmacası', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/srs'))
-    return { title: 'Tekrar', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Tekrar', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/badges'))
-    return { title: 'Rozetler', back: '/home', rightHref: '/home', rightIcon: 'home' };
-  if (pathname.startsWith('/profile'))
-    return { title: 'Profil', back: '/home', rightHref: '/home', rightIcon: 'home' };
+    return { title: 'Rozetler', back: homePath, rightHref: homePath, rightIcon: 'home' };
+  if (pathname === '/profile' || pathname === '/coach/profile')
+    return { title: 'Profil', back: homePath, rightHref: homePath, rightIcon: 'home' };
+  if (pathname.startsWith('/students/'))
+    return { title: 'Sporcu Profili', back: homePath, rightHref: homePath, rightIcon: 'home' };
   // Madde 2026-09-04 (4): /custom/* sayfalarının KENDİ geri butonu kaldırıldı
   // (uygulama genelinde TEK geri butonu kuralı) — bu satır olmadan bu
   // sayfalarda geri dönme imkânı hiç kalmazdı (varsayılan `back: null`).
   if (pathname.startsWith('/custom'))
-    return { title: '', back: '/home', rightHref: '/home', rightIcon: 'home' };
-  return { title: '', back: null, rightHref: '/profile', rightIcon: 'profile' };
+    return { title: '', back: homePath, rightHref: homePath, rightIcon: 'home' };
+  return { title: '', back: null, rightHref: profilePath, rightIcon: 'profile' };
 }
 
 const IconChevronLeft = () => (
@@ -71,7 +82,10 @@ const IconProfile = () => (
 export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { title, back, rightHref, rightIcon } = getConfig(pathname);
+  const { role } = useAuth();
+  const homePath = role === 'teacher' ? '/coach' : '/home';
+  const profilePath = role === 'teacher' ? '/coach/profile' : '/profile';
+  const { title, back, rightHref, rightIcon } = getConfig(pathname, homePath, profilePath);
   /** Madde 2026-09-04 (4): bazı sayfaların (ör. custom/[id]/alt-konu/[sectionId])
    *  "geri" işlemi düz navigasyon değil, özel bir mantık gerektiriyor — bkz.
    *  lib/nav/backOverride.tsx. Doluysa AŞAĞIDAKİ TEK buton varsayılan
@@ -88,7 +102,7 @@ export function AppNav() {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
     } else {
-      router.push(back ?? '/home');
+      router.push(back ?? homePath);
     }
   }
 
