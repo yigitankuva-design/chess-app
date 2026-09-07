@@ -569,3 +569,52 @@ describe('Admin özel sekme — "Dersler" özel modu (madde: 2026-08-24, Düzey�
     expect(screen.queryByText('Buton Ekle')).not.toBeInTheDocument();
   });
 });
+
+describe('madde 2026-09-08: "Dersler" kökü artık ADA DEĞİL section_kind=\'dersler_root\'a göre tanınır', () => {
+  /** Zafer'in gerçek senaryosu: "Dersler" bölümünü "Dersler (Konu Anlatımı
+   *  ve Ödevlendirme)" olarak yeniden adlandırdı — section_kind='dersler_root'
+   *  OLMADAN bu, Alt Konu/Konum Havuzu özelliğini SESSİZCE kırardı (bkz.
+   *  20260908_DerslerRootKind_tag migration'ı). */
+  function mockAntrenorWithRenamedDersler() {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 5, order_index: 1, label: 'Çalışmalar', emoji: '⭐' },
+    ]);
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 5, label: 'Çalışmalar', emoji: '⭐',
+      sections: [
+        {
+          id: 200, order_index: 1, title: 'Dersler (Konu Anlatımı ve Ödevlendirme)',
+          body: '', images: [], parent_id: null, section_kind: 'dersler_root',
+        },
+        { id: 201, order_index: 1, title: 'Temel Düzey', body: '', images: [], parent_id: 200 },
+        { id: 202, order_index: 1, title: 'Tahta ve Taşlar', body: '', images: [], parent_id: 201 },
+        {
+          id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [],
+          parent_id: 202, practice_positions: [],
+        },
+      ],
+    });
+  }
+
+  it('başlık "Dersler" DEĞİLKEN bile Alt Konu seviyesinde Konum Havuzu (Buton Ekle) görünür', async () => {
+    mockAntrenorWithRenamedDersler();
+    render(<AdminTabsPage />);
+    await waitFor(() => screen.getByText(/Çalışmalar/));
+    fireEvent.click(screen.getByLabelText('Çalışmalar sekmesini aç'));
+    await waitFor(() => screen.getByText('Dersler (Konu Anlatımı ve Ödevlendirme)'));
+
+    fireEvent.click(screen.getByText('Dersler (Konu Anlatımı ve Ödevlendirme)'));
+    await waitFor(() => screen.getByText('Temel Düzey'));
+    // Kopyala da hâlâ yok — kök yeniden adlandırılsa da inDersler doğru miras kalıyor.
+    expect(screen.queryByLabelText('Dersler (Konu Anlatımı ve Ödevlendirme) yapısını kopyala')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    await waitFor(() => screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+
+    await waitFor(() => screen.getByText('Konum Havuzu'));
+    expect(screen.getByText('Buton Ekle')).toBeInTheDocument();
+  });
+});

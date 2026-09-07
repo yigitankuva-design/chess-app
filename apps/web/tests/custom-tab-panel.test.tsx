@@ -320,6 +320,32 @@ describe('CustomTabPanel', () => {
     expect(screen.queryByLabelText(/Konum 001/)).not.toBeInTheDocument();
   });
 
+  it('madde 2026-09-08: "Dersler" kökü yeniden adlandırılmış olsa da (section_kind=\'dersler_root\' ile) Alt Konu\'ya tıklanınca AYRI sayfaya yönlendirilir', () => {
+    push.mockClear();
+    const tab: CustomTabDetail = {
+      id: 5, label: 'Çalışmalar', emoji: '⭐',
+      sections: [
+        {
+          id: 200, order_index: 1, title: 'Dersler (Konu Anlatımı ve Ödevlendirme)', body: '', images: [],
+          practice_positions: [], parent_id: null, section_kind: 'dersler_root',
+        },
+        { id: 201, order_index: 1, title: 'Temel Düzey', body: '', images: [], practice_positions: [], parent_id: 200 },
+        { id: 202, order_index: 1, title: 'Tahta ve Taşlar', body: '', images: [], practice_positions: [], parent_id: 201 },
+        {
+          id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [], parent_id: 202,
+          practice_positions: [],
+        },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Dersler (Konu Anlatımı ve Ödevlendirme)'));
+    fireEvent.click(screen.getByText('Temel Düzey'));
+    fireEvent.click(screen.getByText('Tahta ve Taşlar'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+
+    expect(push).toHaveBeenCalledWith('/custom/5/alt-konu/203');
+  });
+
   it('Konu (Tahta ve Taşlar) seviyesinde hâlâ NORMAL iç içe akordiyon davranışı sürer (konum havuzu YOK)', () => {
     const tab: CustomTabDetail = {
       id: 5, label: 'Antrenör', emoji: '🎓',

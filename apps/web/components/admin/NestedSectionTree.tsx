@@ -10,12 +10,28 @@ import type { CustomTabSection, PositionPoolEntry, PositionPoolStep } from '@/li
 import { AltKonuPositionPoolFields } from './AltKonuPositionPoolFields';
 import { AssignHomeworkPanel } from './AssignHomeworkPanel';
 
-/** Madde 2026-08-24: "Antrenör" sekmesindeki "Dersler" alt sekmesi ve TÜM
- *  altındaki Düzey/Konu/Alt Konu düğümleri özel bir moda girer — Kopyala
- *  YOKTUR, ve en derin seviye (Alt Konu, 3. derinlik) "+ Alt Sekme Ekle"
- *  yerine "Süresiz Pratik Yap" ile AYNI konum havuzu arayüzünü gösterir. */
+/** Madde 2026-08-24: "Antrenör" (bugünkü adıyla "Çalışmalar") sekmesindeki
+ *  "Dersler" alt sekmesi ve TÜM altındaki Düzey/Konu/Alt Konu düğümleri
+ *  özel bir moda girer — Kopyala YOKTUR, ve en derin seviye (Alt Konu,
+ *  3. derinlik) "+ Alt Sekme Ekle" yerine "Süresiz Pratik Yap" ile AYNI
+ *  konum havuzu arayüzünü gösterir.
+ *
+ *  Madde 2026-09-08: bu kök bölüm ÖNCEDEN sadece başlığının tam olarak
+ *  "Dersler" olmasına bakılarak tanınıyordu — Zafer bölümü "Dersler (Konu
+ *  Anlatımı ve Ödevlendirme)" olarak yeniden adlandırınca bu özellik
+ *  SESSİZCE kayboldu (bkz. 20260908_DerslerRootKind_tag migration'ı).
+ *  Artık KALICI bir işarete (section_kind='dersler_root') bakılıyor —
+ *  section_kind='opening'/'kazanc'/'oyunsonu' (Pratik Yap'ın sabit
+ *  bölümleri) ile AYNI desen — böylece bölüm adı SERBESTÇE değiştirilebilir.
+ *  Eski başlık kontrolü YEDEK olarak kalıyor (migration'ı henüz almamış
+ *  ortamlar/testler için). */
 const DERSLER_TITLE = 'Dersler';
+const DERSLER_ROOT_KIND = 'dersler_root';
 const ALT_KONU_DEPTH = 3;
+
+function isDerslerRoot(s: CustomTabSection): boolean {
+  return s.section_kind === DERSLER_ROOT_KIND || s.title === DERSLER_TITLE;
+}
 
 interface Props {
   tabId: number;
@@ -214,7 +230,7 @@ export function NestedSectionTree({
         const open = openId === s.id;
         const editing = editingId === s.id;
         // Madde 2026-08-24: "Dersler" ve TÜM altındaki düğümlerde Kopyala yok.
-        const noDup = inDersler || s.title === DERSLER_TITLE;
+        const noDup = inDersler || isDerslerRoot(s);
         // Bu düğüm bir Alt Konu mu (Dersler altında 3. derinlik)? — evetse
         // kendi altına yeni alt sekme eklenemez, bunun yerine konum havuzu gösterilir.
         const isAltKonu = inDersler && depth === ALT_KONU_DEPTH;

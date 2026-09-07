@@ -10,9 +10,19 @@ import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
  *  düğümlerinde, en derin seviye (Alt Konu, 3. derinlik) kendi alt
  *  bölümleri yerine hocanın kaydettiği soruları gösterir. Madde 2026-08-25:
  *  bu artık AKORDİYON İÇİNDE değil, AYRI bir sayfada (kod numarasına göre
- *  sıralı İleri/Geri gezinme ile) açılır — bkz. AltKonuWalkthrough. */
+ *  sıralı İleri/Geri gezinme ile) açılır — bkz. AltKonuWalkthrough.
+ *
+ *  Madde 2026-09-08: "Dersler" kökü artık başlığa değil KALICI bir işarete
+ *  (section_kind='dersler_root') göre tanınıyor — bkz. NestedSectionTree.tsx
+ *  ve 20260908_DerslerRootKind_tag migration'ındaki AYNI açıklama. Eski
+ *  başlık kontrolü YEDEK olarak kalıyor. */
 const DERSLER_TITLE = 'Dersler';
+const DERSLER_ROOT_KIND = 'dersler_root';
 const ALT_KONU_DEPTH = 3;
+
+function isDerslerRoot(s: CustomTabSection): boolean {
+  return s.section_kind === DERSLER_ROOT_KIND || s.title === DERSLER_TITLE;
+}
 
 interface Props {
   /** Ayrı sayfaya (alt-konu/[sectionId]) yönlendirmek için gereken sekme id'si. */
@@ -62,7 +72,7 @@ export function NestedSectionAccordion({
     <div className="grid gap-2.5">
       {children.map((s) => {
         const open = openId === s.id;
-        const childInDersler = inDersler || s.title === DERSLER_TITLE;
+        const childInDersler = inDersler || isDerslerRoot(s);
         const isAltKonu = inDersler && depth === ALT_KONU_DEPTH;
         return (
           <div key={s.id}>
