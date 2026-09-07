@@ -177,7 +177,15 @@ export default function ChildHomePage() {
   /** Açılan özel sekmenin alt sekmeleri — açılınca yüklenir, tekrar açılınca
    *  yeniden istek atılmaz. */
   const [customTabDetails, setCustomTabDetails] = useState<Record<number, CustomTabDetail>>({});
-  useEffect(() => { listCustomTabs().then(setCustomTabs); }, []);
+  // Madde 2026-09-07 (Antrenör Paneli, 1): "Antrenör" özel sekmesi artık
+  // sporcunun Hızlı Erişim'inde GÖSTERİLMİYOR — aynı içerik antrenörün
+  // KENDİ panelinde (/coach) gösteriliyor (bkz. o sayfadaki AYNI liste,
+  // BURADA filtrelenmiyor). Eşleşme başlığa göre (admin Sekmeler'de bu
+  // sekmenin adı budur) — "Dersler" alt bölümünün başlığa göre tanınması
+  // ile AYNI kural (NestedSectionAccordion).
+  useEffect(() => {
+    listCustomTabs().then((tabs) => setCustomTabs(tabs.filter((t) => t.label !== 'Antrenör')));
+  }, []);
 
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);
   /** Madde 2026-09-05: Antrenör → Ödev → Dersler köprüsü — sporcuya

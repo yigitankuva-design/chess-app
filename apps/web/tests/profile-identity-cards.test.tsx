@@ -55,6 +55,12 @@ describe('Profil sayfası — kimlik kartları: il + üyelik tarihi (madde 2026-
     expect(screen.getByText(/Bilecik/)).toBeInTheDocument();
     expect(screen.getByText(/Üyelik tarihi 7 Ağu 2018/)).toBeInTheDocument();
   });
+
+  it('madde 2026-09-07 (5): Türkiye bayrağı text-5xl (önceki text-2xl\'in tam iki katı) ile büyütülmüş — antrenör profiliyle AYNI değişiklik', async () => {
+    render(<ProfileView />);
+    await waitFor(() => screen.getByText('Test Sporcu'));
+    expect(screen.getByText('🇹🇷')).toHaveClass('text-5xl');
+  });
 });
 
 describe('Profil sayfası — İletişim Bilgileri kartı (madde 2026-09-07, GRUP C)', () => {

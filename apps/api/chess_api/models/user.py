@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Boolean, DateTime, Enum
+from sqlalchemy import String, Boolean, DateTime, Enum, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -29,3 +29,9 @@ class User(Base):
     email_verification_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Madde 2026-09-07 (Antrenör Paneli, 4): antrenörün KENDİ Profil
+    # sayfasındaki kimlik fotoğrafı — ChildProfile.photo_data_url ile AYNI
+    # desen (data:image/...;base64,... — bkz. POST /teacher/me/photo).
+    # NULLABLE (mevcut hesaplarda boş; KURAL #3) — boşsa sabit 🎓 rozeti
+    # gösterilmeye devam eder.
+    photo_data_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

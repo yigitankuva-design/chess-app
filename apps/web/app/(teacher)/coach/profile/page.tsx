@@ -8,11 +8,11 @@ import { TIME_GROUPS } from '@/lib/play/levels';
 import { ChessThemeSelector } from '@/components/ChessThemeSelector';
 import { BoardColorSelector } from '@/components/BoardColorSelector';
 import { PieceSetSelector } from '@/components/PieceSetSelector';
-import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
 import { fetchDaySummary } from '@/lib/activity/activityApi';
 import type { DaySummary } from '@/lib/activity/activityApi';
-import { fetchTeacherProgress } from '@/lib/gamification/meApi';
+import { fetchTeacherProgress, uploadTeacherPhoto } from '@/lib/gamification/meApi';
 import type { MyProgress } from '@/lib/gamification/meApi';
+import { resizeImageToDataUrl } from '@/lib/image/resizeImage';
 
 /** "2018-08-07" → "7 Ağu 2018" (sporcu Profili'yle AYNI biçim). */
 function formatMemberSince(iso: string): string {
@@ -30,26 +30,21 @@ function formatMemberSince(iso: string): string {
  * ekranı — /students/[id] — hâlâ onu kullanıyor, KURAL #3); bu SADECE
  * antrenörün KENDİ profili için AYRI bir kopya.
  *
- * Zorunlu teknik farklar (tasarım/kart sırası DEĞİŞMEDİ):
- * - Kimlik fotoğrafı: sporcu tarafında cihazdan fotoğraf/avatar yükleme var
- *   — antrenör hesabının böyle bir alt yapısı (User modelinde photo_data_url
- *   yok) henüz yok, o yüzden burada SABİT 🎓 rozeti gösteriliyor, yükleme
- *   TIKLANAMAZ. İstersen bunu da sporcu gibi yapabiliriz.
- * - Veri: rütbe/XP/rozet/fotoğraf/il/iletişim sistemi antrenör hesabında
- *   YOK — yeni, küçük bir uç (`GET /teacher/me/profile-summary`) sadece
- *   gerçek alanları (isim, üyelik tarihi) doldurup gerisini null/0 döner;
- *   ProfileView'daki AYNI "bilgi eksik" gösterimi burada da geçerli.
+ * Madde 2026-09-07 (devam, Zafer'in 5 maddelik düzenleme turu):
+ * 1. "İletişim Bilgileri", "Ders İlerlemesi", "Not" kartları KALDIRILDI
+ *    (antrenörün kendi profili için anlamları yoktu).
+ * 2. Kimlik fotoğrafı artık GERÇEK yükleme alanı — POST /teacher/me/photo
+ *    (ChildProfile'ın POST /children/me/photo'suyla AYNI desen).
+ * 3. Türkiye bayrağı %100 büyütüldü (aynı değişiklik sporcu tarafında da
+ *    yapıldı — bkz. components/profile/ProfileView.tsx).
+ *
+ * Kalan zorunlu teknik farklar (tasarım/kart sırası DEĞİŞMEDİ):
+ * - Veri: rütbe/XP/rozet/il sistemi antrenör hesabında YOK — `GET
+ *   /teacher/me/profile-summary` sadece gerçekten var olan alanları
+ *   (isim, üyelik tarihi, fotoğraf) doldurup gerisini null/0 döner.
  * - Performans Puanı / Genel Maç İstatistikleri / Güçlü-Zayıf Analiz /
- *   Turnuva Geçmişi / Hoca notu: ProfileView'da da bunlar ZATEN örnek
- *   veri (henüz gerçek backend'e bağlı değil) — burada AYNEN kopyalandı.
- * - "İletişim Bilgileri: Sporcu/Baba/Anne" kartı da aynen kopyalandı ama
- *   bir antrenör için anlamı yok (o kart bir SPORCUNUN velisi içindi) —
- *   alanlar boş gelir ("girilmedi" yazar). Kaldırmamı/değiştirmemi istersen
- *   söyle.
- * - "Ders İlerlemesi": LessonProgressCard childId'siz (antrenörün kendi
- *   token'ıyla) çalışıyor — kilit puanı olmadığı için müfredat TAMAMEN AÇIK
- *   görünür (zaten /coach'un "Dersler" sekmesinde de aynı bileşen aynı
- *   şekilde kullanılıyor).
+ *   Turnuva Geçmişi: ProfileView'da da bunlar ZATEN örnek veri (henüz
+ *   gerçek backend'e bağlı değil) — burada AYNEN kopyalandı.
  * - "Aktiflik Durumu - Bu Hafta": `/activity/day-summary` çocuk token'ı
  *   istiyor — antrenör için boş/sıfır gelir (grafik kartı yine de görünür,
  *   sadece "0 gün çalıştı" gösterir).
@@ -70,13 +65,35 @@ export default function CoachProfilePage() {
     setActivePanel((cur) => (cur === id ? null : id));
   }
 
-  const [contactTab, setContactTab] = useState<ContactPerson | null>(null);
-
   const [daySummary, setDaySummary] = useState<DaySummary | null>(null);
   function loadDaySummary(dateStr?: string) {
     fetchDaySummary(dateStr).then(setDaySummary);
   }
   useEffect(() => { loadDaySummary(); }, []);
+
+  /** Madde 2026-09-07: fotoğraf yükleme — dairesel alana tıklayınca
+   *  cihazdan/kameradan görsel seçilir, küçültülüp sunucuya gönderilir.
+   *  Başarısızsa mevcut fotoğraf/ikon değişmeden kalır (KURAL #3). */
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  async function handlePhotoSelected(file: File | undefined) {
+    if (!file) return;
+    setPhotoUploading(true);
+    setPhotoError(false);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      const ok = await uploadTeacherPhoto(dataUrl);
+      if (ok) {
+        setMe((prev) => (prev ? { ...prev, photo_data_url: dataUrl } : prev));
+      } else {
+        setPhotoError(true);
+      }
+    } catch {
+      setPhotoError(true);
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
 
   useEffect(() => {
     if (!hydrated) return;
@@ -127,70 +144,44 @@ export default function CoachProfilePage() {
   return (
     <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-3">
 
-      {/* 1) İsim + rozet — sporcu tarafında bu alan tıklanıp fotoğraf
-          yüklenebiliyor; antrenör hesabında henüz bu alt yapı yok, o yüzden
-          SABİT rozet (bkz. dosya başındaki not). */}
+      {/* 1) İsim + fotoğraf — tıklanınca cihazdan/kameradan seçim. */}
       <div className="t-card p-4 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
-          🎓
-        </div>
+        <label
+          className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden cursor-pointer relative"
+          style={{ background: 'var(--t-surface-2)' }}
+          title="Fotoğraf yükle"
+        >
+          {me.photo_data_url
+            ? <img src={me.photo_data_url} alt={teacherName ?? 'Antrenör fotoğrafı'} className="w-full h-full object-cover" />
+            : '🎓'}
+          {photoUploading && (
+            <span className="absolute inset-0 flex items-center justify-center text-xs" style={{ background: 'rgba(0,0,0,0.4)', color: '#fff' }}>
+              …
+            </span>
+          )}
+          <input
+            type="file" accept="image/*" capture="user" className="hidden"
+            aria-label="Fotoğraf yükle"
+            onChange={(e) => { void handlePhotoSelected(e.target.files?.[0]); e.target.value = ''; }}
+          />
+        </label>
         <div className="min-w-0 flex-1">
           {teacherName && <p className="font-bold text-lg leading-tight truncate">{teacherName}</p>}
           <p className="text-xs t-muted uppercase tracking-widest mt-0.5">Antrenör</p>
+          {photoError && <p className="text-xs mt-0.5" style={{ color: 'var(--t-err-text)' }}>Fotoğraf yüklenemedi, tekrar dene.</p>}
         </div>
       </div>
 
-      {/* 2) Ülke + üyelik tarihi */}
+      {/* 2) Ülke + üyelik tarihi — madde 2026-09-07: bayrak %100 büyütüldü. */}
       <div className="t-card p-4 flex items-center gap-2">
-        <span className="text-2xl flex-shrink-0">🇹🇷</span>
+        <span className="text-5xl flex-shrink-0">🇹🇷</span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold">Türkiye</p>
           <p className="t-muted mt-0.5">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
         </div>
       </div>
 
-      {/* 3) İletişim Bilgileri — sporcu tarafındaki AYNI kart (bkz. dosya
-          başındaki not: antrenör için anlamı yok, alanlar boş gelir). */}
-      <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
-          <span className="text-xs font-bold uppercase tracking-wide t-muted">İletişim Bilgileri</span>
-          <div className="flex gap-1.5">
-            {CONTACT_PILLS.map((p) => (
-              <button
-                key={p.id} type="button"
-                onClick={() => setContactTab((cur) => (cur === p.id ? null : p.id))}
-                aria-pressed={contactTab === p.id}
-                className="px-2.5 py-1 rounded-full text-xs font-bold transition-colors"
-                style={{
-                  background: contactTab === p.id ? 'var(--t-accent)' : 'var(--t-surface-2)',
-                  color: contactTab === p.id ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {contactTab ? (() => {
-          const { phone, email } = contactFor(me, contactTab);
-          return (
-            <div className="flex flex-col gap-2 text-sm">
-              <div className="flex items-center gap-2.5">
-                <PhoneIcon />
-                <span className={phone ? undefined : 't-muted italic'}>{phone ?? 'Telefon girilmedi'}</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <MailIcon />
-                <span className={email ? undefined : 't-muted italic'}>{email ?? 'E-posta girilmedi'}</span>
-              </div>
-            </div>
-          );
-        })() : (
-          <p className="text-xs t-muted text-center py-2">Bilgileri görmek için yukarıdan birini seç.</p>
-        )}
-      </div>
-
-      {/* 4) Performans Puanı — sporcu tarafında da ZATEN örnek veri. */}
+      {/* 3) Performans Puanı — sporcu tarafında da ZATEN örnek veri. */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Performans Puanı</span>
@@ -212,7 +203,7 @@ export default function CoachProfilePage() {
         )}
       </div>
 
-      {/* 5) Genel Maç İstatistikleri */}
+      {/* 4) Genel Maç İstatistikleri */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Genel Maç İstatistikleri</span>
@@ -230,7 +221,7 @@ export default function CoachProfilePage() {
         )}
       </div>
 
-      {/* 6) Aktiflik Durumu - Bu Hafta */}
+      {/* 5) Aktiflik Durumu - Bu Hafta */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-2.5 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Aktiflik Durumu - Bu Hafta</span>
@@ -278,10 +269,7 @@ export default function CoachProfilePage() {
         )}
       </div>
 
-      {/* 7) Ders İlerlemesi — childId'siz, antrenörün kendi token'ıyla. */}
-      <LessonProgressCard />
-
-      {/* 8) Güçlü/Zayıf Yön Analizi */}
+      {/* 6) Güçlü/Zayıf Yön Analizi */}
       <div className="t-card p-4">
         <div className="pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Güçlü / Zayıf Yön Analizi</span>
@@ -304,7 +292,7 @@ export default function CoachProfilePage() {
         </div>
       </div>
 
-      {/* 9) Turnuva Geçmişi */}
+      {/* 7) Turnuva Geçmişi */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Turnuva Geçmişi</span>
@@ -327,17 +315,6 @@ export default function CoachProfilePage() {
         ) : (
           <p className="text-sm t-muted text-center py-5">Bu tempoda henüz turnuva yok</p>
         )}
-      </div>
-
-      {/* 10) Not */}
-      <div className="t-card p-4 flex gap-3">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
-          <ChatIcon />
-        </div>
-        <div>
-          <p className="text-xs font-bold t-muted mb-0.5">Not</p>
-          <p className="text-sm t-muted italic">Not eklendiğinde burada görünecek.</p>
-        </div>
       </div>
 
       {/* Ana Sayfaya Dön — sporcu tarafında /home'a gider, burada /coach'a. */}
@@ -436,6 +413,8 @@ const SKILL_AREAS: { label: string; pct: number }[] = [
   { label: 'Oyun Sonu Performansı', pct: 38 },
 ];
 
+const SAKIN_PANEL_PODIUM = { gold: '#E0A526', silver: '#9AA3AC', bronze: '#C0742F' };
+
 const WEEK_DAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 
 const ACTIVITY_CATEGORIES: { key: 'play_seconds' | 'lessons_seconds' | 'practice_seconds'; label: string; emoji: string }[] = [
@@ -451,8 +430,6 @@ function formatDuration(totalSeconds: number): string {
   if (hours <= 0) return `${minutes} dk`;
   return `${hours} saat ${minutes} dk`;
 }
-
-const SAKIN_PANEL_PODIUM = { gold: '#E0A526', silver: '#9AA3AC', bronze: '#C0742F' };
 
 function TempoSelector({ value, onChange }: { value: TempoKey; onChange: (t: TempoKey) => void }) {
   return (
@@ -498,44 +475,6 @@ function PodiumTile({ place, count, color }: { place: 1 | 2 | 3; count: number; 
       <div className="text-[10px] t-muted">{label}</div>
     </div>
   );
-}
-
-function ChatIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6.6 10.8c1.2 2.4 3.2 4.4 5.6 5.6l1.9-1.9c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V19c0 .6-.4 1-1 1C10.6 20 4 13.4 4 5c0-.6.4-1 1-1h3.1c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1z" />
-    </svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3.5 6.5l8.5 6 8.5-6" />
-    </svg>
-  );
-}
-
-type ContactPerson = 'sporcu' | 'baba' | 'anne';
-const CONTACT_PILLS: { id: ContactPerson; label: string }[] = [
-  { id: 'sporcu', label: 'Sporcu' },
-  { id: 'baba', label: 'Baba' },
-  { id: 'anne', label: 'Anne' },
-];
-
-function contactFor(me: MyProgress, person: ContactPerson): { phone: string | null; email: string | null } {
-  if (person === 'sporcu') return { phone: me.athlete_phone, email: me.athlete_email };
-  if (person === 'baba') return { phone: me.father_phone, email: me.father_email };
-  return { phone: me.mother_phone, email: me.mother_email };
 }
 
 type SettingPanelId = 'theme' | 'board-color' | 'pieces' | 'language';

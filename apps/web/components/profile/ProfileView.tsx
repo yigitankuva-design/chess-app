@@ -430,7 +430,10 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
       {/* 2) Ülke + il + üyelik tarihi — madde 2026-09-07 (GRUP C). Ülke akademi
           tek ülke olduğu için (Türkiye) SABİT — gerçek bir "ülke" alanı yok. */}
       <div className="t-card p-4 flex items-center gap-2">
-        <span className="text-2xl flex-shrink-0">🇹🇷</span>
+        {/* Madde 2026-09-07: bayrak %100 büyütüldü (Zafer'in isteğiyle,
+            antrenör profiliyle AYNI değişiklik — text-2xl'in tam iki katı
+            olan text-5xl'e çıkarıldı). */}
+        <span className="text-5xl flex-shrink-0">🇹🇷</span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold">
             Türkiye{me.province && <span className="t-muted font-normal"> ({me.province})</span>}

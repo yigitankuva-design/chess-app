@@ -437,3 +437,44 @@ async def test_teacher_own_profile_summary_requires_teacher_role(client):
     parent_token = await _parent_signup(client, "not_a_teacher@t.com")
     r = await client.get("/teacher/me/profile-summary", headers=auth(parent_token))
     assert r.status_code == 403
+
+
+TINY_PNG = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
+)
+
+
+@pytest.mark.asyncio
+async def test_teacher_uploads_own_photo_and_profile_summary_reflects_it(client):
+    """Madde 2026-09-07 (Antrenör Paneli, 4): antrenör kendi fotoğrafını
+    yükler — POST /teacher/me/photo, sonra /teacher/me/profile-summary
+    bunu döndürür."""
+    token = await _teacher_signup(client, "photo_teach@t.com")
+    r = await client.post(
+        "/teacher/me/photo", headers=auth(token), json={"photo_data_url": TINY_PNG},
+    )
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+
+    r = await client.get("/teacher/me/profile-summary", headers=auth(token))
+    assert r.status_code == 200
+    assert r.json()["photo_data_url"] == TINY_PNG
+
+
+@pytest.mark.asyncio
+async def test_teacher_photo_upload_rejects_non_image_data_uri(client):
+    token = await _teacher_signup(client, "photo_bad@t.com")
+    r = await client.post(
+        "/teacher/me/photo", headers=auth(token), json={"photo_data_url": "not-an-image"},
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_teacher_photo_upload_requires_teacher_role(client):
+    parent_token = await _parent_signup(client, "photo_parent@t.com")
+    r = await client.post(
+        "/teacher/me/photo", headers=auth(parent_token), json={"photo_data_url": TINY_PNG},
+    )
+    assert r.status_code == 403

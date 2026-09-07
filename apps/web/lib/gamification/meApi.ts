@@ -95,3 +95,23 @@ export async function uploadMyPhoto(photoDataUrl: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Madde 2026-09-07 (Antrenör Paneli, 4): antrenör kendi profil fotoğrafını
+ * yükler — `uploadMyPhoto` ile AYNI desen, sadece uç farklı
+ * (`/teacher/me/photo` — antrenör hesabında ChildProfile YOK).
+ */
+export async function uploadTeacherPhoto(photoDataUrl: string): Promise<boolean> {
+  try {
+    const token = getToken();
+    if (!token) return false;
+    const r = await fetch(`${API_BASE}/teacher/me/photo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ photo_data_url: photoDataUrl }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}

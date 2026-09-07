@@ -167,10 +167,10 @@ async def teacher_profile_summary(
     (`/coach/profile`) sporcunun ProfileView'ını (bkz. components/profile/
     ProfileView.tsx) aynen kullanıyor — o bileşen `/gamification/me`'nin
     döndürdüğü `MyProgress` şeklini bekliyor. Antrenörün rütbe/XP/rozet/
-    fotoğraf/il/iletişim sistemi YOK (bunlar SADECE ChildProfile'da) — bu
-    yüzden burada sadece gerçekten var olan alanlar (isim, üyelik tarihi)
-    doldurulur, geri kalanı NULL/0 döner. ProfileView bunları zaten
-    "ikon avatar göster"/"bilgi eksik" olarak gösteriyor (KURAL #3)."""
+    il/iletişim sistemi YOK (bunlar SADECE ChildProfile'da) — bu yüzden
+    burada sadece gerçekten var olan alanlar (isim, üyelik tarihi,
+    fotoğraf) doldurulur, geri kalanı NULL/0 döner. ProfileView bunları
+    zaten "ikon avatar göster"/"bilgi eksik" olarak gösteriyor (KURAL #3)."""
     _ensure_teacher(current)
     return {
         "rank_name": "", "rank_icon": "", "xp_total": 0, "next_rank_xp": 0,
@@ -178,12 +178,33 @@ async def teacher_profile_summary(
         "member_since": current.created_at.date().isoformat(),
         "display_name": current.name,
         "avatar": "default",
-        "photo_data_url": None,
+        "photo_data_url": current.photo_data_url,
         "province": None,
         "athlete_phone": None, "athlete_email": None,
         "father_name": None, "father_phone": None, "father_email": None,
         "mother_name": None, "mother_phone": None, "mother_email": None,
     }
+
+
+class UploadTeacherPhotoRequest(BaseModel):
+    photo_data_url: str = Field(min_length=1, max_length=400_000)
+
+
+@router.post("/me/photo")
+async def upload_teacher_photo(
+    payload: UploadTeacherPhotoRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-07 (Antrenör Paneli, 4): antrenör kendi kimlik
+    fotoğrafını yükler — `POST /children/me/photo` ile AYNI desen
+    (bkz. components/profile/ProfileView.tsx'teki dairesel foto alanı)."""
+    _ensure_teacher(current)
+    if not payload.photo_data_url.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="Invalid image data URL")
+    current.photo_data_url = payload.photo_data_url
+    await db.commit()
+    return {"ok": True}
 
 
 @router.get("/students/{child_id}/profile-summary")
