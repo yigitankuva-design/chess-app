@@ -69,16 +69,20 @@ const COUNTER_ROW_OFFSET = 32 + 8;
 
 /**
  * Alt Konu'nun ayrı sayfasındaki tasarım — madde: 2026-08-26 (görsel
- * referans doğrultusunda). Konum Havuzu İKİ SEVİYELİ:
- *  - Sağ üstteki İleri/Geri: havuzdaki GRUPLAR arasında (her biri kendi kod
- *    numarasıyla) gezinir.
- *  - Solundaki numaralı butonlar: aktif grubun İÇİNDEKİ adımlar (konum +
- *    cümle) arasında gezinir — antrenör konuyu anlatırken sırayla tıklar.
+ * referans doğrultusunda). Konum Havuzu İKİ SEVİYELİ (grup/adım) — ama
+ * madde 2026-09-09 (devam)'a göre İleri/Geri okları ARTIK aktif grubun
+ * İÇİNDEKİ adımlar (solundaki numaralı butonlarla AYNI şey) arasında
+ * gezinir; antrenör ister butona tıklayarak ister okla aynı adıma geçer.
+ * Gruplar (farklı "Konum Havuzu" kodları) arası geçiş için ŞU AN ayrı bir
+ * yol YOK (Zafer'in tercihi) — `groupIdx` bu yüzden 0'da sabit kalıyor,
+ * ileride bir grup-geçiş arayüzü eklenirse buraya bağlanabilir.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
 export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, onPoolLabelChange }: Props) {
   const auth = useAuth();
-  const [groupIdx, setGroupIdx] = useState(0);
+  // Madde 2026-09-09 (devam): gruplar arası geçiş için henüz bir arayüz YOK
+  // (bkz. üstteki açıklama) — bu yüzden sabit 0, useState DEĞİL.
+  const groupIdx = 0;
   const [stepIdx, setStepIdx] = useState(0);
   /** Madde 2026-08-25: bu sayfaya ÖZEL, YEREL bir tercih — BotGame/LiveGame'in
    *  paylaşılan (localStorage) "Notasyon Verilerini Gizle" tercihiyle KARIŞMAZ
@@ -104,9 +108,11 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
     return <p className="t-muted text-sm">Henüz konum eklenmedi.</p>;
   }
 
-  function goToGroup(delta: 1 | -1) {
-    setGroupIdx((i) => Math.min(pool.length - 1, Math.max(0, Math.min(i, pool.length - 1) + delta)));
-    setStepIdx(0);
+  // Madde 2026-09-09 (devam): "1 nolu butondan 2 nolu butona" — okların
+  // görevi artık numaralı butonlarla (solundaki adım daireleri) AYNI
+  // stepIdx'i değiştirmek, gruplar arasında DEĞİL (bkz. dosya başı açıklama).
+  function goToStep(delta: 1 | -1) {
+    setStepIdx((i) => Math.min(group.steps.length - 1, Math.max(0, Math.min(i, group.steps.length - 1) + delta)));
   }
 
   // Madde 2026-09-09 (GRUP D'nin devamı): "Ödev Gönder" tetikleyicisi artık
@@ -177,9 +183,12 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
               {/* Madde 2026-09-09 (devam): Zafer'in bildirdiği "okların rengi
                   belirgin değil, boyutu çok küçük" sorunu — ince ‹ › karakteri
                   + soluk çerçeve YERİNE görsel referanstaki gibi büyük, dolgun
-                  mavi zemin + kalın siyah çerçeve + kalın siyah ok ikonu. */}
-              <button type="button" aria-label="Önceki konum" onClick={() => goToGroup(-1)}
-                disabled={gi === 0}
+                  mavi zemin + kalın siyah çerçeve + kalın siyah ok ikonu.
+                  Madde 2026-09-09 (devam 2): oklar artık solundaki numaralı
+                  butonlarla (Adım N) AYNI stepIdx'i değiştirir — antrenör
+                  ister butona tıklayarak ister okla aynı adıma geçebilir. */}
+              <button type="button" aria-label="Önceki adım" onClick={() => goToStep(-1)}
+                disabled={si === 0}
                 className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
                 style={{
                   width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
@@ -187,8 +196,8 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                 }}>
                 <ChevronIcon direction="left" />
               </button>
-              <button type="button" aria-label="Sonraki konum" onClick={() => goToGroup(1)}
-                disabled={gi >= pool.length - 1}
+              <button type="button" aria-label="Sonraki adım" onClick={() => goToStep(1)}
+                disabled={si >= group.steps.length - 1}
                 className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
                 style={{
                   width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,

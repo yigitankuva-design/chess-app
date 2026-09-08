@@ -34,7 +34,7 @@ function group(id: string, code: string, steps: PositionPoolEntry['steps']): Pos
 
 beforeEach(() => { mockRole = null; });
 
-describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-08-26)', () => {
+describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-09 devam)', () => {
   it('havuz boşken bilgi mesajı gösterir', () => {
     render(<AltKonuWalkthrough pool={[]} />);
     expect(screen.getByText('Henüz konum eklenmedi.')).toBeInTheDocument();
@@ -47,25 +47,38 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     render(<AltKonuWalkthrough pool={pool} />);
     expect(screen.getByText('1 / 1 — Konum Havuzu 001')).toBeInTheDocument();
     expect(screen.getByText('Birinci adım.')).toBeInTheDocument();
-    expect(screen.getByLabelText('Önceki konum')).toBeDisabled();
-    expect(screen.getByLabelText('Sonraki konum')).toBeDisabled();
+    // Tek adım var — hem önceki hem sonraki devre dışı.
+    expect(screen.getByLabelText('Önceki adım')).toBeDisabled();
+    expect(screen.getByLabelText('Sonraki adım')).toBeDisabled();
   });
 
-  it('İleri/Geri ile GRUPLAR arasında gezinir, grup değişince ilk adıma döner', () => {
+  it('madde 2026-09-09 (devam): İleri/Geri okları numaralı butonlarla (Adım N) AYNI stepIdx\'i değiştirir — Zafer\'in "1 nolu butondan 2 nolu butona" isteği', () => {
     const pool = [
-      group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'Grup 1 - Adım 1', turn: 'w' }]),
-      group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'Grup 2 - Adım 1', turn: 'w' }]),
+      group('g1', '001', [
+        { id: 's1', fen: FEN, sentence: 'Adım 1 cümlesi', turn: 'w' },
+        { id: 's2', fen: FEN2, sentence: 'Adım 2 cümlesi', turn: 'b' },
+      ]),
     ];
     render(<AltKonuWalkthrough pool={pool} />);
-    expect(screen.getByText('1 / 2 — Konum Havuzu 001')).toBeInTheDocument();
+    expect(screen.getByText('Adım 1 cümlesi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Önceki adım')).toBeDisabled();
+    expect(screen.getByLabelText('Sonraki adım')).not.toBeDisabled();
 
-    fireEvent.click(screen.getByLabelText('Sonraki konum'));
-    expect(screen.getByText('2 / 2 — Konum Havuzu 002')).toBeInTheDocument();
-    expect(screen.getByText('Grup 2 - Adım 1')).toBeInTheDocument();
-    expect(screen.getByLabelText('Sonraki konum')).toBeDisabled();
+    // İleri ok: 1 nolu butondan 2 nolu butona.
+    fireEvent.click(screen.getByLabelText('Sonraki adım'));
+    expect(screen.getByText('Adım 2 cümlesi')).toBeInTheDocument();
+    expect(screen.queryByText('Adım 1 cümlesi')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Adım 2')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Sonraki adım')).toBeDisabled();
+    expect(screen.getByLabelText('Önceki adım')).not.toBeDisabled();
 
-    fireEvent.click(screen.getByLabelText('Önceki konum'));
-    expect(screen.getByText('1 / 2 — Konum Havuzu 001')).toBeInTheDocument();
+    // Geri ok: 2 nolu butondan 1 nolu butona.
+    fireEvent.click(screen.getByLabelText('Önceki adım'));
+    expect(screen.getByText('Adım 1 cümlesi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Adım 1')).toHaveAttribute('aria-pressed', 'true');
+
+    // Grup sayacı ("1 / 1 — Konum Havuzu 001") adım geçişinden ETKİLENMEZ.
+    expect(screen.getByText('1 / 1 — Konum Havuzu 001')).toBeInTheDocument();
   });
 
   it('bir grubun İÇİNDEKİ adımlar numaralı butonlarla gezilir, grup sayacı DEĞİŞMEZ', () => {
@@ -81,6 +94,9 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     fireEvent.click(screen.getByLabelText('Adım 2'));
     expect(screen.getByText('Adım 2 cümlesi')).toBeInTheDocument();
     expect(screen.queryByText('Adım 1 cümlesi')).not.toBeInTheDocument();
+    // Butona tıklama ve ok ile gezinme AYNI stepIdx'i kontrol eder — buton
+    // ile 2. adıma geçtikten sonra geri ok butonu artık aktif olmalı.
+    expect(screen.getByLabelText('Önceki adım')).not.toBeDisabled();
     // Grup sayacı adım geçişinden ETKİLENMEZ.
     expect(screen.getByText('1 / 1 — Konum Havuzu 001')).toBeInTheDocument();
   });
@@ -115,17 +131,19 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
 
   it('madde 2026-09-09 (devam): İleri/Geri artık büyük, dolgun mavi zemin + kalın siyah çerçeve — eski ince/soluk tasarım DEĞİL', () => {
     const pool = [
-      group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }]),
-      group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'y', turn: 'w' }]),
+      group('g1', '001', [
+        { id: 's1', fen: FEN, sentence: 'x', turn: 'w' },
+        { id: 's2', fen: FEN2, sentence: 'y', turn: 'w' },
+      ]),
     ];
     render(<AltKonuWalkthrough pool={pool} />);
 
-    const prevBtn = screen.getByLabelText('Önceki konum');
+    const prevBtn = screen.getByLabelText('Önceki adım');
     expect(prevBtn).toHaveStyle({ width: '80px', height: '56px', background: '#3b82f6', border: '3px solid #0a0a0a' });
-    const nextBtn = screen.getByLabelText('Sonraki konum');
+    const nextBtn = screen.getByLabelText('Sonraki adım');
     expect(nextBtn).toHaveStyle({ width: '80px', height: '56px', background: '#3b82f6', border: '3px solid #0a0a0a' });
 
-    const counter = screen.getByText('1 / 2 — Konum Havuzu 001');
+    const counter = screen.getByText('1 / 1 — Konum Havuzu 001');
     expect(counter).toHaveStyle({ fontWeight: '600' });
     // Sayaç, tahtanın 420px'lik kabıyla AYNI kapsayıcı içinde (sol kenar hizası).
     const boardCapsule = document.querySelector('div[style*="max-width: 420px"]');
@@ -184,7 +202,7 @@ describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D
   it('madde 2026-09-09 (görsel referans): İleri/Geri ve Ödev Gönder AYNI satırda — oklar solda, Ödev Gönder sağda', () => {
     mockRole = 'teacher';
     render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
-    const nextBtn = screen.getByLabelText('Sonraki konum');
+    const nextBtn = screen.getByLabelText('Sonraki adım');
     const sendBtn = screen.getByLabelText('Ödev Gönder');
     // Oklar ve Ödev Gönder (AssignHomeworkPanel kendi sarmalayıcısıyla) AYNI
     // satırın (flex justify-between) içinde — oklar sol-alt, Ödev Gönder
@@ -197,27 +215,30 @@ describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D
 
 describe('AltKonuWalkthrough — sayaç başlığın yanına taşınabilir (madde 2026-09-09, onPoolLabelChange)', () => {
   const pool = [
-    group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'Grup 1', turn: 'w' }]),
-    group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'Grup 2', turn: 'w' }]),
+    group('g1', '001', [
+      { id: 's1', fen: FEN, sentence: 'Adım 1 cümlesi', turn: 'w' },
+      { id: 's2', fen: FEN2, sentence: 'Adım 2 cümlesi', turn: 'w' },
+    ]),
   ];
 
   it('onPoolLabelChange VERİLİRSE: sayaç KENDİ İÇİNDE artık gösterilmez, callback doğru metinle çağrılır', () => {
     const onPoolLabelChange = vi.fn();
     render(<AltKonuWalkthrough pool={pool} onPoolLabelChange={onPoolLabelChange} />);
-    expect(screen.queryByText('1 / 2 — Konum Havuzu 001')).not.toBeInTheDocument();
-    expect(onPoolLabelChange).toHaveBeenCalledWith('1 / 2 — Konum Havuzu 001');
+    expect(screen.queryByText('1 / 1 — Konum Havuzu 001')).not.toBeInTheDocument();
+    expect(onPoolLabelChange).toHaveBeenCalledWith('1 / 1 — Konum Havuzu 001');
   });
 
-  it('onPoolLabelChange VERİLİRSE: grup değişince callback YENİ metinle tekrar çağrılır', () => {
+  it('madde 2026-09-09 (devam): ok ile adım değişse de callback\'e bildirilen grup sayacı DEĞİŞMEZ (sayaç grup, adım DEĞİL)', () => {
     const onPoolLabelChange = vi.fn();
     render(<AltKonuWalkthrough pool={pool} onPoolLabelChange={onPoolLabelChange} />);
     onPoolLabelChange.mockClear();
-    fireEvent.click(screen.getByLabelText('Sonraki konum'));
-    expect(onPoolLabelChange).toHaveBeenCalledWith('2 / 2 — Konum Havuzu 002');
+    fireEvent.click(screen.getByLabelText('Sonraki adım'));
+    expect(screen.getByText('Adım 2 cümlesi')).toBeInTheDocument();
+    expect(onPoolLabelChange).not.toHaveBeenCalled();
   });
 
   it('onPoolLabelChange VERİLMEZSE (eski/standalone kullanım): sayaç eskisi gibi KENDİ İÇİNDE gösterilir', () => {
     render(<AltKonuWalkthrough pool={pool} />);
-    expect(screen.getByText('1 / 2 — Konum Havuzu 001')).toBeInTheDocument();
+    expect(screen.getByText('1 / 1 — Konum Havuzu 001')).toBeInTheDocument();
   });
 });
