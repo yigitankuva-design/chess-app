@@ -16,6 +16,7 @@ import { usePresenceCount } from '@/lib/presence/PresenceContext';
 import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayersBadge';
 import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
+import { isAntrenorCalismalarTab } from '@/lib/customTabs/calismalarTab';
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import { AnalizPanel } from '@/components/analiz/AnalizPanel';
 import { raised, pressed, PathNode, Branch, SH_LIGHT, VerticalDivider } from '@/components/ui/neumorphic';
@@ -177,14 +178,16 @@ export default function ChildHomePage() {
   /** Açılan özel sekmenin alt sekmeleri — açılınca yüklenir, tekrar açılınca
    *  yeniden istek atılmaz. */
   const [customTabDetails, setCustomTabDetails] = useState<Record<number, CustomTabDetail>>({});
-  // Madde 2026-09-07 (Antrenör Paneli, 1): "Antrenör" özel sekmesi artık
-  // sporcunun Hızlı Erişim'inde GÖSTERİLMİYOR — aynı içerik antrenörün
-  // KENDİ panelinde (/coach) gösteriliyor (bkz. o sayfadaki AYNI liste,
-  // BURADA filtrelenmiyor). Eşleşme başlığa göre (admin Sekmeler'de bu
-  // sekmenin adı budur) — "Dersler" alt bölümünün başlığa göre tanınması
-  // ile AYNI kural (NestedSectionAccordion).
+  // Madde 2026-09-07 (Antrenör Paneli, 1): antrenörün "Çalışmalar" (eski adıyla
+  // "Antrenör") özel sekmesi artık sporcunun Hızlı Erişim'inde GÖSTERİLMİYOR —
+  // aynı içerik antrenörün KENDİ panelinde (/coach) gösteriliyor (bkz. o
+  // sayfadaki AYNI liste, BURADA filtrelenmiyor).
+  // Madde 2026-09-08 (devam): eşleşme artık BAŞLIĞA göre DEĞİL, kalıcı
+  // kind='antrenor_calismalar' işaretine göre — admin sekmeyi "Antrenör"den
+  // "Çalışmalar"a yeniden adlandırınca başlık kontrolü sessizce bozulmuştu
+  // ("Dersler" ve "Pratik Yap" ile AYNI hata deseni, bkz. lib/customTabs/calismalarTab.ts).
   useEffect(() => {
-    listCustomTabs().then((tabs) => setCustomTabs(tabs.filter((t) => t.label !== 'Antrenör')));
+    listCustomTabs().then((tabs) => setCustomTabs(tabs.filter((t) => !isAntrenorCalismalarTab(t))));
   }, []);
 
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);

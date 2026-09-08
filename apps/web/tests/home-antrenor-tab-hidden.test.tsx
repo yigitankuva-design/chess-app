@@ -39,11 +39,31 @@ beforeEach(() => {
 });
 
 import HomePage from '@/app/(child)/home/page';
+import { listCustomTabs } from '@/lib/customTabsApi';
 
 describe('Sporcu Hızlı Erişim — "Antrenör" özel sekmesi artık gösterilmez (madde 2026-09-07, 1)', () => {
   it('"Antrenör" etiketli sekme kartı YOK, diğer özel sekmeler (Turnuvalar) hâlâ görünür', async () => {
     render(<HomePage />);
     await waitFor(() => screen.getByText('Turnuvalar'));
     expect(screen.queryByText('Antrenör')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Madde 2026-09-08 (devam): "Dersler" ve "Pratik Yap" ile AYNI sorun —
+ * yukarıdaki filtre SADECE başlığın tam olarak "Antrenör" olmasına
+ * bakıyordu. Zafer bu sekmeyi "Çalışmalar" olarak yeniden adlandırınca
+ * (kind='antrenor_calismalar' ile) filtre artık isme değil kalıcı işarete
+ * bakmalı — bkz. lib/customTabs/calismalarTab.ts.
+ */
+describe('madde 2026-09-08: sekme "Çalışmalar" olarak yeniden adlandırılmış olsa da (kind ile) sporcudan gizli kalır', () => {
+  it('kind="antrenor_calismalar" olan "Çalışmalar" sekmesi Hızlı Erişim\'de YOK, diğerleri görünür', async () => {
+    (listCustomTabs as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { id: 5, order_index: 1, label: 'Çalışmalar', emoji: '🎓', kind: 'antrenor_calismalar' },
+      { id: 6, order_index: 2, label: 'Turnuvalar', emoji: '📌' },
+    ]);
+    render(<HomePage />);
+    await waitFor(() => screen.getByText('Turnuvalar'));
+    expect(screen.queryByText('Çalışmalar')).not.toBeInTheDocument();
   });
 });
