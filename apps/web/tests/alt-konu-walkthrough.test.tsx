@@ -180,4 +180,44 @@ describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D
     render(<AltKonuWalkthrough pool={pool} />);
     expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
   });
+
+  it('madde 2026-09-09 (görsel referans): İleri/Geri ve Ödev Gönder AYNI satırda — oklar solda, Ödev Gönder sağda', () => {
+    mockRole = 'teacher';
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    const nextBtn = screen.getByLabelText('Sonraki konum');
+    const sendBtn = screen.getByLabelText('Ödev Gönder');
+    // Oklar ve Ödev Gönder (AssignHomeworkPanel kendi sarmalayıcısıyla) AYNI
+    // satırın (flex justify-between) içinde — oklar sol-alt, Ödev Gönder
+    // sağ-alt köşede hizalanır (tahtanın hemen altında).
+    const row = sendBtn.closest('.justify-between');
+    expect(row).not.toBeNull();
+    expect(row).toContainElement(nextBtn);
+  });
+});
+
+describe('AltKonuWalkthrough — sayaç başlığın yanına taşınabilir (madde 2026-09-09, onPoolLabelChange)', () => {
+  const pool = [
+    group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'Grup 1', turn: 'w' }]),
+    group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'Grup 2', turn: 'w' }]),
+  ];
+
+  it('onPoolLabelChange VERİLİRSE: sayaç KENDİ İÇİNDE artık gösterilmez, callback doğru metinle çağrılır', () => {
+    const onPoolLabelChange = vi.fn();
+    render(<AltKonuWalkthrough pool={pool} onPoolLabelChange={onPoolLabelChange} />);
+    expect(screen.queryByText('1 / 2 — Konum Havuzu 001')).not.toBeInTheDocument();
+    expect(onPoolLabelChange).toHaveBeenCalledWith('1 / 2 — Konum Havuzu 001');
+  });
+
+  it('onPoolLabelChange VERİLİRSE: grup değişince callback YENİ metinle tekrar çağrılır', () => {
+    const onPoolLabelChange = vi.fn();
+    render(<AltKonuWalkthrough pool={pool} onPoolLabelChange={onPoolLabelChange} />);
+    onPoolLabelChange.mockClear();
+    fireEvent.click(screen.getByLabelText('Sonraki konum'));
+    expect(onPoolLabelChange).toHaveBeenCalledWith('2 / 2 — Konum Havuzu 002');
+  });
+
+  it('onPoolLabelChange VERİLMEZSE (eski/standalone kullanım): sayaç eskisi gibi KENDİ İÇİNDE gösterilir', () => {
+    render(<AltKonuWalkthrough pool={pool} />);
+    expect(screen.getByText('1 / 2 — Konum Havuzu 001')).toBeInTheDocument();
+  });
 });

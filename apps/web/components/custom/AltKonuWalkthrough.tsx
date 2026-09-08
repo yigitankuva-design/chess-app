@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Square } from 'chess.js';
 import { ChessBoard } from '@/components/ChessBoard';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
@@ -17,6 +17,15 @@ interface Props {
    */
   sourceSectionId?: number;
   sourceSectionTitle?: string;
+  /**
+   * Madde 2026-09-09 (görsel referans): "1/1 — Konum Havuzu 001" sayacı
+   * artık sayfa başlığının YANINDA gösteriliyor (bkz. alt-konu/[sectionId]/
+   * page.tsx). Bu callback verilirse bileşen sayacı KENDİ İÇİNDE ARTIK
+   * GÖSTERMEZ — değeri üst bileşene bildirir, başlığın yanına O basar.
+   * VERİLMEZSE (eski/standalone kullanım, testler) sayaç eskisi gibi tahtanın
+   * ÜSTÜNDE kendi içinde gösterilir — KURAL #3, geriye uyumlu.
+   */
+  onPoolLabelChange?: (label: string | null) => void;
 }
 
 /** Madde 2026-09-07 (GRUP D): özel tasarım "gönder" ikonu (kağıt uçak) —
@@ -49,7 +58,7 @@ const COUNTER_ROW_OFFSET = 32 + 8;
  *    cümle) arasında gezinir — antrenör konuyu anlatırken sırayla tıklar.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
-export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle }: Props) {
+export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, onPoolLabelChange }: Props) {
   const auth = useAuth();
   const [groupIdx, setGroupIdx] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
@@ -59,20 +68,34 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle }
    *  kullanmaz" — KURAL #3, mevcut maç ekranları etkilenmesin diye). */
   const [hideNotation, setHideNotation] = useState(false);
 
+  // Madde 2026-09-09: erken return'den (hook kuralı) ÖNCE, pool boşken de
+  // güvenli şekilde hesaplanır — onPoolLabelChange'e o durumda null bildirilir.
+  const codes = assignExerciseCodes(pool.map((p) => ({ code: p.code ?? undefined })));
+  const gi = pool.length > 0 ? Math.min(groupIdx, pool.length - 1) : 0;
+  const group = pool[gi];
+  const si = pool.length > 0 ? Math.min(stepIdx, group.steps.length - 1) : 0;
+  const step = pool.length > 0 ? group.steps[si] : undefined;
+  const poolLabel = pool.length > 0 ? `${gi + 1} / ${pool.length} — Konum Havuzu ${group.code ?? codes[gi]}` : null;
+
+  useEffect(() => {
+    onPoolLabelChange?.(poolLabel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poolLabel]);
+
   if (pool.length === 0) {
     return <p className="t-muted text-sm">Henüz konum eklenmedi.</p>;
   }
-
-  const codes = assignExerciseCodes(pool.map((p) => ({ code: p.code ?? undefined })));
-  const gi = Math.min(groupIdx, pool.length - 1);
-  const group = pool[gi];
-  const si = Math.min(stepIdx, group.steps.length - 1);
-  const step = group.steps[si];
 
   function goToGroup(delta: 1 | -1) {
     setGroupIdx((i) => Math.min(pool.length - 1, Math.max(0, Math.min(i, pool.length - 1) + delta)));
     setStepIdx(0);
   }
+
+  // Madde 2026-09-09 (GRUP D'nin devamı): "Ödev Gönder" tetikleyicisi artık
+  // tahtanın SAĞ ALT köşesindeki satırda — koşulu (SADECE antrenör +
+  // kaynak bölüm verilmiş) burada bir kez hesaplayıp hem o satırda hem
+  // (varsa gelecekte) başka yerde kullanmak için değişkene alıyoruz.
+  const showSendHomework = auth.role === 'teacher' && sourceSectionId != null && sourceSectionTitle != null;
 
   return (
     <div className="space-y-3">
@@ -80,7 +103,15 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle }
         {group.steps.length > 1 && (
           <div
             className="flex flex-col flex-wrap gap-2 flex-shrink-0"
-            style={{ maxHeight: BOARD_MAX_WIDTH, marginTop: COUNTER_ROW_OFFSET }}
+            style={{
+              maxHeight: BOARD_MAX_WIDTH,
+              // Madde 2026-09-09: sayaç ARTIK sadece standalone kullanımda
+              // (onPoolLabelChange verilmediğinde) tahtanın üstünde — o
+              // zaman kayma eskisi gibi gerekli. Entegre sayfada (callback
+              // verilmişken) sayaç YUKARI (başlığın yanına) taşındığı için
+              // tahta doğrudan sütunun tepesinden başlar, kayma GEREKMEZ.
+              marginTop: onPoolLabelChange ? 0 : COUNTER_ROW_OFFSET,
+            }}
           >
             {group.steps.map((s, i) => {
               const active = i === si;
@@ -107,14 +138,23 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle }
           </div>
         )}
 
-        {/* Madde 2026-08-28 (3): sayaç ARTIK bu sütunun İÇİNDE — böylece
-            başlangıcı tahtanın sol kenarıyla AYNI hizada, sağa kaymış olur
-            (numaralı buton sütunu varsa ondan sonra başlar). */}
+        {/* Madde 2026-08-28 (3): tahta sütunu, numaralı buton sütunu varsa
+            ondan sonra başlar. Madde 2026-09-09: sayaç SADECE standalone
+            kullanımda (onPoolLabelChange yokken) burada, tahtanın ÜSTÜNDE —
+            entegre sayfada başlığın yanında gösterildiği için burada TEKRAR
+            gösterilmez (bkz. Props.onPoolLabelChange açıklaması). */}
         <div style={{ maxWidth: BOARD_MAX_WIDTH, width: '100%' }} className="space-y-2">
+          {!onPoolLabelChange && (
+            <p className="text-xs t-muted" style={{ fontWeight: 600 }}>{poolLabel}</p>
+          )}
+
+          <ChessBoard fen={step!.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
+
+          {/* Madde 2026-09-09 (görsel referans): İleri/Geri artık tahtanın SOL
+              ALT köşesinde, "Ödev Gönder" (varsa) SAĞ ALT köşesinde — AYNI
+              satır. Eskiden bu ikisi ayrı yerlerdeydi (oklar sayaçla üstte,
+              Ödev Gönder tam genişlikte ayrı bir blokta altta). */}
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs t-muted" style={{ fontWeight: 600 }}>
-              {gi + 1} / {pool.length} — Konum Havuzu {group.code ?? codes[gi]}
-            </p>
             <div className="flex gap-2">
               {/* Madde 2026-08-28 (2): çerçeve VE ok işaretleri %50 kalınlaştırıldı
                   (1px → 1.5px çerçeve, 400 → 600 yazı kalınlığı). */}
@@ -131,39 +171,36 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle }
                 ›
               </button>
             </div>
-          </div>
 
-          <ChessBoard fen={step.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
+            {/* Madde 2026-09-07 (GRUP D): "Ödev Gönder" — SADECE antrenör
+                görünümünde. AssignHomeworkPanel'in mevcut form mantığı
+                (sınıf/öğrenci seç, Alt Konu hedefle, gönder) AYNEN kullanılır
+                — sadece tetikleyici GÖRSELİ bu özel ikonla değiştiriliyor
+                (renderTrigger), form davranışı NestedSectionTree'deki
+                kullanımla AYNI (KURAL #3). */}
+            {showSendHomework && (
+              <AssignHomeworkPanel
+                sourceSectionId={sourceSectionId!}
+                sourceSectionTitle={sourceSectionTitle!}
+                renderTrigger={(open, toggle) => (
+                  <button
+                    type="button" onClick={toggle} aria-expanded={open}
+                    aria-label="Ödev Gönder"
+                    title="Ödev Gönder"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+                    style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.25)' }}
+                  >
+                    <SendHomeworkIcon />
+                  </button>
+                )}
+              />
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Madde 2026-09-07 (GRUP D): "Ödev Gönder" — SADECE antrenör görünümünde.
-          AssignHomeworkPanel'in mevcut form mantığı (sınıf/öğrenci seç, Alt
-          Konu hedefle, gönder) AYNEN kullanılır — sadece tetikleyici GÖRSELİ
-          bu özel ikonla değiştiriliyor (renderTrigger), form davranışı
-          NestedSectionTree'deki kullanımla AYNI (KURAL #3). */}
-      {auth.role === 'teacher' && sourceSectionId != null && sourceSectionTitle != null && (
-        <div className="w-full mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH + 52 }}>
-          <AssignHomeworkPanel
-            sourceSectionId={sourceSectionId}
-            sourceSectionTitle={sourceSectionTitle}
-            renderTrigger={(open, toggle) => (
-              <button
-                type="button" onClick={toggle} aria-expanded={open}
-                aria-label="Ödev Gönder"
-                title="Ödev Gönder"
-                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-                style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.25)' }}
-              >
-                <SendHomeworkIcon />
-              </button>
-            )}
-          />
-        </div>
-      )}
-
       <div className="t-card-i p-3 w-full mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH + 52 }}>
-        <p className="text-sm text-center">{step.sentence}</p>
+        <p className="text-sm text-center">{step!.sentence}</p>
       </div>
 
       {/* Madde 2026-08-25: en altta ayrı bir notasyon alanı — tahta

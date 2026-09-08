@@ -62,7 +62,11 @@ describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08
     render(<AltKonuPage />);
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
     expect(screen.getByText('Konu açıklaması')).toBeInTheDocument();
-    expect(screen.getByText('1 / 1 — Konum Havuzu 001')).toBeInTheDocument();
+    // Madde 2026-09-09: sayaç artık AltKonuWalkthrough'tan onPoolLabelChange
+    // callback'iyle bildirilip başlığın yanında gösteriliyor — bu bir ÇOCUK
+    // BİLEŞENİN mount efekti sonrası gelen ayrı bir render turu, o yüzden
+    // waitFor gerekir (bkz. AltKonuWalkthrough.tsx: Props.onPoolLabelChange).
+    await waitFor(() => screen.getByText('1 / 1 — Konum Havuzu 001'));
     expect(screen.getByText('Tahta 8x8 karelerden oluşur.')).toBeInTheDocument();
   });
 

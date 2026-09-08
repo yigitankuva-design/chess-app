@@ -21,6 +21,11 @@ export default function AltKonuPage() {
   const tabId = Number(params.id);
   const sectionId = Number(params.sectionId);
   const [tab, setTab] = useState<CustomTabDetail | null | undefined>(undefined);
+  /** Madde 2026-09-09 (görsel referans): "1/1 — Konum Havuzu 001" sayacı
+   *  artık başlığın YANINDA — AltKonuWalkthrough'un KENDİ İÇİNDEKİ Konum
+   *  Havuzu durumundan (grup/adım) hesaplanır, buraya callback ile bildirilir
+   *  (bkz. AltKonuWalkthrough.tsx: Props.onPoolLabelChange). */
+  const [poolLabel, setPoolLabel] = useState<string | null>(null);
 
   useEffect(() => {
     getCustomTab(tabId).then(setTab);
@@ -60,7 +65,16 @@ export default function AltKonuPage() {
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-4">
-      <h1 className="text-xl font-extrabold t-premium">{section.title}</h1>
+      {/* Madde 2026-09-09 (görsel referans): başlık + Konum Havuzu sayacı
+          ARTIK AYNI satırda, altı çizgi ile ayrılmış (2. karttaki ayırıcı ile
+          AYNI desen, bkz. ProfileView.tsx). Sayaç, sadece bir Konum Havuzu
+          varken gösterilir. */}
+      <div className="flex items-center justify-between gap-2 pb-2 border-b" style={{ borderColor: 'var(--t-border)' }}>
+        <h1 className="text-xl font-extrabold t-premium">{section.title}</h1>
+        {poolLabel && (
+          <p className="text-xs t-muted whitespace-nowrap" style={{ fontWeight: 600 }}>{poolLabel}</p>
+        )}
+      </div>
       {section.body && <p className="t-muted whitespace-pre-wrap text-sm">{section.body}</p>}
       {section.images.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -72,11 +86,14 @@ export default function AltKonuPage() {
       )}
       {/* Madde 2026-09-07 (GRUP D): antrenör "Ödev Gönder" ikonunu görebilsin
           diye bu bölümün id/başlığı geçiriliyor — AltKonuWalkthrough bunu
-          SADECE role === 'teacher' iken kullanır (çocuk görmez). */}
+          SADECE role === 'teacher' iken kullanır (çocuk görmez).
+          Madde 2026-09-09: onPoolLabelChange ile Konum Havuzu sayacı artık
+          yukarıdaki başlık satırında gösteriliyor (bkz. Props açıklaması). */}
       <AltKonuWalkthrough
         pool={section.position_pool ?? []}
         sourceSectionId={section.id}
         sourceSectionTitle={section.title}
+        onPoolLabelChange={setPoolLabel}
       />
     </main>
   );
