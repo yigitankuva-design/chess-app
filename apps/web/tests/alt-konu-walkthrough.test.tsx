@@ -113,7 +113,7 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     expect(capsule).toBeInTheDocument();
   });
 
-  it('madde 2026-08-28 (2/3): İleri/Geri çerçevesi ve sayacın yazı kalınlığı %50 artırılmış (600), sayaç tahtayla AYNI kapta durur', () => {
+  it('madde 2026-09-09 (devam): İleri/Geri artık büyük, dolgun mavi zemin + kalın siyah çerçeve — eski ince/soluk tasarım DEĞİL', () => {
     const pool = [
       group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }]),
       group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'y', turn: 'w' }]),
@@ -121,9 +121,9 @@ describe('AltKonuWalkthrough — Konum Havuzu iki seviyeli gezinme (madde 2026-0
     render(<AltKonuWalkthrough pool={pool} />);
 
     const prevBtn = screen.getByLabelText('Önceki konum');
-    expect(prevBtn).toHaveStyle({ borderWidth: '1.5px', fontWeight: '600' });
+    expect(prevBtn).toHaveStyle({ width: '80px', height: '56px', background: '#3b82f6', border: '3px solid #0a0a0a' });
     const nextBtn = screen.getByLabelText('Sonraki konum');
-    expect(nextBtn).toHaveStyle({ borderWidth: '1.5px', fontWeight: '600' });
+    expect(nextBtn).toHaveStyle({ width: '80px', height: '56px', background: '#3b82f6', border: '3px solid #0a0a0a' });
 
     const counter = screen.getByText('1 / 2 — Konum Havuzu 001');
     expect(counter).toHaveStyle({ fontWeight: '600' });

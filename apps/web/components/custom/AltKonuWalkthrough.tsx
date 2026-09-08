@@ -39,6 +39,24 @@ function SendHomeworkIcon() {
   );
 }
 
+/** Madde 2026-09-09 (devam): Zafer'in gönderdiği görsel referanstaki gibi
+ *  KALIN, net görünen ok — eski ince ‹ › karakterleri antrenörün telefonunda
+ *  net görünmüyordu (aynı gerekçe: madde 2026-09-07'deki adım dairesi
+ *  renk değişikliği). Özel çizim (internetten alınmamış). */
+function ChevronIcon({ direction }: { direction: 'left' | 'right' }) {
+  return (
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#0a0a0a" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
+      <path d={direction === 'left' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'} />
+    </svg>
+  );
+}
+
+/** Madde 2026-09-09 (devam): İleri/Geri butonlarının boyutu — görsel
+ *  referanstaki oklarla AYNI oranda (tahtanın 420px genişliğine göre
+ *  ölçeklendirilmiş). Eski 32×32px daireden ÇOK daha büyük ve belirgin. */
+const ARROW_BTN_WIDTH = 80;
+const ARROW_BTN_HEIGHT = 56;
+
 /** Madde 2026-08-25: tahta %75 büyütüldü (240px → 420px) — antrenör
  *  öğrencilerine gösterirken daha net görünsün. Adım butonları da bu
  *  yükseklikte doluşur, taşınca 2. sütuna geçer. */
@@ -155,20 +173,28 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
               satır. Eskiden bu ikisi ayrı yerlerdeydi (oklar sayaçla üstte,
               Ödev Gönder tam genişlikte ayrı bir blokta altta). */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex gap-2">
-              {/* Madde 2026-08-28 (2): çerçeve VE ok işaretleri %50 kalınlaştırıldı
-                  (1px → 1.5px çerçeve, 400 → 600 yazı kalınlığı). */}
+            <div className="flex gap-3">
+              {/* Madde 2026-09-09 (devam): Zafer'in bildirdiği "okların rengi
+                  belirgin değil, boyutu çok küçük" sorunu — ince ‹ › karakteri
+                  + soluk çerçeve YERİNE görsel referanstaki gibi büyük, dolgun
+                  mavi zemin + kalın siyah çerçeve + kalın siyah ok ikonu. */}
               <button type="button" aria-label="Önceki konum" onClick={() => goToGroup(-1)}
                 disabled={gi === 0}
-                className="w-8 h-8 flex items-center justify-center rounded-full t-muted disabled:opacity-30"
-                style={{ borderWidth: '1.5px', borderStyle: 'solid', borderColor: 'rgba(255,255,255,0.15)', fontWeight: 600 }}>
-                ‹
+                className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
+                style={{
+                  width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
+                  background: '#3b82f6', border: '3px solid #0a0a0a',
+                }}>
+                <ChevronIcon direction="left" />
               </button>
               <button type="button" aria-label="Sonraki konum" onClick={() => goToGroup(1)}
                 disabled={gi >= pool.length - 1}
-                className="w-8 h-8 flex items-center justify-center rounded-full t-muted disabled:opacity-30"
-                style={{ borderWidth: '1.5px', borderStyle: 'solid', borderColor: 'rgba(255,255,255,0.15)', fontWeight: 600 }}>
-                ›
+                className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
+                style={{
+                  width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
+                  background: '#3b82f6', border: '3px solid #0a0a0a',
+                }}>
+                <ChevronIcon direction="right" />
               </button>
             </div>
 
