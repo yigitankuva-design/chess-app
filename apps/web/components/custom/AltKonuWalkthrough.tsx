@@ -29,10 +29,13 @@ interface Props {
 }
 
 /** Madde 2026-09-07 (GRUP D): özel tasarım "gönder" ikonu (kağıt uçak) —
- *  internetten alınmamış, ChatIcon/PhoneIcon ile AYNI çizgi-ikon ailesi. */
+ *  internetten alınmamış, ChatIcon/PhoneIcon ile AYNI çizgi-ikon ailesi.
+ *  Madde 2026-09-09 (devam 3): Zafer'in isteğiyle buton %40 büyütülünce
+ *  (36px → 50px) ikon da AYNI oranda büyütüldü — yoksa büyük butonun
+ *  içinde eski küçük ikon boşlukta kalırdı. */
 function SendHomeworkIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 12l16-8-6 16-3-6-7-2z" />
       <path d="M20 4l-9 9" />
     </svg>
@@ -42,10 +45,11 @@ function SendHomeworkIcon() {
 /** Madde 2026-09-09 (devam): Zafer'in gönderdiği görsel referanstaki gibi
  *  KALIN, net görünen ok — eski ince ‹ › karakterleri antrenörün telefonunda
  *  net görünmüyordu (aynı gerekçe: madde 2026-09-07'deki adım dairesi
- *  renk değişikliği). Özel çizim (internetten alınmamış). */
-function ChevronIcon({ direction }: { direction: 'left' | 'right' }) {
+ *  renk değişikliği). Özel çizim (internetten alınmamış). Madde 2026-09-09
+ *  (devam 3): gruplar arası geçiş oku AYNI ikonu KÜÇÜK boyutta kullanır. */
+function ChevronIcon({ direction, size = 26 }: { direction: 'left' | 'right'; size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#0a0a0a" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="#0a0a0a" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
       <path d={direction === 'left' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'} />
     </svg>
   );
@@ -56,6 +60,15 @@ function ChevronIcon({ direction }: { direction: 'left' | 'right' }) {
  *  ölçeklendirilmiş). Eski 32×32px daireden ÇOK daha büyük ve belirgin. */
 const ARROW_BTN_WIDTH = 80;
 const ARROW_BTN_HEIGHT = 56;
+
+/** Madde 2026-09-09 (devam 3): gruplar arası ("Konum Havuzu" kodları
+ *  arasında) geçiş oku — adım oklarından (ARROW_BTN_*) KÜÇÜK, ikincil bir
+ *  kontrol olduğu için (çoğu bölümde tek grup var). AYNI mavi/siyah aile. */
+const GROUP_ARROW_SIZE = 44;
+
+/** Madde 2026-09-09 (devam 3): "Ödev Gönder" butonu Zafer'in isteğiyle
+ *  %40 büyütüldü (36px → 50px, bkz. SendHomeworkIcon'daki AYNI oran). */
+const SEND_HOMEWORK_BTN_SIZE = 50;
 
 /** Madde 2026-08-25: tahta %75 büyütüldü (240px → 420px) — antrenör
  *  öğrencilerine gösterirken daha net görünsün. Adım butonları da bu
@@ -69,20 +82,17 @@ const COUNTER_ROW_OFFSET = 32 + 8;
 
 /**
  * Alt Konu'nun ayrı sayfasındaki tasarım — madde: 2026-08-26 (görsel
- * referans doğrultusunda). Konum Havuzu İKİ SEVİYELİ (grup/adım) — ama
- * madde 2026-09-09 (devam)'a göre İleri/Geri okları ARTIK aktif grubun
- * İÇİNDEKİ adımlar (solundaki numaralı butonlarla AYNI şey) arasında
- * gezinir; antrenör ister butona tıklayarak ister okla aynı adıma geçer.
- * Gruplar (farklı "Konum Havuzu" kodları) arası geçiş için ŞU AN ayrı bir
- * yol YOK (Zafer'in tercihi) — `groupIdx` bu yüzden 0'da sabit kalıyor,
- * ileride bir grup-geçiş arayüzü eklenirse buraya bağlanabilir.
+ * referans doğrultusunda). Konum Havuzu İKİ SEVİYELİ (grup/adım):
+ *  - Solundaki numaralı butonlar VE büyük İleri/Geri okları: aktif grubun
+ *    İÇİNDEKİ adımlar arasında AYNI stepIdx'i değiştirir (madde 2026-09-09
+ *    devam) — antrenör ister butona tıklayarak ister okla geçer.
+ *  - Madde 2026-09-09 (devam 3): satırın ORTASINDAKİ küçük ok çifti,
+ *    gruplar (farklı "Konum Havuzu" kodları, ör. 001→002) arasında gezinir.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
 export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, onPoolLabelChange }: Props) {
   const auth = useAuth();
-  // Madde 2026-09-09 (devam): gruplar arası geçiş için henüz bir arayüz YOK
-  // (bkz. üstteki açıklama) — bu yüzden sabit 0, useState DEĞİL.
-  const groupIdx = 0;
+  const [groupIdx, setGroupIdx] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
   /** Madde 2026-08-25: bu sayfaya ÖZEL, YEREL bir tercih — BotGame/LiveGame'in
    *  paylaşılan (localStorage) "Notasyon Verilerini Gizle" tercihiyle KARIŞMAZ
@@ -113,6 +123,14 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
   // stepIdx'i değiştirmek, gruplar arasında DEĞİL (bkz. dosya başı açıklama).
   function goToStep(delta: 1 | -1) {
     setStepIdx((i) => Math.min(group.steps.length - 1, Math.max(0, Math.min(i, group.steps.length - 1) + delta)));
+  }
+
+  // Madde 2026-09-09 (devam 3): gruplar (farklı "Konum Havuzu" kodları)
+  // arasında geçiş — grup değişince adım sayacı İLK adıma döner (yeni
+  // grubun kendi adım listesi baştan gösterilir).
+  function goToGroup(delta: 1 | -1) {
+    setGroupIdx((i) => Math.min(pool.length - 1, Math.max(0, Math.min(i, pool.length - 1) + delta)));
+    setStepIdx(0);
   }
 
   // Madde 2026-09-09 (GRUP D'nin devamı): "Ödev Gönder" tetikleyicisi artık
@@ -207,12 +225,42 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
               </button>
             </div>
 
+            {/* Madde 2026-09-09 (devam 3): gruplar arası ("Konum Havuzu"
+                kodları arasında) geçiş — SADECE birden fazla grup varken
+                gösterilir (çoğu bölümde tek grup var, o zaman gösterilecek
+                bir şey yok). Satırın ORTASINDA — adım okları (solda) ile
+                Ödev Gönder (sağda) arasında, justify-between'in 3. çocuğu
+                olarak kendiliğinden ortalanır. */}
+            {pool.length > 1 && (
+              <div className="flex gap-2">
+                <button type="button" aria-label="Önceki grup" onClick={() => goToGroup(-1)}
+                  disabled={gi === 0}
+                  className="flex items-center justify-center rounded-lg transition-colors disabled:opacity-30"
+                  style={{
+                    width: GROUP_ARROW_SIZE, height: GROUP_ARROW_SIZE,
+                    background: '#3b82f6', border: '2px solid #0a0a0a',
+                  }}>
+                  <ChevronIcon direction="left" size={16} />
+                </button>
+                <button type="button" aria-label="Sonraki grup" onClick={() => goToGroup(1)}
+                  disabled={gi >= pool.length - 1}
+                  className="flex items-center justify-center rounded-lg transition-colors disabled:opacity-30"
+                  style={{
+                    width: GROUP_ARROW_SIZE, height: GROUP_ARROW_SIZE,
+                    background: '#3b82f6', border: '2px solid #0a0a0a',
+                  }}>
+                  <ChevronIcon direction="right" size={16} />
+                </button>
+              </div>
+            )}
+
             {/* Madde 2026-09-07 (GRUP D): "Ödev Gönder" — SADECE antrenör
                 görünümünde. AssignHomeworkPanel'in mevcut form mantığı
                 (sınıf/öğrenci seç, Alt Konu hedefle, gönder) AYNEN kullanılır
                 — sadece tetikleyici GÖRSELİ bu özel ikonla değiştiriliyor
                 (renderTrigger), form davranışı NestedSectionTree'deki
-                kullanımla AYNI (KURAL #3). */}
+                kullanımla AYNI (KURAL #3). Madde 2026-09-09 (devam 3):
+                buton %40 büyütüldü (36px → 50px, Zafer'in isteği). */}
             {showSendHomework && (
               <AssignHomeworkPanel
                 sourceSectionId={sourceSectionId!}
@@ -222,8 +270,11 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                     type="button" onClick={toggle} aria-expanded={open}
                     aria-label="Ödev Gönder"
                     title="Ödev Gönder"
-                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-                    style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.25)' }}
+                    className="rounded-lg flex items-center justify-center transition-colors"
+                    style={{
+                      width: SEND_HOMEWORK_BTN_SIZE, height: SEND_HOMEWORK_BTN_SIZE,
+                      background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.25)',
+                    }}
                   >
                     <SendHomeworkIcon />
                   </button>

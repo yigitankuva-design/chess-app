@@ -178,6 +178,66 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
   });
 });
 
+describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, devam 3)', () => {
+  it('TEK grup varken gruplar arası ok GÖSTERİLMEZ (gösterilecek bir şey yok)', () => {
+    const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
+    render(<AltKonuWalkthrough pool={pool} />);
+    expect(screen.queryByLabelText('Önceki grup')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Sonraki grup')).not.toBeInTheDocument();
+  });
+
+  it('birden fazla grup varken gruplar arası ok görünür, tıklanınca gruba geçer ve adım 1\'e döner', () => {
+    const pool = [
+      group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'Grup 1 - Adım 1', turn: 'w' }]),
+      group('g2', '002', [
+        { id: 's2', fen: FEN2, sentence: 'Grup 2 - Adım 1', turn: 'w' },
+        { id: 's3', fen: FEN, sentence: 'Grup 2 - Adım 2', turn: 'w' },
+      ]),
+    ];
+    render(<AltKonuWalkthrough pool={pool} />);
+    expect(screen.getByText('1 / 2 — Konum Havuzu 001')).toBeInTheDocument();
+    expect(screen.getByLabelText('Önceki grup')).toBeDisabled();
+    expect(screen.getByLabelText('Sonraki grup')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText('Sonraki grup'));
+    expect(screen.getByText('2 / 2 — Konum Havuzu 002')).toBeInTheDocument();
+    expect(screen.getByText('Grup 2 - Adım 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sonraki grup')).toBeDisabled();
+
+    // 2. grup, kendi 1. adımıyla açılır — bir önceki grupta kalan adım
+    // durumu sürmez (yeni grubun kendi adım listesi baştan gösterilir).
+    fireEvent.click(screen.getByLabelText('Sonraki adım'));
+    expect(screen.getByText('Grup 2 - Adım 2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Önceki grup'));
+    expect(screen.getByText('1 / 2 — Konum Havuzu 001')).toBeInTheDocument();
+    expect(screen.getByText('Grup 1 - Adım 1')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-09 (devam 3): gruplar arası ok, adım oku ile Ödev Gönder ARASINDA (satırın ortasında, AYNI satırda)', () => {
+    mockRole = 'teacher';
+    const pool = [
+      group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }]),
+      group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'y', turn: 'w' }]),
+    ];
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    const nextStepBtn = screen.getByLabelText('Sonraki adım');
+    const nextGroupBtn = screen.getByLabelText('Sonraki grup');
+    const sendBtn = screen.getByLabelText('Ödev Gönder');
+    const row = sendBtn.closest('.justify-between');
+    expect(row).not.toBeNull();
+    expect(row).toContainElement(nextStepBtn);
+    expect(row).toContainElement(nextGroupBtn);
+  });
+
+  it('madde 2026-09-09 (devam 3): "Ödev Gönder" butonu %40 büyütüldü (36px → 50px)', () => {
+    mockRole = 'teacher';
+    const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    expect(screen.getByLabelText('Ödev Gönder')).toHaveStyle({ width: '50px', height: '50px' });
+  });
+});
+
 describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D)', () => {
   const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
 
