@@ -57,3 +57,14 @@ class User(Base):
     lichess_username: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     kvkk_consent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     approval_status: Mapped[str] = mapped_column(String(20), server_default="approved")
+
+    # Madde 2026-09-09 (AŞAMA 2): 18+ kendi kaydolan sporcunun (role=athlete)
+    # ChildProfile'ı YOK — bu yüzden veli iletişim bilgileri ChildProfile'daki
+    # AYNI 6 alanın (father_*/mother_*) buradaki karşılığı. Antrenör/veli
+    # hesaplarında hep boş kalır (KURAL #3, nullable).
+    father_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    father_phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    father_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    mother_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    mother_phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    mother_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

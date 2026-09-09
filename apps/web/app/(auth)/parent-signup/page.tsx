@@ -10,58 +10,162 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 import { saveAthleteName, saveTeacherName } from '@/lib/auth-storage';
 
+/**
+ * Madde 2026-09-09 (Üyelik Girişi Yenileme): Zafer'in gönderdiği görsel
+ * referansa göre "Kayıt Ol" formu tamamen yeniden tasarlandı. Hesap türü
+ * hâlâ Üye/Antrenör — ama "Üye" artık VELİNİN değil SPORCUNUN kendi
+ * bilgilerini toplar (İsim/Soyisim/Telefon/E-posta/Şehir/Lichess/
+ * Kullanıcı Adı/Şifre) + Anne/Baba iletişim bilgileri.
+ *
+ * Doğum Tarihi'nden hesaplanan yaş kaydın NASIL işleneceğini belirler
+ * (bkz. POST /auth/member/signup, backend'de dallanır):
+ *  - 18+: sporcu KENDİ hesabını açar (role=athlete), admin onaylayana
+ *    kadar giriş yapamaz (Tier A — yaş beyanı riskine karşı).
+ *  - 18 altı: buradaki e-posta/kullanıcı adı/şifre VELİNİN giriş bilgisi
+ *    olur (role=parent), sporcu bilgileri ChildProfile'a yazılır — eski
+ *    "veli hesap açar, sporcu adını yazar" akışıyla AYNI sonuç, sadece
+ *    artık il/telefon/anne-baba bilgisiyle daha zengin.
+ *
+ * İsim/Soyisim iki ayrı kutu ama TEK alanda birleştirilerek kaydedilir
+ * (Zafer'in kararı — DB'de first_name/last_name ayrımı YOK). Anne/Baba
+ * blokları da AYNI desen: en az biri (tüm alanlarıyla) dolu olmalı,
+ * diğeri isteğe bağlı kalır.
+ */
 const schema = z.object({
-  role: z.enum(['parent', 'teacher']),
+  accountType: z.enum(['member', 'teacher']),
+  first_name: z.string().min(2, 'İsim gerekli'),
+  last_name: z.string().min(1, 'Soyisim gerekli'),
+  phone: z.string().min(6, 'Telefon gerekli'),
   email: z.string().email('Geçerli e-posta gir'),
+  province: z.string().min(2, 'Şehir gerekli'),
+  lichess_username: z.string().optional(),
+  username: z.string().min(3, 'Kullanıcı adı gerekli'),
   password: z.string().min(8, 'Şifre en az 8 karakter'),
-  name: z.string().min(2, 'İsim gerekli'),
-  athlete_name: z.string().optional(),
-  kvkk_consent: z.boolean().refine(v => v === true, 'KVKK onayı gerekli'),
+  birth_date: z.string().optional(),
+  mother_first_name: z.string().optional(),
+  mother_last_name: z.string().optional(),
+  mother_phone: z.string().optional(),
+  mother_email: z.string().optional(),
+  father_first_name: z.string().optional(),
+  father_last_name: z.string().optional(),
+  father_phone: z.string().optional(),
+  father_email: z.string().optional(),
+  kvkk_consent: z.boolean().refine((v) => v === true, 'KVKK onayı gerekli'),
 }).superRefine((val, ctx) => {
-  if (val.role === 'parent' && (!val.athlete_name || val.athlete_name.trim().length < 2)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['athlete_name'], message: 'Sporcu adı soyadı gerekli' });
+  if (val.accountType !== 'member') return;
+  if (!val.birth_date) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['birth_date'], message: 'Doğum tarihi gerekli' });
+  }
+  const anneDolu = !!(val.mother_first_name && val.mother_last_name && val.mother_phone && val.mother_email);
+  const babaDolu = !!(val.father_first_name && val.father_last_name && val.father_phone && val.father_email);
+  if (!anneDolu && !babaDolu) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom, path: ['mother_first_name'],
+      message: 'Anne veya Baba bilgilerinden en az biri (İsim, Soyisim, Telefon, E-posta) tam doldurulmalı',
+    });
   }
 });
 
 type FormData = z.infer<typeof schema>;
 
+/** Görselde yıldızsız TEK alan — geri kalan her şey zorunlu (Zafer'in kuralı). */
+const REQUIRED_MARK = <span className="text-rose-400">*</span>;
+
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const router = useRouter();
   const auth = useAuth();
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } =
-    useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { role: 'parent' } });
+    useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { accountType: 'member' } });
 
-  const role = watch('role');
+  const accountType = watch('accountType');
 
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      const { kvkk_consent, role, athlete_name, ...base } = data;
-      void kvkk_consent; // frontend-only field
-      if (role === 'teacher') {
-        const res = await apiClient.teacherSignup(base);
+      if (data.accountType === 'teacher') {
+        const res = await apiClient.teacherRegister({
+          first_name: data.first_name.trim(),
+          last_name: data.last_name.trim(),
+          phone: data.phone.trim(),
+          email: data.email,
+          province: data.province.trim(),
+          lichess_username: data.lichess_username?.trim() || undefined,
+          username: data.username.trim(),
+          password: data.password,
+          kvkk_consent: data.kvkk_consent,
+        });
         auth.login(res.access_token, res.role, res.user_id);
-        // Madde 2026-09-07 (Antrenör Paneli, 1): antrenör hesabı artık
-        // /classes'a DEĞİL, sporcu Hızlı Erişim'in kopyası olan /coach'a gider.
         saveTeacherName(res.name);
         router.push('/coach');
         return;
       }
-      const res = await apiClient.parentSignup({ ...base, athlete_name: athlete_name?.trim() });
+
+      // Madde 2026-09-09 (devam): İsim/Soyisim çiftleri TEK alana birleşir
+      // (backend'de first_name/last_name ayrımı YOK — Zafer'in kararı).
+      const motherName = data.mother_first_name && data.mother_last_name
+        ? `${data.mother_first_name.trim()} ${data.mother_last_name.trim()}`.trim()
+        : undefined;
+      const fatherName = data.father_first_name && data.father_last_name
+        ? `${data.father_first_name.trim()} ${data.father_last_name.trim()}`.trim()
+        : undefined;
+
+      const res = await apiClient.memberSignup({
+        first_name: data.first_name.trim(),
+        last_name: data.last_name.trim(),
+        phone: data.phone.trim(),
+        email: data.email,
+        province: data.province.trim(),
+        lichess_username: data.lichess_username?.trim() || undefined,
+        username: data.username.trim(),
+        password: data.password,
+        birth_date: data.birth_date!,
+        mother_name: motherName,
+        mother_phone: data.mother_phone?.trim() || undefined,
+        mother_email: data.mother_email?.trim() || undefined,
+        father_name: fatherName,
+        father_phone: data.father_phone?.trim() || undefined,
+        father_email: data.father_email?.trim() || undefined,
+        kvkk_consent: data.kvkk_consent,
+      });
+
+      // Madde (devam): 18+ kendi kaydolan sporcu — admin onaylayana kadar
+      // giriş YAPILMAZ, otomatik yönlendirme de olmaz.
+      if (res.approval_status === 'pending') {
+        setPendingApproval(true);
+        return;
+      }
+
+      // 18 altı: veli hesabı — mevcut davranışla AYNI (athlete/session'a zincirleme).
       auth.login(res.access_token, res.role, res.user_id);
       const ath = await apiClient.athleteSession();
       auth.login(ath.access_token, 'child', ath.child_profile_id);
       saveAthleteName(ath.display_name);
       router.push('/home');
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
-        setError('Bu e-posta zaten kayıtlı');
+      if (e instanceof ApiError && (e.status === 409 || e.status === 422)) {
+        setError(e.message);
       } else {
         setError(e instanceof Error ? e.message : 'Kayıt başarısız');
       }
     }
   };
+
+  if (pendingApproval) {
+    return (
+      <div className="text-center space-y-4">
+        <Image src="/logo.png" alt="Bozüyük Satranç Akademisi Logo" width={640} height={640}
+          className="h-16 w-auto mx-auto mb-3 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" />
+        <h1 className="text-2xl font-bold n-text">Hesabın Oluşturuldu</h1>
+        <p className="n-muted text-sm">
+          18 yaş üzeri olarak kaydolduğun için hesabın antrenör onayı bekliyor.
+          Onaylandıktan sonra giriş yapabilirsin.
+        </p>
+        <Link href="/parent-login" className="text-cyan-400 hover:text-cyan-300 text-sm">Giriş sayfasına dön</Link>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -75,59 +179,108 @@ export default function SignupPage() {
         <p className="text-sm font-medium mb-2 n-muted">Hesap türü</p>
         <div className="grid grid-cols-2 gap-2">
           <label className={`cursor-pointer border rounded-lg p-3 text-center text-sm font-medium transition-colors ${
-            role === 'parent' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
+            accountType === 'member' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
           }`}>
-            <input type="radio" value="parent" {...register('role')} className="sr-only" />
+            <input type="radio" value="member" {...register('accountType')} className="sr-only" />
             👤 Üye
           </label>
           <label className={`cursor-pointer border rounded-lg p-3 text-center text-sm font-medium transition-colors ${
-            role === 'teacher' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
+            accountType === 'teacher' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300 shadow-[0_0_16px_-4px_rgba(34,211,238,0.6)]' : 'border-white/10 text-gray-400 hover:border-white/25'
           }`}>
-            <input type="radio" value="teacher" {...register('role')} className="sr-only" />
+            <input type="radio" value="teacher" {...register('accountType')} className="sr-only" />
             🎓 Antrenör
           </label>
         </div>
       </div>
 
-      <div>
-        <input
-          {...register('name')}
-          placeholder="Adınız (veli/vasi)"
-          className="neon-input"
-        />
-        {errors.name && <p className="text-rose-400 text-sm mt-1">{errors.name.message}</p>}
-      </div>
+      <div className="space-y-3">
+        <p className="text-sm font-semibold n-text border-b border-white/10 pb-1">
+          Üyelik Bilgileri {accountType === 'member' ? '(Sporcu)' : '(Antrenör)'}
+        </p>
 
-      {role === 'parent' && (
-        <div>
-          <input
-            {...register('athlete_name')}
-            placeholder="Sporcu Adı Soyadı"
-            className="neon-input"
-          />
-          {errors.athlete_name && <p className="text-rose-400 text-sm mt-1">{errors.athlete_name.message}</p>}
+        {accountType === 'member' && (
+          <div>
+            <label htmlFor="birth_date" className="text-xs n-muted">Doğum Tarihi {REQUIRED_MARK}</label>
+            <input id="birth_date" {...register('birth_date')} type="date" className="neon-input" />
+            {errors.birth_date && <p className="text-rose-400 text-sm mt-1">{errors.birth_date.message}</p>}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <input {...register('first_name')} placeholder="İsim *" className="neon-input" />
+            {errors.first_name && <p className="text-rose-400 text-sm mt-1">{errors.first_name.message}</p>}
+          </div>
+          <div>
+            <input {...register('last_name')} placeholder="Soyisim *" className="neon-input" />
+            {errors.last_name && <p className="text-rose-400 text-sm mt-1">{errors.last_name.message}</p>}
+          </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <input {...register('phone')} placeholder="Telefon *" className="neon-input" />
+            {errors.phone && <p className="text-rose-400 text-sm mt-1">{errors.phone.message}</p>}
+          </div>
+          <div>
+            <input {...register('email')} type="email" placeholder="E-posta *" className="neon-input" />
+            {errors.email && <p className="text-rose-400 text-sm mt-1">{errors.email.message}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <input {...register('province')} placeholder="Şehir *" className="neon-input" />
+            {errors.province && <p className="text-rose-400 text-sm mt-1">{errors.province.message}</p>}
+          </div>
+          <div>
+            <input {...register('lichess_username')} placeholder="Lichess Kullanıcı Adı" className="neon-input" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <input {...register('username')} placeholder="Kullanıcı Adı *" className="neon-input" />
+            {errors.username && <p className="text-rose-400 text-sm mt-1">{errors.username.message}</p>}
+          </div>
+          <div>
+            <input {...register('password')} type="password" placeholder="Şifre (en az 8 karakter) *" className="neon-input" />
+            {errors.password && <p className="text-rose-400 text-sm mt-1">{errors.password.message}</p>}
+          </div>
+        </div>
+      </div>
+
+      {accountType === 'member' && (
+        <>
+          <div className="space-y-3">
+            <p className="text-sm font-semibold n-text border-b border-white/10 pb-1">Veli bilgileri (Anne)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input {...register('mother_first_name')} placeholder="İsim" className="neon-input" />
+              <input {...register('mother_last_name')} placeholder="Soyisim" className="neon-input" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input {...register('mother_phone')} placeholder="Telefon" className="neon-input" />
+              <input {...register('mother_email')} type="email" placeholder="E-posta" className="neon-input" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-semibold n-text border-b border-white/10 pb-1">Veli bilgileri (Baba)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input {...register('father_first_name')} placeholder="İsim" className="neon-input" />
+              <input {...register('father_last_name')} placeholder="Soyisim" className="neon-input" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input {...register('father_phone')} placeholder="Telefon" className="neon-input" />
+              <input {...register('father_email')} type="email" placeholder="E-posta" className="neon-input" />
+            </div>
+          </div>
+
+          {errors.mother_first_name && (
+            <p className="text-rose-400 text-sm">{errors.mother_first_name.message}</p>
+          )}
+        </>
       )}
-
-      <div>
-        <input
-          {...register('email')}
-          type="email"
-          placeholder="E-posta"
-          className="neon-input"
-        />
-        {errors.email && <p className="text-rose-400 text-sm mt-1">{errors.email.message}</p>}
-      </div>
-
-      <div>
-        <input
-          {...register('password')}
-          type="password"
-          placeholder="Şifre (en az 8 karakter)"
-          className="neon-input"
-        />
-        {errors.password && <p className="text-rose-400 text-sm mt-1">{errors.password.message}</p>}
-      </div>
 
       <div className="flex items-start gap-2">
         <input

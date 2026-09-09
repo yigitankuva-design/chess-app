@@ -1,4 +1,5 @@
 import secrets
+from datetime import date as date_cls, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -7,7 +8,7 @@ from chess_api.models import User, UserRole, Device, ChildProfile
 from chess_api.schemas.auth import (
     ParentSignupRequest, LoginRequest, AuthResponse, EmailVerifyRequest,
     DeviceRegisterRequest, ChildPinLoginRequest, ChildEnterRequest,
-    AthleteCreateRequest,
+    AthleteCreateRequest, MemberSignupRequest, TeacherSignupRequestV2,
 )
 from chess_api.services.password import hash_password, verify_password, verify_pin, hash_pin
 from chess_api.services.jwt import encode_token
@@ -166,6 +167,168 @@ async def athlete_signup(
         user_id=user.id,
         role=user.role,
         name=user.name,
+    )
+
+
+def _age_from_birth_date(birth_date: date_cls) -> int:
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formundaki
+    Doğum Tarihi'nden yaş hesabı — üyelik yolunu (sporcu kendi hesabı mı,
+    veli hesabı mı) belirlemek için (bkz. member_signup)."""
+    today = date_cls.today()
+    years = today.year - birth_date.year
+    if (today.month, today.day) < (birth_date.month, birth_date.day):
+        years -= 1
+    return years
+
+
+async def _check_email_username_free(db: AsyncSession, email: str, username: str) -> None:
+    if (await db.execute(select(User).where(User.email == email))).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="E-posta zaten kayıtlı")
+    if (await db.execute(select(User).where(User.username == username))).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Kullanıcı adı zaten kullanılıyor")
+
+
+@router.post(
+    "/member/signup",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def member_signup(
+    payload: MemberSignupRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun "Üye"
+    (Sporcu) yolu. Doğum tarihinden hesaplanan yaş 18+ ise sporcu KENDİ
+    hesabını açar (role=athlete, admin onayı bekler — Tier A); 18 altıysa
+    veli hesabı açar (role=parent) ve sporcu ChildProfile olarak bağlanır
+    — mevcut parent/signup ile AYNI desen, sadece daha zengin veriyle."""
+    await _check_email_username_free(db, payload.email, payload.username)
+
+    full_name = f"{payload.first_name} {payload.last_name}"
+    age = _age_from_birth_date(payload.birth_date)
+    now = datetime.utcnow()
+
+    if age >= 18:
+        user = User(
+            email=payload.email,
+            username=payload.username,
+            password_hash=hash_password(payload.password),
+            role=UserRole.athlete,
+            name=full_name,
+            phone=payload.phone,
+            province=payload.province,
+            lichess_username=payload.lichess_username,
+            kvkk_consent_at=now,
+            approval_status="pending",
+            father_name=payload.father_name,
+            father_phone=payload.father_phone,
+            father_email=payload.father_email,
+            mother_name=payload.mother_name,
+            mother_phone=payload.mother_phone,
+            mother_email=payload.mother_email,
+            email_verification_token=secrets.token_urlsafe(32),
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    else:
+        # Madde (devam): tek e-posta/kullanıcı adı/şifre seti var — 18 altı
+        # sporcu için bu, VELİNİN giriş bilgisi olur (sporcu henüz kendi
+        # hesabını yönetemeyecek yaşta — KURAL: veli sorumluluğu alır).
+        user = User(
+            email=payload.email,
+            username=payload.username,
+            password_hash=hash_password(payload.password),
+            role=UserRole.parent,
+            name=full_name,
+            kvkk_consent_at=now,
+            email_verification_token=secrets.token_urlsafe(32),
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        athlete = ChildProfile(
+            parent_user_id=user.id,
+            display_name=full_name,
+            age=age,
+            avatar="default",
+            pin_hash=hash_pin(f"{secrets.randbelow(9000) + 1000}"),
+            province=payload.province,
+            athlete_phone=payload.phone,
+            athlete_email=payload.email,
+            lichess_username=payload.lichess_username,
+            father_name=payload.father_name,
+            father_phone=payload.father_phone,
+            father_email=payload.father_email,
+            mother_name=payload.mother_name,
+            mother_phone=payload.mother_phone,
+            mother_email=payload.mother_email,
+        )
+        db.add(athlete)
+        await db.commit()
+
+    try:
+        await send_verification_email(user.email, user.email_verification_token, user.name)
+    except Exception:
+        import logging
+        logging.exception("Failed to send verification email (signup continues)")
+
+    token = encode_token({"user_id": user.id, "role": user.role.value})
+    return AuthResponse(
+        access_token=token,
+        user_id=user.id,
+        role=user.role,
+        name=user.name,
+        approval_status=user.approval_status,
+    )
+
+
+@router.post(
+    "/teacher/register",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def teacher_register(
+    payload: TeacherSignupRequestV2,
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun
+    "Antrenör" yolu — zengin alan seti (telefon/şehir/Lichess/kullanıcı
+    adı). Mevcut /teacher/signup (test paketinde 20+ yerde kullanılan
+    basit {email,password,name} şekli) KURAL #3 gereği DOKUNULMADAN kalır
+    — bu YENİ, AYRI bir uç."""
+    await _check_email_username_free(db, payload.email, payload.username)
+
+    user = User(
+        email=payload.email,
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        role=UserRole.teacher,
+        name=f"{payload.first_name} {payload.last_name}",
+        phone=payload.phone,
+        province=payload.province,
+        lichess_username=payload.lichess_username,
+        kvkk_consent_at=datetime.utcnow(),
+        email_verification_token=secrets.token_urlsafe(32),
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    try:
+        await send_verification_email(user.email, user.email_verification_token, user.name)
+    except Exception:
+        import logging
+        logging.exception("Failed to send verification email (signup continues)")
+
+    token = encode_token({"user_id": user.id, "role": user.role.value})
+    return AuthResponse(
+        access_token=token,
+        user_id=user.id,
+        role=user.role,
+        name=user.name,
+        approval_status=user.approval_status,
     )
 
 

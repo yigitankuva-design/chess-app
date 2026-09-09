@@ -1,5 +1,5 @@
-from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from datetime import date, datetime
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from chess_api.models.user import UserRole
 
 
@@ -12,6 +12,69 @@ class ParentSignupRequest(BaseModel):
 
 class AthleteCreateRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=80)
+
+
+def _validate_kvkk(v: bool) -> bool:
+    if not v:
+        raise ValueError("KVKK onayı gerekli")
+    return v
+
+
+class MemberSignupRequest(BaseModel):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun
+    "Üye" (Sporcu) yolu. `birth_date`'ten hesaplanan yaş 18+ ise sporcunun
+    KENDİ hesabı (role=athlete), 18 altıysa velinin hesabı (role=parent) +
+    sporcunun ChildProfile'ı oluşur — bkz. auth.py member_signup."""
+    first_name: str = Field(min_length=2, max_length=60)
+    last_name: str = Field(min_length=1, max_length=60)
+    phone: str = Field(min_length=6, max_length=30)
+    email: EmailStr
+    province: str = Field(min_length=2, max_length=60)
+    lichess_username: str | None = Field(default=None, max_length=60)
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8, max_length=128)
+    birth_date: date
+    father_name: str | None = Field(default=None, max_length=80)
+    father_phone: str | None = Field(default=None, max_length=30)
+    father_email: str | None = Field(default=None, max_length=255)
+    mother_name: str | None = Field(default=None, max_length=80)
+    mother_phone: str | None = Field(default=None, max_length=30)
+    mother_email: str | None = Field(default=None, max_length=255)
+    kvkk_consent: bool
+
+    @field_validator("kvkk_consent")
+    @classmethod
+    def _kvkk(cls, v: bool) -> bool:
+        return _validate_kvkk(v)
+
+    @model_validator(mode="after")
+    def _en_az_bir_veli(self):
+        # Madde 3 (Zafer'in isteği): Anne veya Baba'dan EN AZ biri TAM
+        # doldurulmalı — diğeri isteğe bağlı kalır.
+        anne_dolu = bool(self.mother_name and self.mother_phone and self.mother_email)
+        baba_dolu = bool(self.father_name and self.father_phone and self.father_email)
+        if not anne_dolu and not baba_dolu:
+            raise ValueError("Anne veya Baba bilgilerinden en az biri tam doldurulmalı")
+        return self
+
+
+class TeacherSignupRequestV2(BaseModel):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun
+    "Antrenör" yolu — veli bölümü YOK (bkz. auth.py teacher_signup)."""
+    first_name: str = Field(min_length=2, max_length=60)
+    last_name: str = Field(min_length=1, max_length=60)
+    phone: str = Field(min_length=6, max_length=30)
+    email: EmailStr
+    province: str = Field(min_length=2, max_length=60)
+    lichess_username: str | None = Field(default=None, max_length=60)
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8, max_length=128)
+    kvkk_consent: bool
+
+    @field_validator("kvkk_consent")
+    @classmethod
+    def _kvkk(cls, v: bool) -> bool:
+        return _validate_kvkk(v)
 
 
 class LoginRequest(BaseModel):
@@ -29,6 +92,11 @@ class AuthResponse(BaseModel):
     user_id: int
     role: UserRole
     name: str
+    # Madde 2026-09-09 (Üyelik Girişi Yenileme): frontend bu alana bakıp
+    # 'pending' ise otomatik giriş/yönlendirme YAPMAZ, "onay bekliyor"
+    # mesajı gösterir — token teknik olarak dönse de get_current_user
+    # zaten reddeder (bkz. dependencies/auth.py), bu SADECE UX için.
+    approval_status: str = "approved"
 
 
 class EmailVerifyRequest(BaseModel):
