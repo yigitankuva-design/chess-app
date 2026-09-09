@@ -72,6 +72,23 @@ function formatMemberSince(iso: string): string {
  * KENDİ tercihi) yerine sunucudan gelen `display_name`/`avatar`'dan okunur,
  * ve düzenlenebilir HER ŞEY (tema/tahta/dil ayar kartları, Çıkış butonu)
  * gizlenir — antrenör başkasının cihaz tercihini/oturumunu değiştirmemeli.
+ *
+ * Madde 2026-09-09 (Profil Görsel Turu): Zafer'in 6 görsel+açıklamasına göre
+ * yeniden düzenlemeler:
+ *  1) Kimlik kartı ortadan dikey çizgiyle ikiye bölündü — solda gerçek isim
+ *     (fotoğraf AYNEN kaldı), sağda "Nickname" (mevcut ikon/avatar emoji,
+ *     kendi yuvasına taşındı). Nickname'in GİRİLMESİ ayrı bir iş — Zafer'in
+ *     kararı: "şimdilik tasarım alanı, görev bilgisi sonra vereceğim".
+ *  2) Ülke/il/üyelik tarihi kartı bayrak | çizgi | ülke+il | çizgi | üyelik
+ *     tarihi şeklinde TEK SATIRA yayıldı (önceden ülke+il ile üyelik tarihi
+ *     alt alta tek blok içindeydi).
+ *  3) Aktiflik Durumu'nun 3 kartında (Maç Yap/Dersler/Pratik Yap) artık
+ *     ikon+başlık üstte, altında ayırıcı çizgi, çizginin altında Günlük/Aylık.
+ *  4) Ana Sayfaya Dön altındaki 5 daire (SettingCircle + PowerButton) %40
+ *     büyütüldü — PowerButton'a bunun için opsiyonel `size` prop'u eklendi
+ *     (admin/antrenör kullanımı ETKİLENMEDİ, bkz. components/PowerButton.tsx).
+ * "Ders İlerlemesi" kartları + "Ödevini Yap"/"Süreli Pratik Yap" sekmeleri
+ * için bkz. components/profile/LessonProgressCard.tsx (aynı tur).
  */
 
 type TempoKey = 'Yıldırım' | 'Hızlı' | 'Klasik';
@@ -259,6 +276,10 @@ const SETTING_CARDS: { id: SettingPanelId; emoji: string; label: string }[] = [
   { id: 'language', emoji: '🌐', label: 'Dil Seçeneği' },
 ];
 
+/** Zafer'in isteği (2026-09-09): "Ana Sayfaya Dön" altındaki daireler %40
+ *  büyütüldü (46px → 64px, emoji 20px → 28px) — SADECE Sporcu Profili'nin
+ *  kendi bileşeni, coach/profile/page.tsx'in AYNI isimli lokal kopyası
+ *  (KURAL #3) etkilenmez. */
 function SettingCircle({ emoji, label, active, onClick }: {
   emoji: string; label: string; active: boolean; onClick: () => void;
 }) {
@@ -269,7 +290,7 @@ function SettingCircle({ emoji, label, active, onClick }: {
       aria-label={label}
       aria-pressed={active}
       title={label}
-      className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-xl flex-shrink-0 transition-colors"
+      className="w-[64px] h-[64px] rounded-full flex items-center justify-center text-[28px] flex-shrink-0 transition-colors"
       style={{
         background: active ? 'var(--t-accent)' : 'var(--t-surface-2)',
         border: '1px solid var(--t-border)',
@@ -405,53 +426,84 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
 
       {/* 1) Sporcu ismi + fotoğraf/ikon — madde 2026-09-07 (GRUP C):
           kimlik şeridi 3 karta bölündü. Fotoğraf alanı SADECE kendi profilinde
-          (readOnly değilken) tıklanabilir — antrenör görünümünde salt-okunur. */}
-      <div className="t-card p-4 flex items-center gap-4">
-        {readOnly ? (
-          <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
-            {me.photo_data_url
-              ? <img src={me.photo_data_url} alt={athleteName ?? 'Sporcu fotoğrafı'} className="w-full h-full object-cover" />
-              : avatarEmoji(resolvedAvatarId)}
-          </div>
-        ) : (
-          <label
-            className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden cursor-pointer relative"
-            style={{ background: 'var(--t-surface-2)' }}
-            title="Fotoğraf yükle"
-          >
-            {me.photo_data_url
-              ? <img src={me.photo_data_url} alt={athleteName ?? 'Sporcu fotoğrafı'} className="w-full h-full object-cover" />
-              : avatarEmoji(resolvedAvatarId)}
-            {photoUploading && (
-              <span className="absolute inset-0 flex items-center justify-center text-xs" style={{ background: 'rgba(0,0,0,0.4)', color: '#fff' }}>
-                …
-              </span>
+          (readOnly değilken) tıklanabilir — antrenör görünümünde salt-okunur.
+          Madde 2026-09-09: Zafer'in görseline göre ortadan dikey bir çizgiyle
+          ikiye bölündü — solda GERÇEK isim (fotoğraf/foto yükleme AYNEN
+          kaldı), sağda NICKNAME (mevcut ikon/avatar emoji — daha önce sadece
+          fotoğraf yoksa YEDEK olarak görünüyordu, şimdi kendi yuvası var).
+          Nickname alanının KENDİSİ (girilmesi/değiştirilmesi) henüz yok —
+          Zafer'in kararı: "şimdilik tasarım alanı, görev bilgisi sonra" —
+          bu yüzden sağ taraf sadece placeholder gösteriyor. */}
+      <div className="t-card p-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {readOnly ? (
+              <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden" style={{ background: 'var(--t-surface-2)' }}>
+                {me.photo_data_url
+                  ? <img src={me.photo_data_url} alt={athleteName ?? 'Sporcu fotoğrafı'} className="w-full h-full object-cover" />
+                  : avatarEmoji(resolvedAvatarId)}
+              </div>
+            ) : (
+              <label
+                className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden cursor-pointer relative"
+                style={{ background: 'var(--t-surface-2)' }}
+                title="Fotoğraf yükle"
+              >
+                {me.photo_data_url
+                  ? <img src={me.photo_data_url} alt={athleteName ?? 'Sporcu fotoğrafı'} className="w-full h-full object-cover" />
+                  : avatarEmoji(resolvedAvatarId)}
+                {photoUploading && (
+                  <span className="absolute inset-0 flex items-center justify-center text-xs" style={{ background: 'rgba(0,0,0,0.4)', color: '#fff' }}>
+                    …
+                  </span>
+                )}
+                <input
+                  type="file" accept="image/*" capture="user" className="hidden"
+                  aria-label="Fotoğraf yükle"
+                  onChange={(e) => { void handlePhotoSelected(e.target.files?.[0]); e.target.value = ''; }}
+                />
+              </label>
             )}
-            <input
-              type="file" accept="image/*" capture="user" className="hidden"
-              aria-label="Fotoğraf yükle"
-              onChange={(e) => { void handlePhotoSelected(e.target.files?.[0]); e.target.value = ''; }}
-            />
-          </label>
-        )}
-        <div className="min-w-0 flex-1">
-          {athleteName && <p className="font-bold text-lg leading-tight truncate">{athleteName}</p>}
-          {photoError && <p className="text-xs mt-0.5" style={{ color: 'var(--t-err-text)' }}>Fotoğraf yüklenemedi, tekrar dene.</p>}
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wide t-muted">İsim</p>
+              {athleteName && <p className="font-bold text-base leading-tight truncate">{athleteName}</p>}
+              {photoError && <p className="text-xs mt-0.5" style={{ color: 'var(--t-err-text)' }}>Fotoğraf yüklenemedi, tekrar dene.</p>}
+            </div>
+          </div>
+
+          <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
+
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
+              {avatarEmoji(resolvedAvatarId)}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wide t-muted">Nickname</p>
+              <p className="font-bold text-base leading-tight truncate t-muted italic">Henüz eklenmedi</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 2) Ülke + il + üyelik tarihi — madde 2026-09-07 (GRUP C). Ülke akademi
-          tek ülke olduğu için (Türkiye) SABİT — gerçek bir "ülke" alanı yok. */}
-      <div className="t-card p-4 flex items-center gap-2">
+          tek ülke olduğu için (Türkiye) SABİT — gerçek bir "ülke" alanı yok.
+          Madde 2026-09-09: Zafer'in görseline göre 3 bölüme ayrıldı (bayrak |
+          ülke+il | üyelik tarihi), aralarına dikey ayırıcı çizgi eklendi —
+          önceden ülke+il ile üyelik tarihi ALT ALTA tek blok içindeydi. */}
+      <div className="t-card p-4 flex items-center gap-3">
         {/* Madde 2026-09-07: bayrak %100 büyütüldü (Zafer'in isteğiyle,
             antrenör profiliyle AYNI değişiklik — text-2xl'in tam iki katı
             olan text-5xl'e çıkarıldı). */}
         <span className="text-5xl flex-shrink-0">🇹🇷</span>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold">
+        <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold truncate">
             Türkiye{me.province && <span className="t-muted font-normal"> ({me.province})</span>}
           </p>
-          <p className="t-muted mt-0.5">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
+        </div>
+        <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
+        <div className="flex-1 min-w-0">
+          <p className="t-muted truncate">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
         </div>
       </div>
 
@@ -583,10 +635,14 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
 
         {daySummary?.daily && daySummary?.monthly && (
           <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t" style={{ borderColor: 'var(--t-border)' }}>
+            {/* Zafer'in isteği (2026-09-09): ikon+başlık üstte, altında bir
+                ayırıcı çizgi, çizginin altında Günlük/Aylık veriler. */}
             {ACTIVITY_CATEGORIES.map((c) => (
               <div key={c.key} className="rounded-xl p-2.5 text-center" style={{ background: 'var(--t-surface-2)' }}>
-                <p className="text-lg leading-none mb-1">{c.emoji}</p>
-                <p className="text-[11px] font-bold t-muted mb-1">{c.label}</p>
+                <div className="flex items-center justify-center gap-1 pb-1.5 mb-1.5 border-b" style={{ borderColor: 'var(--t-border)' }}>
+                  <span className="text-base leading-none">{c.emoji}</span>
+                  <span className="text-[11px] font-bold t-muted">{c.label}</span>
+                </div>
                 <p className="text-[11px] t-text">
                   Günlük: <span className="font-bold">{formatDuration(daySummary.daily[c.key])}</span>
                 </p>
@@ -715,7 +771,7 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
               />
             ))}
             <div className="w-px self-stretch my-1" style={{ background: 'var(--t-border)' }} />
-            <PowerButton onClick={handleLogout} />
+            <PowerButton onClick={handleLogout} size={64} />
           </div>
         </>
       )}

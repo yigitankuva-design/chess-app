@@ -42,6 +42,14 @@ describe('Profil sayfası — alt ayar kartları (Tema/Tahta Rengi/Taş/Dil/Çı
     expect(screen.getByLabelText('Taş Görünümünü Değiştir')).toBeInTheDocument();
     expect(screen.getByLabelText('Dil Seçeneği')).toBeInTheDocument();
     expect(screen.getByLabelText('Çıkış')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-09: kartlar %40 büyütüldü (46px → 64px)', async () => {
+    render(<ProfilePage />);
+    await waitFor(() => screen.getByLabelText('Tema Değiştir'));
+
+    expect(screen.getByLabelText('Tema Değiştir')).toHaveClass('w-[64px]', 'h-[64px]');
+    expect(screen.getByLabelText('Çıkış')).toHaveStyle({ width: '64px', height: '64px' });
 
     // Hiçbir karta tıklanmadan panel açık olmamalı
     expect(screen.queryByText('Sakin')).not.toBeInTheDocument();

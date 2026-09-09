@@ -73,6 +73,13 @@ describe('Profil sayfası — "Bu Hafta" gerçek Maç Yap/Dersler/Pratik Yap sü
     expect(screen.getAllByText('8 saat 24 dk').length).toBeGreaterThan(0);
   });
 
+  it('madde 2026-09-09: her kategori kartında ikon+başlık ile Günlük/Aylık arasında ayırıcı çizgi vardır', async () => {
+    render(<ProfilePage />);
+    const label = await screen.findByText('Maç Yap');
+    const header = label.closest<HTMLElement>('div.flex.items-center.justify-center');
+    expect(header?.className).toContain('border-b');
+  });
+
   it('farklı bir güne tıklayınca o günün özeti yeniden çekilip gösterilir', async () => {
     render(<ProfilePage />);
     await waitFor(() => screen.getByText('Maç Yap'));

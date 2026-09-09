@@ -280,13 +280,15 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
                 onClick={() => toggleLesson(l.id)}
                 aria-pressed={openLessonId === l.id}
                 aria-label={`${i + 1}. konu: ${l.title}`}
-                className="w-full aspect-square rounded-md flex items-center justify-center text-sm font-bold transition-colors"
+                className="w-full aspect-square rounded-md flex items-center justify-center p-1 text-center transition-colors"
                 style={{
                   background: openLessonId === l.id || done ? 'var(--t-accent)' : 'var(--t-surface-2)',
                   color: openLessonId === l.id || done ? 'var(--t-accent-fg)' : 'var(--t-text-1)',
                 }}
               >
-                {i + 1}
+                {/* Zafer'in isteği (2026-09-09): kart artık salt sıra
+                    numarası değil, ait olduğu dersin adını gösteriyor. */}
+                <span className="text-[10px] leading-tight font-bold line-clamp-3">{l.title}</span>
               </button>
             </div>
           );
@@ -379,7 +381,14 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
                                     gridTemplateColumns: STAT_ROW_COLS,
                                     borderTop: i === 0 ? 'none' : '1px solid var(--t-border)',
                                   }}>
-                                  <span className="text-[11px] font-bold whitespace-nowrap">{label}: {stat.total}</span>
+                                  {/* Zafer'in isteği (2026-09-09): "Günlük/Haftalık/Aylık/Yıllık"
+                                      etiketleri farklı uzunlukta olduğu için sayı hizasız
+                                      duruyordu — etiket artık sabit genişlikte bir alt-span,
+                                      sayı her satırda AYNI x konumundan başlıyor. */}
+                                  <span className="text-[11px] font-bold whitespace-nowrap flex items-baseline gap-1">
+                                    <span className="inline-block" style={{ width: '52px' }}>{label}:</span>
+                                    <span>{stat.total}</span>
+                                  </span>
                                   <span className="text-[11px] whitespace-nowrap">Doğru: <b style={{ color: 'var(--t-ok-text)' }}>{stat.correct}</b></span>
                                   <span className="text-[11px] whitespace-nowrap">Yanlış: <b style={{ color: 'var(--t-err-text)' }}>{stat.wrong}</b></span>
                                   <span className="text-[11px] whitespace-nowrap text-right">Başarı Oranı: <b>%{stat.success_rate}</b></span>
@@ -452,15 +461,20 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
                             /* Madde 2026-09-06 (Görsel 5): cümle + kare kartlar ortalanır. */
                             <div className="text-center">
                               <p className="text-sm font-bold italic mb-2">
-                                {openSubtopic.title} - {(lessons ?? []).findIndex((l) => l.id === openLessonId) + 1} konusuna ait
+                                {/* Zafer'in isteği (2026-09-09): "{başlık} - {sıra} konusuna
+                                    ait ödev..." eki, başlığın kendisi zaten "- N" ile bitince
+                                    "- 1 - 1" gibi TEKRARA yol açıyordu — kaldırıldı, sadece
+                                    alt konunun kendi başlığı kullanılıyor. */}
+                                {openSubtopic.title} konusuna ait
                                 ödev {suresizCompleted ? 'tamamlanmıştır' : 'tamamlanmamıştır'}.
                               </p>
                               {practiceDetail.pool_size === 0 ? (
                                 <p className="text-xs t-muted py-1">Bu alt konu için henüz soru eklenmedi.</p>
                               ) : (
+                                // Zafer'in isteği: soru kartları %20 büyütüldü (22px → 26px) ve ortalandı.
                                 <div
-                                  className="grid gap-1.5 mx-auto"
-                                  style={{ gridTemplateColumns: `repeat(${Math.min(practiceDetail.pool_size, 5)}, 22px)`, maxWidth: '100%' }}
+                                  className="grid gap-1.5 mx-auto justify-center"
+                                  style={{ gridTemplateColumns: `repeat(${Math.min(practiceDetail.pool_size, 5)}, 26px)`, maxWidth: '100%' }}
                                 >
                                   {Array.from({ length: practiceDetail.pool_size }, (_, i) => {
                                     const result = practiceDetail.per_question_correct?.[i];

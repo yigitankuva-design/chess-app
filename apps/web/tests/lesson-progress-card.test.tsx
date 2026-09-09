@@ -77,6 +77,13 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     expect(screen.getByText(/Temel Düzey/)).toBeInTheDocument();
   });
 
+  it('madde 2026-09-09: Konu kutucuğu artık sıra numarası yerine dersin adını gösterir', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    const button = await screen.findByLabelText('1. konu: Tahta ve Taşlar');
+    expect(button.textContent).toBe('Tahta ve Taşlar');
+  });
+
   it('bir Konu\'ya tıklayınca Alt Konuları açılır', async () => {
     stubFetch();
     render(<LessonProgressCard />);
@@ -113,6 +120,37 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     // undefined (kendi profilim modu, antrenör görünümü DEĞİL).
     await waitFor(() => expect(fetchPracticeDetail).toHaveBeenCalledWith(100, 'suresiz', undefined));
     await waitFor(() => screen.getByText('Ödevlerim'));
+    // Madde 2026-09-09: "- {sıra}" eki kaldırıldı (başlık zaten kendi "- N"
+    // ekini taşıyabiliyordu, "- 1 - 1" gibi bir tekrara yol açıyordu).
+    expect(screen.getByText(/Tahtanın Genel Özellikleri konusuna ait/)).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-09 (regresyon): alt konu başlığı kendi "- 1" ekini taşısa bile cümlede "- 1 - 1" tekrarı OLUŞMAZ', async () => {
+    // Zafer'in bildirdiği gerçek senaryo: alt konu adı LESSON adıyla AYNI ve
+    // zaten "- 1" ile bitiyor ("Tahtanın Genel Özellikleri - 1").
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('/modules/1/lessons')) return Promise.resolve({ ok: true, json: async () => LESSONS_TD });
+      if (url.endsWith('/modules')) return Promise.resolve({ ok: true, json: async () => MODULES });
+      if (url.includes('/lessons/10')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            steps: [{ id: 100, type: 'explanation', content_json: { title: 'Tahtanın Genel Özellikleri - 1' } }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    }) as unknown as typeof fetch);
+
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri - 1'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri - 1'));
+    fireEvent.click(screen.getByText('Ödevini Yap'));
+
+    await waitFor(() => screen.getByText('Ödevlerim'));
+    expect(screen.queryByText(/- 1 - 1/)).not.toBeInTheDocument();
     expect(screen.getByText(/Tahtanın Genel Özellikleri - 1 konusuna ait/)).toBeInTheDocument();
   });
 
@@ -126,10 +164,13 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Süreli Pratik Yap'));
 
     await waitFor(() => expect(fetchAttemptsSummary).toHaveBeenCalledWith(100, 'sureli', undefined));
-    expect(await screen.findByText('Günlük: 12')).toBeInTheDocument();
-    expect(screen.getByText('Haftalık: 12')).toBeInTheDocument();
-    expect(screen.getByText('Aylık: 12')).toBeInTheDocument();
-    expect(screen.getByText('Yıllık: 12')).toBeInTheDocument();
+    // Madde 2026-09-09: etiket artık sabit genişlikli AYRI bir alt-span
+    // (hizalama için) — "Etiket:" ve değeri ayrı ayrı doğrulanıyor.
+    expect(await screen.findByText('Günlük:')).toBeInTheDocument();
+    expect(screen.getByText('Haftalık:')).toBeInTheDocument();
+    expect(screen.getByText('Aylık:')).toBeInTheDocument();
+    expect(screen.getByText('Yıllık:')).toBeInTheDocument();
+    expect(screen.getByText('Günlük:').closest('div.grid')?.textContent).toContain('12');
     expect(screen.getAllByText('%75').length).toBe(4);
     expect(fetchPracticeDetail).not.toHaveBeenCalled();
   });
@@ -180,7 +221,7 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Ödevini Yap'));
 
-    const sentence = await screen.findByText(/Tahtanın Genel Özellikleri - 1 konusuna ait/);
+    const sentence = await screen.findByText(/Tahtanın Genel Özellikleri konusuna ait/);
     expect(sentence.parentElement?.className).toContain('text-center');
   });
 
@@ -213,7 +254,7 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Süreli Pratik Yap'));
 
-    await screen.findByText('Günlük: 12');
+    await screen.findByText('Günlük:');
     expect(screen.getAllByText(/^Doğru:/).length).toBe(4);
     expect(screen.getAllByText(/^Yanlış:/).length).toBe(4);
     expect(screen.queryByText(/Doğru Sayısı/)).not.toBeInTheDocument();
@@ -229,12 +270,27 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     fireEvent.click(screen.getByText('Süreli Pratik Yap'));
 
-    const gunluk = await screen.findByText('Günlük: 12');
-    const yillik = screen.getByText('Yıllık: 12');
+    const gunluk = await screen.findByText('Günlük:');
+    const yillik = screen.getByText('Yıllık:');
     const gunlukRow = gunluk.closest<HTMLElement>('div.grid');
     const yillikRow = yillik.closest<HTMLElement>('div.grid');
     expect(gunlukRow?.style.gridTemplateColumns).toBe(yillikRow?.style.gridTemplateColumns);
     expect(gunlukRow?.style.gridTemplateColumns).toBeTruthy();
+  });
+
+  it('madde 2026-09-09: "Günlük/Haftalık/Aylık/Yıllık" etiketleri sabit genişlikte, sayı her satırda aynı x konumundan başlar', async () => {
+    stubFetch();
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Süreli Pratik Yap'));
+
+    const gunluk = await screen.findByText('Günlük:');
+    const haftalik = screen.getByText('Haftalık:');
+    expect(gunluk.style.width).toBe(haftalik.style.width);
+    expect(gunluk.style.width).toBe('52px');
   });
 });
 

@@ -62,6 +62,28 @@ describe('Profil sayfası — kimlik kartları: il + üyelik tarihi (madde 2026-
     await waitFor(() => screen.getByText('Test Sporcu'));
     expect(screen.getByText('🇹🇷')).toHaveClass('text-5xl');
   });
+
+  it('madde 2026-09-09: bayrak/ülke+il/üyelik tarihi ARTIK ayrı ayrı sütunlarda, aralarında dikey ayırıcı çizgi var', async () => {
+    render(<ProfileView />);
+    await waitFor(() => screen.getByText('Test Sporcu'));
+    const flag = screen.getByText('🇹🇷');
+    const row = flag.parentElement;
+    // flag | çizgi | ülke+il | çizgi | üyelik tarihi = 5 çocuk.
+    expect(row?.children.length).toBe(5);
+  });
+});
+
+describe('Profil sayfası — kimlik kartı: isim/nickname ayrımı (madde 2026-09-09)', () => {
+  beforeEach(() => { stubFetch(); resizeImageToDataUrl.mockReset(); uploadMyPhoto.mockReset(); });
+
+  it('kimlik kartı ortadan dikey çizgiyle ikiye bölünür, solda İsim solda gerçek isim, sağda Nickname etiketi', async () => {
+    render(<ProfileView />);
+    await waitFor(() => screen.getByText('Test Sporcu'));
+    expect(screen.getByText('İsim')).toBeInTheDocument();
+    expect(screen.getByText('Nickname')).toBeInTheDocument();
+    // Nickname veri alanı henüz yok — Zafer'in kararı: "şimdilik tasarım alanı".
+    expect(screen.getByText('Henüz eklenmedi')).toBeInTheDocument();
+  });
 });
 
 describe('Profil sayfası — İletişim Bilgileri kartı (madde 2026-09-07, GRUP C)', () => {
