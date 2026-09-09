@@ -43,7 +43,10 @@ export default function AthleteSignupPage() {
       }
       const json = await res.json();
       auth.login(json.access_token, 'athlete', json.user_id);
-      router.push('/athlete/dashboard');
+      // BUG FIX (madde 2026-09-09, Üyelik Girişi Yenileme sırasında
+      // fark edildi): '(athlete)' parantezli route grubu URL'e GİRMEZ —
+      // gerçek adres '/dashboard', '/athlete/dashboard' 404 veriyordu.
+      router.push('/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kayıt başarısız');
     }

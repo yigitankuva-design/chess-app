@@ -1,7 +1,7 @@
 import enum
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
-from sqlalchemy import String, Boolean, DateTime, Enum, Text
+from sqlalchemy import String, Boolean, Date, DateTime, Enum, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -68,3 +68,10 @@ class User(Base):
     mother_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     mother_phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     mother_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Madde 2026-09-09 (AŞAMA 3): 18+ kendi kaydolan sporcunun beyan ettiği
+    # doğum tarihi — admin "Onay Bekleyenler" ekranında bunu görüp yaş
+    # beyanının makul olup olmadığını değerlendirebilsin diye (Tier A'nın
+    # asıl amacı). SADECE 18+ kendi kaydolan sporcuda dolu (bkz. auth.py
+    # member_signup) — veli/antrenör hesaplarında hep NULL.
+    birth_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)

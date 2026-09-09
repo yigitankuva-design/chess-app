@@ -27,8 +27,10 @@ async def get_current_user(
     # Madde 2026-09-09 (Üyelik Girişi Yenileme): /auth/login'deki AYNI
     # kontrol burada da var — signup ANINDA verilen token'la (henüz
     # /auth/login'e hiç uğramadan) korumalı uçlara erişilmesin diye.
-    if user.approval_status == "pending":
-        raise HTTPException(status_code=403, detail="Hesabınız onay bekliyor")
+    # Madde 2026-09-09 (AŞAMA 3): 'rejected' de AYNI şekilde engellenir.
+    if user.approval_status != "approved":
+        detail = "Hesabınız reddedildi" if user.approval_status == "rejected" else "Hesabınız onay bekliyor"
+        raise HTTPException(status_code=403, detail=detail)
     return user
 
 

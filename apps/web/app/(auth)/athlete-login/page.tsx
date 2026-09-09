@@ -32,7 +32,10 @@ export default function AthleteLoginPage() {
         return;
       }
       auth.login(res.access_token, res.role as 'athlete', res.user_id);
-      router.push('/athlete/dashboard');
+      // BUG FIX (madde 2026-09-09, Üyelik Girişi Yenileme sırasında
+      // fark edildi): '(athlete)' parantezli route grubu URL'e GİRMEZ —
+      // gerçek adres '/dashboard', '/athlete/dashboard' 404 veriyordu.
+      router.push('/dashboard');
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setError('E-posta veya şifre yanlış');

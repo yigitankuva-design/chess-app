@@ -116,9 +116,9 @@ describe('Kayıt Ol — Üye/Antrenör düzeni (madde 2026-09-09)', () => {
     expect(push).toHaveBeenCalledWith('/home');
   });
 
-  it('18+ kaydolan sporcu (approval_status=pending) otomatik giriş YAPMAZ, onay mesajı gösterir', async () => {
+  it('madde 2026-09-09 (devam 4): 18+ kaydolan sporcu (role=athlete) ONAY BEKLEMEZ, hemen /dashboard\'a gider', async () => {
     memberSignup.mockResolvedValue({
-      access_token: 'tok', role: 'athlete', user_id: 2, name: 'Ali Yılmaz', approval_status: 'pending',
+      access_token: 'tok', role: 'athlete', user_id: 2, name: 'Ali Yılmaz', approval_status: 'approved',
     });
 
     render(<SignupPage />);
@@ -130,13 +130,11 @@ describe('Kayıt Ol — Üye/Antrenör düzeni (madde 2026-09-09)', () => {
     acceptKvkk();
     fireEvent.click(screen.getByText('Hesap Aç'));
 
-    await waitFor(() => {
-      expect(screen.getByText('Hesabın Oluşturuldu')).toBeInTheDocument();
-    });
-    expect(screen.getByText(/onayı bekliyor/)).toBeInTheDocument();
-    expect(login).not.toHaveBeenCalled();
+    await waitFor(() => expect(login).toHaveBeenCalledWith('tok', 'athlete', 2));
+    expect(saveAthleteName).toHaveBeenCalledWith('Ali Yılmaz');
     expect(athleteSession).not.toHaveBeenCalled();
-    expect(push).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith('/dashboard');
+    expect(screen.queryByText('Hesabın Oluşturuldu')).not.toBeInTheDocument();
   });
 
   it('KVKK onayı işaretlenmeden gönderilemez', async () => {
@@ -153,12 +151,7 @@ describe('Kayıt Ol — Üye/Antrenör düzeni (madde 2026-09-09)', () => {
     expect(memberSignup).not.toHaveBeenCalled();
   });
 
-  it('Antrenör: doğru uca gönderir, /coach\'a yönlendirir, veli bilgisi İSTEMEZ', async () => {
-    teacherRegister.mockResolvedValue({
-      access_token: 'tok', role: 'teacher', user_id: 3, name: 'Zeynep Kara', approval_status: 'approved',
-    });
-
-    render(<SignupPage />);
+  function fillTeacherFields() {
     fireEvent.click(screen.getByText('🎓 Antrenör'));
     fireEvent.change(screen.getByPlaceholderText('İsim *'), { target: { value: 'Zeynep' } });
     fireEvent.change(screen.getByPlaceholderText('Soyisim *'), { target: { value: 'Kara' } });
@@ -167,6 +160,15 @@ describe('Kayıt Ol — Üye/Antrenör düzeni (madde 2026-09-09)', () => {
     fireEvent.change(screen.getByPlaceholderText('Şehir *'), { target: { value: 'Bilecik' } });
     fireEvent.change(screen.getByPlaceholderText('Kullanıcı Adı *'), { target: { value: 'zeynepkara' } });
     fireEvent.change(screen.getByPlaceholderText('Şifre (en az 8 karakter) *'), { target: { value: 'guvenli1234' } });
+  }
+
+  it('madde 2026-09-09 (devam 4): Antrenör başvurusu doğru uca gönderir, veli bilgisi İSTEMEZ, ONAY BEKLER (giriş YAPMAZ)', async () => {
+    teacherRegister.mockResolvedValue({
+      access_token: 'tok', role: 'teacher', user_id: 3, name: 'Zeynep Kara', approval_status: 'pending',
+    });
+
+    render(<SignupPage />);
+    fillTeacherFields();
     acceptKvkk();
     fireEvent.click(screen.getByText('Hesap Aç'));
 
@@ -175,8 +177,14 @@ describe('Kayıt Ol — Üye/Antrenör düzeni (madde 2026-09-09)', () => {
     const body = teacherRegister.mock.calls[0][0];
     expect(body.first_name).toBe('Zeynep');
     expect(body.last_name).toBe('Kara');
-    expect(saveTeacherName).toHaveBeenCalledWith('Zeynep Kara');
-    expect(push).toHaveBeenCalledWith('/coach');
+
+    await waitFor(() => {
+      expect(screen.getByText('Hesabın Oluşturuldu')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/başvurun akademi yönetimi tarafından incelenecek/)).toBeInTheDocument();
+    expect(login).not.toHaveBeenCalled();
+    expect(saveTeacherName).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('409 (kullanıcı adı/e-posta çakışması) hatası ekranda gösterilir', async () => {

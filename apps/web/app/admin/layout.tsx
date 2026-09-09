@@ -11,6 +11,9 @@ const NAV_GROUPS: { title: string; items: { href: string; label: string }[] }[] 
     title: 'Admin',
     items: [
       { href: '/admin/parents', label: 'Kullanıcılar' },
+      // Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 3): 18+ kendi
+      // kaydolan sporcu hesapları için Tier A onay ekranı.
+      { href: '/admin/onay-bekleyenler', label: 'Onay Bekleyenler' },
     ],
   },
   {

@@ -83,8 +83,11 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     # Madde 2026-09-09 (devam): 18+ kendi kaydolan sporcu hesapları admin
     # onaylayana kadar 'pending' kalır — Tier A (yaş beyanı riskine karşı).
     # Veli/antrenör hesapları zaten 'approved' başlar (bkz. migration).
-    if user.approval_status == "pending":
-        raise HTTPException(status_code=403, detail="Hesabınız onay bekliyor")
+    # Madde 2026-09-09 (AŞAMA 3): admin reddederse 'rejected' de AYNI
+    # şekilde engellenir — sadece "onay bekliyor" DEĞİL, "onaylanmadı" da.
+    if user.approval_status != "approved":
+        detail = "Hesabınız reddedildi" if user.approval_status == "rejected" else "Hesabınız onay bekliyor"
+        raise HTTPException(status_code=403, detail=detail)
     token = encode_token({"user_id": user.id, "role": user.role.value})
     return AuthResponse(
         access_token=token, user_id=user.id, role=user.role, name=user.name,
@@ -199,9 +202,13 @@ async def member_signup(
 ):
     """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun "Üye"
     (Sporcu) yolu. Doğum tarihinden hesaplanan yaş 18+ ise sporcu KENDİ
-    hesabını açar (role=athlete, admin onayı bekler — Tier A); 18 altıysa
-    veli hesabı açar (role=parent) ve sporcu ChildProfile olarak bağlanır
-    — mevcut parent/signup ile AYNI desen, sadece daha zengin veriyle."""
+    hesabını açar (role=athlete); 18 altıysa veli hesabı açar (role=parent)
+    ve sporcu ChildProfile olarak bağlanır — mevcut parent/signup ile AYNI
+    desen, sadece daha zengin veriyle. Madde 2026-09-09 (devam 4): Zafer'in
+    kararıyla sporcu tarafında admin onayı ARANMIYOR (approval_status
+    varsayılan 'approved' — bkz. migration) — Tier A onay gereksinimi
+    SADECE antrenör başvurusuna taşındı (bkz. teacher_register), çünkü
+    çocuklarla doğrudan çalışacak rol antrenör."""
     await _check_email_username_free(db, payload.email, payload.username)
 
     full_name = f"{payload.first_name} {payload.last_name}"
@@ -218,8 +225,8 @@ async def member_signup(
             phone=payload.phone,
             province=payload.province,
             lichess_username=payload.lichess_username,
+            birth_date=payload.birth_date,
             kvkk_consent_at=now,
-            approval_status="pending",
             father_name=payload.father_name,
             father_phone=payload.father_phone,
             father_email=payload.father_email,
@@ -297,7 +304,12 @@ async def teacher_register(
     "Antrenör" yolu — zengin alan seti (telefon/şehir/Lichess/kullanıcı
     adı). Mevcut /teacher/signup (test paketinde 20+ yerde kullanılan
     basit {email,password,name} şekli) KURAL #3 gereği DOKUNULMADAN kalır
-    — bu YENİ, AYRI bir uç."""
+    — bu YENİ, AYRI bir uç. Madde 2026-09-09 (devam 4): Zafer'in kararıyla
+    Tier A onay gereksinimi (admin onaylayana kadar giriş yapılamaz)
+    SPORCUDAN antrenöre taşındı — çocuklarla doğrudan çalışacak rol
+    antrenör olduğu için kimlik/iletişim bilgisi admin tarafından
+    incelenmeden hesap aktif olmaz (bkz. admin.py pending-members uçları,
+    apps/web/app/admin/onay-bekleyenler)."""
     await _check_email_username_free(db, payload.email, payload.username)
 
     user = User(
@@ -310,6 +322,7 @@ async def teacher_register(
         province=payload.province,
         lichess_username=payload.lichess_username,
         kvkk_consent_at=datetime.utcnow(),
+        approval_status="pending",
         email_verification_token=secrets.token_urlsafe(32),
     )
     db.add(user)

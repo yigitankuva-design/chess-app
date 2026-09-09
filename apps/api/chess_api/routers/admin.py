@@ -14,6 +14,7 @@ from chess_api.services.password import hash_password
 from chess_api.services.child_deletion import delete_child_cascade
 from chess_api.schemas.auth import (
     AdminParentSummary, AdminParentDetail, AdminChildSummary,
+    PendingMemberSummary,
     AdminOverview, AdminModuleSummary, AdminResetPasswordRequest,
     AdminLessonSummary,
     ContentExport, ContentModuleIO, ContentLessonIO, ContentStepIO,
@@ -91,6 +92,62 @@ async def parent_detail(
         id=p.id, name=p.name, email=p.email,
         created_at=p.created_at, children=child_out,
     )
+
+
+@router.get("/pending-members", response_model=list[PendingMemberSummary])
+async def list_pending_members(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 3, devam 4): kendi
+    kaydolan, henüz onaylanmamış ANTRENÖR başvuruları (Tier A — çocuklarla
+    doğrudan çalışacak rol olduğu için admin gözden geçirip onaylar/
+    reddeder). Sporcu tarafı ARTIK onay beklemiyor (approval_status hep
+    'approved' başlıyor) — bu yüzden `role == teacher` filtrelemeye GEREK
+    yok, approval_status='pending' zaten SADECE antrenör başvurularında
+    oluşuyor (bkz. auth.py teacher_register/member_signup)."""
+    _ensure_admin(current)
+    rows = (await db.execute(
+        select(User).where(User.approval_status == "pending").order_by(User.created_at.desc())
+    )).scalars().all()
+    return [
+        PendingMemberSummary(
+            id=u.id, name=u.name, email=u.email, username=u.username,
+            phone=u.phone, province=u.province, lichess_username=u.lichess_username,
+            created_at=u.created_at,
+        )
+        for u in rows
+    ]
+
+
+@router.post("/pending-members/{user_id}/approve")
+async def approve_pending_member(
+    user_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    u = await db.get(User, user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    u.approval_status = "approved"
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/pending-members/{user_id}/reject")
+async def reject_pending_member(
+    user_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_admin(current)
+    u = await db.get(User, user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    u.approval_status = "rejected"
+    await db.commit()
+    return {"ok": True}
 
 
 @router.get("/overview", response_model=AdminOverview)

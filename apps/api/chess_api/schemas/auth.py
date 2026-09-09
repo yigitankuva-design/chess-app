@@ -24,7 +24,10 @@ class MemberSignupRequest(BaseModel):
     """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun
     "Üye" (Sporcu) yolu. `birth_date`'ten hesaplanan yaş 18+ ise sporcunun
     KENDİ hesabı (role=athlete), 18 altıysa velinin hesabı (role=parent) +
-    sporcunun ChildProfile'ı oluşur — bkz. auth.py member_signup."""
+    sporcunun ChildProfile'ı oluşur — bkz. auth.py member_signup. Madde
+    2026-09-09 (devam 4): sporcu tarafında admin onayı ARANMIYOR — hesap
+    hemen aktif olur (Tier A onay gereksinimi antrenöre taşındı, bkz.
+    TeacherSignupRequestV2)."""
     first_name: str = Field(min_length=2, max_length=60)
     last_name: str = Field(min_length=1, max_length=60)
     phone: str = Field(min_length=6, max_length=30)
@@ -60,7 +63,10 @@ class MemberSignupRequest(BaseModel):
 
 class TeacherSignupRequestV2(BaseModel):
     """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun
-    "Antrenör" yolu — veli bölümü YOK (bkz. auth.py teacher_signup)."""
+    "Antrenör" yolu — veli bölümü YOK (bkz. auth.py teacher_register).
+    Madde 2026-09-09 (devam 4): bu hesap 'pending' başlar — admin
+    "Onay Bekleyenler" ekranından onaylayana kadar giriş yapılamaz
+    (Tier A, çocuklarla doğrudan çalışacak rol olduğu için)."""
     first_name: str = Field(min_length=2, max_length=60)
     last_name: str = Field(min_length=1, max_length=60)
     phone: str = Field(min_length=6, max_length=30)
@@ -145,6 +151,21 @@ class AdminParentSummary(BaseModel):
     created_at: datetime
     child_count: int
     child_names: list[str] = []
+
+
+class PendingMemberSummary(BaseModel):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 3, devam 4): admin
+    "Onay Bekleyenler" ekranı — kendi kaydolan, henüz onaylanmamış
+    ANTRENÖR başvuruları (Tier A — çocuklarla doğrudan çalışacak rol
+    olduğu için admin kimlik/iletişim bilgisini inceleyip karar verir)."""
+    id: int
+    name: str
+    email: str
+    username: str | None
+    phone: str | None
+    province: str | None
+    lichess_username: str | None
+    created_at: datetime
 
 
 class AdminChildSummary(BaseModel):

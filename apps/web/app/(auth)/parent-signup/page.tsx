@@ -96,6 +96,13 @@ export default function SignupPage() {
           password: data.password,
           kvkk_consent: data.kvkk_consent,
         });
+        // Madde 2026-09-09 (devam 4): antrenör başvurusu admin onaylayana
+        // kadar giriş YAPAMAZ — çocuklarla doğrudan çalışacak rol olduğu
+        // için Tier A onayı sporcudan antrenöre taşındı.
+        if (res.approval_status === 'pending') {
+          setPendingApproval(true);
+          return;
+        }
         auth.login(res.access_token, res.role, res.user_id);
         saveTeacherName(res.name);
         router.push('/coach');
@@ -130,14 +137,24 @@ export default function SignupPage() {
         kvkk_consent: data.kvkk_consent,
       });
 
-      // Madde (devam): 18+ kendi kaydolan sporcu — admin onaylayana kadar
-      // giriş YAPILMAZ, otomatik yönlendirme de olmaz.
-      if (res.approval_status === 'pending') {
-        setPendingApproval(true);
+      // Madde 2026-09-09 (devam 4): sporcu tarafı ARTIK admin onayı
+      // beklemiyor (Tier A antrenöre taşındı) — 18+ de 18 altı da HEMEN
+      // giriş yapar. Ama ikisinin hesap şekli FARKLI: 18+ kendi hesabı
+      // (role=athlete, /dashboard'a), 18 altı velinin hesabı
+      // (role=parent, mevcut davranışla AYNI athlete/session zincirlemesi).
+      if (res.role === 'athlete') {
+        // Madde 2026-09-09 (devam 4): 18+ kendi hesabı /home'daki (veli-
+        // yönetimli sporcu) akışa DAHİL değil, ayrı bir rol/route grubu
+        // ((athlete)/dashboard.tsx → parantezli grup URL'e GİRMEZ, gerçek
+        // adres /dashboard). BUG FIX: athlete-login/page.tsx'te de AYNI
+        // yanlış hedef ('/athlete/dashboard', 404 verir) vardı — o da
+        // düzeltildi (KURAL #1, canlı önizlemede 404 görülüp doğrulandı).
+        auth.login(res.access_token, res.role, res.user_id);
+        saveAthleteName(res.name);
+        router.push('/dashboard');
         return;
       }
 
-      // 18 altı: veli hesabı — mevcut davranışla AYNI (athlete/session'a zincirleme).
       auth.login(res.access_token, res.role, res.user_id);
       const ath = await apiClient.athleteSession();
       auth.login(ath.access_token, 'child', ath.child_profile_id);
@@ -159,7 +176,7 @@ export default function SignupPage() {
           className="h-16 w-auto mx-auto mb-3 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" />
         <h1 className="text-2xl font-bold n-text">Hesabın Oluşturuldu</h1>
         <p className="n-muted text-sm">
-          18 yaş üzeri olarak kaydolduğun için hesabın antrenör onayı bekliyor.
+          Antrenör başvurun akademi yönetimi tarafından incelenecek.
           Onaylandıktan sonra giriş yapabilirsin.
         </p>
         <Link href="/parent-login" className="text-cyan-400 hover:text-cyan-300 text-sm">Giriş sayfasına dön</Link>

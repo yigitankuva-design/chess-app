@@ -1,6 +1,11 @@
 # Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 2): yeni "Kayıt Ol"
 # formunun backend uçları — /auth/member/signup (Üye/Sporcu, yaşa göre
 # dallanan) ve /auth/teacher/register (Antrenör).
+#
+# Madde 2026-09-09 (devam 4): Zafer'in kararıyla Tier A onay gereksinimi
+# (admin onaylayana kadar giriş yapılamaz) SPORCUDAN antrenöre taşındı —
+# çocuklarla doğrudan çalışacak rol antrenör olduğu için. Sporcu (18+ de
+# olsa) artık HEMEN aktif; antrenör admin onayı bekler.
 from datetime import date
 from sqlalchemy import select
 from chess_api.models import User, ChildProfile
@@ -41,14 +46,14 @@ def _teacher_payload(**overrides):
     return base
 
 
-# ── /auth/member/signup — 18 yaş üstü: sporcu KENDİ hesabını açar ──
+# ── /auth/member/signup — 18 yaş üstü: sporcu KENDİ hesabını açar, ONAY BEKLEMEZ ──
 
-async def test_member_signup_18_plus_creates_pending_athlete(client, db):
+async def test_member_signup_18_plus_creates_approved_athlete(client, db):
     r = await client.post("/auth/member/signup", json=_member_payload())
     assert r.status_code == 201
     data = r.json()
     assert data["role"] == "athlete"
-    assert data["approval_status"] == "pending"
+    assert data["approval_status"] == "approved"
 
     user = (await db.execute(select(User).where(User.email == "ali@test.com"))).scalar_one()
     assert user.name == "Ali Yılmaz"
@@ -56,25 +61,16 @@ async def test_member_signup_18_plus_creates_pending_athlete(client, db):
     assert user.phone == "5551112233"
     assert user.province == "Bilecik"
     assert user.mother_name == "Ayşe Yılmaz"
-    assert user.approval_status == "pending"
+    assert user.approval_status == "approved"
     assert user.kvkk_consent_at is not None
 
     children = (await db.execute(select(ChildProfile))).scalars().all()
     assert children == []
 
 
-async def test_member_signup_18_plus_cannot_login_until_approved(client):
-    await client.post("/auth/member/signup", json=_member_payload(email="pend@test.com", username="pendtest"))
-    r = await client.post("/auth/login", json={"email": "pend@test.com", "password": "guvenli1234"})
-    assert r.status_code == 403
-
-
-async def test_member_signup_18_plus_approved_can_login(client, db):
-    await client.post("/auth/member/signup", json=_member_payload(email="onaylanacak@test.com", username="onaylanacak"))
-    user = (await db.execute(select(User).where(User.email == "onaylanacak@test.com"))).scalar_one()
-    user.approval_status = "approved"
-    await db.commit()
-    r = await client.post("/auth/login", json={"email": "onaylanacak@test.com", "password": "guvenli1234"})
+async def test_member_signup_18_plus_can_login_immediately(client):
+    await client.post("/auth/member/signup", json=_member_payload(email="hemenaktif@test.com", username="hemenaktif"))
+    r = await client.post("/auth/login", json={"email": "hemenaktif@test.com", "password": "guvenli1234"})
     assert r.status_code == 200
 
 
@@ -147,31 +143,27 @@ async def test_member_signup_duplicate_username_rejected(client):
     assert r.status_code == 409
 
 
-# ── /auth/teacher/register — Antrenör (madde: mevcut /auth/teacher/signup'a DOKUNULMADI) ──
+# ── /auth/teacher/register — Antrenör, ADMIN ONAYI BEKLER (madde: mevcut /auth/teacher/signup'a DOKUNULMADI) ──
 
-async def test_teacher_register_creates_approved_teacher(client, db):
+async def test_teacher_register_creates_pending_teacher(client, db):
     r = await client.post("/auth/teacher/register", json=_teacher_payload())
     assert r.status_code == 201
     data = r.json()
     assert data["role"] == "teacher"
-    assert data["approval_status"] == "approved"
+    assert data["approval_status"] == "pending"
 
     user = (await db.execute(select(User).where(User.email == "zeynep@test.com"))).scalar_one()
     assert user.name == "Zeynep Kara"
     assert user.province == "Bilecik"
     assert user.phone == "5551234567"
+    assert user.approval_status == "pending"
 
 
-async def test_teacher_register_can_login_immediately_by_email(client):
+async def test_teacher_register_cannot_login_until_approved(client):
     await client.post("/auth/teacher/register", json=_teacher_payload(email="ogretmen@test.com", username="ogretmen1"))
     r = await client.post("/auth/login", json={"email": "ogretmen@test.com", "password": "guvenli1234"})
-    assert r.status_code == 200
-
-
-async def test_teacher_register_can_login_by_username(client):
-    await client.post("/auth/teacher/register", json=_teacher_payload(email="ogretmen2@test.com", username="ogretmenkod"))
-    r = await client.post("/auth/login", json={"email": "ogretmenkod", "password": "guvenli1234"})
-    assert r.status_code == 200
+    assert r.status_code == 403
+    assert r.json()["detail"] == "Hesabınız onay bekliyor"
 
 
 async def test_teacher_register_missing_kvkk_rejected(client):
