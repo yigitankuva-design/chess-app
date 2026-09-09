@@ -495,7 +495,9 @@ body {
 .neon-input {
   width: 100%;
   background: #0c0c15;
-  border: 1px solid rgba(255,255,255,0.10);
+  /* Zafer'in isteği (2026-09-09): çerçeve dolu/boş fark etmeksizin HER
+     ZAMAN belirgin görünmeli — eskiden 0.10 opaklıkta neredeyse seçilmiyordu. */
+  border: 1px solid rgba(255,255,255,0.32);
   border-radius: 10px;
   padding: .75rem;
   color: #e7e7f0;
@@ -506,6 +508,19 @@ body {
   outline: none;
   border-color: rgba(34,211,238,0.75);
   box-shadow: 0 0 0 3px rgba(34,211,238,0.15);
+}
+/* Zafer'in isteği (2026-09-09): tarayıcı otomatik doldurma (autofill)
+   Telefon/E-posta/Kullanıcı Adı/Şifre gibi alanları beyaza boyuyordu —
+   Chrome/Edge bunu sadece bu "dev inset box-shadow" hilesiyle geçersiz
+   kılmaya izin veriyor (arkaplan doğrudan override edilemiyor). */
+.neon-input:-webkit-autofill,
+.neon-input:-webkit-autofill:hover,
+.neon-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #e7e7f0;
+  caret-color: #e7e7f0;
+  -webkit-box-shadow: 0 0 0 1000px #0c0c15 inset;
+  box-shadow: 0 0 0 1000px #0c0c15 inset;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 /* Primary neon buton */

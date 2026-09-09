@@ -71,9 +71,50 @@ type FormData = z.infer<typeof schema>;
 /** Görselde yıldızsız TEK alan — geri kalan her şey zorunlu (Zafer'in kuralı). */
 const REQUIRED_MARK = <span className="text-rose-400">*</span>;
 
+/**
+ * Zafer'in isteği (2026-09-09): Şehir alanına hem elle yazılabilsin hem de
+ * fare ile 81 il arasından seçilebilsin — native <input list> + <datalist>
+ * ikisini birden sağlıyor (yazarken filtrelenen bir öneri listesi açılır,
+ * ayrıca listeden tıklanabilir), ekstra bir kütüphane/bileşen gerekmiyor.
+ */
+const TURKIYE_ILLERI = [
+  'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara',
+  'Antalya', 'Ardahan', 'Artvin', 'Aydın', 'Balıkesir', 'Bartın', 'Batman',
+  'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa',
+  'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Düzce', 'Edirne',
+  'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun',
+  'Gümüşhane', 'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 'İzmir',
+  'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu', 'Kayseri',
+  'Kırıkkale', 'Kırklareli', 'Kırşehir', 'Kilis', 'Kocaeli', 'Konya',
+  'Kütahya', 'Malatya', 'Manisa', 'Mardin', 'Mersin', 'Muğla', 'Muş',
+  'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye', 'Rize', 'Sakarya', 'Samsun',
+  'Siirt', 'Sinop', 'Sivas', 'Şanlıurfa', 'Şırnak', 'Tekirdağ', 'Tokat',
+  'Trabzon', 'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak',
+];
+
+function EyeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c7 0 10.5 7 10.5 7a13.8 13.8 0 0 1-3.4 4.2M6.6 6.6C3.6 8.4 1.5 12 1.5 12s3.5 7 10.5 7a10.4 10.4 0 0 0 4.2-.9" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </svg>
+  );
+}
+
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const auth = useAuth();
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } =
@@ -236,21 +277,40 @@ export default function SignupPage() {
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <input {...register('province')} placeholder="Şehir *" className="neon-input" />
+            <input {...register('province')} list="il-listesi" placeholder="Şehir *" className="neon-input" />
             {errors.province && <p className="text-rose-400 text-sm mt-1">{errors.province.message}</p>}
           </div>
           <div>
             <input {...register('lichess_username')} placeholder="Lichess Kullanıcı Adı" className="neon-input" />
           </div>
         </div>
+        {/* Zafer'in isteği: il elle yazılabilir VEYA bu listeden fareyle
+            seçilebilir — <datalist> input'un altına açılan native öneri
+            listesi olarak çalışır. */}
+        <datalist id="il-listesi">
+          {TURKIYE_ILLERI.map((il) => <option key={il} value={il} />)}
+        </datalist>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
             <input {...register('username')} placeholder="Kullanıcı Adı *" className="neon-input" />
             {errors.username && <p className="text-rose-400 text-sm mt-1">{errors.username.message}</p>}
           </div>
-          <div>
-            <input {...register('password')} type="password" placeholder="Şifre (en az 8 karakter) *" className="neon-input" />
+          <div className="relative">
+            <input
+              {...register('password')}
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Şifre (en az 8 karakter) *"
+              className="neon-input pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-300"
+            >
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
             {errors.password && <p className="text-rose-400 text-sm mt-1">{errors.password.message}</p>}
           </div>
         </div>
