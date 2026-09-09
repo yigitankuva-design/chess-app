@@ -21,6 +21,9 @@ export interface MyProgress {
   province: string | null;
   athlete_phone: string | null;
   athlete_email: string | null;
+  /** Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): yeni "Kayıt Ol"
+   *  formunun eklediği Lichess kullanıcı adı. */
+  lichess_username: string | null;
   father_name: string | null;
   father_phone: string | null;
   father_email: string | null;

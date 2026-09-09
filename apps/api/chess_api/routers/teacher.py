@@ -166,11 +166,12 @@ async def teacher_profile_summary(
     """Madde 2026-09-07 (Antrenör Paneli): antrenörün KENDİ Profil sayfası
     (`/coach/profile`) sporcunun ProfileView'ını (bkz. components/profile/
     ProfileView.tsx) aynen kullanıyor — o bileşen `/gamification/me`'nin
-    döndürdüğü `MyProgress` şeklini bekliyor. Antrenörün rütbe/XP/rozet/
-    il/iletişim sistemi YOK (bunlar SADECE ChildProfile'da) — bu yüzden
-    burada sadece gerçekten var olan alanlar (isim, üyelik tarihi,
-    fotoğraf) doldurulur, geri kalanı NULL/0 döner. ProfileView bunları
-    zaten "ikon avatar göster"/"bilgi eksik" olarak gösteriyor (KURAL #3)."""
+    döndürdüğü `MyProgress` şeklini bekliyor. Antrenörün rütbe/XP/rozet
+    sistemi YOK — bu yüzden bunlar hep NULL/0 döner, ProfileView'ın
+    "ikon avatar göster"/"bilgi eksik" davranışına düşer (KURAL #3).
+    Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): il/telefon/Lichess
+    ARTIK gerçek — antrenörün "Kayıt Ol" formunda girdiği bilgiler (bkz.
+    User.province/phone/lichess_username, AŞAMA 1-3)."""
     _ensure_teacher(current)
     return {
         "rank_name": "", "rank_icon": "", "xp_total": 0, "next_rank_xp": 0,
@@ -179,8 +180,9 @@ async def teacher_profile_summary(
         "display_name": current.name,
         "avatar": "default",
         "photo_data_url": current.photo_data_url,
-        "province": None,
-        "athlete_phone": None, "athlete_email": None,
+        "province": current.province,
+        "athlete_phone": current.phone, "athlete_email": current.email,
+        "lichess_username": current.lichess_username,
         "father_name": None, "father_phone": None, "father_email": None,
         "mother_name": None, "mother_phone": None, "mother_email": None,
     }

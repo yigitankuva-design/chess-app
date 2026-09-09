@@ -62,10 +62,40 @@ async def test_me_endpoint_returns_progress(client, child_auth):
     assert data["province"] is None
     assert data["father_phone"] is None
     assert data["mother_email"] is None
+    # Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): Lichess kullanıcı adı.
+    assert "lichess_username" in data
+    assert data["lichess_username"] is None
 
     # New child should have 0 XP and 0 badges
     assert data["xp_total"] == 0
     assert data["badges_earned"] == 0
+
+
+@pytest.mark.asyncio
+async def test_me_endpoint_reflects_kayit_ol_lichess_username(client):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): "Kayıt Ol"
+    formundan (18 altı — POST /auth/member/signup) Lichess kullanıcı adı
+    girildiyse, /gamification/me artık BUNU döndürür."""
+    r = await client.post("/auth/member/signup", json={
+        "first_name": "Ali", "last_name": "Yılmaz",
+        "phone": "5551112233", "email": "gamlichess@test.com",
+        "province": "Bilecik", "lichess_username": "aliyilmazchess",
+        "username": "gamlichess", "password": "guvenli1234",
+        "birth_date": "2015-01-01",
+        "mother_name": "Ayşe Yılmaz", "mother_phone": "5551112244", "mother_email": "ayse@test.com",
+        "kvkk_consent": True,
+    })
+    assert r.status_code == 201
+    parent_token = r.json()["access_token"]
+
+    session_r = await client.post(
+        "/auth/athlete/session", headers={"Authorization": f"Bearer {parent_token}"},
+    )
+    child_token = session_r.json()["access_token"]
+
+    r2 = await client.get("/gamification/me", headers={"Authorization": f"Bearer {child_token}"})
+    assert r2.status_code == 200
+    assert r2.json()["lichess_username"] == "aliyilmazchess"
 
 
 @pytest.mark.asyncio

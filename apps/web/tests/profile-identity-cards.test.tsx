@@ -35,6 +35,7 @@ const ME = {
   photo_data_url: null as string | null,
   province: 'Bilecik',
   athlete_phone: '05551234567', athlete_email: 'sporcu@example.com',
+  lichess_username: 'sporcuchess' as string | null,
   father_name: 'Baba', father_phone: '05559876543', father_email: null,
   mother_name: 'Anne', mother_phone: null, mother_email: 'anne@example.com',
 };
@@ -78,6 +79,17 @@ describe('Profil sayfası — İletişim Bilgileri kartı (madde 2026-09-07, GRU
     fireEvent.click(screen.getByText('Sporcu'));
     expect(screen.getByText('05551234567')).toBeInTheDocument();
     expect(screen.getByText('sporcu@example.com')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): "Sporcu" seçilince Lichess kullanıcı adı da görünür, Baba/Anne\'de YOK', async () => {
+    render(<ProfileView />);
+    await waitFor(() => screen.getByText('İletişim Bilgileri'));
+    fireEvent.click(screen.getByText('Sporcu'));
+    expect(screen.getByText('sporcuchess')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Sporcu')); // kapat
+    fireEvent.click(screen.getByText('Baba'));
+    expect(screen.queryByText('sporcuchess')).not.toBeInTheDocument();
   });
 
   it('"Baba" seçilince eksik e-posta "E-posta girilmedi" olarak gösterilir', async () => {

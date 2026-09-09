@@ -10,6 +10,11 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
  * Bilgileri/Ders İlerlemesi/Not kartları KALDIRILDI, kimlik fotoğrafı
  * GERÇEK yükleme alanı oldu, Türkiye bayrağı büyütüldü — bu testler
  * ARTIK bu düzenlenmiş hâli doğruluyor.
+ *
+ * Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): İletişim Bilgileri
+ * kartı GERİ GETİRİLDİ (artık gerçek veri var — "Kayıt Ol" formundan
+ * telefon/il/Lichess) — bu testler bu değişikliği yansıtır. Ders
+ * İlerlemesi/Not hâlâ YOK.
  */
 const replace = vi.fn();
 const push = vi.fn();
@@ -33,8 +38,9 @@ vi.mock('@/lib/gamification/meApi', () => ({
     member_since: '2026-01-15',
     display_name: 'Ahmet Antrenör',
     avatar: 'default',
-    photo_data_url: null, province: null,
-    athlete_phone: null, athlete_email: null,
+    photo_data_url: null, province: 'Bilecik',
+    athlete_phone: '5551234567', athlete_email: 'ahmet@test.com',
+    lichess_username: 'ahmetchess',
     father_name: null, father_phone: null, father_email: null,
     mother_name: null, mother_phone: null, mother_email: null,
   })),
@@ -70,10 +76,27 @@ describe('Antrenör Paneli — /coach/profile (sporcu Profili kopyası, düzenle
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it('madde 2026-09-07 (3): İletişim Bilgileri, Ders İlerlemesi, Not kartları ARTIK YOK', async () => {
+  it('madde 2026-09-09 (AŞAMA 4): İletişim Bilgileri kartı GERİ GELDİ, telefon/e-posta/Lichess doğrudan gösterilir (pill seçici YOK)', async () => {
     render(<CoachProfilePage />);
     await waitFor(() => screen.getByText('Ahmet Antrenör'));
-    expect(screen.queryByText('İletişim Bilgileri')).not.toBeInTheDocument();
+    expect(screen.getByText('İletişim Bilgileri')).toBeInTheDocument();
+    expect(screen.getByText('5551234567')).toBeInTheDocument();
+    expect(screen.getByText('ahmet@test.com')).toBeInTheDocument();
+    expect(screen.getByText('ahmetchess')).toBeInTheDocument();
+    // Sporcu tarafındaki gibi Sporcu/Baba/Anne pill'leri YOK.
+    expect(screen.queryByText('Baba')).not.toBeInTheDocument();
+    expect(screen.queryByText('Anne')).not.toBeInTheDocument();
+  });
+
+  it('madde 2026-09-09 (devam): İl artık kimlik kartında gösterilir', async () => {
+    render(<CoachProfilePage />);
+    await waitFor(() => screen.getByText('Ahmet Antrenör'));
+    expect(screen.getByText('(Bilecik)')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-07 (3, hâlâ geçerli): Ders İlerlemesi, Not kartları YOK', async () => {
+    render(<CoachProfilePage />);
+    await waitFor(() => screen.getByText('Ahmet Antrenör'));
     expect(screen.queryByText('Ders İlerlemesi')).not.toBeInTheDocument();
     expect(screen.queryByText('Not eklendiğinde burada görünecek.')).not.toBeInTheDocument();
   });

@@ -222,6 +222,19 @@ function MailIcon() {
   );
 }
 
+/** Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): Lichess kullanıcı
+ *  adı satırı için özel çizim (basit at/şövalye silueti) — ChatIcon/
+ *  PhoneIcon/MailIcon ile AYNI çizgi-ikon ailesi, internetten alınmamış. */
+function KnightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 20h12" />
+      <path d="M8 20l.6-4.5L6 13c-.6-1 .2-2.3 1.3-2.1l2 .4-.2-2.6c-.1-1.7 1-3.4 2.7-3.8L15 4l1.4 2.2c.6 1-.1 2.3-1.3 2.3h-.6l1 2.2c.5 1.1.2 2.4-.7 3.1L14 15l.7 5" />
+      <circle cx="13" cy="7.3" r=".6" fill="var(--t-accent)" stroke="none" />
+    </svg>
+  );
+}
+
 /** Madde 2026-09-07 (GRUP C): 3 tıklanabilir pill — Sporcu/Baba/Anne. */
 type ContactPerson = 'sporcu' | 'baba' | 'anne';
 const CONTACT_PILLS: { id: ContactPerson; label: string }[] = [
@@ -477,6 +490,16 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
                 <MailIcon />
                 <span className={email ? undefined : 't-muted italic'}>{email ?? 'E-posta girilmedi'}</span>
               </div>
+              {/* Madde 2026-09-09 (AŞAMA 4): Lichess kullanıcı adı SADECE
+                  sporcunun kendi bilgisi — Baba/Anne'de yok. */}
+              {contactTab === 'sporcu' && (
+                <div className="flex items-center gap-2.5">
+                  <KnightIcon />
+                  <span className={me.lichess_username ? undefined : 't-muted italic'}>
+                    {me.lichess_username ?? 'Lichess kullanıcı adı girilmedi'}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })() : (

@@ -22,6 +22,37 @@ function formatMemberSince(iso: string): string {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/** Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): "İletişim Bilgileri"
+ *  kartının ikonları — components/profile/ProfileView.tsx'teki AYNI
+ *  çizgi-ikonların kopyası (bu sayfa ProfileView'dan BAĞIMSIZ bir kopya —
+ *  bkz. dosya başı not, KURAL #3). */
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.6 10.8c1.2 2.4 3.2 4.4 5.6 5.6l1.9-1.9c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V19c0 .6-.4 1-1 1C10.6 20 4 13.4 4 5c0-.6.4-1 1-1h3.1c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3.5 6.5l8.5 6 8.5-6" />
+    </svg>
+  );
+}
+
+function KnightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 20h12" />
+      <path d="M8 20l.6-4.5L6 13c-.6-1 .2-2.3 1.3-2.1l2 .4-.2-2.6c-.1-1.7 1-3.4 2.7-3.8L15 4l1.4 2.2c.6 1-.1 2.3-1.3 2.3h-.6l1 2.2c.5 1.1.2 2.4-.7 3.1L14 15l.7 5" />
+      <circle cx="13" cy="7.3" r=".6" fill="var(--t-accent)" stroke="none" />
+    </svg>
+  );
+}
+
 /**
  * Madde 2026-09-07 (Antrenör Paneli, 3): Zafer'in isteğiyle sporcunun Profil
  * sayfası (bkz. components/profile/ProfileView.tsx) BİREBİR buraya taşındı
@@ -32,16 +63,25 @@ function formatMemberSince(iso: string): string {
  *
  * Madde 2026-09-07 (devam, Zafer'in 5 maddelik düzenleme turu):
  * 1. "İletişim Bilgileri", "Ders İlerlemesi", "Not" kartları KALDIRILDI
- *    (antrenörün kendi profili için anlamları yoktu).
+ *    (o an antrenörün kendi profili için gösterecek GERÇEK veri yoktu).
  * 2. Kimlik fotoğrafı artık GERÇEK yükleme alanı — POST /teacher/me/photo
  *    (ChildProfile'ın POST /children/me/photo'suyla AYNI desen).
  * 3. Türkiye bayrağı %100 büyütüldü (aynı değişiklik sporcu tarafında da
  *    yapıldı — bkz. components/profile/ProfileView.tsx).
  *
+ * Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): "İletişim Bilgileri"
+ * kartı GERİ GETİRİLDİ — Zafer'in kararıyla: "Kayıt Ol" formu artık
+ * antrenörün telefon/il/Lichess bilgisini gerçekten topluyor, gösterecek
+ * veri var. Sporcu tarafındaki AYNI kart — ama Baba/Anne pill seçici YOK
+ * (antrenörün velisi olmaz), doğrudan kendi telefon/e-posta/Lichess'i.
+ * "Ders İlerlemesi"/"Not" kartları hâlâ YOK (antrenörün kendi profili için
+ * hâlâ anlamsız).
+ *
  * Kalan zorunlu teknik farklar (tasarım/kart sırası DEĞİŞMEDİ):
- * - Veri: rütbe/XP/rozet/il sistemi antrenör hesabında YOK — `GET
+ * - Veri: rütbe/XP/rozet sistemi antrenör hesabında YOK — `GET
  *   /teacher/me/profile-summary` sadece gerçekten var olan alanları
- *   (isim, üyelik tarihi, fotoğraf) doldurup gerisini null/0 döner.
+ *   (isim, üyelik tarihi, fotoğraf, il/telefon/Lichess) doldurup
+ *   rütbe/XP/rozeti null/0 döner.
  * - Performans Puanı / Genel Maç İstatistikleri / Güçlü-Zayıf Analiz /
  *   Turnuva Geçmişi: ProfileView'da da bunlar ZATEN örnek veri (henüz
  *   gerçek backend'e bağlı değil) — burada AYNEN kopyalandı.
@@ -172,16 +212,47 @@ export default function CoachProfilePage() {
         </div>
       </div>
 
-      {/* 2) Ülke + üyelik tarihi — madde 2026-09-07: bayrak %100 büyütüldü. */}
+      {/* 2) Ülke + il + üyelik tarihi — madde 2026-09-07: bayrak %100
+          büyütüldü. Madde 2026-09-09 (AŞAMA 4): il artık GERÇEK (antrenörün
+          "Kayıt Ol" formunda girdiği) — sporcu tarafındaki AYNI desen. */}
       <div className="t-card p-4 flex items-center gap-2">
         <span className="text-5xl flex-shrink-0">🇹🇷</span>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">Türkiye</p>
+          <p className="font-semibold">
+            Türkiye{me.province && <span className="t-muted font-normal"> ({me.province})</span>}
+          </p>
           <p className="t-muted mt-0.5">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
         </div>
       </div>
 
-      {/* 3) Performans Puanı — sporcu tarafında da ZATEN örnek veri. */}
+      {/* 3) İletişim Bilgileri — madde 2026-09-09 (Üyelik Girişi Yenileme,
+          AŞAMA 4): Zafer'in kararıyla geri getirildi (bkz. dosya başı not) —
+          artık gerçek veri var (telefon/e-posta/Lichess, "Kayıt Ol"
+          formundan). Sporcu tarafındaki AYNI kart tasarımı — ama antrenörün
+          Baba/Anne'si olmadığı için pill seçici YOK, doğrudan gösterilir. */}
+      <div className="t-card p-4">
+        <div className="mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
+          <span className="text-xs font-bold uppercase tracking-wide t-muted">İletişim Bilgileri</span>
+        </div>
+        <div className="flex flex-col gap-2 text-sm">
+          <div className="flex items-center gap-2.5">
+            <PhoneIcon />
+            <span className={me.athlete_phone ? undefined : 't-muted italic'}>{me.athlete_phone ?? 'Telefon girilmedi'}</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <MailIcon />
+            <span className={me.athlete_email ? undefined : 't-muted italic'}>{me.athlete_email ?? 'E-posta girilmedi'}</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <KnightIcon />
+            <span className={me.lichess_username ? undefined : 't-muted italic'}>
+              {me.lichess_username ?? 'Lichess kullanıcı adı girilmedi'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4) Performans Puanı — sporcu tarafında da ZATEN örnek veri. */}
       <div className="t-card p-4">
         <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">Performans Puanı</span>

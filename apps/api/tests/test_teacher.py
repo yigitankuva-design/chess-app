@@ -432,6 +432,39 @@ async def test_teacher_own_profile_summary(client):
 
 
 @pytest.mark.asyncio
+async def test_teacher_own_profile_summary_reflects_kayit_ol_bilgileri(client, db):
+    """Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): antrenör
+    "Kayıt Ol" formundan (POST /auth/teacher/register) il/telefon/Lichess
+    girdiyse, /teacher/me/profile-summary artık BUNLARI döndürür — eski
+    hardcoded None DEĞİL."""
+    from sqlalchemy import select
+    from chess_api.models import User
+
+    r = await client.post("/auth/teacher/register", json={
+        "first_name": "Zeynep", "last_name": "Kara",
+        "phone": "5551234567", "email": "zeynepprofil@t.com",
+        "province": "Bilecik", "lichess_username": "zeynepchess",
+        "username": "zeynepprofil", "password": "guvenli1234",
+        "kvkk_consent": True,
+    })
+    assert r.status_code == 201
+    user = (await db.execute(select(User).where(User.email == "zeynepprofil@t.com"))).scalar_one()
+    user.approval_status = "approved"
+    await db.commit()
+
+    login_r = await client.post("/auth/login", json={"email": "zeynepprofil@t.com", "password": "guvenli1234"})
+    token = login_r.json()["access_token"]
+
+    r2 = await client.get("/teacher/me/profile-summary", headers=auth(token))
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body["province"] == "Bilecik"
+    assert body["athlete_phone"] == "5551234567"
+    assert body["athlete_email"] == "zeynepprofil@t.com"
+    assert body["lichess_username"] == "zeynepchess"
+
+
+@pytest.mark.asyncio
 async def test_teacher_own_profile_summary_requires_teacher_role(client):
     """Bir veli (parent) token'ıyla çağrılırsa 403 döner."""
     parent_token = await _parent_signup(client, "not_a_teacher@t.com")

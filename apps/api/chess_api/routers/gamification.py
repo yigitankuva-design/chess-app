@@ -81,6 +81,9 @@ async def _compute_progress(child: ChildProfile, db: AsyncSession) -> dict:
         "province": child.province,
         "athlete_phone": child.athlete_phone,
         "athlete_email": child.athlete_email,
+        # Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): yeni "Kayıt
+        # Ol" formunun eklediği Lichess kullanıcı adı.
+        "lichess_username": child.lichess_username,
         "father_name": child.father_name,
         "father_phone": child.father_phone,
         "father_email": child.father_email,
