@@ -202,13 +202,16 @@ async def member_signup(
 ):
     """Madde 2026-09-09 (Üyelik Girişi Yenileme): "Kayıt Ol" formunun "Üye"
     (Sporcu) yolu. Doğum tarihinden hesaplanan yaş 18+ ise sporcu KENDİ
-    hesabını açar (role=athlete); 18 altıysa veli hesabı açar (role=parent)
-    ve sporcu ChildProfile olarak bağlanır — mevcut parent/signup ile AYNI
-    desen, sadece daha zengin veriyle. Madde 2026-09-09 (devam 4): Zafer'in
-    kararıyla sporcu tarafında admin onayı ARANMIYOR (approval_status
-    varsayılan 'approved' — bkz. migration) — Tier A onay gereksinimi
-    SADECE antrenör başvurusuna taşındı (bkz. teacher_register), çünkü
-    çocuklarla doğrudan çalışacak rol antrenör."""
+    hesabını açar (role=athlete); 18 altıysa veli hesabı açar (role=parent).
+    Madde 2026-09-09 (devam 4): Zafer'in kararıyla sporcu tarafında admin
+    onayı ARANMIYOR (approval_status varsayılan 'approved') — Tier A onay
+    gereksinimi SADECE antrenör başvurusuna taşındı (bkz. teacher_register).
+    Madde 2026-09-09 (devam 5): HER İKİ yolda da (18+ dahil) bir
+    ChildProfile oluşturulur — 18+ için `parent_user_id` KENDİ hesabını
+    gösterir (kendi kendinin velisi gibi). Böylece 18+ sporcu da AYNI
+    /home, /profile, Hızlı Erişim deneyimini kullanır — ayrı bir panel/
+    sayfa İNŞA EDİLMEZ, var olan sistem olduğu gibi paylaşılır (Zafer'in
+    kararı: "18+ sporcu da aynı paneli kullanamaz mı?")."""
     await _check_email_username_free(db, payload.email, payload.username)
 
     full_name = f"{payload.first_name} {payload.last_name}"
@@ -235,9 +238,6 @@ async def member_signup(
             mother_email=payload.mother_email,
             email_verification_token=secrets.token_urlsafe(32),
         )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
     else:
         # Madde (devam): tek e-posta/kullanıcı adı/şifre seti var — 18 altı
         # sporcu için bu, VELİNİN giriş bilgisi olur (sporcu henüz kendi
@@ -251,29 +251,32 @@ async def member_signup(
             kvkk_consent_at=now,
             email_verification_token=secrets.token_urlsafe(32),
         )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
 
-        athlete = ChildProfile(
-            parent_user_id=user.id,
-            display_name=full_name,
-            age=age,
-            avatar="default",
-            pin_hash=hash_pin(f"{secrets.randbelow(9000) + 1000}"),
-            province=payload.province,
-            athlete_phone=payload.phone,
-            athlete_email=payload.email,
-            lichess_username=payload.lichess_username,
-            father_name=payload.father_name,
-            father_phone=payload.father_phone,
-            father_email=payload.father_email,
-            mother_name=payload.mother_name,
-            mother_phone=payload.mother_phone,
-            mother_email=payload.mother_email,
-        )
-        db.add(athlete)
-        await db.commit()
+    # Madde 2026-09-09 (devam 5): ChildProfile HER İKİ yolda da oluşturulur
+    # (18+ için parent_user_id kendi hesabını gösterir) — bkz. yukarıdaki
+    # docstring.
+    athlete = ChildProfile(
+        parent_user_id=user.id,
+        display_name=full_name,
+        age=age,
+        avatar="default",
+        pin_hash=hash_pin(f"{secrets.randbelow(9000) + 1000}"),
+        province=payload.province,
+        athlete_phone=payload.phone,
+        athlete_email=payload.email,
+        lichess_username=payload.lichess_username,
+        father_name=payload.father_name,
+        father_phone=payload.father_phone,
+        father_email=payload.father_email,
+        mother_name=payload.mother_name,
+        mother_phone=payload.mother_phone,
+        mother_email=payload.mother_email,
+    )
+    db.add(athlete)
+    await db.commit()
 
     try:
         await send_verification_email(user.email, user.email_verification_token, user.name)
@@ -497,9 +500,12 @@ async def athlete_session(
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Veli token'ı ile hesabın (en eski) sporcusu için child oturumu. PIN yok."""
-    if current.role != UserRole.parent:
-        raise HTTPException(status_code=403, detail="Parents only")
+    """Veli token'ı ile hesabın (en eski) sporcusu için child oturumu. PIN yok.
+    Madde 2026-09-09 (devam 5): 18+ kendi kaydolan sporcu (role=athlete) da
+    KENDİ ChildProfile'ı için bunu çağırabilir — bkz. member_signup, artık
+    HER İKİ yolda da ChildProfile oluşturuluyor (kendi kendinin "velisi")."""
+    if current.role not in (UserRole.parent, UserRole.athlete):
+        raise HTTPException(status_code=403, detail="Parents/athletes only")
     child = (await db.execute(
         select(ChildProfile)
         .where(ChildProfile.parent_user_id == current.id)

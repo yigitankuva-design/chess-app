@@ -64,14 +64,39 @@ async def test_member_signup_18_plus_creates_approved_athlete(client, db):
     assert user.approval_status == "approved"
     assert user.kvkk_consent_at is not None
 
-    children = (await db.execute(select(ChildProfile))).scalars().all()
-    assert children == []
+    # Madde 2026-09-09 (devam 5): 18+ için de bir ChildProfile oluşur —
+    # kendi kendinin "velisi" gibi (parent_user_id kendi User.id'si) — bu
+    # sayede 18+ sporcu da AYNI /home panelini kullanabilir.
+    child = (await db.execute(
+        select(ChildProfile).where(ChildProfile.parent_user_id == user.id)
+    )).scalar_one()
+    assert child.display_name == "Ali Yılmaz"
+    assert child.province == "Bilecik"
+    assert child.athlete_phone == "5551112233"
+    assert child.mother_name == "Ayşe Yılmaz"
 
 
 async def test_member_signup_18_plus_can_login_immediately(client):
     await client.post("/auth/member/signup", json=_member_payload(email="hemenaktif@test.com", username="hemenaktif"))
     r = await client.post("/auth/login", json={"email": "hemenaktif@test.com", "password": "guvenli1234"})
     assert r.status_code == 200
+
+
+async def test_member_signup_18_plus_can_use_athlete_session_for_same_home_panel(client):
+    """Madde 2026-09-09 (devam 5): Zafer'in kararı — "18+ sporcu da aynı
+    paneli kullanamaz mı?" — evet: kendi User token'ıyla /auth/athlete/
+    session çağırıp kendi ChildProfile'ı için child oturumu alabilir."""
+    r = await client.post("/auth/member/signup", json=_member_payload(
+        email="ayniPanel@test.com", username="aynipanel",
+    ))
+    user_token = r.json()["access_token"]
+
+    r2 = await client.post("/auth/athlete/session", headers={"Authorization": f"Bearer {user_token}"})
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body["display_name"] == "Ali Yılmaz"
+    assert body["access_token"]
+    assert body["child_profile_id"]
 
 
 # ── /auth/member/signup — 18 yaş altı: veli hesabı açar, sporcu ChildProfile olur ──

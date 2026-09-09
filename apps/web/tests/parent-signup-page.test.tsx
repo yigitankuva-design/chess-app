@@ -116,10 +116,11 @@ describe('Kayıt Ol — Üye/Antrenör düzeni (madde 2026-09-09)', () => {
     expect(push).toHaveBeenCalledWith('/home');
   });
 
-  it('madde 2026-09-09 (devam 4): 18+ kaydolan sporcu (role=athlete) ONAY BEKLEMEZ, hemen /dashboard\'a gider', async () => {
+  it('madde 2026-09-09 (devam 5): 18+ kaydolan sporcu (role=athlete) da AYNI /home paneline gider (ayrı /dashboard YOK)', async () => {
     memberSignup.mockResolvedValue({
       access_token: 'tok', role: 'athlete', user_id: 2, name: 'Ali Yılmaz', approval_status: 'approved',
     });
+    athleteSession.mockResolvedValue({ access_token: 'ctok', child_profile_id: 9, display_name: 'Ali Yılmaz' });
 
     render(<SignupPage />);
     fillCommonMemberFields();
@@ -131,9 +132,10 @@ describe('Kayıt Ol — Üye/Antrenör düzeni (madde 2026-09-09)', () => {
     fireEvent.click(screen.getByText('Hesap Aç'));
 
     await waitFor(() => expect(login).toHaveBeenCalledWith('tok', 'athlete', 2));
+    await waitFor(() => expect(athleteSession).toHaveBeenCalled());
+    expect(login).toHaveBeenCalledWith('ctok', 'child', 9);
     expect(saveAthleteName).toHaveBeenCalledWith('Ali Yılmaz');
-    expect(athleteSession).not.toHaveBeenCalled();
-    expect(push).toHaveBeenCalledWith('/dashboard');
+    expect(push).toHaveBeenCalledWith('/home');
     expect(screen.queryByText('Hesabın Oluşturuldu')).not.toBeInTheDocument();
   });
 

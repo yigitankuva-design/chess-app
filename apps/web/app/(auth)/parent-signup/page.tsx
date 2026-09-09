@@ -137,24 +137,13 @@ export default function SignupPage() {
         kvkk_consent: data.kvkk_consent,
       });
 
-      // Madde 2026-09-09 (devam 4): sporcu tarafı ARTIK admin onayı
+      // Madde 2026-09-09 (devam 5): sporcu tarafı ARTIK admin onayı
       // beklemiyor (Tier A antrenöre taşındı) — 18+ de 18 altı da HEMEN
-      // giriş yapar. Ama ikisinin hesap şekli FARKLI: 18+ kendi hesabı
-      // (role=athlete, /dashboard'a), 18 altı velinin hesabı
-      // (role=parent, mevcut davranışla AYNI athlete/session zincirlemesi).
-      if (res.role === 'athlete') {
-        // Madde 2026-09-09 (devam 4): 18+ kendi hesabı /home'daki (veli-
-        // yönetimli sporcu) akışa DAHİL değil, ayrı bir rol/route grubu
-        // ((athlete)/dashboard.tsx → parantezli grup URL'e GİRMEZ, gerçek
-        // adres /dashboard). BUG FIX: athlete-login/page.tsx'te de AYNI
-        // yanlış hedef ('/athlete/dashboard', 404 verir) vardı — o da
-        // düzeltildi (KURAL #1, canlı önizlemede 404 görülüp doğrulandı).
-        auth.login(res.access_token, res.role, res.user_id);
-        saveAthleteName(res.name);
-        router.push('/dashboard');
-        return;
-      }
-
+      // giriş yapar. Backend HER İKİ yolda da (18+ dahil) bir ChildProfile
+      // oluşturuyor (bkz. auth.py member_signup) — bu yüzden akış artık
+      // TEK: rol ne olursa olsun (athlete VEYA parent) AYNI athlete/session
+      // zincirlemesiyle /home'a gidilir — Zafer'in kararı: "18+ sporcu da
+      // aynı paneli kullanamaz mı?" (ayrı bir /dashboard sayfası YOK artık).
       auth.login(res.access_token, res.role, res.user_id);
       const ath = await apiClient.athleteSession();
       auth.login(ath.access_token, 'child', ath.child_profile_id);
