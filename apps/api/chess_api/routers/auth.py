@@ -1,7 +1,7 @@
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from chess_api.database import get_db
 from chess_api.models import User, UserRole, Device, ChildProfile
 from chess_api.schemas.auth import (
@@ -70,10 +70,20 @@ async def parent_signup(
 
 @router.post("/login", response_model=AuthResponse)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == payload.email))
+    # Madde 2026-09-09 (Üyelik Girişi Yenileme): e-posta VEYA kullanıcı adı
+    # ile giriş — mevcut hesaplar (username=NULL) e-postayla girmeye devam
+    # eder, hiçbir şey bozulmaz.
+    result = await db.execute(
+        select(User).where(or_(User.email == payload.email, User.username == payload.email))
+    )
     user = result.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Madde 2026-09-09 (devam): 18+ kendi kaydolan sporcu hesapları admin
+    # onaylayana kadar 'pending' kalır — Tier A (yaş beyanı riskine karşı).
+    # Veli/antrenör hesapları zaten 'approved' başlar (bkz. migration).
+    if user.approval_status == "pending":
+        raise HTTPException(status_code=403, detail="Hesabınız onay bekliyor")
     token = encode_token({"user_id": user.id, "role": user.role.value})
     return AuthResponse(
         access_token=token, user_id=user.id, role=user.role, name=user.name,

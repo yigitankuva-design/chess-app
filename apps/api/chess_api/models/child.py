@@ -39,3 +39,9 @@ class ChildProfile(Base):
     mother_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     mother_phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     mother_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 1): yeni "Kayıt Ol"
+    # formunda sporcunun Lichess kullanıcı adı — User.lichess_username ile
+    # AYNI amaç (18+ kendi kaydolan sporcu orada, veli-yönetimli sporcu
+    # burada tutulur). NULLABLE — tek isteğe bağlı alan (Zafer'in kuralı).
+    lichess_username: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)

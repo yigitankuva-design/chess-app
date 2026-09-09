@@ -15,7 +15,11 @@ class AthleteCreateRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Madde 2026-09-09 (Üyelik Girişi Yenileme): alan adı "email" geriye
+    # uyumluluk için AYNEN kaldı, ama artık e-posta VEYA kullanıcı adı
+    # kabul ediyor — bu yüzden EmailStr DEĞİL, düz str (bkz. auth.py login,
+    # User.email VEYA User.username eşleşmesine bakar).
+    email: str
     password: str
 
 
