@@ -73,3 +73,16 @@ class CustomTabSection(Base):
     # 'opening' olan bölümde doldurulur, diğerlerinde boş kalır.
     konum_pratigi_pool: Mapped[list] = mapped_column(JSON, default=list)
     teori_pratigi_pool: Mapped[list] = mapped_column(JSON, default=list)
+    # Madde 2026-09-11 (Ödev Sistemi Faz 2 — müfredat köprüsü): bu "Alt Konu"
+    # bölümünün Dersler müfredatındaki KARŞILIĞI olan LessonStep. Antrenör bu
+    # Alt Konu'yu anlatırken "Ödev Gönder"e basınca ödev olarak GİDEN adım
+    # budur. NULL = bu Alt Konu henüz müfredata bağlanmadı → "Ödev Gönder"
+    # devre dışı ("bu alt konu müfredata bağlı değil"). Başlangıçta admin'in
+    # "Otomatik Eşleştir" düğmesiyle başlık eşleşmesinden BİR KERELİK
+    # doldurulur; sonrasında ID sabittir — başlık değişse bile bağ KIRILMAZ
+    # (Zafer'in isteği: "isim değişikliğine dayanıklı"). Yalnızca kök
+    # Dersler ağacındaki (section_kind='dersler_root' altındaki) en derin
+    # düğümlerde anlamlıdır; diğer bölümlerde boş kalır.
+    linked_lesson_step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lesson_steps.id"), nullable=True, index=True,
+    )

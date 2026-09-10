@@ -250,7 +250,7 @@ describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, d
       group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }]),
       group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'y', turn: 'w' }]),
     ];
-    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
     const nextStepBtn = screen.getByLabelText('Sonraki adım');
     const nextGroupBtn = screen.getByLabelText('Sonraki grup');
     const sendBtn = screen.getByLabelText('Ödev Gönder');
@@ -278,7 +278,7 @@ describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, d
   it('madde 2026-09-09 (devam 3): "Ödev Gönder" butonu %40 büyütüldü (36px → 50px), madde 2026-09-10: zemin YEŞİL (görsel)', () => {
     mockRole = 'teacher';
     const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
-    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
     expect(screen.getByLabelText('Ödev Gönder')).toHaveStyle({ width: '50px', height: '50px', background: '#22c55e' });
   });
 });
@@ -286,15 +286,15 @@ describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, d
 describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D)', () => {
   const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
 
-  it('antrenör (role=teacher) + sourceSectionId/Title verilince ikon görünür', () => {
+  it('antrenör (role=teacher) + sourceSectionId/Title + müfredat bağı verilince ikon görünür', () => {
     mockRole = 'teacher';
-    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
     expect(screen.getByLabelText('Ödev Gönder')).toBeInTheDocument();
   });
 
   it('sporcu (role=athlete) görünümünde ikon GÖSTERİLMEZ', () => {
     mockRole = 'athlete';
-    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
     expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
   });
 
@@ -304,9 +304,29 @@ describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D
     expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
   });
 
-  it('madde 2026-09-09 (görsel referans): İleri/Geri ve Ödev Gönder AYNI satırda — oklar solda, Ödev Gönder sağda', () => {
+  it('madde 2026-09-11 (Ödev Sistemi Faz 2): müfredat bağı YOKKEN "Ödev Gönder" DEVRE DIŞI ("bu alt konu müfredata bağlı değil")', () => {
     mockRole = 'teacher';
     render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
+    // Aktif (yeşil, tıklanabilir) buton YOK.
+    expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
+    // Devre dışı buton var — açıklayıcı etiket + disabled.
+    const disabled = screen.getByLabelText('Ödev Gönder — bu alt konu müfredata bağlı değil');
+    expect(disabled).toBeDisabled();
+    expect(disabled).toHaveAttribute('title', expect.stringContaining('müfredata bağlı değil'));
+  });
+
+  it('madde 2026-09-11: müfredat bağı VARKEN "Ödev Gönder" aktif (yeşil, disabled değil)', () => {
+    mockRole = 'teacher';
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
+    const btn = screen.getByLabelText('Ödev Gönder');
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveStyle({ background: '#22c55e' });
+    expect(screen.queryByLabelText('Ödev Gönder — bu alt konu müfredata bağlı değil')).not.toBeInTheDocument();
+  });
+
+  it('madde 2026-09-09 (görsel referans): İleri/Geri ve Ödev Gönder AYNI satırda — oklar solda, Ödev Gönder sağda', () => {
+    mockRole = 'teacher';
+    render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
     const nextBtn = screen.getByLabelText('Sonraki adım');
     const sendBtn = screen.getByLabelText('Ödev Gönder');
     // Oklar ve Ödev Gönder (AssignHomeworkPanel kendi sarmalayıcısıyla) AYNI

@@ -22,10 +22,13 @@ def test_custom_tab_section_modeli_tablo_adi_ve_alanlari():
     # Madde 2026-09-02 (devam): konum_pratigi_pool/teori_pratigi_pool — a)
     # Konum Pratiği ve b) Teori Pratiği soru havuzları (bkz. KonumTeoriPools
     # migration).
+    # Madde 2026-09-11 (Ödev Sistemi Faz 2): linked_lesson_step_id — Alt Konu'nun
+    # Dersler müfredatındaki karşılığı (LessonStep). null ise "Ödev Gönder"
+    # devre dışı (bkz. OdevKopruF2 migration).
     assert cols == {
         "id", "custom_tab_id", "parent_id", "order_index", "title", "body", "images",
         "practice_positions", "emoji", "position_pool", "section_kind",
-        "konum_pratigi_pool", "teori_pratigi_pool",
+        "konum_pratigi_pool", "teori_pratigi_pool", "linked_lesson_step_id",
     }
 
 

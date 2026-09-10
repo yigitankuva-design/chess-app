@@ -45,6 +45,8 @@ function mockDersHierarchy() {
         id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', emoji: '📘',
         body: 'Konu açıklaması', images: [], parent_id: 202,
         practice_positions: [],
+        // Madde 2026-09-11 (Ödev Sistemi Faz 2): müfredata bağlı → "Ödev Gönder" aktif.
+        linked_lesson_step_id: 900,
         position_pool: [{
           id: 'g1', code: '001',
           steps: [{ id: 's1', fen: FEN, sentence: 'Tahta 8x8 karelerden oluşur.', turn: 'w' }],
@@ -118,12 +120,33 @@ describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08
     expect(screen.queryByLabelText('Geri')).not.toBeInTheDocument();
   });
 
-  it('madde 2026-09-07 (GRUP D): antrenör görünümünde "Ödev Gönder" ikonu bu bölümün id/başlığıyla görünür', async () => {
+  it('madde 2026-09-07 (GRUP D): antrenör görünümünde "Ödev Gönder" ikonu bu bölümün id/başlığıyla görünür (müfredata bağlıysa)', async () => {
     mockRole = 'teacher';
     mockDersHierarchy();
     render(<AltKonuPage />);
     await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
     expect(screen.getByLabelText('Ödev Gönder')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-11 (Ödev Sistemi Faz 2): müfredat bağı YOKKEN "Ödev Gönder" devre dışı', async () => {
+    mockRole = 'teacher';
+    (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 5, label: 'Antrenör', emoji: '🎓',
+      sections: [
+        { id: 200, order_index: 1, title: 'Dersler', body: '', images: [], practice_positions: [], parent_id: null },
+        { id: 201, order_index: 1, title: 'Temel Düzey', body: '', images: [], practice_positions: [], parent_id: 200 },
+        { id: 202, order_index: 1, title: 'Tahta ve Taşlar', body: '', images: [], practice_positions: [], parent_id: 201 },
+        {
+          id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [], parent_id: 202,
+          practice_positions: [], linked_lesson_step_id: null,
+          position_pool: [{ id: 'g1', code: '001', steps: [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }] }],
+        },
+      ],
+    });
+    render(<AltKonuPage />);
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(screen.queryByLabelText('Ödev Gönder')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Ödev Gönder — bu alt konu müfredata bağlı değil')).toBeDisabled();
   });
 
   it('sporcu görünümünde "Ödev Gönder" ikonu GÖSTERİLMEZ', async () => {

@@ -603,6 +603,14 @@ async def delete_lesson(
             detail="Bu derse ait çocuk ilerlemesi var. Silmek yerine yayından kaldırabilirsiniz.",
         )
 
+    # Madde 2026-09-11 (Ödev Sistemi Faz 2): bu derse ait adımlara bağlı Alt
+    # Konu köprüleri varsa önce boşalt — yoksa adım silme FK ihlaliyle patlar.
+    if step_ids:
+        await db.execute(
+            update(CustomTabSection)
+            .where(CustomTabSection.linked_lesson_step_id.in_(step_ids))
+            .values(linked_lesson_step_id=None)
+        )
     await db.execute(delete(LessonStep).where(LessonStep.lesson_id == lesson_id))
     await db.delete(lesson)
     await db.commit()
@@ -1048,6 +1056,14 @@ async def delete_step(
     )
     await db.execute(
         delete(ChildOdevProgress).where(ChildOdevProgress.lesson_step_id == step_id)
+    )
+    # Madde 2026-09-11 (Ödev Sistemi Faz 2): bu adıma bağlı Alt Konu köprüsü
+    # varsa önce boşalt — yoksa FK ihlaliyle patlar. Bölüm silinmez, sadece
+    # bağ kopar (Alt Konu tekrar "müfredata bağlı değil" durumuna döner).
+    await db.execute(
+        update(CustomTabSection)
+        .where(CustomTabSection.linked_lesson_step_id == step_id)
+        .values(linked_lesson_step_id=None)
     )
     await db.delete(step)
     await db.commit()
@@ -1699,6 +1715,10 @@ class CustomTabSectionUpdateRequest(BaseModel):
     # AYNI semantik, TÜM listeyi değiştirir.
     konum_pratigi_pool: list[KonumPratigiQuestion] | None = None
     teori_pratigi_pool: list[TeoriPratigiQuestion] | None = None
+    # Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu ↔ LessonStep köprüsü.
+    # None GEÇERLİ bir değerdir (bağı KALDIR) — bu yüzden "gönderildi mi"
+    # ayrımı `model_fields_set` ile yapılır (bkz. PATCH endpoint).
+    linked_lesson_step_id: int | None = None
 
 
 @router.post("/custom-tabs", status_code=201)
@@ -1820,7 +1840,8 @@ async def create_custom_tab_section(
             "parent_id": section.parent_id, "position_pool": section.position_pool,
             "section_kind": section.section_kind,
             "konum_pratigi_pool": section.konum_pratigi_pool,
-            "teori_pratigi_pool": section.teori_pratigi_pool}
+            "teori_pratigi_pool": section.teori_pratigi_pool,
+            "linked_lesson_step_id": section.linked_lesson_step_id}
 
 
 @router.patch("/custom-tab-sections/{section_id}")
@@ -1870,6 +1891,15 @@ async def update_custom_tab_section(
             except ValueError:
                 raise HTTPException(status_code=400, detail="Soru için konum (fen) okunamadı")
         section.teori_pratigi_pool = [q.model_dump() for q in payload.teori_pratigi_pool]
+    # Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu ↔ müfredat (LessonStep)
+    # köprüsü. None = bağı kaldır; bu yüzden `is not None` yerine "gönderildi mi"
+    # kontrolü. Verilen id gerçek bir adım olmalı.
+    if "linked_lesson_step_id" in payload.model_fields_set:
+        if payload.linked_lesson_step_id is not None:
+            target = await db.get(LessonStep, payload.linked_lesson_step_id)
+            if not target:
+                raise HTTPException(status_code=404, detail="Bağlanacak ders adımı bulunamadı")
+        section.linked_lesson_step_id = payload.linked_lesson_step_id
     await db.commit()
     await db.refresh(section)
     return {"id": section.id, "order_index": section.order_index, "title": section.title,
@@ -1877,7 +1907,8 @@ async def update_custom_tab_section(
             "practice_positions": section.practice_positions, "emoji": section.emoji,
             "position_pool": section.position_pool, "section_kind": section.section_kind,
             "konum_pratigi_pool": section.konum_pratigi_pool,
-            "teori_pratigi_pool": section.teori_pratigi_pool}
+            "teori_pratigi_pool": section.teori_pratigi_pool,
+            "linked_lesson_step_id": section.linked_lesson_step_id}
 
 
 @router.delete("/custom-tab-sections/{section_id}")
@@ -1981,7 +2012,8 @@ async def duplicate_custom_tab_section(
             "practice_positions": new_root.practice_positions, "emoji": new_root.emoji,
             "parent_id": new_root.parent_id, "position_pool": new_root.position_pool,
             "konum_pratigi_pool": new_root.konum_pratigi_pool,
-            "teori_pratigi_pool": new_root.teori_pratigi_pool}
+            "teori_pratigi_pool": new_root.teori_pratigi_pool,
+            "linked_lesson_step_id": new_root.linked_lesson_step_id}
 
 
 @router.post("/custom-tabs/{tab_id}/sections/reorder")
@@ -2005,5 +2037,208 @@ async def reorder_custom_tab_sections(
         by_id[sid].order_index = i + 1
     await db.commit()
     return {"reordered": len(payload.ordered_ids)}
+
+
+# ---------------------------------------------------------------------------
+# Ödev Sistemi Faz 2 — Alt Konu ↔ Dersler müfredatı (LessonStep) köprüsü
+# ---------------------------------------------------------------------------
+
+_DERSLER_ROOT_KIND = "dersler_root"
+# dersler_root'a göre derinlik: Düzey=1, Konu=2, Alt Konu=3 (bkz.
+# NestedSectionTree.tsx ALT_KONU_DEPTH). dersler_root'un kendisi 0.
+_ALT_KONU_REL_DEPTH = 3
+
+
+def _norm_title(s: str | None) -> str:
+    """Başlık eşleştirmesi için sadeleştirme — baş/son boşluk, iç içe boşluklar
+    tek boşluğa, harf büyüklüğü yok sayılır. İki taraf da AYNI fonksiyondan
+    geçtiği için Türkçe-özel casefold gerekmez (tutarlı olması yeter)."""
+    return " ".join((s or "").split()).casefold()
+
+
+def _explanation_step_title(step: LessonStep) -> str | None:
+    """Bir adımın "Alt Konu başlığı" — SADECE type=explanation ve content_json'da
+    title olan adımlarda anlamlı (LessonProgressCard'ın alt konu tespitiyle
+    AYNI kural)."""
+    if step.type != LessonStepType.explanation:
+        return None
+    title = (step.content_json or {}).get("title")
+    return title if isinstance(title, str) and title.strip() else None
+
+
+@router.get("/lesson-step-catalog")
+async def lesson_step_catalog(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ödev Sistemi Faz 2: Alt Konu ↔ müfredat köprüsü kurulurken admin'in
+    seçim yapacağı ağaç — Düzey (modül) → Konu (ders) → Alt Konu (explanation
+    adımı, başlıklı). Tek istekte tüm ağaç (picker N+M istek atmasın)."""
+    _ensure_admin(current)
+    modules = (await db.execute(
+        select(Module).order_by(Module.order_index)
+    )).scalars().all()
+    lessons = (await db.execute(
+        select(Lesson).order_by(Lesson.order_index)
+    )).scalars().all()
+    steps = (await db.execute(
+        select(LessonStep).order_by(LessonStep.order_index)
+    )).scalars().all()
+
+    steps_by_lesson: dict[int, list[dict]] = {}
+    for s in steps:
+        title = _explanation_step_title(s)
+        if title is None:
+            continue
+        steps_by_lesson.setdefault(s.lesson_id, []).append(
+            {"step_id": s.id, "title": title, "order_index": s.order_index}
+        )
+    lessons_by_module: dict[int, list[dict]] = {}
+    for l in lessons:
+        lessons_by_module.setdefault(l.module_id, []).append(
+            {"lesson_id": l.id, "title": l.title, "order_index": l.order_index,
+             "steps": steps_by_lesson.get(l.id, [])}
+        )
+    return [
+        {"module_id": m.id, "module_name": m.name, "order_index": m.order_index,
+         "lessons": lessons_by_module.get(m.id, [])}
+        for m in modules
+    ]
+
+
+async def _dersler_alt_konu_rows(db: AsyncSession) -> list[dict]:
+    """Kök "Dersler" (section_kind='dersler_root') ağaçlarındaki tüm Alt Konu
+    düğümlerini (dersler_root'a göre 3. derinlik) ata zinciriyle birlikte döner:
+    {section, duzey_title, konu_title}."""
+    roots = (await db.execute(
+        select(CustomTabSection).where(CustomTabSection.section_kind == _DERSLER_ROOT_KIND)
+    )).scalars().all()
+    if not roots:
+        return []
+    tab_ids = {r.custom_tab_id for r in roots}
+    all_sections = (await db.execute(
+        select(CustomTabSection).where(CustomTabSection.custom_tab_id.in_(tab_ids))
+    )).scalars().all()
+    by_id = {s.id: s for s in all_sections}
+    root_ids = {r.id for r in roots}
+
+    def depth_and_chain(s: CustomTabSection) -> tuple[int, list[CustomTabSection]]:
+        chain: list[CustomTabSection] = []
+        cur: CustomTabSection | None = s
+        seen: set[int] = set()
+        while cur is not None and cur.id not in seen:
+            seen.add(cur.id)
+            if cur.id in root_ids:
+                return len(chain), chain  # chain = kökten HARİÇ [düzey, konu, altkonu]
+            chain.insert(0, cur)
+            cur = by_id.get(cur.parent_id) if cur.parent_id is not None else None
+        return -1, []
+
+    out: list[dict] = []
+    for s in all_sections:
+        rel_depth, chain = depth_and_chain(s)
+        if rel_depth != _ALT_KONU_REL_DEPTH:
+            continue
+        out.append({"section": s, "duzey_title": chain[0].title, "konu_title": chain[1].title})
+    return out
+
+
+@router.get("/custom-tabs/lesson-link/status")
+async def lesson_link_status(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Her Alt Konu için köprü durumu — admin panelinde "kaç tanesi bağlı"
+    özetini ve bağlı adımın başlığını göstermek için."""
+    _ensure_admin(current)
+    rows = await _dersler_alt_konu_rows(db)
+    step_ids = {r["section"].linked_lesson_step_id for r in rows
+                if r["section"].linked_lesson_step_id is not None}
+    step_titles: dict[int, str] = {}
+    if step_ids:
+        steps = (await db.execute(
+            select(LessonStep).where(LessonStep.id.in_(step_ids))
+        )).scalars().all()
+        for s in steps:
+            step_titles[s.id] = _explanation_step_title(s) or f"#{s.id}"
+    items = [
+        {"section_id": r["section"].id, "section_title": r["section"].title,
+         "duzey_title": r["duzey_title"], "konu_title": r["konu_title"],
+         "linked_lesson_step_id": r["section"].linked_lesson_step_id,
+         "linked_step_title": step_titles.get(r["section"].linked_lesson_step_id)}
+        for r in rows
+    ]
+    return {
+        "total": len(items),
+        "linked": sum(1 for i in items if i["linked_lesson_step_id"] is not None),
+        "items": items,
+    }
+
+
+@router.post("/custom-tabs/lesson-link/auto-match")
+async def lesson_link_auto_match(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ödev Sistemi Faz 2: HENÜZ BAĞLANMAMIŞ (linked_lesson_step_id IS NULL)
+    Alt Konu'ları, başlık eşleşmesiyle Dersler müfredatındaki explanation
+    adımına bağlar. Eşleşme SADECE üç seviye de (Düzey↔modül, Konu↔ders,
+    Alt Konu↔adım başlığı) sadeleştirilmiş başlıkla birebir tutuyorsa kurulur.
+
+    ELLE bağlanmış olanlara DOKUNULMAZ (Zafer'in "koruma" isteği). Kalanlar
+    rapor edilir — admin panelden elle seçer."""
+    _ensure_admin(current)
+    rows = await _dersler_alt_konu_rows(db)
+
+    modules = (await db.execute(select(Module))).scalars().all()
+    lessons = (await db.execute(select(Lesson))).scalars().all()
+    steps = (await db.execute(select(LessonStep))).scalars().all()
+    module_by_id = {m.id: m for m in modules}
+    lesson_by_id = {l.id: l for l in lessons}
+
+    # (norm modül adı, norm ders başlığı, norm adım başlığı) -> [step_id, ...]
+    step_index: dict[tuple[str, str, str], list[int]] = {}
+    for s in steps:
+        title = _explanation_step_title(s)
+        if title is None:
+            continue
+        lesson = lesson_by_id.get(s.lesson_id)
+        if lesson is None:
+            continue
+        module = module_by_id.get(lesson.module_id)
+        if module is None:
+            continue
+        key = (_norm_title(module.name), _norm_title(lesson.title), _norm_title(title))
+        step_index.setdefault(key, []).append(s.id)
+
+    linked: list[dict] = []
+    ambiguous: list[dict] = []
+    unmatched: list[dict] = []
+    already_linked = 0
+    for r in rows:
+        section = r["section"]
+        if section.linked_lesson_step_id is not None:
+            already_linked += 1
+            continue
+        key = (_norm_title(r["duzey_title"]), _norm_title(r["konu_title"]),
+               _norm_title(section.title))
+        matches = step_index.get(key, [])
+        entry = {"section_id": section.id, "section_title": section.title,
+                 "duzey_title": r["duzey_title"], "konu_title": r["konu_title"]}
+        if len(matches) == 1:
+            section.linked_lesson_step_id = matches[0]
+            linked.append({**entry, "linked_lesson_step_id": matches[0]})
+        elif len(matches) > 1:
+            ambiguous.append({**entry, "candidate_step_ids": matches})
+        else:
+            unmatched.append(entry)
+    await db.commit()
+    return {
+        "linked": linked,
+        "ambiguous": ambiguous,
+        "unmatched": unmatched,
+        "already_linked": already_linked,
+        "total": len(rows),
+    }
 
 

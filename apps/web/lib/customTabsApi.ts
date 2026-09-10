@@ -45,6 +45,10 @@ export interface CustomTabSection {
   /** Madde 2026-09-02 (devam): b) Teori Pratiği'nin hamle-dizisi soru
    *  havuzu — SADECE section_kind==='opening' bölümünde doldurulur. */
   teori_pratigi_pool?: TeoriPratigiQuestion[];
+  /** Madde 2026-09-11 (Ödev Sistemi Faz 2): bu Alt Konu'nun Dersler
+   *  müfredatındaki karşılığı (LessonStep id). null = müfredata bağlı değil
+   *  → antrenörün "Ödev Gönder" düğmesi devre dışı. */
+  linked_lesson_step_id?: number | null;
 }
 
 export interface PositionPoolStep {
@@ -202,6 +206,10 @@ export async function updateCustomTabSection(
     position_pool?: PositionPoolEntry[];
     konum_pratigi_pool?: KonumPratigiQuestion[];
     teori_pratigi_pool?: TeoriPratigiQuestion[];
+    /** Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu ↔ müfredat köprüsü.
+     *  number = bağla, null = bağı kaldır (ikisi de gönderilir; alanın hiç
+     *  verilmemesi = değiştirme). */
+    linked_lesson_step_id?: number | null;
   },
 ): Promise<boolean> {
   const token = getToken();
@@ -265,5 +273,89 @@ export async function reorderCustomTabSections(tabId: number, orderedIds: number
     return r.ok;
   } catch {
     return false;
+  }
+}
+
+// ── Ödev Sistemi Faz 2: Alt Konu ↔ Dersler müfredatı (LessonStep) köprüsü ──
+
+export interface LessonStepCatalogStep { step_id: number; title: string; order_index: number }
+export interface LessonStepCatalogLesson {
+  lesson_id: number; title: string; order_index: number; steps: LessonStepCatalogStep[];
+}
+export interface LessonStepCatalogModule {
+  module_id: number; module_name: string; order_index: number; lessons: LessonStepCatalogLesson[];
+}
+
+/** Ödev köprüsü kurulurken admin'in seçim yapacağı Düzey→Konu→Alt Konu ağacı
+ *  (SADECE başlıklı explanation adımları). Tek istek. */
+export async function fetchLessonStepCatalog(): Promise<LessonStepCatalogModule[]> {
+  const token = getToken();
+  try {
+    const r = await fetch(`${API_BASE}/admin/lesson-step-catalog`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return [];
+    return await r.json();
+  } catch {
+    return [];
+  }
+}
+
+export interface LessonLinkStatusItem {
+  section_id: number;
+  section_title: string;
+  duzey_title: string;
+  konu_title: string;
+  linked_lesson_step_id: number | null;
+  linked_step_title: string | null;
+}
+export interface LessonLinkStatus {
+  total: number;
+  linked: number;
+  items: LessonLinkStatusItem[];
+}
+
+export async function fetchLessonLinkStatus(): Promise<LessonLinkStatus | null> {
+  const token = getToken();
+  try {
+    const r = await fetch(`${API_BASE}/admin/custom-tabs/lesson-link/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+export interface LessonLinkAutoMatchEntry {
+  section_id: number;
+  section_title: string;
+  duzey_title: string;
+  konu_title: string;
+  linked_lesson_step_id?: number;
+  candidate_step_ids?: number[];
+}
+export interface LessonLinkAutoMatchReport {
+  linked: LessonLinkAutoMatchEntry[];
+  ambiguous: LessonLinkAutoMatchEntry[];
+  unmatched: LessonLinkAutoMatchEntry[];
+  already_linked: number;
+  total: number;
+}
+
+/** Bağlanmamış Alt Konu'ları başlık eşleşmesiyle otomatik bağlar; elle
+ *  bağlanmışlara dokunmaz. Kalanların raporunu döner. */
+export async function autoMatchLessonLinks(): Promise<LessonLinkAutoMatchReport | null> {
+  const token = getToken();
+  try {
+    const r = await fetch(`${API_BASE}/admin/custom-tabs/lesson-link/auto-match`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
   }
 }

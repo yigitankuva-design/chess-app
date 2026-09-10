@@ -8,6 +8,9 @@ import {
 } from '@/lib/customTabsApi';
 import type { CustomTabSection, PositionPoolEntry, PositionPoolStep } from '@/lib/customTabsApi';
 import { AltKonuPositionPoolFields } from './AltKonuPositionPoolFields';
+import {
+  AltKonuLessonLinkPicker, LessonLinkAutoMatchPanel, persistLessonLink,
+} from './LessonLinkAdmin';
 
 /** Madde 2026-08-24: "Antrenör" (bugünkü adıyla "Çalışmalar") sekmesindeki
  *  "Dersler" alt sekmesi ve TÜM altındaki Düzey/Konu/Alt Konu düğümleri
@@ -354,27 +357,38 @@ export function NestedSectionTree({
                      eklenmez — bunun yerine Konum Havuzu (gruplu: kod +
                      numaralı adımlar) gösterilir. Kareye Tıkla/Taşa Tıkla/
                      Taşı Oynat soru ekleme alanı KALDIRILDI (madde 2026-08-27/6). */
-                  <div className="pt-2 border-t border-white/10">
+                  <div className="pt-2 border-t border-white/10 space-y-3">
                     <AltKonuPositionPoolFields
                       pool={s.position_pool ?? []}
                       onAddGroup={(steps) => addPositionPoolGroup(s, steps)}
                       onDeleteGroup={(groupId) => deletePositionPoolGroup(s, groupId)}
                       onReorder={(nextPool) => reorderPositionPool(s, nextPool)}
                     />
-                    {/* Madde 2026-09-08: "Ödev Olarak Ver" alanı bu ekrandan
-                        (Admin/Sekmeler) KALDIRILDI (Zafer'in isteği) — ödev
-                        verme artık SADECE antrenörün kendi Alt Konu anlatım
-                        ekranındaki "Ödev Gönder" ikonundan yapılıyor (bkz.
-                        AltKonuWalkthrough.tsx, AYNI AssignHomeworkPanel
-                        bileşeni ama özel bir tetikleyiciyle — KURAL #3,
-                        o kullanım ETKİLENMEDİ). */}
+                    {/* Madde 2026-09-11 (Ödev Sistemi Faz 2): bu Alt Konu'nun
+                        Dersler müfredatındaki karşılığı (LessonStep). Bağ yoksa
+                        antrenörün "Ödev Gönder" düğmesi devre dışıdır (bkz.
+                        AltKonuWalkthrough.tsx). "Ödev Olarak Ver" (eski GRUP D)
+                        alanı madde 2026-09-08'de zaten kaldırılmıştı. */}
+                    <AltKonuLessonLinkPicker
+                      linkedStepId={s.linked_lesson_step_id ?? null}
+                      onChange={async (stepId) => {
+                        const ok = await persistLessonLink(s.id, stepId);
+                        if (ok) onSectionUpdated(s.id, { linked_lesson_step_id: stepId });
+                      }}
+                    />
                   </div>
                 ) : (
                   /* Bu bölümün KENDİ alt sekmeleri — iç içe (sınırsız derinlik).
                       Bu ic-ice cagri KENDI "+ Alt Sekme Ekle" formunu da (s'nin
                       cocuklari icin) HER ZAMAN gorunur sekilde cizer — bkz. asagida
                       bu bilesenin KENDI seviyesi icin aynı deseni tekrarlaması. */
-                  <div className="pt-2 border-t border-white/10">
+                  <div className="pt-2 border-t border-white/10 space-y-3">
+                    {/* Madde 2026-09-11 (Ödev Sistemi Faz 2): "Dersler" kökünde
+                        tüm Alt Konu'ları başlık eşleşmesiyle bir kerede
+                        müfredata bağlayan düğme + kalanların raporu. */}
+                    {isDerslerRoot(s) && (
+                      <LessonLinkAutoMatchPanel onReloadTree={onReloadTree} />
+                    )}
                     <NestedSectionTree
                       tabId={tabId} parentId={s.id} allSections={allSections}
                       depth={depth + 1}

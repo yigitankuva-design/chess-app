@@ -43,7 +43,10 @@ async def get_custom_tab(tab_id: int, db: AsyncSession = Depends(get_db)):
              "parent_id": s.parent_id, "position_pool": s.position_pool,
              "section_kind": s.section_kind,
              "konum_pratigi_pool": s.konum_pratigi_pool,
-             "teori_pratigi_pool": s.teori_pratigi_pool}
+             "teori_pratigi_pool": s.teori_pratigi_pool,
+             # Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu'nun müfredattaki
+             # karşılığı (LessonStep). null ise "Ödev Gönder" devre dışı.
+             "linked_lesson_step_id": s.linked_lesson_step_id}
             for s in sections
         ],
     }

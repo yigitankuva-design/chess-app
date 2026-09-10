@@ -18,6 +18,15 @@ interface Props {
   sourceSectionId?: number;
   sourceSectionTitle?: string;
   /**
+   * Madde 2026-09-11 (Ödev Sistemi Faz 2): bu Alt Konu'nun Dersler
+   * müfredatındaki karşılığı (LessonStep id). null/undefined ise "Ödev
+   * Gönder" düğmesi DEVRE DIŞI görünür ("bu alt konu müfredata bağlı değil")
+   * — admin panelden (Sekmeler › Çalışmalar › Dersler › Alt Konu) bağlanması
+   * gerekir. Verilmezse (eski/standalone kullanım, testler) düğme yine
+   * bağsız-uyarısı gösterir; SADECE antrenör görünümünde anlamlıdır.
+   */
+  linkedLessonStepId?: number | null;
+  /**
    * Madde 2026-09-09 (görsel referans): "1/1 — Konum Havuzu 001" sayacı
    * artık sayfa başlığının YANINDA gösteriliyor (bkz. alt-konu/[sectionId]/
    * page.tsx). Bu callback verilirse bileşen sayacı KENDİ İÇİNDE ARTIK
@@ -95,7 +104,7 @@ const STEP_CIRCLE_SIZE = 52;
  *    kartının sağına da ok koy" isteği); gidilecek grup yoksa DEVRE DIŞI.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
-export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, onPoolLabelChange }: Props) {
+export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, linkedLessonStepId, onPoolLabelChange }: Props) {
   const auth = useAuth();
   const [groupIdx, setGroupIdx] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
@@ -143,6 +152,9 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
   // kaynak bölüm verilmiş) burada bir kez hesaplayıp hem o satırda hem
   // (varsa gelecekte) başka yerde kullanmak için değişkene alıyoruz.
   const showSendHomework = auth.role === 'teacher' && sourceSectionId != null && sourceSectionTitle != null;
+  // Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu müfredata bağlı değilse
+  // "Ödev Gönder" tıklanamaz — admin panelden bağlanması gerekir.
+  const homeworkLinked = linkedLessonStepId != null;
 
   return (
     <div className="space-y-3">
@@ -229,7 +241,7 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                 buton %40 büyütüldü (36px → 50px, Zafer'in isteği). Madde
                 2026-09-10: satırın ORTASINDA (adım okları solda, konum
                 okları sağda — justify-between'in 2. çocuğu). */}
-            {showSendHomework && (
+            {showSendHomework && homeworkLinked && (
               <AssignHomeworkPanel
                 sourceSectionId={sourceSectionId!}
                 sourceSectionTitle={sourceSectionTitle!}
@@ -251,6 +263,23 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                   </button>
                 )}
               />
+            )}
+            {/* Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu müfredata bağlı
+                değilse "Ödev Gönder" DEVRE DIŞI — admin (Sekmeler › Çalışmalar ›
+                Dersler › Alt Konu › Müfredat Köprüsü) bağlamalı. */}
+            {showSendHomework && !homeworkLinked && (
+              <button
+                type="button" disabled
+                aria-label="Ödev Gönder — bu alt konu müfredata bağlı değil"
+                title="Bu alt konu müfredata bağlı değil — yönetici panelinden bağlanmalı"
+                className="rounded-xl flex items-center justify-center opacity-40 cursor-not-allowed"
+                style={{
+                  width: SEND_HOMEWORK_BTN_SIZE, height: SEND_HOMEWORK_BTN_SIZE,
+                  background: '#6b7280', border: '3px solid #0a0a0a',
+                }}
+              >
+                <SendHomeworkIcon />
+              </button>
             )}
 
             {/* Madde 2026-09-10: SAĞDAKİ İleri/Geri — "Konum Havuzu" grupları

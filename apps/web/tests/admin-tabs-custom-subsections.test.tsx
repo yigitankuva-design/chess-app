@@ -18,6 +18,12 @@ vi.mock('@/lib/customTabsApi', () => ({
   // Madde 2026-09-02: Pratik Yap'ın Yukarı/Aşağı sıralaması + "Açılış Pratiği
   // Yap" artık eksikken en başa taşınıyor — ikisi de bu ucu çağırır.
   reorderCustomTabSections: vi.fn(() => Promise.resolve(true)),
+  // Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu ↔ müfredat köprüsü —
+  // NestedSectionTree Alt Konu seviyesinde bağ seçici, "Dersler" kökünde
+  // otomatik eşleştirme paneli çizer.
+  fetchLessonStepCatalog: vi.fn(() => Promise.resolve([])),
+  fetchLessonLinkStatus: vi.fn(() => Promise.resolve(null)),
+  autoMatchLessonLinks: vi.fn(() => Promise.resolve(null)),
 }));
 
 import AdminTabsPage from '@/app/admin/settings/tabs/page';
