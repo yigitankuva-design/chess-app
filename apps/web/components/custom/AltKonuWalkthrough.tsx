@@ -91,7 +91,8 @@ const STEP_CIRCLE_SIZE = 52;
  *  - Madde 2026-09-10: tahtanın altındaki SAĞ İleri/Geri okları (turuncu),
  *    "Konum Havuzu" grupları (farklı kodlar, ör. 001→002) arasında gezinir —
  *    Zafer'in "sağdaki oklar konum havuzundaki sorular arası geçiş" isteği.
- *    SADECE birden fazla grup varken gösterilir.
+ *    HER ZAMAN gösterilir (tek grup olsa bile — Zafer'in "ödev gönder
+ *    kartının sağına da ok koy" isteği); gidilecek grup yoksa DEVRE DIŞI.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
 export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, onPoolLabelChange }: Props) {
@@ -256,29 +257,29 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                 (farklı kodlar, ör. 001→002) arasında gezinir. Zafer'in isteği:
                 "sağdaki oklar konum havuzundaki sorular arası geçiş sağlayacak".
                 Adım oklarıyla AYNI boyut ama TURUNCU zemin (görsel ayrışma).
-                SADECE birden fazla grup varken gösterilir. */}
-            {pool.length > 1 && (
-              <div className="flex gap-3">
-                <button type="button" aria-label="Önceki grup" onClick={() => goToGroup(-1)}
-                  disabled={gi === 0}
-                  className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
-                  style={{
-                    width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
-                    background: GROUP_ARROW_BG, border: '3px solid #0a0a0a',
-                  }}>
-                  <ChevronIcon direction="left" />
-                </button>
-                <button type="button" aria-label="Sonraki grup" onClick={() => goToGroup(1)}
-                  disabled={gi >= pool.length - 1}
-                  className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
-                  style={{
-                    width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
-                    background: GROUP_ARROW_BG, border: '3px solid #0a0a0a',
-                  }}>
-                  <ChevronIcon direction="right" />
-                </button>
-              </div>
-            )}
+                Madde 2026-09-10 (devam): Zafer "ödev gönder kartının sağına da
+                ok koy" dedi — artık TEK grup olsa bile HER ZAMAN gösterilir
+                (5 kartlık düzen sabit), gidilecek grup yoksa ok DEVRE DIŞI. */}
+            <div className="flex gap-3">
+              <button type="button" aria-label="Önceki grup" onClick={() => goToGroup(-1)}
+                disabled={gi === 0}
+                className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
+                style={{
+                  width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
+                  background: GROUP_ARROW_BG, border: '3px solid #0a0a0a',
+                }}>
+                <ChevronIcon direction="left" />
+              </button>
+              <button type="button" aria-label="Sonraki grup" onClick={() => goToGroup(1)}
+                disabled={gi >= pool.length - 1}
+                className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
+                style={{
+                  width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
+                  background: GROUP_ARROW_BG, border: '3px solid #0a0a0a',
+                }}>
+                <ChevronIcon direction="right" />
+              </button>
+            </div>
           </div>
         </div>
 

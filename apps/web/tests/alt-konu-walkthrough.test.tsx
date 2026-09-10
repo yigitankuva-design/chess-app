@@ -207,11 +207,13 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
 });
 
 describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, devam 3)', () => {
-  it('TEK grup varken gruplar arası ok GÖSTERİLMEZ (gösterilecek bir şey yok)', () => {
+  it('madde 2026-09-10 (devam): TEK grup varken bile sağ oklar GÖRÜNÜR ama İKİSİ DE devre dışı (Zafer: "ödev gönder kartının sağına da ok koy")', () => {
     const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
     render(<AltKonuWalkthrough pool={pool} />);
-    expect(screen.queryByLabelText('Önceki grup')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Sonraki grup')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Önceki grup')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sonraki grup')).toBeInTheDocument();
+    expect(screen.getByLabelText('Önceki grup')).toBeDisabled();
+    expect(screen.getByLabelText('Sonraki grup')).toBeDisabled();
   });
 
   it('birden fazla grup varken gruplar arası ok görünür, tıklanınca gruba geçer ve adım 1\'e döner', () => {
