@@ -25,7 +25,9 @@ body {
   --t-bg:        #f5f0eb;
   --t-surface:   #ffffff;
   --t-surface-2: #f0ede8;
-  --t-border:    #e2ddd5;
+  /* Zafer'in isteği (2026-09-10): ayırıcı çizgiler/çerçeveler net
+     görünmüyordu — ton biraz koyulaştırıldı (tüm uygulamada geçerli). */
+  --t-border:    #d3cabb;
   --t-text-1:    #2c2924;
   --t-text-2:    #716760;
   --t-accent:    #759900;
@@ -52,7 +54,9 @@ body {
   --t-bg:        #161512;
   --t-surface:   #262421;
   --t-surface-2: #302e2c;
-  --t-border:    #3a3836;
+  /* Zafer'in isteği (2026-09-10): ayırıcı çizgi daha belirgin olsun —
+     koyu temada "belirgin" demek biraz AÇMAK demek. */
+  --t-border:    #4a4744;
   --t-text-1:    #babab8;
   --t-text-2:    #7a7472;
   --t-accent:    #759900;
@@ -80,7 +84,8 @@ body {
   --t-bg:        #07070c;
   --t-surface:   #0e0e17;
   --t-surface-2: #14141f;
-  --t-border:    rgba(34,211,238,0.35);
+  /* Zafer'in isteği (2026-09-10): ayırıcı çizgi daha belirgin (opaklık ↑). */
+  --t-border:    rgba(34,211,238,0.5);
   --t-text-1:    #e7e7f0;
   --t-text-2:    #9a9aae;
   --t-accent:    #22d3ee;
@@ -108,7 +113,9 @@ body {
   --t-bg:        #F6F2EA;
   --t-surface:   #FFFFFF;
   --t-surface-2: #F1EDE3;
-  --t-border:    #E7DFD2;
+  /* Zafer'in isteği (2026-09-10): ayırıcı çizgiler net görünmüyordu —
+     ton biraz koyulaştırıldı (#E7DFD2 → #D6CDBB), tüm uygulamada geçerli. */
+  --t-border:    #D6CDBB;
   --t-text-1:    #2B2420;
   --t-text-2:    #766A5E;
   --t-accent:    #D97B3F;

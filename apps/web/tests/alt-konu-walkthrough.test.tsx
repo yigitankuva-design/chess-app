@@ -120,13 +120,23 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
     expect(screen.queryByText('a')).not.toBeInTheDocument();
   });
 
-  it('madde 3: tahta genişliği 420px (240px\'ten %75 büyütülmüş) bir kapta durur', () => {
+  it('madde 2026-09-10 (2. görsel): tahta büyütülüp sayfayı kaplar (640px kap)', () => {
     const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
     render(<AltKonuWalkthrough pool={pool} />);
     const board = document.querySelector('[data-square="e4"]');
     expect(board).toBeInTheDocument();
-    const capsule = document.querySelector('div[style*="max-width: 420px"]');
+    const capsule = document.querySelector('div[style*="max-width: 640px"]');
     expect(capsule).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-10: cümle ve notasyon kartları artık tam genişlikte (472px max-width sınırı KALDIRILDI)', () => {
+    const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'Cümle burada.', turn: 'w' }])];
+    render(<AltKonuWalkthrough pool={pool} />);
+    const sentenceCard = screen.getByText('Cümle burada.').closest('div');
+    expect(sentenceCard).toHaveClass('t-card-i', 'w-full');
+    expect(sentenceCard?.getAttribute('style') ?? '').not.toContain('max-width');
+    const notationCard = screen.getByText('Notasyon alanı').closest('div.t-card-i');
+    expect(notationCard?.getAttribute('style') ?? '').not.toContain('max-width');
   });
 
   it('madde 2026-09-09 (devam): İleri/Geri artık büyük, dolgun mavi zemin + kalın siyah çerçeve — eski ince/soluk tasarım DEĞİL', () => {
@@ -145,12 +155,12 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
 
     const counter = screen.getByText('1 / 1 — Konum Havuzu 001');
     expect(counter).toHaveStyle({ fontWeight: '600' });
-    // Sayaç, tahtanın 420px'lik kabıyla AYNI kapsayıcı içinde (sol kenar hizası).
-    const boardCapsule = document.querySelector('div[style*="max-width: 420px"]');
+    // Sayaç, tahtanın 640px'lik kabıyla AYNI kapsayıcı içinde (sol kenar hizası).
+    const boardCapsule = document.querySelector('div[style*="max-width: 640px"]');
     expect(boardCapsule?.contains(counter)).toBe(true);
   });
 
-  it('madde 2026-08-29: numaralı buton sütunu aşağı kaydırılmış — 1 nolu kart tahtanın üst kenarıyla hizalanır', () => {
+  it('madde 2026-09-10 (2. görsel): numaralı adım daireleri tahtanın ÜSTÜNDE yatay bir sırada (DOM\'da tahtadan ÖNCE)', () => {
     const pool = [
       group('g1', '001', [
         { id: 's1', fen: FEN, sentence: 'Adım 1', turn: 'w' },
@@ -159,8 +169,14 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
     ];
     render(<AltKonuWalkthrough pool={pool} />);
     const kart1 = screen.getByLabelText('Adım 1');
-    // Sayaç satırının yüksekliği (32px) + altındaki boşluk (8px) kadar aşağı iner.
-    expect(kart1.parentElement).toHaveStyle({ marginTop: '40px' });
+    const board = document.querySelector('[data-square="e4"]')!;
+    // Daire sırası, tahta kabından ÖNCE geliyor (üstünde).
+    expect(kart1.compareDocumentPosition(board) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Sıra yatay (flex-wrap), eski dikey flex-col DEĞİL.
+    expect(kart1.parentElement?.className).toContain('flex-wrap');
+    expect(kart1.parentElement?.className).not.toContain('flex-col');
+    // Daire boyutu 52px'e büyütüldü.
+    expect(kart1).toHaveStyle({ width: '52px', height: '52px' });
   });
 
   it('madde 2026-09-07: seçili adım dairesi artık yeşil zemin + kalın siyah rakam (eski cyan telefonda net görünmüyordu)', () => {
@@ -175,6 +191,18 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
     expect(active).toHaveStyle({ background: '#22c55e', color: '#0a0a0a', fontWeight: '800' });
     const inactive = screen.getByLabelText('Adım 2');
     expect(inactive).not.toHaveStyle({ background: '#22c55e' });
+  });
+
+  it('madde 2026-09-10 (2. görsel): adım dairelerinin çerçevesi kalın SİYAH (2px soluk beyaz → 3px #0a0a0a), seçilide yeşil', () => {
+    const pool = [
+      group('g1', '001', [
+        { id: 's1', fen: FEN, sentence: 'Adım 1', turn: 'w' },
+        { id: 's2', fen: FEN2, sentence: 'Adım 2', turn: 'w' },
+      ]),
+    ];
+    render(<AltKonuWalkthrough pool={pool} />);
+    expect(screen.getByLabelText('Adım 1')).toHaveStyle({ border: '3px solid #16a34a' });
+    expect(screen.getByLabelText('Adım 2')).toHaveStyle({ border: '3px solid #0a0a0a' });
   });
 });
 
@@ -214,7 +242,7 @@ describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, d
     expect(screen.getByText('Grup 1 - Adım 1')).toBeInTheDocument();
   });
 
-  it('madde 2026-09-09 (devam 3): gruplar arası ok, adım oku ile Ödev Gönder ARASINDA (satırın ortasında, AYNI satırda)', () => {
+  it('madde 2026-09-10: konum okları AYNI satırda ama Ödev Gönder\'in SAĞINDA (adım okları solda, Ödev Gönder ortada, konum okları sağda)', () => {
     mockRole = 'teacher';
     const pool = [
       group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }]),
@@ -228,13 +256,28 @@ describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, d
     expect(row).not.toBeNull();
     expect(row).toContainElement(nextStepBtn);
     expect(row).toContainElement(nextGroupBtn);
+    // DOM sırası: adım oku → Ödev Gönder → konum oku.
+    expect(nextStepBtn.compareDocumentPosition(sendBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sendBtn.compareDocumentPosition(nextGroupBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('madde 2026-09-09 (devam 3): "Ödev Gönder" butonu %40 büyütüldü (36px → 50px)', () => {
+  it('madde 2026-09-10: konum okları adım oklarıyla AYNI boyutta ama TURUNCU zemin (görsel ayrışma)', () => {
+    const pool = [
+      group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }]),
+      group('g2', '002', [{ id: 's2', fen: FEN2, sentence: 'y', turn: 'w' }]),
+    ];
+    render(<AltKonuWalkthrough pool={pool} />);
+    const prevGroup = screen.getByLabelText('Önceki grup');
+    expect(prevGroup).toHaveStyle({ width: '80px', height: '56px', background: '#f97316', border: '3px solid #0a0a0a' });
+    const nextGroup = screen.getByLabelText('Sonraki grup');
+    expect(nextGroup).toHaveStyle({ width: '80px', height: '56px', background: '#f97316' });
+  });
+
+  it('madde 2026-09-09 (devam 3): "Ödev Gönder" butonu %40 büyütüldü (36px → 50px), madde 2026-09-10: zemin YEŞİL (görsel)', () => {
     mockRole = 'teacher';
     const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
     render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" />);
-    expect(screen.getByLabelText('Ödev Gönder')).toHaveStyle({ width: '50px', height: '50px' });
+    expect(screen.getByLabelText('Ödev Gönder')).toHaveStyle({ width: '50px', height: '50px', background: '#22c55e' });
   });
 });
 

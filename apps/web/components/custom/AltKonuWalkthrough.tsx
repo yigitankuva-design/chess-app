@@ -61,33 +61,37 @@ function ChevronIcon({ direction, size = 26 }: { direction: 'left' | 'right'; si
 const ARROW_BTN_WIDTH = 80;
 const ARROW_BTN_HEIGHT = 56;
 
-/** Madde 2026-09-09 (devam 3): gruplar arası ("Konum Havuzu" kodları
- *  arasında) geçiş oku — adım oklarından (ARROW_BTN_*) KÜÇÜK, ikincil bir
- *  kontrol olduğu için (çoğu bölümde tek grup var). AYNI mavi/siyah aile. */
-const GROUP_ARROW_SIZE = 44;
+/** Madde 2026-09-10: Zafer'in isteğiyle "Konum Havuzu" (gruplar/sorular)
+ *  arası geçiş okları artık satırın SAĞINDA (Ödev Gönder'in sağında),
+ *  adım oklarıyla AYNI boyutta ama AYRI renkte (turuncu) — böylece sol
+ *  (adım) ve sağ (konum) navigasyonu görsel olarak ayrışıyor. */
+const GROUP_ARROW_BG = '#f97316';
 
 /** Madde 2026-09-09 (devam 3): "Ödev Gönder" butonu Zafer'in isteğiyle
  *  %40 büyütüldü (36px → 50px, bkz. SendHomeworkIcon'daki AYNI oran). */
 const SEND_HOMEWORK_BTN_SIZE = 50;
 
-/** Madde 2026-08-25: tahta %75 büyütüldü (240px → 420px) — antrenör
- *  öğrencilerine gösterirken daha net görünsün. Adım butonları da bu
- *  yükseklikte doluşur, taşınca 2. sütuna geçer. */
-const BOARD_MAX_WIDTH = 420;
+/** Madde 2026-08-25: tahta büyütüldü (240px → 420px). Madde 2026-09-10
+ *  (2. görsel): Zafer'in isteğiyle tahta bir kez daha büyütülüp sayfanın
+ *  tamamını kaplayacak şekilde konumlandırıldı (420px → 640px, ChessBoard'un
+ *  kendi iç max-w-[640px] sınırıyla AYNI). */
+const BOARD_MAX_WIDTH = 640;
 
-/** Madde 2026-08-29: sayaç satırının yüksekliği (İleri/Geri butonları 32px,
- *  w-8/h-8) + altındaki space-y-2 boşluğu (8px) — numaralı buton sütununu bu
- *  kadar aşağı kaydırınca 1 nolu kart tahtanın üst kenarıyla hizalanır. */
-const COUNTER_ROW_OFFSET = 32 + 8;
+/** Madde 2026-09-10 (2. görsel): adım daireleri artık tahtanın ÜSTÜNDE
+ *  YATAY bir sıra — Zafer'in isteği. Daireler de büyütüldü (40px → 52px). */
+const STEP_CIRCLE_SIZE = 52;
 
 /**
  * Alt Konu'nun ayrı sayfasındaki tasarım — madde: 2026-08-26 (görsel
  * referans doğrultusunda). Konum Havuzu İKİ SEVİYELİ (grup/adım):
- *  - Solundaki numaralı butonlar VE büyük İleri/Geri okları: aktif grubun
- *    İÇİNDEKİ adımlar arasında AYNI stepIdx'i değiştirir (madde 2026-09-09
- *    devam) — antrenör ister butona tıklayarak ister okla geçer.
- *  - Madde 2026-09-09 (devam 3): satırın ORTASINDAKİ küçük ok çifti,
- *    gruplar (farklı "Konum Havuzu" kodları, ör. 001→002) arasında gezinir.
+ *  - Madde 2026-09-10 (2. görsel): numaralı adım daireleri artık tahtanın
+ *    ÜSTÜNDE yatay bir sırada (eskiden tahtanın solunda dikey sütundaydı).
+ *    Bu daireler VE tahtanın altındaki SOL İleri/Geri okları (mavi): aktif
+ *    grubun İÇİNDEKİ adımlar arasında AYNI stepIdx'i değiştirir.
+ *  - Madde 2026-09-10: tahtanın altındaki SAĞ İleri/Geri okları (turuncu),
+ *    "Konum Havuzu" grupları (farklı kodlar, ör. 001→002) arasında gezinir —
+ *    Zafer'in "sağdaki oklar konum havuzundaki sorular arası geçiş" isteği.
+ *    SADECE birden fazla grup varken gösterilir.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
 export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, onPoolLabelChange }: Props) {
@@ -141,62 +145,52 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-center gap-3">
-        {group.steps.length > 1 && (
-          <div
-            className="flex flex-col flex-wrap gap-2 flex-shrink-0"
-            style={{
-              maxHeight: BOARD_MAX_WIDTH,
-              // Madde 2026-09-09: sayaç ARTIK sadece standalone kullanımda
-              // (onPoolLabelChange verilmediğinde) tahtanın üstünde — o
-              // zaman kayma eskisi gibi gerekli. Entegre sayfada (callback
-              // verilmişken) sayaç YUKARI (başlığın yanına) taşındığı için
-              // tahta doğrudan sütunun tepesinden başlar, kayma GEREKMEZ.
-              marginTop: onPoolLabelChange ? 0 : COUNTER_ROW_OFFSET,
-            }}
-          >
-            {group.steps.map((s, i) => {
-              const active = i === si;
-              return (
-                <button key={s.id} type="button"
-                  aria-label={`Adım ${i + 1}`}
-                  aria-pressed={active}
-                  onClick={() => setStepIdx(i)}
-                  className="flex items-center justify-center rounded-full text-sm flex-shrink-0 transition-colors"
-                  style={{
-                    width: 40, height: 40,
-                    // Madde 2026-09-07: seçili daire eskiden cyan/mavi idi —
-                    // Zafer telefonda net görünmediğini söyledi. Yeşil zemin +
-                    // kalın siyah rakam ile değiştirildi (kontrast çok daha net).
-                    border: active ? '2px solid #16a34a' : '2px solid rgba(255,255,255,0.4)',
-                    background: active ? '#22c55e' : 'transparent',
-                    color: active ? '#0a0a0a' : undefined,
-                    fontWeight: active ? 800 : 700,
-                  }}>
-                  {i + 1}
-                </button>
-              );
-            })}
-          </div>
+      {/* Madde 2026-09-10 (2. görsel): adım daireleri artık tahtanın ÜSTÜNDE
+          YATAY bir sıra (eskiden tahtanın solunda dikey sütundaydı) —
+          Zafer'in "dairesel kartları tahtanın üstüne taşı" isteği. Kalın
+          siyah çerçeve + seçilide yeşil dolgu (görsel referans). */}
+      {group.steps.length > 1 && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {group.steps.map((s, i) => {
+            const active = i === si;
+            return (
+              <button key={s.id} type="button"
+                aria-label={`Adım ${i + 1}`}
+                aria-pressed={active}
+                onClick={() => setStepIdx(i)}
+                className="flex items-center justify-center rounded-full text-sm flex-shrink-0 transition-colors"
+                style={{
+                  width: STEP_CIRCLE_SIZE, height: STEP_CIRCLE_SIZE,
+                  // Madde 2026-09-07: seçili daire yeşil zemin + kalın siyah rakam.
+                  // Madde 2026-09-10 (2. görsel): çerçeve kalınlaştırıldı (2px → 3px),
+                  // seçili OLMAYAN daire artık KALIN SİYAH çerçeveli (görselde öyle) —
+                  // eski soluk yarı-saydam beyaz çerçeve açık zeminde görünmüyordu.
+                  border: active ? '3px solid #16a34a' : '3px solid #0a0a0a',
+                  background: active ? '#22c55e' : 'transparent',
+                  color: active ? '#0a0a0a' : undefined,
+                  fontWeight: active ? 800 : 700,
+                }}>
+                {i + 1}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Madde 2026-09-10 (2. görsel): tahta sayfanın tamamını kaplayacak
+          şekilde büyütüldü. Sayaç SADECE standalone kullanımda (onPoolLabelChange
+          yokken) burada tahtanın üstünde — entegre sayfada başlığın yanında. */}
+      <div style={{ maxWidth: BOARD_MAX_WIDTH, width: '100%' }} className="mx-auto space-y-2">
+        {!onPoolLabelChange && (
+          <p className="text-xs t-muted" style={{ fontWeight: 600 }}>{poolLabel}</p>
         )}
 
-        {/* Madde 2026-08-28 (3): tahta sütunu, numaralı buton sütunu varsa
-            ondan sonra başlar. Madde 2026-09-09: sayaç SADECE standalone
-            kullanımda (onPoolLabelChange yokken) burada, tahtanın ÜSTÜNDE —
-            entegre sayfada başlığın yanında gösterildiği için burada TEKRAR
-            gösterilmez (bkz. Props.onPoolLabelChange açıklaması). */}
-        <div style={{ maxWidth: BOARD_MAX_WIDTH, width: '100%' }} className="space-y-2">
-          {!onPoolLabelChange && (
-            <p className="text-xs t-muted" style={{ fontWeight: 600 }}>{poolLabel}</p>
-          )}
+        <ChessBoard fen={step!.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
 
-          <ChessBoard fen={step!.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
-
-          {/* Madde 2026-09-09 (görsel referans): İleri/Geri artık tahtanın SOL
-              ALT köşesinde, "Ödev Gönder" (varsa) SAĞ ALT köşesinde — AYNI
-              satır. Eskiden bu ikisi ayrı yerlerdeydi (oklar sayaçla üstte,
-              Ödev Gönder tam genişlikte ayrı bir blokta altta). */}
-          <div className="flex items-center justify-between gap-2">
+        {/* Madde 2026-09-09 (görsel referans): İleri/Geri tahtanın SOL ALT
+            köşesinde, "Ödev Gönder" ORTADA, "Konum Havuzu" okları SAĞDA —
+            AYNI satır (justify-between). */}
+        <div className="flex items-center justify-between gap-2">
             <div className="flex gap-3">
               {/* Madde 2026-09-09 (devam): Zafer'in bildirdiği "okların rengi
                   belirgin değil, boyutu çok küçük" sorunu — ince ‹ › karakteri
@@ -225,42 +219,15 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
               </button>
             </div>
 
-            {/* Madde 2026-09-09 (devam 3): gruplar arası ("Konum Havuzu"
-                kodları arasında) geçiş — SADECE birden fazla grup varken
-                gösterilir (çoğu bölümde tek grup var, o zaman gösterilecek
-                bir şey yok). Satırın ORTASINDA — adım okları (solda) ile
-                Ödev Gönder (sağda) arasında, justify-between'in 3. çocuğu
-                olarak kendiliğinden ortalanır. */}
-            {pool.length > 1 && (
-              <div className="flex gap-2">
-                <button type="button" aria-label="Önceki grup" onClick={() => goToGroup(-1)}
-                  disabled={gi === 0}
-                  className="flex items-center justify-center rounded-lg transition-colors disabled:opacity-30"
-                  style={{
-                    width: GROUP_ARROW_SIZE, height: GROUP_ARROW_SIZE,
-                    background: '#3b82f6', border: '2px solid #0a0a0a',
-                  }}>
-                  <ChevronIcon direction="left" size={16} />
-                </button>
-                <button type="button" aria-label="Sonraki grup" onClick={() => goToGroup(1)}
-                  disabled={gi >= pool.length - 1}
-                  className="flex items-center justify-center rounded-lg transition-colors disabled:opacity-30"
-                  style={{
-                    width: GROUP_ARROW_SIZE, height: GROUP_ARROW_SIZE,
-                    background: '#3b82f6', border: '2px solid #0a0a0a',
-                  }}>
-                  <ChevronIcon direction="right" size={16} />
-                </button>
-              </div>
-            )}
-
             {/* Madde 2026-09-07 (GRUP D): "Ödev Gönder" — SADECE antrenör
                 görünümünde. AssignHomeworkPanel'in mevcut form mantığı
                 (sınıf/öğrenci seç, Alt Konu hedefle, gönder) AYNEN kullanılır
                 — sadece tetikleyici GÖRSELİ bu özel ikonla değiştiriliyor
                 (renderTrigger), form davranışı NestedSectionTree'deki
                 kullanımla AYNI (KURAL #3). Madde 2026-09-09 (devam 3):
-                buton %40 büyütüldü (36px → 50px, Zafer'in isteği). */}
+                buton %40 büyütüldü (36px → 50px, Zafer'in isteği). Madde
+                2026-09-10: satırın ORTASINDA (adım okları solda, konum
+                okları sağda — justify-between'in 2. çocuğu). */}
             {showSendHomework && (
               <AssignHomeworkPanel
                 sourceSectionId={sourceSectionId!}
@@ -270,10 +237,13 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                     type="button" onClick={toggle} aria-expanded={open}
                     aria-label="Ödev Gönder"
                     title="Ödev Gönder"
-                    className="rounded-lg flex items-center justify-center transition-colors"
+                    className="rounded-xl flex items-center justify-center transition-colors"
                     style={{
+                      // Madde 2026-09-10 (2. görsel): Zafer'in görselinde bu
+                      // buton YEŞİL — siyah zeminden yeşile çevrildi (kağıt
+                      // uçak ikonu beyaz kaldı, kontrast iyi).
                       width: SEND_HOMEWORK_BTN_SIZE, height: SEND_HOMEWORK_BTN_SIZE,
-                      background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.25)',
+                      background: '#22c55e', border: '3px solid #0a0a0a',
                     }}
                   >
                     <SendHomeworkIcon />
@@ -281,17 +251,48 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                 )}
               />
             )}
+
+            {/* Madde 2026-09-10: SAĞDAKİ İleri/Geri — "Konum Havuzu" grupları
+                (farklı kodlar, ör. 001→002) arasında gezinir. Zafer'in isteği:
+                "sağdaki oklar konum havuzundaki sorular arası geçiş sağlayacak".
+                Adım oklarıyla AYNI boyut ama TURUNCU zemin (görsel ayrışma).
+                SADECE birden fazla grup varken gösterilir. */}
+            {pool.length > 1 && (
+              <div className="flex gap-3">
+                <button type="button" aria-label="Önceki grup" onClick={() => goToGroup(-1)}
+                  disabled={gi === 0}
+                  className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
+                  style={{
+                    width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
+                    background: GROUP_ARROW_BG, border: '3px solid #0a0a0a',
+                  }}>
+                  <ChevronIcon direction="left" />
+                </button>
+                <button type="button" aria-label="Sonraki grup" onClick={() => goToGroup(1)}
+                  disabled={gi >= pool.length - 1}
+                  className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"
+                  style={{
+                    width: ARROW_BTN_WIDTH, height: ARROW_BTN_HEIGHT,
+                    background: GROUP_ARROW_BG, border: '3px solid #0a0a0a',
+                  }}>
+                  <ChevronIcon direction="right" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="t-card-i p-3 w-full mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH + 52 }}>
+      {/* Madde 2026-09-10: Zafer'in isteğiyle cümle alanı (ve altındaki
+          notasyon alanı, ikisi görselde AYNI genişlikte) yatay olarak
+          uzatıldı — artık sayfa kabının (max-w-2xl) tamamını kaplıyor,
+          eskiden tahta+numaralı buton genişliğiyle (472px) sınırlıydı. */}
+      <div className="t-card-i p-3 w-full">
         <p className="text-sm text-center">{step!.sentence}</p>
       </div>
 
       {/* Madde 2026-08-25: en altta ayrı bir notasyon alanı — tahta
           koordinatları + "Notasyon Verilerini Gizle" kutusu. */}
-      <div className="t-card-i p-3 w-full mx-auto" style={{ maxWidth: BOARD_MAX_WIDTH + 52 }}>
+      <div className="t-card-i p-3 w-full">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-semibold t-muted uppercase tracking-widest">Notasyon alanı</p>
           <label className="flex items-center gap-1.5 text-xs t-muted cursor-pointer select-none">
