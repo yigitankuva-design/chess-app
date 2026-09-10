@@ -43,15 +43,15 @@ async def test_dersin_tum_adimlarinin_skorlari_doner(client, child_auth, db):
     lesson_id, step_ids = await _make_lesson_with_steps(db, 2)
     h = {"Authorization": f"Bearer {token}"}
     await client.post(f"/practice/steps/{step_ids[0]}/submit", headers=h,
-                      json={"mode": "suresiz", "correct": 17, "total": 20})
+                      json={"mode": "test", "correct": 17, "total": 20})
     await client.post(f"/practice/steps/{step_ids[1]}/submit", headers=h,
-                      json={"mode": "suresiz", "correct": 10, "total": 20})
+                      json={"mode": "test", "correct": 10, "total": 20})
 
     r = await client.get(f"/practice/lessons/{lesson_id}/scores", headers=h)
     assert r.status_code == 200
     rows = {(s["step_id"], s["mode"]): s["best_score"] for s in r.json()["scores"]}
-    assert rows[(step_ids[0], "suresiz")] == 85
-    assert rows[(step_ids[1], "suresiz")] == 50
+    assert rows[(step_ids[0], "test")] == 85
+    assert rows[(step_ids[1], "test")] == 50
 
 
 @pytest.mark.asyncio
@@ -61,7 +61,7 @@ async def test_baska_dersin_skorlari_sizmaz(client, child_auth, db):
     lesson_b, steps_b = await _make_lesson_with_steps(db, 1)
     h = {"Authorization": f"Bearer {token}"}
     await client.post(f"/practice/steps/{steps_b[0]}/submit", headers=h,
-                      json={"mode": "suresiz", "correct": 20, "total": 20})
+                      json={"mode": "test", "correct": 20, "total": 20})
 
     r = await client.get(f"/practice/lessons/{lesson_a}/scores", headers=h)
     assert r.json()["scores"] == []
@@ -74,7 +74,7 @@ async def test_baska_cocugun_skoru_gorunmez(client, child_auth, db):
     lesson_id, step_ids = await _make_lesson_with_steps(db, 1)
     h = {"Authorization": f"Bearer {token}"}
     await client.post(f"/practice/steps/{step_ids[0]}/submit", headers=h,
-                      json={"mode": "suresiz", "correct": 20, "total": 20})
+                      json={"mode": "test", "correct": 20, "total": 20})
 
     # İkinci bir çocuk oluştur ve onun token'ıyla sorgula
     r = await client.post("/auth/parent/signup", json={

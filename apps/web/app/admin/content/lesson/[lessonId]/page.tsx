@@ -232,6 +232,34 @@ export default function AdminStepEditorPage() {
     await saveQuestionCountAndScorePatch(s, counts, scores);
   }
 
+  /**
+   * Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" (board_exercises)
+   * için SADECE soru sayısı kaydedilir — başarı puanı YOK. Varsa eski
+   * success_scores.board_exercises kaydı da temizlenir.
+   */
+  async function saveQuestionCountOnly(s: StepRow, field: string, countRaw: string) {
+    setCountMsg(null);
+    const countTrimmed = countRaw.trim();
+    if (!countTrimmed) {
+      setCountMsg('Soru Sayısı Belirle — girilmeli');
+      return;
+    }
+    const countValue = Number(countTrimmed);
+    if (!Number.isInteger(countValue) || countValue < 1) {
+      setCountMsg('Soru sayısı 1 veya daha büyük bir tam sayı olmalı');
+      return;
+    }
+    const poolSize = exercisesOf(s, field).length;
+    if (countValue > poolSize) {
+      setCountMsg(`Soru sayısı havuzdaki soru sayısından (${poolSize}) fazla olamaz`);
+      return;
+    }
+    const counts = { ...(s.content_json.question_counts as Record<string, number> | undefined), [field]: countValue };
+    const scores = { ...(s.content_json.success_scores as Record<string, number> | undefined) };
+    delete scores[field];
+    await saveQuestionCountAndScorePatch(s, counts, scores);
+  }
+
   async function saveQuestionCountAndScorePatch(
     s: StepRow, counts: Record<string, number>, scores: Record<string, number>,
   ) {
@@ -486,26 +514,41 @@ export default function AdminStepEditorPage() {
                               className="neon-input text-sm"
                               style={{ width: 100 }}
                             />
-                            <label className="text-xs n-muted" htmlFor={`score-${s.id}-${mode.field}`}>
-                              Başarı Puanı Belirle
-                            </label>
-                            <input
-                              id={`score-${s.id}-${mode.field}`}
-                              type="number"
-                              min={1}
-                              max={100}
-                              value={scoreDraft}
-                              onChange={(e) => setScoreDraft(e.target.value)}
-                              placeholder="zorunlu"
-                              className="neon-input text-sm"
-                              style={{ width: 100 }}
-                            />
+                            {/* Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap"
+                                (board_exercises) artık BAŞARI PUANI YOK — sporcu
+                                havuzdaki TÜM soruları cevaplayınca ödev tamamlanır.
+                                Süreli Pratik Yap / Kendini Test Et'te puan DURUYOR. */}
+                            {mode.field !== 'board_exercises' && (
+                              <>
+                                <label className="text-xs n-muted" htmlFor={`score-${s.id}-${mode.field}`}>
+                                  Başarı Puanı Belirle
+                                </label>
+                                <input
+                                  id={`score-${s.id}-${mode.field}`}
+                                  type="number"
+                                  min={1}
+                                  max={100}
+                                  value={scoreDraft}
+                                  onChange={(e) => setScoreDraft(e.target.value)}
+                                  placeholder="zorunlu"
+                                  className="neon-input text-sm"
+                                  style={{ width: 100 }}
+                                />
+                              </>
+                            )}
                             <button type="button"
-                              onClick={() => saveQuestionCountAndScore(s, mode.field, countDraft, scoreDraft)}
+                              onClick={() => (mode.field === 'board_exercises'
+                                ? saveQuestionCountOnly(s, mode.field, countDraft)
+                                : saveQuestionCountAndScore(s, mode.field, countDraft, scoreDraft))}
                               className="px-3 py-1.5 rounded-lg bg-cyan-400/15 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-400/25 text-xs transition-colors">
                               Kaydet
                             </button>
                           </div>
+                          {mode.field === 'board_exercises' && (
+                            <p className="text-xs n-muted pl-2 opacity-80">
+                              Sporcu bu sorulara sırayla girer; hepsini cevaplayınca ödev tamamlanır (başarı puanı yok).
+                            </p>
+                          )}
                           {countMsg && <p className="text-xs text-rose-400 pl-2">{countMsg}</p>}
                           {(() => {
                             const savedCount = questionCountOf(s, mode.field);

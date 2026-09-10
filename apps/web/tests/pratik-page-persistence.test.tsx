@@ -11,6 +11,8 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/practice/practiceApi', () => ({
   fetchLessonScores: vi.fn().mockResolvedValue(null),
   submitPracticeResult: vi.fn().mockResolvedValue({ score: 100, best_score: 100, improved: true }),
+  submitOdevAnswer: vi.fn().mockResolvedValue({ total: 1, answered_count: 1, correct_count: 1, completed: true, per_question_correct: [true] }),
+  fetchOdevProgress: vi.fn().mockResolvedValue({ total: 1, answered_count: 0, correct_count: 0, completed: false, per_question_correct: [] }),
 }));
 
 import PratikPage from '@/app/(child)/pratik/[mode]/page';
@@ -37,8 +39,8 @@ describe('pratik/[mode]/page — madde 7 (oturum bitince temizlenir)', () => {
   });
 });
 
-describe('pratik/[mode]/page — bayat oturum otomatik yenilenir (madde 4)', () => {
-  it('kayıtlı oturum (2 soru) havuz büyüyünce (5 soru) yok sayılır, TÜM havuz gösterilir', async () => {
+describe('pratik/[mode]/page — "Ödevini Yap" seti sunucudan (madde 2026-09-11)', () => {
+  it('eski localStorage oturumu ne olursa olsun ödev seti /odev/progress\'ten kurulur, "rastgele" ipucu yok', async () => {
     sessionStorage.setItem('bsa:pratik:165:suresiz', JSON.stringify({
       items: [EX, EX], index: 0, currentAnswer: null, doneCount: 0,
     }));
@@ -53,7 +55,7 @@ describe('pratik/[mode]/page — bayat oturum otomatik yenilenir (madde 4)', () 
     }));
     render(<PratikPage />);
     await screen.findByText('D');
-    // getByText sıfır eşleşmede fırlatır — queryByText null döner, .not.toBeInTheDocument() ile uyumlu.
-    expect(screen.queryByText(/5 soruluk havuzdan/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/rastgele/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Ödev:/)).toBeInTheDocument();
   });
 });

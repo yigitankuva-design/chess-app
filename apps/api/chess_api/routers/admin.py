@@ -24,7 +24,7 @@ from chess_api.schemas.auth import (
     StepCreateRequest, StepUpdateRequest, AdminStepDetail,
 )
 from chess_api.models.progress import ChildLessonStepResult
-from chess_api.models.practice import ChildPracticeResult
+from chess_api.models.practice import ChildPracticeResult, ChildOdevProgress
 from chess_api.models.opening import Opening, OpeningVariant, OpeningType
 from chess_api.models.fun_activity import FunActivity
 from chess_api.models.pool_image import PoolImage
@@ -590,6 +590,13 @@ async def delete_lesson(
                 ChildPracticeResult.lesson_step_id.in_(step_ids)
             )
         )).scalar_one()
+        # Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" ilerlemesi de
+        # çocuk emeğidir — pratik sonucu olmasa bile ders silmeyi engeller.
+        practice_results += (await db.execute(
+            select(func.count(ChildOdevProgress.id)).where(
+                ChildOdevProgress.lesson_step_id.in_(step_ids)
+            )
+        )).scalar_one()
     if prog or results or practice_results:
         raise HTTPException(
             status_code=409,
@@ -1038,6 +1045,9 @@ async def delete_step(
     )
     await db.execute(
         delete(ChildPracticeResult).where(ChildPracticeResult.lesson_step_id == step_id)
+    )
+    await db.execute(
+        delete(ChildOdevProgress).where(ChildOdevProgress.lesson_step_id == step_id)
     )
     await db.delete(step)
     await db.commit()

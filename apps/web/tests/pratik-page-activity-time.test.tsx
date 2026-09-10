@@ -9,9 +9,13 @@ vi.mock('next/navigation', () => ({
 
 const fetchLessonScores = vi.fn();
 const submitPracticeResult = vi.fn();
+const submitOdevAnswer = vi.fn();
+const fetchOdevProgress = vi.fn();
 vi.mock('@/lib/practice/practiceApi', () => ({
   fetchLessonScores: (...args: unknown[]) => fetchLessonScores(...args),
   submitPracticeResult: (...args: unknown[]) => submitPracticeResult(...args),
+  submitOdevAnswer: (...args: unknown[]) => submitOdevAnswer(...args),
+  fetchOdevProgress: (...args: unknown[]) => fetchOdevProgress(...args),
 }));
 
 const logActivityTime = vi.fn();
@@ -44,6 +48,10 @@ beforeEach(() => {
   fetchLessonScores.mockResolvedValue({});
   submitPracticeResult.mockReset();
   submitPracticeResult.mockResolvedValue({ score: 100, best_score: 100, improved: true });
+  submitOdevAnswer.mockReset();
+  submitOdevAnswer.mockResolvedValue({ total: 1, answered_count: 1, correct_count: 1, completed: true, per_question_correct: [true] });
+  fetchOdevProgress.mockReset();
+  fetchOdevProgress.mockResolvedValue({ total: 1, answered_count: 0, correct_count: 0, completed: false, per_question_correct: [] });
   logActivityTime.mockReset();
 });
 

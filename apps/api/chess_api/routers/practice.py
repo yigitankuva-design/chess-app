@@ -6,9 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import ChildProfile, LessonStep
-from chess_api.models.practice import ChildPracticeResult, ChildPracticeAttempt
+from chess_api.models.practice import ChildPracticeResult, ChildPracticeAttempt, ChildOdevProgress
 
 VALID_MODES = {"suresiz", "sureli", "test"}
+# Madde 2026-09-11 (Ödev Sistemi, Faz 1): "suresiz" (Ödevini Yap) artık
+# batch /submit ile DEĞİL, soru soru /odev/answer ile kaydedilir. /submit
+# hâlâ sureli + test için geçerli.
+SUBMIT_MODES = {"sureli", "test"}
 
 # Madde 2026-09-05: mod -> content_json'daki soru havuzu alanı. Frontend'deki
 # lib/practice/unlock.ts PRACTICE_MODE_FIELDS ile AYNI eşleme (tek kaynak
@@ -46,11 +50,16 @@ class DetailResponse(BaseModel):
     best_total: int
     attempts_count: int
     # Madde 2026-09-05: bkz. SubmitRequest.per_question — en iyi denemeye ait.
-    per_question_correct: list[bool] | None = None
+    # Madde 2026-09-11: "suresiz" için BİRİKİMLİ ilk-çözüm durumu — henüz
+    # cevaplanmamış sorular None kalır (kısmi ilerleme gösterilir).
+    per_question_correct: list[bool | None] | None = None
     # Bu alt konu + modun ŞU ANKİ soru sayısı (deneme olsun olmasın) — havuz
     # admin'de büyüdükçe/küçüldükçe güncel kalır; "Ödevlerim" kare sayısı
     # bundan gelir (best_total'a değil — hiç denenmemişse best_total sıfırdır).
     pool_size: int = 0
+    # Madde 2026-09-11 (Ödev Sistemi, Faz 1) — SADECE "suresiz" için anlamlı:
+    completed: bool = False       # N sorunun hepsi cevaplandı mı (ödev bitti mi)
+    answered_count: int = 0       # kaç soru cevaplandı (birikimli)
 
 
 def _pool_size(step: LessonStep, mode: str) -> int:
@@ -67,6 +76,35 @@ def _pool_size(step: LessonStep, mode: str) -> int:
     configured = counts.get(field)
     resolved = configured if isinstance(configured, int) and configured > 0 else DEFAULT_QUESTION_COUNT
     return min(resolved, len(pool))
+
+
+def _odev_set_size(step: LessonStep) -> int:
+    """Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap"ta sporcunun
+    çözmesi GEREKEN sabit soru sayısı N — admin'in `question_counts.
+    board_exercises` değeri (girmişse), yoksa havuzun TAMAMI. Herkeste
+    aynı N, havuz sırasına göre (rastgele YOK)."""
+    content = step.content_json or {}
+    pool = content.get("board_exercises") or []
+    counts = content.get("question_counts") or {}
+    configured = counts.get("board_exercises")
+    if isinstance(configured, int) and configured > 0:
+        return min(configured, len(pool))
+    return len(pool)
+
+
+async def _get_odev_row(db: AsyncSession, child_id: int, step_id: int) -> ChildOdevProgress | None:
+    q = select(ChildOdevProgress).where(
+        ChildOdevProgress.child_id == child_id,
+        ChildOdevProgress.lesson_step_id == step_id,
+    )
+    return (await db.execute(q)).scalar_one_or_none()
+
+
+def _odev_completed(answered_map: dict, n: int) -> bool:
+    """N sorunun HEPSİ (havuz index 0..N-1) en az bir kez cevaplandı mı."""
+    if n <= 0:
+        return False
+    return all(str(i) in (answered_map or {}) for i in range(n))
 
 
 async def _get_row(db: AsyncSession, child_id: int, step_id: int, mode: str):
@@ -88,9 +126,16 @@ async def submit_practice(
     """Bir pratik oturumunun sonucunu kaydeder ve en iyi skoru günceller.
 
     Puan İSTEMCİDEN ALINMAZ, burada hesaplanır — istemciye güvenilmez.
+
+    Madde 2026-09-11 (Ödev Sistemi, Faz 1): SADECE sureli + test. "suresiz"
+    (Ödevini Yap) artık soru soru POST /practice/steps/{id}/odev/answer ile
+    kaydedilir (birikimli, eşiksiz).
     """
-    if payload.mode not in VALID_MODES:
-        raise HTTPException(status_code=400, detail="Invalid mode")
+    if payload.mode not in SUBMIT_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid mode (suresiz artık /odev/answer kullanır)",
+        )
     if payload.correct > payload.total:
         raise HTTPException(status_code=400, detail="correct cannot exceed total")
     if payload.per_question is not None and len(payload.per_question) != payload.total:
@@ -146,6 +191,96 @@ async def submit_practice(
     return SubmitResponse(score=score, best_score=row.best_score, improved=improved)
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" (suresiz) — soru
+# soru, BİRİKİMLİ kayıt. Eşik YOK; N sorunun hepsi cevaplanınca tamamlanır.
+# ─────────────────────────────────────────────────────────────────────────
+
+class OdevAnswerRequest(BaseModel):
+    # Havuzdaki (admin sırasına göre) sorunun index'i — 0'dan başlar.
+    question_index: int = Field(ge=0)
+    correct: bool
+
+
+class OdevProgressResponse(BaseModel):
+    total: int                       # çözülmesi gereken sabit soru sayısı N
+    answered_count: int              # kaç soru cevaplandı (birikimli)
+    correct_count: int
+    completed: bool                  # N sorunun hepsi cevaplandı mı
+    # Uzunluk N; henüz cevaplanmamış sorular None.
+    per_question_correct: list[bool | None]
+
+
+def _odev_progress_payload(step: LessonStep, row: ChildOdevProgress | None) -> OdevProgressResponse:
+    n = _odev_set_size(step)
+    amap = (row.answered_map if row else {}) or {}
+    per_q: list[bool | None] = [amap.get(str(i)) for i in range(n)]
+    answered = [v for v in per_q if v is not None]
+    return OdevProgressResponse(
+        total=n,
+        answered_count=len(answered),
+        correct_count=sum(1 for v in answered if v),
+        completed=(row.completed_at is not None) if row else _odev_completed(amap, n),
+        per_question_correct=per_q,
+    )
+
+
+@router.post("/steps/{step_id}/odev/answer", response_model=OdevProgressResponse)
+async def odev_answer(
+    step_id: int,
+    payload: OdevAnswerRequest,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bir "Ödevini Yap" sorusunun cevabını (doğru/yanlış) BİRİKİMLİ kaydeder.
+
+    Ödev ZATEN tamamlanmışsa (completed_at dolu) hiçbir şey yazılmaz — sonraki
+    TEKRAR çözümler istatistiğe girmez (Zafer'in kararı). Sadece ilk çözüm sayılır.
+    """
+    step = await db.get(LessonStep, step_id)
+    if step is None:
+        raise HTTPException(status_code=404, detail="Lesson step not found")
+    n = _odev_set_size(step)
+
+    row = await _get_odev_row(db, child.id, step_id)
+    if row is not None and row.completed_at is not None:
+        return _odev_progress_payload(step, row)  # ödev bitti — tekrar çözüm sayılmaz
+
+    if payload.question_index >= max(n, 1):
+        raise HTTPException(status_code=400, detail="question_index out of range")
+
+    if row is None:
+        row = ChildOdevProgress(
+            child_id=child.id, lesson_step_id=step_id, answered_map={},
+        )
+        db.add(row)
+
+    amap = dict(row.answered_map or {})
+    amap[str(payload.question_index)] = payload.correct
+    row.answered_map = amap
+    row.updated_at = datetime.utcnow()
+    if row.completed_at is None and _odev_completed(amap, n):
+        row.completed_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(row)
+    return _odev_progress_payload(step, row)
+
+
+@router.get("/steps/{step_id}/odev/progress", response_model=OdevProgressResponse)
+async def odev_progress(
+    step_id: int,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bu çocuğun bu alt konudaki "Ödevini Yap" birikimli ilerlemesi —
+    pratik ekranı bunu çekip kaldığı yerden devam ettirir."""
+    step = await db.get(LessonStep, step_id)
+    if step is None:
+        raise HTTPException(status_code=404, detail="Lesson step not found")
+    return _odev_progress_payload(step, await _get_odev_row(db, child.id, step_id))
+
+
 async def _compute_practice_detail(child_id: int, step_id: int, mode: str, db: AsyncSession) -> DetailResponse:
     """`practice_detail`'ın gövdesi — madde 2026-09-07 (GRUP B): antrenörün
     salt-okunur öğrenci-profili uçları (teacher.py) da AYNI mantığı
@@ -160,6 +295,21 @@ async def _compute_practice_detail(child_id: int, step_id: int, mode: str, db: A
     step = await db.get(LessonStep, step_id)
     if step is None:
         raise HTTPException(status_code=404, detail="Lesson step not found")
+
+    # Madde 2026-09-11: "suresiz" (Ödevini Yap) artık BİRİKİMLİ ilk-çözüm
+    # durumundan okunur (ChildOdevProgress) — best_score, "tamamlandı mı"nın
+    # 100/0 vekilidir (Ders İlerlemesi kartı + kilit için).
+    if mode == "suresiz":
+        n = _odev_set_size(step)
+        p = _odev_progress_payload(step, await _get_odev_row(db, child_id, step_id))
+        return DetailResponse(
+            best_score=100 if p.completed else (round(p.correct_count / n * 100) if n else 0),
+            best_correct=p.correct_count, best_total=n,
+            attempts_count=1 if p.answered_count > 0 else 0,
+            per_question_correct=p.per_question_correct if p.answered_count > 0 else None,
+            pool_size=n, completed=p.completed, answered_count=p.answered_count,
+        )
+
     pool_size = _pool_size(step, mode)
     row = await _get_row(db, child_id, step_id, mode)
     if row is None:
@@ -307,21 +457,41 @@ class ScoresResponse(BaseModel):
 async def _compute_lesson_scores(child_id: int, lesson_id: int, db: AsyncSession) -> ScoresResponse:
     """`lesson_scores`'un gövdesi — madde 2026-09-07 (GRUP B): antrenörün
     salt-okunur öğrenci-profili uçları (teacher.py) da AYNI mantığı
-    kullanır diye ayrı bir fonksiyona çıkarıldı. Davranış DEĞİŞMEDİ
-    (KURAL #3)."""
+    kullanır diye ayrı bir fonksiyona çıkarıldı.
+
+    Madde 2026-09-11 (Ödev Sistemi, Faz 1): "suresiz" (Ödevini Yap) satırları
+    artık ChildPracticeResult'tan DEĞİL, ChildOdevProgress'ten üretilir —
+    best_score, "ödev tamamlandı mı"nın 100/0 VEKİLİdir. Böylece unlock.ts'in
+    `bestScore(suresiz) >= threshold` kontrolü DEĞİŞMEDEN çalışır (100 >= herhangi
+    bir eşik → Süreli Pratik Yap açılır; 0 → kilitli). sureli/test aynen kalır."""
     q = (
         select(ChildPracticeResult)
         .join(LessonStep, ChildPracticeResult.lesson_step_id == LessonStep.id)
         .where(
             LessonStep.lesson_id == lesson_id,
             ChildPracticeResult.child_id == child_id,
+            ChildPracticeResult.mode != "suresiz",  # suresiz artık odev_progress'ten
         )
     )
     rows = (await db.execute(q)).scalars().all()
-    return ScoresResponse(scores=[
+    scores = [
         ScoreRow(step_id=r.lesson_step_id, mode=r.mode, best_score=r.best_score)
         for r in rows
-    ])
+    ]
+
+    odev_rows = (await db.execute(
+        select(ChildOdevProgress, LessonStep)
+        .join(LessonStep, ChildOdevProgress.lesson_step_id == LessonStep.id)
+        .where(
+            LessonStep.lesson_id == lesson_id,
+            ChildOdevProgress.child_id == child_id,
+        )
+    )).all()
+    for prog, step in odev_rows:
+        done = prog.completed_at is not None or _odev_completed(prog.answered_map or {}, _odev_set_size(step))
+        scores.append(ScoreRow(step_id=prog.lesson_step_id, mode="suresiz", best_score=100 if done else 0))
+
+    return ScoresResponse(scores=scores)
 
 
 @router.get("/lessons/{lesson_id}/scores", response_model=ScoresResponse)

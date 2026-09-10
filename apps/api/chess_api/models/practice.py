@@ -4,6 +4,40 @@ from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
 
+class ChildOdevProgress(Base):
+    """Bir çocuğun bir ALT KONU (lesson_step) "Ödevini Yap" (suresiz mod)
+    İLK çözümündeki BİRİKİMLİ ilerlemesi.
+
+    Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" artık başarı
+    EŞİĞİYLE değil, "havuzdaki sabit N sorunun HEPSİ en az bir kez
+    cevaplandı mı" ile tamamlanır. Sporcu birikimli ilerler (bugün 3,
+    yarın 2), kaldığı yerden devam eder. `answered_map` = {havuz_index
+    (str): doğru_mu (bool)} — index admin'in soru sırasıdır. N soru
+    (question_counts.board_exercises, yoksa havuzun tamamı) bittiğinde
+    `completed_at` set edilir; sonraki TEKRAR çözümler bu kaydı ETKİLEMEZ
+    (sadece ilk çözümün istatistiği profile yansır — Zafer'in kararı).
+
+    ChildPracticeResult (sureli/test'in "en iyi deneme" mantığı) HİÇ
+    DEĞİŞMEDEN kalır — bu AYRI bir tablo (KURAL #3).
+    """
+
+    __tablename__ = "child_odev_progress"
+    __table_args__ = (
+        UniqueConstraint("child_id", "lesson_step_id", name="uq_odev_child_step"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    child_id: Mapped[int] = mapped_column(ForeignKey("child_profiles.id"), index=True)
+    lesson_step_id: Mapped[int] = mapped_column(ForeignKey("lesson_steps.id"), index=True)
+    # {"0": true, "1": false, ...} — havuz index'i (admin sırası) -> doğru/yanlış
+    answered_map: Mapped[dict] = mapped_column(JSON, default=dict)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,
+    )
+
+
 class ChildPracticeResult(Base):
     """Bir çocuğun bir ALT KONU (lesson_step) × pratik modundaki en iyi sonucu.
 

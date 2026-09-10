@@ -16,7 +16,8 @@ import { PracticeResult } from '@/components/practice/PracticeResult';
 import { scorePercent } from '@/lib/practice/scoring';
 import { isModeUnlocked, unlockedLabel, thresholdFor, PRACTICE_MODE_FIELDS } from '@/lib/practice/unlock';
 import type { PracticeMode, ScoreMap, ThresholdMap } from '@/lib/practice/unlock';
-import { fetchLessonScores, submitPracticeResult } from '@/lib/practice/practiceApi';
+import { fetchLessonScores, submitPracticeResult, submitOdevAnswer, fetchOdevProgress } from '@/lib/practice/practiceApi';
+import type { OdevProgress } from '@/lib/practice/practiceApi';
 import { logActivityTime } from '@/lib/activity/activityApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -76,6 +77,13 @@ function PratikInner() {
   const [thresholds, setThresholds] = useState<ThresholdMap>({});
   const [finished, setFinished] = useState<{ correct: number; total: number; score: number } | null>(null);
   const [unlockedNow, setUnlockedNow] = useState<string | null>(null);
+  /** Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" birikimli
+   *  ilerleme. `odevRepeat` = ödev ZATEN tamamlandı, sporcu tekrar-amaçlı
+   *  çözüyor → sorular RASTGELE, cevaplar KAYDEDİLMEZ (Zafer'in kararı). */
+  const isOdev = slug === 'suresiz';
+  const [odevRepeat, setOdevRepeat] = useState(false);
+  const [odevJustCompleted, setOdevJustCompleted] = useState(false);
+  const odevSetSizeRef = useRef(0);
   /** Tekrar Dene: BoardExercise'ı sıfırdan kurmak için artan sayaç. */
   const [runId, setRunId] = useState(0);
   /** Yenilemeden sonra kalinan soru sirasi (madde 4/9). */
@@ -130,16 +138,19 @@ function PratikInner() {
     if (!mode || !lessonId || !stepId) { setLoading(false); return; }
     fetch(`${API_BASE}/lessons/${lessonId}`)
       .then((r) => (r.ok ? r.json() : { steps: [] }))
-      .then((d) => {
+      .then(async (d) => {
         const step = (d.steps as StepRow[] | undefined)?.find((s) => s.id === stepId);
         const raw = (step?.content_json?.[mode.field] as BoardExerciseConfig[] | undefined) ?? [];
         const rawPool = Array.isArray(raw) ? raw : [];
         setPoolSize(rawPool.length);
         // Madde 3: Zafer hoca bu alt konu + mod için özel bir soru sayısı
         // belirlediyse onu kullan; yoksa eskisi gibi 20 (geriye dönük uyumlu).
+        // Madde 2026-09-11: "Ödevini Yap" için "yoksa" = havuzun TAMAMI (20 değil).
         const counts = step?.content_json?.question_counts as Record<string, number> | undefined;
         const configured = counts?.[mode.field];
-        const resolvedPick = configured && configured > 0 ? configured : DEFAULT_QUESTION_COUNT;
+        const resolvedPick = configured && configured > 0
+          ? configured
+          : (isOdev ? rawPool.length : DEFAULT_QUESTION_COUNT);
         setRandomPick(resolvedPick);
         // Alt konu sırası: başlıklı explanation adımları — home/page.tsx:270 ile aynı kural.
         const ordered = (d.steps as StepRow[] | undefined ?? [])
@@ -165,6 +176,36 @@ function PratikInner() {
         const codes = assignExerciseCodes(rawPool);
         const pool = rawPool.map((ex, i) => ({ ...ex, code: ex.code ?? codes[i] }));
         poolRef.current = { pool, resolvedPick };
+
+        // ── Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" ──
+        //  Eşik YOK. SABİT set = havuzun ilk N'i (admin sırası, rastgele YOK).
+        //  BİRİKİMLİ: her cevap anında sunucuya yazılır, kaldığı yerden devam.
+        //  Ödev ZATEN tamamlandıysa TEKRAR modu: rastgele set, KAYIT YOK.
+        if (isOdev) {
+          const n = Math.max(0, Math.min(resolvedPick, pool.length));
+          odevSetSizeRef.current = n;
+          const prog = await fetchOdevProgress(stepId);
+          if (prog?.completed) {
+            setOdevRepeat(true);
+            pickFreshSet();  // tekrar-amaçlı: rastgele set (kayıtsız)
+            setLoading(false);
+            return;
+          }
+          const fixed = pool.slice(0, n);
+          const answered: (boolean | null)[] = prog?.per_question_correct ?? [];
+          perQuestionRef.current = fixed.map((_, i) => answered[i] ?? null);
+          let resumeAt = fixed.findIndex((_, i) => (answered[i] ?? null) === null);
+          if (resumeAt === -1) resumeAt = fixed.length;
+          const doneSoFar = perQuestionRef.current.filter((v) => v !== null).length;
+          setExercises(fixed);
+          setStartIndex(resumeAt);
+          setStartAnswer(null);
+          setStartDoneCount(doneSoFar);
+          setSolved(doneSoFar);
+          setLoading(false);
+          return;
+        }
+
         // Sayfa YENILENDIYSE ayni soru setiyle ve ayni sirada devam edilir
         // (madde 4 ve 9); yeni oturumda havuzdan yeniden secilir.
         const key = sessionKey(stepId, slug);
@@ -219,6 +260,37 @@ function PratikInner() {
 
   /** Oturum bitti: puanı sunucuya yaz, sonuç ekranını hazırla. */
   async function handleFinish(r: { correct: number; total: number }) {
+    // Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" — cevaplar zaten
+    // soru soru (onAnswered) sunucuya yazıldı; burada batch /submit YOK.
+    // Sonuç ekranı puan DEĞİL "ödev tamamlandı" mesajı gösterir.
+    if (isOdev) {
+      const score = scorePercent(r.correct, r.total);
+      if (!odevRepeat) {
+        // Son cevap(lar) fire-forget gönderilmişti — burada HEPSİNİ (idempotent
+        // upsert) bekleyerek tekrar gönder, sunucu durumu kesin senkron olsun.
+        const n = odevSetSizeRef.current;
+        for (let i = 0; i < n; i++) {
+          const v = perQuestionRef.current[i];
+          if (v !== null && v !== undefined) {
+            await submitOdevAnswer(stepId, i, v === true);
+          }
+        }
+        const prog = await fetchOdevProgress(stepId);
+        if (prog?.completed) {
+          setOdevJustCompleted(true);
+          setUnlockedNow(unlockedLabel('suresiz'));
+          setScores((prev) => ({
+            ...(prev ?? {}),
+            [stepId]: { ...(prev?.[stepId] ?? {}), suresiz: 100 },
+          }));
+        }
+      }
+      clearSession(sessionKey(stepId, slug));
+      setFinished({ correct: r.correct, total: r.total, score });
+      void logActivityTime('practice', (Date.now() - startedAtRef.current) / 1000);
+      return;
+    }
+
     const localScore = scorePercent(r.correct, r.total);
     const before = scores?.[stepId]?.[modeKey] ?? 0;
 
@@ -265,17 +337,21 @@ function PratikInner() {
     setLeft(TIMED_SECONDS);
     setTimeUp(false);
     setRunId((n) => n + 1);
+    // Madde 2026-09-11: "Ödevini Yap"ta "Tekrar Dene" → tekrar-amaçlı çözüm
+    // (sorular rastgele, cevaplar KAYDEDİLMEZ). İlk çözüm zaten bitmiş sayılır.
+    if (isOdev) {
+      setOdevRepeat(true);
+      setOdevJustCompleted(false);
+    }
     pickFreshSet();
   }
 
   /** Kilit yalnızca skor haritası GERÇEKTEN alındıysa uygulanır. */
   const locked = scores !== null && !isModeUnlocked(orderedStepIds, stepId, modeKey, scores, thresholds);
-  /** Kilit ekranında gösterilecek eşik: bu modu açmak için ÖNCEKİ modun eşiği
-   *  (sureli için suresiz'in eşiği, test için sureli'nin eşiği). */
+  /** Kilit ekranında gösterilecek eşik — SADECE "test" modu için (sureli
+   *  için önceki adım "Ödevini Yap" ve o eşiksiz, madde 2026-09-11). */
   const prevModeThreshold =
-    modeKey === 'sureli' ? thresholdFor(thresholds, stepId, 'suresiz')
-    : modeKey === 'test' ? thresholdFor(thresholds, stepId, 'sureli')
-    : null;
+    modeKey === 'test' ? thresholdFor(thresholds, stepId, 'sureli') : null;
 
   if (!mode) {
     return <ComingSoon emoji="🎯" title="Pratik" description="Bu içerik hazırlanıyor." />;
@@ -336,7 +412,7 @@ function PratikInner() {
           <p className="font-bold text-sm mb-1">Bu bölüm henüz kilitli</p>
           <p className="text-xs t-muted mb-4">
             {modeKey === 'sureli'
-              ? `Önce "Ödevini Yap"ta ${prevModeThreshold} puan ve üzeri al.`
+              ? 'Önce "Ödevini Yap" ödevini tamamla — havuzdaki tüm soruları cevapla.'
               : modeKey === 'test'
                 ? `Önce "Süreli Pratik Yap"ta ${prevModeThreshold} puan ve üzeri al.`
                 : 'Önce bir önceki alt konuyu tamamla.'}
@@ -354,7 +430,17 @@ function PratikInner() {
           onRetry={handleRetry}
           // Madde 7: son sorunun tahtası matlaşarak arka planda kalır.
           boardFen={[...(exercises ?? [])].reverse().find(isBoardExercise)?.fen ?? ''}
-          headline={resultHeadline(modeKey, finished.score, passThreshold)}
+          // Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap"ta puan/eşik
+          // değil, "tamamlandı mı" mesajı.
+          headline={
+            isOdev
+              ? (odevRepeat
+                  ? { text: 'Tekrar Çözdün — Aferin!', tone: 'success' }
+                  : odevJustCompleted
+                    ? { text: 'Tebrikler! Ödevini Tamamladın', tone: 'success' }
+                    : { text: 'Cevapların Kaydedildi — Kaldığın Yerden Devam Et', tone: 'retry' })
+              : resultHeadline(modeKey, finished.score, passThreshold)
+          }
         />
       )}
 
@@ -374,10 +460,18 @@ function PratikInner() {
               Puan: <b style={{ color: 'var(--t-accent)' }}>{solved}</b> / {exercises.length}
             </p>
           )}
-          {randomPick > 0 && poolSize > exercises.length && (
+          {/* Madde 2026-09-11: "Ödevini Yap" İLK çözümde sabit set — "rastgele
+              seçildi" ipucu SADECE diğer modlarda ve ödev tekrarında. */}
+          {randomPick > 0 && poolSize > exercises.length && !(isOdev && !odevRepeat) && (
             <p className="text-xs t-muted mb-2">
               🎲 {poolSize} soruluk havuzdan rastgele <b style={{ color: 'var(--t-accent)' }}>{exercises.length}</b> soru seçildi
               <span className="opacity-70"> — her girişte farklı sorular gelir</span>
+            </p>
+          )}
+          {isOdev && !odevRepeat && (
+            <p className="text-xs t-muted mb-2">
+              📋 Ödev: <b style={{ color: 'var(--t-accent)' }}>{exercises.length}</b> soru —
+              hepsini cevaplayınca tamamlanır (istediğin zaman kaldığın yerden devam edebilirsin).
             </p>
           )}
           <BoardExercise
@@ -401,6 +495,12 @@ function PratikInner() {
             onAnswered={(index, doneCount, answer) => {
               if (index < perQuestionRef.current.length) {
                 perQuestionRef.current[index] = answer === 'correct';
+              }
+              // Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" İLK
+              // çözümde her cevap ANINDA sunucuya yazılır — sporcu kaldığı
+              // yerden devam edebilsin. Tekrar-amaçlı çözümde YAZILMAZ.
+              if (isOdev && !odevRepeat) {
+                void submitOdevAnswer(stepId, index, answer === 'correct');
               }
               if (exercises) saveSession(sessionKey(stepId, slug), {
                 items: exercises, index, currentAnswer: answer, doneCount,

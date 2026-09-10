@@ -71,8 +71,60 @@ export interface PracticeDetail {
   best_correct: number;
   best_total: number;
   attempts_count: number;
-  per_question_correct: boolean[] | null;
+  /** Madde 2026-09-11: "suresiz"te birikimli — henüz cevaplanmamış sorular null. */
+  per_question_correct: (boolean | null)[] | null;
   pool_size: number;
+  /** Madde 2026-09-11 (Ödev Sistemi, Faz 1) — SADECE "suresiz" için anlamlı. */
+  completed?: boolean;
+  answered_count?: number;
+}
+
+/** Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" (suresiz) birikimli
+ *  ilerleme durumu — pratik ekranı kaldığı yerden devam eder. */
+export interface OdevProgress {
+  total: number;
+  answered_count: number;
+  correct_count: number;
+  completed: boolean;
+  per_question_correct: (boolean | null)[];
+}
+
+/** "Ödevini Yap"ta bir sorunun cevabını (doğru/yanlış) BİRİKİMLİ kaydeder.
+ *  question_index = havuzdaki (admin sırası) 0-tabanlı index. null = kaydedilemedi. */
+export async function submitOdevAnswer(
+  stepId: number, questionIndex: number, correct: boolean,
+): Promise<OdevProgress | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/odev/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ question_index: questionIndex, correct }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+/** "Ödevini Yap" birikimli ilerlemesi — pratik ekranı (sporcunun kendisi)
+ *  kaldığı yerden devam etsin diye. null = çekilemedi.
+ *  (Antrenörün salt-okunur görünümü için fetchPracticeDetail(mode='suresiz')
+ *  zaten completed/answered_count döndürür — ayrı bir uç gerekmez.) */
+export async function fetchOdevProgress(stepId: number): Promise<OdevProgress | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const r = await fetch(`${API_BASE}/practice/steps/${stepId}/odev/progress`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
 }
 
 /**

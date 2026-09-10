@@ -225,8 +225,9 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
   const openLessonThresholds = openLessonId != null ? thresholdsByLesson[openLessonId] : undefined;
   const orderedStepIds = (openLessonSubs ?? []).map((s) => s.stepId);
 
-  const passThreshold = openSubtopic ? thresholdFor(openLessonThresholds, openSubtopic.stepId, 'suresiz') : 85;
-  const suresizCompleted = practiceDetail != null && practiceDetail.best_score >= passThreshold;
+  // Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" artık eşikle DEĞİL,
+  // "havuzdaki tüm sorular cevaplandı mı" ile tamamlanır (backend: completed).
+  const suresizCompleted = practiceDetail?.completed ?? false;
 
   return (
     <div className="t-card p-4">
@@ -460,7 +461,7 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
                           {!detailLoading && practiceDetail && (
                             /* Madde 2026-09-06 (Görsel 5): cümle + kare kartlar ortalanır. */
                             <div className="text-center">
-                              <p className="text-sm font-bold italic mb-2">
+                              <p className="text-sm font-bold italic mb-1">
                                 {/* Zafer'in isteği (2026-09-09): "{başlık} - {sıra} konusuna
                                     ait ödev..." eki, başlığın kendisi zaten "- N" ile bitince
                                     "- 1 - 1" gibi TEKRARA yol açıyordu — kaldırıldı, sadece
@@ -468,6 +469,12 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
                                 {openSubtopic.title} konusuna ait
                                 ödev {suresizCompleted ? 'tamamlanmıştır' : 'tamamlanmamıştır'}.
                               </p>
+                              {/* Madde 2026-09-11 (Ödev Sistemi, Faz 1): birikimli ilerleme. */}
+                              {practiceDetail.pool_size > 0 && (
+                                <p className="text-xs t-muted mb-2">
+                                  {practiceDetail.answered_count ?? 0} / {practiceDetail.pool_size} soru cevaplandı
+                                </p>
+                              )}
                               {practiceDetail.pool_size === 0 ? (
                                 <p className="text-xs t-muted py-1">Bu alt konu için henüz soru eklenmedi.</p>
                               ) : (

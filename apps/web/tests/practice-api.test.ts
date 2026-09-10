@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchLessonScores, submitPracticeResult } from '@/lib/practice/practiceApi';
+import {
+  fetchLessonScores, submitPracticeResult, submitOdevAnswer, fetchOdevProgress,
+} from '@/lib/practice/practiceApi';
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -62,5 +64,36 @@ describe('submitPracticeResult', () => {
     sessionStorage.setItem('chess_app_token', 'tk');
     (fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('offline'));
     expect(await submitPracticeResult(5, 'suresiz', 17, 20)).toBeNull();
+  });
+});
+
+// Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" soru soru kayıt.
+describe('submitOdevAnswer / fetchOdevProgress', () => {
+  it('token yoksa ikisi de null döner, ağa çıkmaz', async () => {
+    expect(await submitOdevAnswer(5, 0, true)).toBeNull();
+    expect(await fetchOdevProgress(5)).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('submitOdevAnswer question_index + correct gönderir, ilerlemeyi döner', async () => {
+    sessionStorage.setItem('chess_app_token', 'tk');
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ total: 5, answered_count: 1, correct_count: 1, completed: false, per_question_correct: [true, null, null, null, null] }),
+    });
+    const r = await submitOdevAnswer(5, 0, true);
+    expect(r?.answered_count).toBe(1);
+    const [, opts] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(JSON.parse((opts as { body: string }).body)).toEqual({ question_index: 0, correct: true });
+  });
+
+  it('fetchOdevProgress /odev/progress\'e gider', async () => {
+    sessionStorage.setItem('chess_app_token', 'tk');
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true, json: async () => ({ total: 3, answered_count: 3, correct_count: 2, completed: true, per_question_correct: [true, false, true] }),
+    });
+    const r = await fetchOdevProgress(7);
+    expect(r?.completed).toBe(true);
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]).toContain('/practice/steps/7/odev/progress');
   });
 });

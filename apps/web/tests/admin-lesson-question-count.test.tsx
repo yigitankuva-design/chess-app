@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
+// Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" (board_exercises)
+// modunda BAŞARI PUANI kalktı — sadece "Soru Sayısı" var, sporcu havuzdaki
+// tüm soruları cevaplayınca ödev tamamlanır. Süreli Pratik Yap / Kendini
+// Test Et'te başarı puanı DURUYOR.
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'tok' }));
 vi.mock('next/navigation', () => ({
   useParams: () => ({ lessonId: '7' }),
@@ -22,7 +26,9 @@ function stepsWith(count?: number, score?: number) {
           { type: 'click_square', instruction: 'e4', target_squares: ['e4'], difficulty: 1 },
           { type: 'click_square', instruction: 'e5', target_squares: ['e5'], difficulty: 5 },
         ],
-        board_exercises_timed: [],
+        board_exercises_timed: [
+          { type: 'click_square', instruction: 't1', target_squares: ['t1'] },
+        ],
         board_exercises_test: [],
         ...(count !== undefined ? { question_counts: { board_exercises: count } } : {}),
         ...(score !== undefined ? { success_scores: { board_exercises: score } } : {}),
@@ -32,7 +38,7 @@ function stepsWith(count?: number, score?: number) {
   ];
 }
 
-async function openUntimed(steps: unknown[]) {
+async function openMode(steps: unknown[], modeLabel: string) {
   vi.stubGlobal('fetch', vi.fn((_url: string, opts?: RequestInit) => {
     if (opts?.method === 'PATCH') return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     return Promise.resolve({ ok: true, json: () => Promise.resolve(steps) });
@@ -40,86 +46,77 @@ async function openUntimed(steps: unknown[]) {
   render(<AdminStepEditorPage />);
   await waitFor(() => screen.getByText('Piyon Hareketleri'));
   fireEvent.click(screen.getByText(/Sorular/));
-  // Madde 2026-09-05: "Süresiz Pratik Yap" → "Ödevini Yap" (SADECE başlık).
-  await waitFor(() => screen.getByText('Ödevini Yap'));
-  fireEvent.click(screen.getByText('Ödevini Yap'));
+  await waitFor(() => screen.getByText(modeLabel));
+  fireEvent.click(screen.getByText(modeLabel));
   await waitFor(() => screen.getByText('Soru Sayısını Belirle'));
 }
 
-beforeEach(() => {
-  sessionStorage.clear();
-});
+function patchCall() {
+  const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+  return calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
+}
 
-describe('Admin ders sayfası — Soru Sayısını Belirle ve Başarı Puanı Belirle (zorunlu ikisi de)', () => {
-  it('ikisi de doluysa birlikte kaydedilir', async () => {
-    await openUntimed(stepsWith());
+beforeEach(() => { sessionStorage.clear(); });
+
+describe('Admin ders sayfası — "Ödevini Yap": sadece Soru Sayısı (Başarı Puanı YOK)', () => {
+  it('"Ödevini Yap"ta Başarı Puanı Belirle kutusu GÖSTERİLMEZ', async () => {
+    await openMode(stepsWith(), 'Ödevini Yap');
+    expect(screen.getByLabelText('Soru Sayısını Belirle')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Başarı Puanı Belirle')).not.toBeInTheDocument();
+  });
+
+  it('soru sayısı girilince SADECE question_counts kaydedilir, eski success_scores.board_exercises temizlenir', async () => {
+    await openMode(stepsWith(undefined, 85), 'Ödevini Yap'); // eski puan kaydı var
     fireEvent.change(screen.getByLabelText('Soru Sayısını Belirle'), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText('Başarı Puanı Belirle'), { target: { value: '80' } });
     fireEvent.click(screen.getByText('Kaydet'));
 
     await waitFor(() => {
-      const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-      const patchCall = calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
-      expect(patchCall).toBeTruthy();
-      const body = JSON.parse((patchCall![1] as RequestInit).body as string);
+      const pc = patchCall();
+      expect(pc).toBeTruthy();
+      const body = JSON.parse((pc![1] as RequestInit).body as string);
       expect(body.content_json.question_counts).toEqual({ board_exercises: 2 });
-      expect(body.content_json.success_scores).toEqual({ board_exercises: 80 });
+      expect(body.content_json.success_scores.board_exercises).toBeUndefined();
     });
   });
 
   it('havuzdan fazla sayı girilirse kaydedilmez, uyarı gösterilir', async () => {
-    await openUntimed(stepsWith());
+    await openMode(stepsWith(), 'Ödevini Yap');
     fireEvent.change(screen.getByLabelText('Soru Sayısını Belirle'), { target: { value: '5' } });
-    fireEvent.change(screen.getByLabelText('Başarı Puanı Belirle'), { target: { value: '80' } });
     fireEvent.click(screen.getByText('Kaydet'));
 
     await waitFor(() => screen.getByText(/havuzdaki soru sayısından \(2\) fazla olamaz/));
-    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-    const patchCall = calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
-    expect(patchCall).toBeFalsy();
+    expect(patchCall()).toBeFalsy();
   });
 
-  it('başarı puanı 100\'den büyükse kaydedilmez, uyarı gösterilir', async () => {
-    await openUntimed(stepsWith());
-    fireEvent.change(screen.getByLabelText('Soru Sayısını Belirle'), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText('Başarı Puanı Belirle'), { target: { value: '150' } });
-    fireEvent.click(screen.getByText('Kaydet'));
-
-    await waitFor(() => screen.getByText(/Başarı puanı 1-100 arasında/));
-    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-    const patchCall = calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
-    expect(patchCall).toBeFalsy();
-  });
-
-  it('kaydedilmiş sayı sonradan havuzdan büyük kalırsa bilgilendirme notu görünür', async () => {
-    await openUntimed(stepsWith(5, 85)); // havuzda 2 soru var ama kaydedilen sayı 5
-    expect(screen.getByText(/Belirlediğin sayı \(5\) havuzdaki soru sayısından \(2\) fazla/)).toBeInTheDocument();
-  });
-
-  it('soru sayısı boşken Kaydet basınca kaydedilmez, ikisi de gerekli uyarısı gösterilir', async () => {
-    await openUntimed(stepsWith(2, 85));
+  it('soru sayısı boşken Kaydet basınca kaydedilmez, uyarı gösterilir', async () => {
+    await openMode(stepsWith(2), 'Ödevini Yap');
     fireEvent.change(screen.getByLabelText('Soru Sayısını Belirle'), { target: { value: '' } });
     fireEvent.click(screen.getByText('Kaydet'));
 
-    await waitFor(() => screen.getByText(/ikisi de girilmeli/));
-    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-    const patchCall = calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
-    expect(patchCall).toBeFalsy();
+    await waitFor(() => screen.getByText(/girilmeli/));
+    expect(patchCall()).toBeFalsy();
   });
 
-  it('başarı puanı boşken Kaydet basınca kaydedilmez, ikisi de gerekli uyarısı gösterilir', async () => {
-    await openUntimed(stepsWith(2, 85));
-    fireEvent.change(screen.getByLabelText('Başarı Puanı Belirle'), { target: { value: '' } });
+  it('kaydedilmiş sayı havuzdan büyük kalırsa bilgilendirme notu görünür', async () => {
+    await openMode(stepsWith(5), 'Ödevini Yap'); // havuzda 2 soru, kaydedilen 5
+    expect(screen.getByText(/Belirlediğin sayı \(5\) havuzdaki soru sayısından \(2\) fazla/)).toBeInTheDocument();
+  });
+});
+
+describe('Admin ders sayfası — Süreli Pratik Yap / Kendini Test Et: Başarı Puanı DURUYOR (regresyon)', () => {
+  it('"Süreli Pratik Yap"ta Başarı Puanı Belirle kutusu HÂLÂ var ve ikisi birlikte kaydedilir', async () => {
+    await openMode(stepsWith(), 'Süreli Pratik Yap');
+    expect(screen.getByLabelText('Başarı Puanı Belirle')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Soru Sayısını Belirle'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Başarı Puanı Belirle'), { target: { value: '80' } });
     fireEvent.click(screen.getByText('Kaydet'));
 
-    await waitFor(() => screen.getByText(/ikisi de girilmeli/));
-    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-    const patchCall = calls.find((c: unknown[]) => (c[1] as RequestInit)?.method === 'PATCH');
-    expect(patchCall).toBeFalsy();
-  });
-
-  it('mod açılınca kaydedilmiş puan kutuya önceden dolu gelir', async () => {
-    await openUntimed(stepsWith(2, 90));
-    expect(screen.getByLabelText('Başarı Puanı Belirle')).toHaveValue(90);
+    await waitFor(() => {
+      const pc = patchCall();
+      expect(pc).toBeTruthy();
+      const body = JSON.parse((pc![1] as RequestInit).body as string);
+      expect(body.content_json.question_counts).toEqual({ board_exercises_timed: 1 });
+      expect(body.content_json.success_scores).toEqual({ board_exercises_timed: 80 });
+    });
   });
 });

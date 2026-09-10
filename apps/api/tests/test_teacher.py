@@ -315,7 +315,7 @@ async def test_teacher_views_own_students_profile_and_practice_data(client, db):
     step_id = await _make_step(db)
     r = await client.post(
         f"/practice/steps/{step_id}/submit", headers=auth(child_token),
-        json={"mode": "suresiz", "correct": 18, "total": 20},
+        json={"mode": "test", "correct": 18, "total": 20},
     )
     assert r.status_code == 200
 
@@ -342,7 +342,7 @@ async def test_teacher_views_own_students_profile_and_practice_data(client, db):
 
     # 4) practice detail.
     r = await client.get(
-        f"/teacher/students/{child_id}/practice/steps/{step_id}/detail?mode=suresiz",
+        f"/teacher/students/{child_id}/practice/steps/{step_id}/detail?mode=test",
         headers=auth(teacher_token),
     )
     assert r.status_code == 200
@@ -350,7 +350,7 @@ async def test_teacher_views_own_students_profile_and_practice_data(client, db):
 
     # 5) attempts-summary.
     r = await client.get(
-        f"/teacher/students/{child_id}/practice/steps/{step_id}/attempts-summary?mode=suresiz",
+        f"/teacher/students/{child_id}/practice/steps/{step_id}/attempts-summary?mode=test",
         headers=auth(teacher_token),
     )
     assert r.status_code == 200
@@ -358,7 +358,7 @@ async def test_teacher_views_own_students_profile_and_practice_data(client, db):
 
     # 6) attempts.
     r = await client.get(
-        f"/teacher/students/{child_id}/practice/steps/{step_id}/attempts?mode=suresiz",
+        f"/teacher/students/{child_id}/practice/steps/{step_id}/attempts?mode=test",
         headers=auth(teacher_token),
     )
     assert r.status_code == 200

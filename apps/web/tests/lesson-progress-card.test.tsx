@@ -50,8 +50,10 @@ beforeEach(() => {
   fetchLessonScores.mockResolvedValue({});
   fetchPracticeDetail.mockReset();
   fetchPracticeDetail.mockResolvedValue({
-    best_score: 80, best_correct: 4, best_total: 5, attempts_count: 1,
+    best_score: 100, best_correct: 4, best_total: 5, attempts_count: 1,
     per_question_correct: [true, true, false, true, true], pool_size: 5,
+    // Madde 2026-09-11 (Ödev Sistemi, Faz 1): "suresiz" tamamlanma bilgisi.
+    completed: true, answered_count: 5,
   });
   fetchAttemptsSummary.mockReset();
   fetchAttemptsSummary.mockResolvedValue({

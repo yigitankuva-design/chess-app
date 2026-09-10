@@ -1,21 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
+// Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" İLK çözümde SABİT
+// set (havuzun ilk N'i, admin sırası). Tamamlandıktan sonra "Tekrar Dene"
+// → TEKRAR modu: sorular rastgele, cevaplar KAYDEDİLMEZ.
 vi.mock('next/navigation', () => ({
   useParams: () => ({ mode: 'suresiz' }),
   useSearchParams: () => new URLSearchParams('konu=Test&step=200&ders=42'),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
+const submitOdevAnswer = vi.fn();
+const fetchOdevProgress = vi.fn();
 vi.mock('@/lib/practice/practiceApi', () => ({
   fetchLessonScores: vi.fn().mockResolvedValue(null),
   submitPracticeResult: vi.fn().mockResolvedValue({ score: 100, best_score: 100, improved: true }),
+  submitOdevAnswer: (...a: unknown[]) => submitOdevAnswer(...a),
+  fetchOdevProgress: (...a: unknown[]) => fetchOdevProgress(...a),
 }));
 
 import PratikPage from '@/app/(child)/pratik/[mode]/page';
 
-/** 10 açılış sorulu geniş bir havuz — hepsi kolay (difficulty yok), her
- *  biri BENZERSİZ bir 'instruction' metniyle tanımlanır. Doğru cevap
- *  hepsinde 'D' (options: [yanlış, doğru]). */
 function exercise(i: number) {
   return {
     type: 'sentence_question' as const,
@@ -31,6 +35,13 @@ const POOL = Array.from({ length: 10 }, (_, i) => exercise(i + 1));
 beforeEach(() => {
   sessionStorage.clear();
   localStorage.clear();
+  submitOdevAnswer.mockReset();
+  submitOdevAnswer.mockResolvedValue({ total: 2, answered_count: 2, correct_count: 2, completed: true, per_question_correct: [true, true] });
+  fetchOdevProgress.mockReset();
+  // İlk çağrı (sayfa yüklenirken): ödev YARIM → ilk-çözüm modu.
+  fetchOdevProgress.mockResolvedValueOnce({ total: 2, answered_count: 0, correct_count: 0, completed: false, per_question_correct: [] });
+  // Sonraki çağrılar (handleFinish sonrası kontrol): ödev TAMAM.
+  fetchOdevProgress.mockResolvedValue({ total: 2, answered_count: 2, correct_count: 2, completed: true, per_question_correct: [true, true] });
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true,
     json: async () => ({
@@ -42,46 +53,35 @@ beforeEach(() => {
   }));
 });
 
-/** Görünen soru metnini okur ('Soru N?' biçiminde). */
-function currentQuestionText(): string {
-  return (POOL.map((_, i) => `Soru ${i + 1}?`).find((t) => screen.queryByText(t)) ?? '');
-}
-
-/** İki soruluk seti baştan sona çözer (ikisi de doğru), sonuç ekranına ulaşır. */
-async function solveBothQuestions() {
-  await screen.findByText('D');
-  fireEvent.click(screen.getByText('D')); // 1. soru doğru
-  fireEvent.click(await screen.findByText('Sonraki Soruya Geç'));
-  await waitFor(() => expect(screen.getByText('D')).toBeInTheDocument());
-  fireEvent.click(screen.getByText('D')); // 2. (son) soru doğru — oturum biter
-}
-
-describe('pratik/[mode]/page — "Tekrar Dene" farklı sorular getirir (madde: 2026-08-21)', () => {
-  it('"Tekrar Dene"ye basınca YENİ bir set gelir, bir önceki turun sorularıyla ÇAKIŞMAZ', async () => {
+describe('pratik/[mode]/page — "Ödevini Yap": ilk çözüm sabit, tekrar rastgele (madde 2026-09-11)', () => {
+  it('ilk çözüm havuzun İLK 2 sorusunu SIRAYLA gösterir', async () => {
     render(<PratikPage />);
-    await solveBothQuestions();
+    await screen.findByText('Soru 1?');   // ilk soru = havuz[0]
+    fireEvent.click(screen.getByText('D'));
+    fireEvent.click(await screen.findByText('Sonraki Soruya Geç'));
+    await screen.findByText('Soru 2?');   // ikinci soru = havuz[1]
+    fireEvent.click(screen.getByText('D'));
 
-    const firstRound = new Set<string>();
-    await waitFor(() => expect(screen.getByText('Tekrar Dene')).toBeInTheDocument());
-    // İlk turda gösterilen 2 soruyu practiceHistory'den okuyoruz (DOM artık
-    // sonuç ekranında, sorular görünmüyor) — bunun yerine localStorage'a
-    // kaydedilen kodları kontrol ediyoruz.
-    const savedFirst = JSON.parse(localStorage.getItem('bsa:gecmis:200:suresiz') ?? '[]') as string[];
-    savedFirst.forEach((c) => firstRound.add(c));
-    expect(firstRound.size).toBe(2);
+    await waitFor(() => screen.getByText('Tebrikler! Ödevini Tamamladın'));
+  });
 
+  it('tamamlanınca "Tekrar Dene" → tekrar modu (soru ekranına döner, kayıt YOK)', async () => {
+    render(<PratikPage />);
+    await screen.findByText('Soru 1?');
+    fireEvent.click(screen.getByText('D'));
+    fireEvent.click(await screen.findByText('Sonraki Soruya Geç'));
+    await screen.findByText('Soru 2?');
+    fireEvent.click(screen.getByText('D'));
+
+    await waitFor(() => screen.getByText('Tekrar Dene'));
+    submitOdevAnswer.mockClear();
     fireEvent.click(screen.getByText('Tekrar Dene'));
 
-    // İkinci tur başladı — yeni soruların kodları previousCodes ile ÇAKIŞMAZ.
-    await waitFor(() => {
-      const savedSecond = JSON.parse(localStorage.getItem('bsa:gecmis:200:suresiz') ?? '[]') as string[];
-      expect(savedSecond).toHaveLength(2);
-      const overlap = savedSecond.filter((c) => firstRound.has(c));
-      expect(overlap).toHaveLength(0);
-    });
-
-    // Ekranda da gerçekten yeni bir soru görünüyor (ilk turdakiyle aynı DEĞİL
-    // olması ZORUNLU değil ama en azından soru ekranına dönülmüş olmalı).
-    await waitFor(() => expect(currentQuestionText()).not.toBe(''));
+    // Yeni soru ekranı geldi.
+    await waitFor(() => expect(POOL.some((_, i) => screen.queryByText(`Soru ${i + 1}?`))).toBe(true));
+    // Tekrar çözümde cevap SUNUCUYA GÖNDERİLMEZ.
+    fireEvent.click(screen.getAllByText('D')[0]);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(submitOdevAnswer).not.toHaveBeenCalled();
   });
 });

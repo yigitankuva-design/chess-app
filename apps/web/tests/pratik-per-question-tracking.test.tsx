@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
+// Madde 2026-09-11 (Ödev Sistemi, Faz 1): "Ödevini Yap" artık batch
+// submitPracticeResult DEĞİL, soru soru submitOdevAnswer ile BİRİKİMLİ
+// kaydeder. Bu testler o yeni akışı doğrular.
 vi.mock('next/navigation', () => ({
   useParams: () => ({ mode: 'suresiz' }),
   useSearchParams: () => new URLSearchParams('konu=Test&step=165&ders=42'),
@@ -9,9 +12,13 @@ vi.mock('next/navigation', () => ({
 
 const fetchLessonScores = vi.fn();
 const submitPracticeResult = vi.fn();
+const submitOdevAnswer = vi.fn();
+const fetchOdevProgress = vi.fn();
 vi.mock('@/lib/practice/practiceApi', () => ({
   fetchLessonScores: (...args: unknown[]) => fetchLessonScores(...args),
   submitPracticeResult: (...args: unknown[]) => submitPracticeResult(...args),
+  submitOdevAnswer: (...args: unknown[]) => submitOdevAnswer(...args),
+  fetchOdevProgress: (...args: unknown[]) => fetchOdevProgress(...args),
 }));
 
 import PratikPage from '@/app/(child)/pratik/[mode]/page';
@@ -42,33 +49,31 @@ beforeEach(() => {
   fetchLessonScores.mockReset();
   fetchLessonScores.mockResolvedValue({});
   submitPracticeResult.mockReset();
-  submitPracticeResult.mockResolvedValue({ score: 50, best_score: 50, improved: true });
+  submitOdevAnswer.mockReset();
+  submitOdevAnswer.mockResolvedValue({ total: 2, answered_count: 2, correct_count: 1, completed: true, per_question_correct: [true, false] });
+  fetchOdevProgress.mockReset();
+  fetchOdevProgress.mockResolvedValue({ total: 2, answered_count: 0, correct_count: 0, completed: false, per_question_correct: [] });
 });
 
-describe('pratik/[mode]/page — soru bazlı doğru/yanlış biriktirme (madde 2026-09-05: Sporcu Profili Ödevlerim)', () => {
-  it('1. soru doğru, 2. soru yanlış cevaplanınca submitPracticeResult [true, false] alır', async () => {
+describe('pratik/[mode]/page — "Ödevini Yap" birikimli cevap kaydı (madde 2026-09-11)', () => {
+  it('1. soru doğru, 2. soru yanlış → submitOdevAnswer(step,0,true) ve (step,1,false)', async () => {
     stubLesson();
     render(<PratikPage />);
 
-    // 1. soru: doğru şıkkı seç ("Doğru").
     await screen.findByText('S1?');
     fireEvent.click(screen.getByText('Doğru'));
     fireEvent.click(await screen.findByText('Sonraki Soruya Geç'));
 
-    // 2. soru: yanlış şıkkı seç ("Yanlış") — noRetry, oturum burada biter (son soru).
     await screen.findByText('S2?');
     fireEvent.click(screen.getByText('Yanlış'));
 
-    await waitFor(() => expect(submitPracticeResult).toHaveBeenCalled());
-    const call = submitPracticeResult.mock.calls[0];
-    expect(call[0]).toBe(165);       // stepId
-    expect(call[1]).toBe('suresiz'); // mode
-    expect(call[2]).toBe(1);         // correct
-    expect(call[3]).toBe(2);         // total
-    expect(call[4]).toEqual([true, false]); // perQuestion
+    await waitFor(() => expect(submitOdevAnswer).toHaveBeenCalledWith(165, 0, true));
+    await waitFor(() => expect(submitOdevAnswer).toHaveBeenCalledWith(165, 1, false));
+    // Batch submitPracticeResult "suresiz"te ARTIK ÇAĞRILMAZ.
+    expect(submitPracticeResult).not.toHaveBeenCalled();
   });
 
-  it('ikisi de doğru cevaplanınca [true, true] gönderilir', async () => {
+  it('ikisi de doğru → submitOdevAnswer(step,0,true) ve (step,1,true)', async () => {
     stubLesson();
     render(<PratikPage />);
 
@@ -79,8 +84,7 @@ describe('pratik/[mode]/page — soru bazlı doğru/yanlış biriktirme (madde 2
     await screen.findByText('S2?');
     fireEvent.click(screen.getByText('Doğru'));
 
-    await waitFor(() => expect(submitPracticeResult).toHaveBeenCalled());
-    const call = submitPracticeResult.mock.calls[0];
-    expect(call[4]).toEqual([true, true]);
+    await waitFor(() => expect(submitOdevAnswer).toHaveBeenCalledWith(165, 0, true));
+    await waitFor(() => expect(submitOdevAnswer).toHaveBeenCalledWith(165, 1, true));
   });
 });

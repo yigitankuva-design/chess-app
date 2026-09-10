@@ -28,7 +28,7 @@ async def test_submit_puani_sunucu_hesaplar(client, child_auth, db):
     r = await client.post(
         f"/practice/steps/{step_id}/submit",
         headers={"Authorization": f"Bearer {token}"},
-        json={"mode": "suresiz", "correct": 17, "total": 20},
+        json={"mode": "test", "correct": 17, "total": 20},
     )
     assert r.status_code == 200
     assert r.json()["score"] == 85
@@ -43,9 +43,9 @@ async def test_dusuk_skor_en_iyiyi_dusurmez(client, child_auth, db):
     step_id = await _make_step(db)
     h = {"Authorization": f"Bearer {token}"}
     await client.post(f"/practice/steps/{step_id}/submit", headers=h,
-                      json={"mode": "suresiz", "correct": 17, "total": 20})
+                      json={"mode": "test", "correct": 17, "total": 20})
     r = await client.post(f"/practice/steps/{step_id}/submit", headers=h,
-                          json={"mode": "suresiz", "correct": 2, "total": 20})
+                          json={"mode": "test", "correct": 2, "total": 20})
     assert r.status_code == 200
     assert r.json()["score"] == 10
     assert r.json()["best_score"] == 85
@@ -59,8 +59,8 @@ async def test_attempts_count_her_gonderimde_artar(client, child_auth, db):
     h = {"Authorization": f"Bearer {token}"}
     for _ in range(3):
         await client.post(f"/practice/steps/{step_id}/submit", headers=h,
-                          json={"mode": "suresiz", "correct": 10, "total": 20})
-    r = await client.get(f"/practice/steps/{step_id}/detail", headers=h)
+                          json={"mode": "test", "correct": 10, "total": 20})
+    r = await client.get(f"/practice/steps/{step_id}/detail", headers=h, params={"mode": "test"})
     assert r.status_code == 200
     assert r.json()["attempts_count"] == 3
 
@@ -76,12 +76,23 @@ async def test_gecersiz_mod_400(client, child_auth, db):
 
 
 @pytest.mark.asyncio
+async def test_suresiz_submit_reddedilir(client, child_auth, db):
+    """Madde 2026-09-11: batch /submit artık "suresiz" (Ödevini Yap) kabul etmez."""
+    token, _ = child_auth
+    step_id = await _make_step(db)
+    r = await client.post(f"/practice/steps/{step_id}/submit",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"mode": "suresiz", "correct": 5, "total": 20})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_correct_total_dan_buyukse_400(client, child_auth, db):
     token, _ = child_auth
     step_id = await _make_step(db)
     r = await client.post(f"/practice/steps/{step_id}/submit",
                           headers={"Authorization": f"Bearer {token}"},
-                          json={"mode": "suresiz", "correct": 30, "total": 20})
+                          json={"mode": "test", "correct": 30, "total": 20})
     assert r.status_code == 400
 
 
@@ -90,7 +101,7 @@ async def test_olmayan_step_404(client, child_auth):
     token, _ = child_auth
     r = await client.post("/practice/steps/999999/submit",
                           headers={"Authorization": f"Bearer {token}"},
-                          json={"mode": "suresiz", "correct": 5, "total": 20})
+                          json={"mode": "test", "correct": 5, "total": 20})
     assert r.status_code == 404
 
 
@@ -98,7 +109,7 @@ async def test_olmayan_step_404(client, child_auth):
 async def test_tokensiz_401(client, db):
     step_id = await _make_step(db)
     r = await client.post(f"/practice/steps/{step_id}/submit",
-                          json={"mode": "suresiz", "correct": 5, "total": 20})
+                          json={"mode": "test", "correct": 5, "total": 20})
     assert r.status_code == 403 or r.status_code == 401
 
 
@@ -135,10 +146,10 @@ async def test_per_question_en_iyi_denemede_saklanir(client, child_auth, db):
     step_id = await _make_step_with_pool(db, count=3)
     h = {"Authorization": f"Bearer {token}"}
     await client.post(f"/practice/steps/{step_id}/submit", headers=h, json={
-        "mode": "suresiz", "correct": 2, "total": 3,
+        "mode": "test", "correct": 2, "total": 3,
         "per_question": [True, False, True],
     })
-    r = await client.get(f"/practice/steps/{step_id}/detail", headers=h, params={"mode": "suresiz"})
+    r = await client.get(f"/practice/steps/{step_id}/detail", headers=h, params={"mode": "test"})
     assert r.status_code == 200
     assert r.json()["per_question_correct"] == [True, False, True]
 
@@ -150,14 +161,14 @@ async def test_per_question_daha_kotu_denemede_GUNCELLENMEZ(client, child_auth, 
     step_id = await _make_step_with_pool(db, count=3)
     h = {"Authorization": f"Bearer {token}"}
     await client.post(f"/practice/steps/{step_id}/submit", headers=h, json={
-        "mode": "suresiz", "correct": 3, "total": 3,
+        "mode": "test", "correct": 3, "total": 3,
         "per_question": [True, True, True],
     })
     await client.post(f"/practice/steps/{step_id}/submit", headers=h, json={
-        "mode": "suresiz", "correct": 1, "total": 3,
+        "mode": "test", "correct": 1, "total": 3,
         "per_question": [True, False, False],
     })
-    r = await client.get(f"/practice/steps/{step_id}/detail", headers=h, params={"mode": "suresiz"})
+    r = await client.get(f"/practice/steps/{step_id}/detail", headers=h, params={"mode": "test"})
     assert r.json()["per_question_correct"] == [True, True, True]
 
 
@@ -167,13 +178,14 @@ async def test_per_question_uzunlugu_total_ile_uyusmuyorsa_400(client, child_aut
     step_id = await _make_step_with_pool(db, count=3)
     r = await client.post(f"/practice/steps/{step_id}/submit",
                           headers={"Authorization": f"Bearer {token}"},
-                          json={"mode": "suresiz", "correct": 2, "total": 3, "per_question": [True, False]})
+                          json={"mode": "test", "correct": 2, "total": 3, "per_question": [True, False]})
     assert r.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_pool_size_havuz_uzunlugunu_yansitir(client, child_auth, db):
-    """Hiç deneme yapılmasa BİLE havuzdaki soru sayısı döner (gri kare sayısı için)."""
+    """Hiç deneme yapılmasa BİLE havuzdaki soru sayısı döner (gri kare sayısı için).
+    Madde 2026-09-11: "suresiz" pool_size artık _odev_set_size'dan gelir."""
     token, _ = child_auth
     step_id = await _make_step_with_pool(db, count=3)
     r = await client.get(f"/practice/steps/{step_id}/detail",
@@ -185,7 +197,8 @@ async def test_pool_size_havuz_uzunlugunu_yansitir(client, child_auth, db):
 
 @pytest.mark.asyncio
 async def test_pool_size_admin_soru_sayisini_belirlediyse_onu_kullanir(client, child_auth, db):
-    """question_counts admin'in belirlediği sayıyı verirse pool_size ondan (havuz yeterliyse) hesaplanır."""
+    """question_counts admin'in belirlediği sayıyı verirse "suresiz" set boyutu ondan
+    (havuz yeterliyse) hesaplanır — madde 2026-09-11 (_odev_set_size)."""
     m = Module(order_index=1, name="M", description="d", icon="x")
     db.add(m)
     await db.flush()

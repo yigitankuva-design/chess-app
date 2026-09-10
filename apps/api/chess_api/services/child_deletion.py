@@ -11,6 +11,7 @@ from chess_api.models import (
     ParentTimeLimit, ChildActivityLog, ParentSurveyResponse,
     Game, GameMove, Device,
     TournamentParticipant, TournamentPairing,
+    ChildOdevProgress,
 )
 
 
@@ -43,6 +44,7 @@ async def delete_child_cascade(db: AsyncSession, child: ChildProfile) -> None:
 
     await db.execute(delete(ChildLessonStepResult).where(ChildLessonStepResult.child_id == child_id))
     await db.execute(delete(ChildLessonProgress).where(ChildLessonProgress.child_id == child_id))
+    await db.execute(delete(ChildOdevProgress).where(ChildOdevProgress.child_id == child_id))
     await db.execute(delete(ChildPuzzleAttempt).where(ChildPuzzleAttempt.child_id == child_id))
     await db.execute(delete(SRSCard).where(SRSCard.child_id == child_id))
     await db.execute(delete(ChildBadge).where(ChildBadge.child_id == child_id))
