@@ -145,7 +145,7 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
     expect(notationCard?.getAttribute('style') ?? '').not.toContain('max-width');
   });
 
-  it('madde 2026-09-09 (devam): İleri/Geri artık büyük, dolgun mavi zemin + kalın siyah çerçeve — eski ince/soluk tasarım DEĞİL', () => {
+  it('madde 2026-09-11 (Görsel Turu A/1): İleri/Geri dolgun mavi zemin + kalın siyah çerçeve, telefona sığacak boyutta (56×40)', () => {
     const pool = [
       group('g1', '001', [
         { id: 's1', fen: FEN, sentence: 'x', turn: 'w' },
@@ -155,9 +155,9 @@ describe('AltKonuWalkthrough — adım gezinme (madde 2026-08-26, madde 2026-09-
     render(<AltKonuWalkthrough pool={pool} />);
 
     const prevBtn = screen.getByLabelText('Önceki adım');
-    expect(prevBtn).toHaveStyle({ width: '80px', height: '56px', background: '#3b82f6', border: '3px solid #0a0a0a' });
+    expect(prevBtn).toHaveStyle({ width: '56px', height: '40px', background: '#3b82f6', border: '3px solid #0a0a0a' });
     const nextBtn = screen.getByLabelText('Sonraki adım');
-    expect(nextBtn).toHaveStyle({ width: '80px', height: '56px', background: '#3b82f6', border: '3px solid #0a0a0a' });
+    expect(nextBtn).toHaveStyle({ width: '56px', height: '40px', background: '#3b82f6', border: '3px solid #0a0a0a' });
 
     const counter = screen.getByText('1 / 1 — Konum Havuzu 001');
     expect(counter).toHaveStyle({ fontWeight: '600' });
@@ -276,16 +276,16 @@ describe('AltKonuWalkthrough — gruplar arası geçiş oku (madde 2026-09-09, d
     ];
     render(<AltKonuWalkthrough pool={pool} />);
     const prevGroup = screen.getByLabelText('Önceki grup');
-    expect(prevGroup).toHaveStyle({ width: '80px', height: '56px', background: '#f97316', border: '3px solid #0a0a0a' });
+    expect(prevGroup).toHaveStyle({ width: '56px', height: '40px', background: '#f97316', border: '3px solid #0a0a0a' });
     const nextGroup = screen.getByLabelText('Sonraki grup');
-    expect(nextGroup).toHaveStyle({ width: '80px', height: '56px', background: '#f97316' });
+    expect(nextGroup).toHaveStyle({ width: '56px', height: '40px', background: '#f97316' });
   });
 
-  it('madde 2026-09-09 (devam 3): "Ödev Gönder" butonu %40 büyütüldü (36px → 50px), madde 2026-09-10: zemin YEŞİL (görsel)', () => {
+  it('madde 2026-09-11 (Görsel Turu A/1): "Ödev Gönder" oklarla aynı yükseklikte (44px), zemin YEŞİL', () => {
     mockRole = 'teacher';
     const pool = [group('g1', '001', [{ id: 's1', fen: FEN, sentence: 'x', turn: 'w' }])];
     render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
-    expect(screen.getByLabelText('Ödev Gönder')).toHaveStyle({ width: '50px', height: '50px', background: '#22c55e' });
+    expect(screen.getByLabelText('Ödev Gönder')).toHaveStyle({ width: '44px', height: '44px', background: '#22c55e' });
   });
 });
 

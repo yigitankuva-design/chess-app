@@ -65,14 +65,16 @@ export default function AltKonuPage() {
 
   return (
     <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-4">
-      {/* Madde 2026-09-09 (görsel referans): başlık + Konum Havuzu sayacı
-          ARTIK AYNI satırda, altı çizgi ile ayrılmış (2. karttaki ayırıcı ile
-          AYNI desen, bkz. ProfileView.tsx). Sayaç, sadece bir Konum Havuzu
+      {/* Madde 2026-09-11 (Görsel Turu A/1): başlık ORTALANDI, Konum Havuzu
+          sayacı başlığın ALTINA (ortalı, küçük) taşındı, ayırıcı çizgi
+          KALDIRILDI — Zafer'in mobil görseli. Eski düzende (başlık solda,
+          sayaç sağda, altta çizgi) sayaç yan yer kapladığı için başlık
+          telefonda iki satıra kırılıyordu. Sayaç, sadece bir Konum Havuzu
           varken gösterilir. */}
-      <div className="flex items-center justify-between gap-2 pb-2 border-b" style={{ borderColor: 'var(--t-border)' }}>
+      <div className="text-center">
         <h1 className="text-xl font-extrabold t-premium">{section.title}</h1>
         {poolLabel && (
-          <p className="text-xs t-muted whitespace-nowrap" style={{ fontWeight: 600 }}>{poolLabel}</p>
+          <p className="text-xs t-muted mt-0.5" style={{ fontWeight: 600 }}>{poolLabel}</p>
         )}
       </div>
       {section.body && <p className="t-muted whitespace-pre-wrap text-sm">{section.body}</p>}

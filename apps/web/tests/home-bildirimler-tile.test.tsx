@@ -51,10 +51,27 @@ describe('Ana sayfa — "Bildirimler" kartı (madde 2026-09-11, Ödev Sistemi Fa
     expect(screen.getByLabelText('3 yeni bildirim')).toBeInTheDocument();
   });
 
-  it('okunmamış bildirim yoksa rozet HİÇ gösterilmez', async () => {
+  it('madde 2026-09-11 (Görsel Turu A/10): rozet zilin ÜSTÜNDE, zil çalar, kart dikkat modunda', async () => {
+    fetchNotifications.mockResolvedValue({ unread_count: 3, items: [] });
+    render(<HomePage />);
+    const badge = await waitFor(() => screen.getByLabelText('3 yeni bildirim'));
+    const link = screen.getByText('Bildirimler').closest('a')!;
+    // Kart: dikkat sınıfı (nefes alan çerçeve).
+    expect(link).toHaveClass('qa-attention');
+    // Rozet ARTIK kart köşesinde (LED'in yanında) DEĞİL — zil ikonunun kapsayıcısında.
+    expect(badge.parentElement).not.toBe(link);
+    expect(badge.parentElement?.textContent).toContain('🔔');
+    // Zil sallanma sınıfı.
+    expect(link.querySelector('.qa-bell-ring')?.textContent).toBe('🔔');
+  });
+
+  it('okunmamış bildirim yoksa rozet ve dikkat efektleri HİÇ gösterilmez', async () => {
     fetchNotifications.mockResolvedValue({ unread_count: 0, items: [] });
     render(<HomePage />);
     await waitFor(() => screen.getByText('Bildirimler'));
     expect(screen.queryByLabelText(/yeni bildirim/)).not.toBeInTheDocument();
+    const link = screen.getByText('Bildirimler').closest('a')!;
+    expect(link).not.toHaveClass('qa-attention');
+    expect(link.querySelector('.qa-bell-ring')).toBeNull();
   });
 });

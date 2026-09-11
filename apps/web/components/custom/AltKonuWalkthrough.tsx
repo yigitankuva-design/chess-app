@@ -41,12 +41,11 @@ interface Props {
 
 /** Madde 2026-09-07 (GRUP D): özel tasarım "gönder" ikonu (kağıt uçak) —
  *  internetten alınmamış, ChatIcon/PhoneIcon ile AYNI çizgi-ikon ailesi.
- *  Madde 2026-09-09 (devam 3): Zafer'in isteğiyle buton %40 büyütülünce
- *  (36px → 50px) ikon da AYNI oranda büyütüldü — yoksa büyük butonun
- *  içinde eski küçük ikon boşlukta kalırdı. */
+ *  Madde 2026-09-11 (Görsel Turu A/1): buton telefona sığsın diye
+ *  küçülünce ikon da orantılı küçüldü (25px → 22px). */
 function SendHomeworkIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 12l16-8-6 16-3-6-7-2z" />
       <path d="M20 4l-9 9" />
     </svg>
@@ -58,7 +57,7 @@ function SendHomeworkIcon() {
  *  net görünmüyordu (aynı gerekçe: madde 2026-09-07'deki adım dairesi
  *  renk değişikliği). Özel çizim (internetten alınmamış). Madde 2026-09-09
  *  (devam 3): gruplar arası geçiş oku AYNI ikonu KÜÇÜK boyutta kullanır. */
-function ChevronIcon({ direction, size = 26 }: { direction: 'left' | 'right'; size?: number }) {
+function ChevronIcon({ direction, size = 22 }: { direction: 'left' | 'right'; size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="#0a0a0a" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
       <path d={direction === 'left' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'} />
@@ -66,11 +65,15 @@ function ChevronIcon({ direction, size = 26 }: { direction: 'left' | 'right'; si
   );
 }
 
-/** Madde 2026-09-09 (devam): İleri/Geri butonlarının boyutu — görsel
- *  referanstaki oklarla AYNI oranda (tahtanın 420px genişliğine göre
- *  ölçeklendirilmiş). Eski 32×32px daireden ÇOK daha büyük ve belirgin. */
-const ARROW_BTN_WIDTH = 80;
-const ARROW_BTN_HEIGHT = 56;
+/** Madde 2026-09-11 (Görsel Turu A/1): tahtanın altındaki 5 buton (2 adım
+ *  oku + Ödev Gönder + 2 konum oku) eskiden 80×56 / 50×50 sabit pikseldi —
+ *  telefon genişliğine (≈330px içerik) SIĞMIYOR, en sağdaki turuncu ok
+ *  ekrandan taşıp kesiliyordu (Zafer'in görseli). Küçültüldü: 4×56 + 44 +
+ *  boşluklar ≈ 300px, tek satıra sığar; geniş ekranda justify-between
+ *  tahtanın genişliğine eşit aralıkla yayılır. Ödev Gönder oklarla AYNI
+ *  yükseklikte (44 ≈ 40+çerçeve) ortada durur. Renk/sıra DEĞİŞMEDİ. */
+const ARROW_BTN_WIDTH = 56;
+const ARROW_BTN_HEIGHT = 40;
 
 /** Madde 2026-09-10: Zafer'in isteğiyle "Konum Havuzu" (gruplar/sorular)
  *  arası geçiş okları artık satırın SAĞINDA (Ödev Gönder'in sağında),
@@ -78,9 +81,8 @@ const ARROW_BTN_HEIGHT = 56;
  *  (adım) ve sağ (konum) navigasyonu görsel olarak ayrışıyor. */
 const GROUP_ARROW_BG = '#f97316';
 
-/** Madde 2026-09-09 (devam 3): "Ödev Gönder" butonu Zafer'in isteğiyle
- *  %40 büyütüldü (36px → 50px, bkz. SendHomeworkIcon'daki AYNI oran). */
-const SEND_HOMEWORK_BTN_SIZE = 50;
+/** Bkz. ARROW_BTN_* açıklaması — Ödev Gönder de aynı sebeple küçüldü (50 → 44). */
+const SEND_HOMEWORK_BTN_SIZE = 44;
 
 /** Madde 2026-08-25: tahta büyütüldü (240px → 420px). Madde 2026-09-10
  *  (2. görsel): Zafer'in isteğiyle tahta bir kez daha büyütülüp sayfanın
@@ -213,7 +215,7 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
             köşesinde, "Ödev Gönder" ORTADA, "Konum Havuzu" okları SAĞDA —
             AYNI satır (justify-between). */}
         <div className="flex items-center justify-between gap-2">
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {/* Madde 2026-09-09 (devam): Zafer'in bildirdiği "okların rengi
                   belirgin değil, boyutu çok küçük" sorunu — ince ‹ › karakteri
                   + soluk çerçeve YERİNE görsel referanstaki gibi büyük, dolgun
@@ -285,7 +287,7 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
                 Madde 2026-09-10 (devam): Zafer "ödev gönder kartının sağına da
                 ok koy" dedi — artık TEK grup olsa bile HER ZAMAN gösterilir
                 (5 kartlık düzen sabit), gidilecek grup yoksa ok DEVRE DIŞI. */}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button type="button" aria-label="Önceki grup" onClick={() => goToGroup(-1)}
                 disabled={gi === 0}
                 className="flex items-center justify-center rounded-xl transition-colors disabled:opacity-30"

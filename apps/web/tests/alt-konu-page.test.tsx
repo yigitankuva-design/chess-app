@@ -72,6 +72,20 @@ describe('Alt Konu ayrı sayfası — görsel referans tasarımı (madde 2026-08
     expect(screen.getByText('Tahta 8x8 karelerden oluşur.')).toBeInTheDocument();
   });
 
+  it('madde 2026-09-11 (Görsel Turu A/1): başlık ORTALI, sayaç başlığın ALTINDA, ayırıcı çizgi YOK', async () => {
+    mockDersHierarchy();
+    render(<AltKonuPage />);
+    const heading = await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    const counter = await waitFor(() => screen.getByText('1 / 1 — Konum Havuzu 001'));
+    const wrap = heading.parentElement!;
+    expect(wrap).toHaveClass('text-center');
+    expect(wrap.className).not.toContain('border-b');
+    expect(wrap.className).not.toContain('justify-between');
+    // Sayaç aynı kapsayıcıda ve başlıktan SONRA (altında).
+    expect(counter.parentElement).toBe(wrap);
+    expect(heading.compareDocumentPosition(counter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('madde 2: başlığın solunda ikon/avatar YOKTUR', async () => {
     mockDersHierarchy();
     render(<AltKonuPage />);

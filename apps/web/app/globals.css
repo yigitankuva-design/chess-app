@@ -216,6 +216,45 @@ body {
   opacity: 1;
 }
 
+/* Madde 2026-09-11 (Görsel Turu A/10): Hızlı Erişim'deki "Bildirimler"
+   kartı, "Git"e basılmamış bildirim varken sporcunun dikkatini çeksin —
+   Zafer'in isteği, S5: efektler SADECE Git'e basılınca söner. Üç katman:
+   1) sayılı rozet zilin üstünde (LED noktasıyla çakışmasın diye kart
+      köşesinden buraya taşındı), 2) zil birkaç saniyede bir "çalar",
+   3) kartın çerçevesi vurgu renginde yumuşakça nefes alır. Hareket
+   azaltma tercihi açıksa 2 ve 3 kapalı, rozet kalır. */
+.qa-attention {
+  /* outline kullanılır, box-shadow DEĞİL — kartın kabartma gölgesi (raised)
+     inline box-shadow'dur, animasyon onu ezmesin. */
+  outline: 0 solid var(--t-accent);
+  outline-offset: 2px;
+  animation: qa-attention-pulse 2.4s ease-in-out infinite;
+}
+.qa-bell-ring {
+  display: inline-block;
+  transform-origin: 50% 12%;
+  animation: qa-bell-ring 3.2s ease-in-out infinite;
+}
+@keyframes qa-attention-pulse {
+  0%, 100% { outline-width: 0; outline-color: transparent; }
+  50%      { outline-width: 4px; outline-color: var(--t-accent); }
+}
+@keyframes qa-bell-ring {
+  0%, 60%, 100% { transform: rotate(0); }
+  64% { transform: rotate(14deg); }
+  68% { transform: rotate(-12deg); }
+  72% { transform: rotate(10deg); }
+  76% { transform: rotate(-8deg); }
+  80% { transform: rotate(5deg); }
+  84% { transform: rotate(-3deg); }
+  88% { transform: rotate(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qa-attention, .qa-bell-ring { animation: none; }
+  /* Hareketsiz durumda kart yine ayrışsın: sabit çerçeve. */
+  .qa-attention { outline-width: 3px; }
+}
+
 /* Text helpers */
 .t-text  { color: var(--t-text-1); }
 .t-muted { color: var(--t-text-2); }

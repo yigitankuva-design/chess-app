@@ -376,11 +376,14 @@ export default function ChildHomePage() {
     icon: React.ReactNode; label: string; color: string; active?: boolean; ledOn?: boolean;
     onClick?: () => void; href?: string;
     /** Madde 2026-09-11 (Ödev Sistemi Faz 4): "Bildirimler" kartının kırmızı
-     *  rozeti — görünür VE henüz ziyaret edilmemiş bildirim sayısı. 0/undefined
-     *  ise hiç gösterilmez. */
+     *  rozeti — görünür VE henüz "Git"e basılmamış bildirim sayısı. 0/undefined
+     *  ise hiç gösterilmez. Madde 2026-09-11 (Görsel Turu A/10): rozet > 0
+     *  iken kart "dikkat" moduna girer — rozet zilin üstünde, zil çalar,
+     *  çerçeve nefes alır (bkz. globals.css .qa-attention / .qa-bell-ring). */
     badge?: number;
   }) {
     const lit = ledOn ?? active ?? false;
+    const attention = !!badge;
     const style: React.CSSProperties = {
       ...(active ? pressed(16) : raised(16)),
       padding: '1.5rem 0.75rem',
@@ -410,20 +413,25 @@ export default function ChildHomePage() {
     const inner = (
       <>
         <span aria-hidden="true" className="qa-led" data-active={lit ? 'true' : 'false'} />
-        {!!badge && (
-          <span aria-label={`${badge} yeni bildirim`}
-            className="absolute top-2 right-2 flex items-center justify-center rounded-full text-xs font-extrabold text-white"
-            style={{ minWidth: 22, height: 22, padding: '0 5px', background: '#ef4444' }}>
-            {badge}
-          </span>
-        )}
-        <span className="leading-none" style={{ ...contentStyle, fontSize: '2.8125rem' }}>{icon}</span>
+        {/* Rozet, kart köşesinden (LED ile çakışıyordu) zilin sağ üstüne
+            taşındı — ikon kapsayıcısı relative, rozet onun içinde absolute. */}
+        <span className="relative inline-block leading-none" style={{ ...contentStyle, fontSize: '2.8125rem' }}>
+          <span className={attention ? 'qa-bell-ring' : undefined}>{icon}</span>
+          {attention && (
+            <span aria-label={`${badge} yeni bildirim`}
+              className="absolute flex items-center justify-center rounded-full text-xs font-extrabold text-white"
+              style={{ top: -6, right: -14, minWidth: 22, height: 22, padding: '0 5px', background: '#ef4444', filter: 'none', opacity: 1 }}>
+              {badge}
+            </span>
+          )}
+        </span>
         <span className="text-lg font-bold leading-tight text-center" style={contentStyle}>{label}</span>
       </>
     );
+    const className = attention ? 'qa-attention' : undefined;
     return href
-      ? <Link href={href} style={style}>{inner}</Link>
-      : <button onClick={onClick} style={style}>{inner}</button>;
+      ? <Link href={href} style={style} className={className}>{inner}</Link>
+      : <button onClick={onClick} style={style} className={className}>{inner}</button>;
   }
 
   return (
