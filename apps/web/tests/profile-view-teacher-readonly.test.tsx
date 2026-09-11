@@ -53,3 +53,32 @@ describe('ProfileView — antrenör salt-okunur görünümü (madde 2026-09-07, 
     expect(screen.queryByText('Ana Sayfaya Dön')).not.toBeInTheDocument();
   });
 });
+
+describe('Madde 2026-09-11 (Aşama C): antrenör görünümünde istatistikler öğrencinin ucundan gelir', () => {
+  it('/teacher/students/7/match-stats çağrılır ve dönen veri kartlarda görünür', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes('/teacher/students/7/profile-summary')) {
+        return Promise.resolve({ ok: true, json: async () => TEACHER_ME });
+      }
+      if (url.includes('/teacher/students/7/match-stats')) {
+        return Promise.resolve({ ok: true, json: async () => ({
+          'Yıldırım': {
+            rating: { value: 512, games_played: 4, provisional_games: 20, weekly_delta: 12, history: [500, 512] },
+            stats: { total: 4, wins: 3, draws: 0, losses: 1, win_rate: 75, longest_win_streak: 3, best_win_rating: 430 },
+            tournaments: { total: 1, games: 2, wins: 1, draws: 0, losses: 1, win_rate: 50, draw_rate: 0, loss_rate: 50, first: 0, second: 1, third: 0 },
+          },
+        }) });
+      }
+      return Promise.resolve({ ok: false, json: async () => null });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ProfileView childId={7} />);
+    await waitFor(() => screen.getByText('512'));
+    expect(screen.getByText('▲ 12 bu hafta')).toBeInTheDocument();
+    expect(screen.getByText('%75')).toBeInTheDocument();
+    expect(screen.getByText('3 galibiyet')).toBeInTheDocument();
+    expect(screen.getByText('2.lik').previousSibling).toHaveTextContent('1');
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/teacher/students/7/match-stats'))).toBe(true);
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/gamification/me/match-stats'))).toBe(false);
+  });
+});

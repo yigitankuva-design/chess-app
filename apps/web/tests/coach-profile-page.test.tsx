@@ -54,6 +54,8 @@ vi.mock('@/lib/gamification/meApi', () => ({
   })),
   uploadTeacherPhoto: (...args: unknown[]) => uploadTeacherPhoto(...args),
   updateTeacherProfile: (...args: unknown[]) => updateTeacherProfile(...args),
+  // Madde 2026-09-11 (Aşama C): gerçek istatistik ucu — burada veri yok → sıfırlar.
+  fetchMatchStats: vi.fn(() => Promise.resolve(null)),
 }));
 vi.mock('@/lib/activity/activityApi', () => ({ fetchDaySummary: vi.fn(() => Promise.resolve(null)) }));
 vi.mock('@/lib/image/resizeImage', () => ({

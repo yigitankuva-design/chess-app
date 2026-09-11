@@ -5,16 +5,16 @@ import { getAthleteName } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
 import { getSavedAvatar, avatarEmoji } from '@/lib/avatars';
 import { PowerButton } from '@/components/PowerButton';
-import { TIME_GROUPS } from '@/lib/play/levels';
 import { ChessThemeSelector } from '@/components/ChessThemeSelector';
 import { BoardColorSelector } from '@/components/BoardColorSelector';
 import { PieceSetSelector } from '@/components/PieceSetSelector';
 import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
 import { fetchDaySummary } from '@/lib/activity/activityApi';
 import type { DaySummary } from '@/lib/activity/activityApi';
-import { fetchMyProgress, uploadMyPhoto, updateMyProfile } from '@/lib/gamification/meApi';
+import { fetchMyProgress, fetchMatchStats, uploadMyPhoto, updateMyProfile } from '@/lib/gamification/meApi';
 import { ContactEditor, LocationEditor, NicknameEditor } from '@/components/profile/ProfileEditors';
-import type { MyProgress } from '@/lib/gamification/meApi';
+import { RatingCard, MatchStatsCard, TournamentCard } from '@/components/profile/MatchStatsCards';
+import type { MyProgress, MatchStats } from '@/lib/gamification/meApi';
 import { resizeImageToDataUrl } from '@/lib/image/resizeImage';
 
 /** "2018-08-07" → "7 Ağu 2018" (Zafer'in görselindeki biçim). */
@@ -92,44 +92,6 @@ function formatMemberSince(iso: string): string {
  * için bkz. components/profile/LessonProgressCard.tsx (aynı tur).
  */
 
-type TempoKey = 'Yıldırım' | 'Hızlı' | 'Klasik';
-const TEMPO_ORDER: TempoKey[] = ['Yıldırım', 'Hızlı', 'Klasik'];
-function tempoEmoji(t: TempoKey): string {
-  return TIME_GROUPS.find((g) => g.cat === t)?.emoji ?? '';
-}
-
-interface RatingSample { hasData: boolean; value: string; delta: string; caption: string; points: string }
-const RATING_BY_TEMPO: Record<TempoKey, RatingSample> = {
-  'Yıldırım': {
-    hasData: true, value: '1042', delta: '▲ 18 bu hafta',
-    caption: 'Yıldırım tempo · 20 maçlık sağlama süresi tamamlandı',
-    points: '0,20 11,19 22,21 33,17 44,17 55,14 66,15 77,10 88,11 100,6',
-  },
-  'Hızlı': {
-    hasData: true, value: '968', delta: '▲ 6 bu hafta',
-    caption: 'Hızlı tempo · 20 maçlık sağlama süresi tamamlandı',
-    points: '0,15 11,17 22,14 33,16 44,13 55,15 66,11 77,13 88,10 100,9',
-  },
-  'Klasik': { hasData: false, value: '', delta: '', caption: '', points: '' },
-};
-
-interface StatsSample { hasData: boolean; total: number; winRate: string; streak: string; bestWin: string }
-const STATS_BY_TEMPO: Record<TempoKey, StatsSample> = {
-  'Yıldırım': { hasData: true, total: 86, winRate: '%61', streak: '6 galibiyet', bestWin: '1180' },
-  'Hızlı': { hasData: true, total: 34, winRate: '%53', streak: '4 galibiyet', bestWin: '1052' },
-  'Klasik': { hasData: false, total: 0, winRate: '', streak: '', bestWin: '' },
-};
-
-interface TourSample {
-  hasData: boolean; total: number; winRate: string; drawRate: string; lossRate: string;
-  first: number; second: number; third: number;
-}
-const TOURNAMENT_BY_TEMPO: Record<TempoKey, TourSample> = {
-  'Yıldırım': { hasData: true, total: 22, winRate: '%59', drawRate: '%14', lossRate: '%27', first: 2, second: 1, third: 3 },
-  'Hızlı': { hasData: true, total: 9, winRate: '%44', drawRate: '%22', lossRate: '%34', first: 0, second: 1, third: 1 },
-  'Klasik': { hasData: false, total: 0, winRate: '', drawRate: '', lossRate: '', first: 0, second: 0, third: 0 },
-};
-
 /** Madde 2026-09-07: Zafer'in görseline göre etiketler "...Performansı"
  *  olarak yeniden adlandırıldı ("Kazanç Konumunu Sonuçlandırma" aynı kaldı). */
 const SKILL_AREAS: { label: string; pct: number }[] = [
@@ -158,58 +120,6 @@ function formatDuration(totalSeconds: number): string {
   const minutes = totalMinutes % 60;
   if (hours <= 0) return `${minutes} dk`;
   return `${hours} saat ${minutes} dk`;
-}
-
-// Sakin Panel'in kendi madalya renkleri (mevcut turnuva podyum renklerinden
-// daha yumuşak/mat) — sadece bu sayfadaki PodiumTile'larda kullanılıyor,
-// aktif temadan bağımsız (madalya rengi zaten geleneksel altın/gümüş/bronz).
-const SAKIN_PANEL_PODIUM = { gold: '#E0A526', silver: '#9AA3AC', bronze: '#C0742F' };
-
-function TempoSelector({ value, onChange }: { value: TempoKey; onChange: (t: TempoKey) => void }) {
-  return (
-    <div className="flex gap-1.5">
-      {TEMPO_ORDER.map((t) => (
-        <button
-          key={t} type="button" onClick={() => onChange(t)}
-          aria-label={t} aria-pressed={value === t}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors"
-          style={{ background: value === t ? 'var(--t-accent)' : 'var(--t-surface-2)' }}
-        >
-          {tempoEmoji(t)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function StatTile({ label, value, tone }: { label: string; value: string | number; tone?: 'ok' | 'err' }) {
-  const color = tone === 'ok' ? 'var(--t-ok-text)' : tone === 'err' ? 'var(--t-err-text)' : 'var(--t-text-1)';
-  return (
-    // Madde 2026-09-06 (Görsel 3): kart içeriği ortalanır.
-    <div className="rounded-xl p-3 text-center" style={{ background: 'var(--t-surface-2)' }}>
-      <div className="text-[11px] font-bold uppercase tracking-wide t-muted">{label}</div>
-      <div className="font-mono tabular-nums text-xl font-bold mt-0.5" style={{ color }}>{value}</div>
-    </div>
-  );
-}
-
-function PodiumTile({ place, count, color }: { place: 1 | 2 | 3; count: number; color: string }) {
-  const label = place === 1 ? '1.lik' : place === 2 ? '2.lik' : '3.lük';
-  return (
-    <div
-      className="rounded-xl p-2.5 text-center"
-      style={{
-        background: `color-mix(in srgb, ${color} 14%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${color} 35%, transparent)`,
-      }}
-    >
-      <svg viewBox="0 0 24 24" width="16" height="16" fill={color} className="mx-auto mb-1">
-        <path d="M12 2l2.9 6.5L22 9l-5 4.9L18.2 22 12 18.3 5.8 22 7 13.9 2 9l7.1-.5L12 2z" />
-      </svg>
-      <div className="font-mono tabular-nums text-lg font-bold" style={{ color }}>{count}</div>
-      <div className="text-[10px] t-muted">{label}</div>
-    </div>
-  );
 }
 
 function ChatIcon() {
@@ -327,9 +237,9 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
   const [avatarId, setAvatarId] = useState('lion');
   const [athleteName, setAthleteName] = useState<string | null>(null);
 
-  const [ratingTempo, setRatingTempo] = useState<TempoKey>('Yıldırım');
-  const [statsTempo, setStatsTempo] = useState<TempoKey>('Yıldırım');
-  const [tourTempo, setTourTempo] = useState<TempoKey>('Yıldırım');
+  // Madde 2026-09-11 (Aşama C): Performans Puanı / Genel Maç İstatistikleri /
+  // Turnuva Geçmişi gerçek veri — null iken kartlar sıfır gösterir.
+  const [matchStats, setMatchStats] = useState<MatchStats | null>(null);
   const [activePanel, setActivePanel] = useState<SettingPanelId | null>(null);
   function togglePanel(id: SettingPanelId) {
     setActivePanel((cur) => (cur === id ? null : id));
@@ -386,6 +296,7 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
       if (d?.display_name) setAthleteName(d.display_name);
       setLoading(false);
     });
+    fetchMatchStats(childId).then(setMatchStats);
   }, [childId]);
 
   useEffect(() => {
@@ -416,9 +327,6 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
     );
   }
 
-  const rating = RATING_BY_TEMPO[ratingTempo];
-  const stats = STATS_BY_TEMPO[statsTempo];
-  const tour = TOURNAMENT_BY_TEMPO[tourTempo];
   const resolvedAvatarId = readOnly ? (me.avatar ?? 'default') : avatarId;
 
   return (
@@ -563,46 +471,10 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
         )}
       </div>
 
-      {/* 4) Performans Puanı — madde 2026-09-06 (Görsel 2): başlığın altına ayırıcı çizgi. */}
-      <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
-          <span className="text-xs font-bold uppercase tracking-wide t-muted">Performans Puanı</span>
-          <TempoSelector value={ratingTempo} onChange={setRatingTempo} />
-        </div>
-        {rating.hasData ? (
-          <>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono tabular-nums text-3xl font-bold">{rating.value}</span>
-              <span className="text-sm font-bold" style={{ color: 'var(--t-ok-text)' }}>{rating.delta}</span>
-            </div>
-            <p className="text-xs t-muted mb-2">{rating.caption}</p>
-            <svg viewBox="0 0 100 24" className="w-full h-6" preserveAspectRatio="none">
-              <polyline points={rating.points} fill="none" stroke="var(--t-accent)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </>
-        ) : (
-          <p className="text-sm t-muted text-center py-5">Bu tempoda henüz maç yok</p>
-        )}
-      </div>
-
-      {/* 5) Genel Maç İstatistikleri — 4. maddeyle AYNI kart tasarımı.
-          Madde 2026-09-06 (Görsel 3): başlığın altına ayırıcı çizgi. */}
-      <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
-          <span className="text-xs font-bold uppercase tracking-wide t-muted">Genel Maç İstatistikleri</span>
-          <TempoSelector value={statsTempo} onChange={setStatsTempo} />
-        </div>
-        {stats.hasData ? (
-          <div className="grid grid-cols-2 gap-2.5">
-            <StatTile label="Toplam Maç" value={stats.total} />
-            <StatTile label="Galibiyet Oranı" value={stats.winRate} tone="ok" />
-            <StatTile label="En Uzun Seri" value={stats.streak} />
-            <StatTile label="En Güçlü Galibiyet" value={stats.bestWin} />
-          </div>
-        ) : (
-          <p className="text-sm t-muted text-center py-5">Bu tempoda henüz maç yok</p>
-        )}
-      </div>
+      {/* 4) Performans Puanı, 5) Genel Maç İstatistikleri — madde 2026-09-11
+          (Aşama C): gerçek veri, ortak kartlar (MatchStatsCards.tsx). */}
+      <RatingCard data={matchStats} />
+      <MatchStatsCard data={matchStats} />
 
       {/* 6) Aktivite/süreklilik göstergesi — madde 2026-09-06 (Görsel 4):
           başlığın altına ayırıcı çizgi; 7 gün kutusu artık TIKLANABİLİR
@@ -688,30 +560,8 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
         </div>
       </div>
 
-      {/* 9) Turnuva Geçmişi — 4. maddeyle AYNI kart tasarımı */}
-      <div className="t-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wide t-muted">Turnuva Geçmişi</span>
-          <TempoSelector value={tourTempo} onChange={setTourTempo} />
-        </div>
-        {tour.hasData ? (
-          <div className="flex flex-col gap-2.5">
-            <div className="grid grid-cols-2 gap-2.5">
-              <StatTile label="Toplam Turnuva" value={tour.total} />
-              <StatTile label="Galibiyet Oranı" value={tour.winRate} tone="ok" />
-              <StatTile label="Beraberlik Oranı" value={tour.drawRate} />
-              <StatTile label="Yenilgi Oranı" value={tour.lossRate} tone="err" />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <PodiumTile place={1} count={tour.first} color={SAKIN_PANEL_PODIUM.gold} />
-              <PodiumTile place={2} count={tour.second} color={SAKIN_PANEL_PODIUM.silver} />
-              <PodiumTile place={3} count={tour.third} color={SAKIN_PANEL_PODIUM.bronze} />
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm t-muted text-center py-5">Bu tempoda henüz turnuva yok</p>
-        )}
-      </div>
+      {/* 9) Turnuva Geçmişi — madde 2026-09-11 (Aşama C): gerçek veri. */}
+      <TournamentCard data={matchStats} />
 
       {/* 10) Hoca notu/geri bildirimi */}
       <div className="t-card p-4 flex gap-3">

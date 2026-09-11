@@ -15,6 +15,7 @@ from chess_api.routers.practice import (
 )
 from chess_api.services.play_profile import ensure_teacher_play_profile
 from chess_api.services.profile_edit import set_nickname, nickname_next_change_at, clean_optional
+from chess_api.services.profile_stats import compute_match_stats
 from pydantic import BaseModel, Field
 
 _ALPHABET = string.ascii_uppercase + string.digits
@@ -263,6 +264,18 @@ async def student_profile_summary(
     child = await _get_child_for_teacher(child_id, current, db)
     progress = await _compute_progress(child, db)
     return {**progress, "display_name": child.display_name, "avatar": child.avatar}
+
+
+@router.get("/students/{child_id}/match-stats")
+async def student_match_stats(
+    child_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """`/gamification/me/match-stats` ile AYNI veri — antrenörün salt-okunur
+    sporcu görünümü (Madde 2026-09-11, Aşama C)."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    return await compute_match_stats(db, child.id)
 
 
 @router.get("/students/{child_id}/day-summary")

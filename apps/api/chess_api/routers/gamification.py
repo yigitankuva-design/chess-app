@@ -5,6 +5,7 @@ from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import ChildProfile, Badge, ChildBadge, Rank, ChildRank
 from chess_api.services.profile_edit import nickname_next_change_at
+from chess_api.services.profile_stats import compute_match_stats
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
@@ -107,3 +108,16 @@ async def my_progress(
 ):
     """Get current child's rank, XP, and badge progress."""
     return await _compute_progress(child, db)
+
+
+@router.get("/me/match-stats")
+async def my_match_stats(
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-11 (Görsel Turu Aşama C / Madde 4, 5, 8): profil
+    sayfasının Performans Puanı / Genel Maç İstatistikleri / Turnuva
+    Geçmişi kartları — tempo başına, sadece puanlı insan + turnuva maçları
+    (bkz. services/profile_stats.py). Antrenör de kendi oyun profiliyle
+    (hibrit jeton, Aşama F) AYNI ucu kullanır."""
+    return await compute_match_stats(db, child.id)

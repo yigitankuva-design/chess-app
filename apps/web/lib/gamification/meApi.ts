@@ -185,3 +185,54 @@ export function updateTeacherProfile(patch: ProfileEditPatch): Promise<ProfileEd
   if ('athlete_phone' in patch) body.phone = athlete_phone;
   return patchProfile('/teacher/me/profile', body);
 }
+
+/** Madde 2026-09-11 (Görsel Turu Aşama C / Madde 4, 5, 8): profil
+ *  sayfasının Performans Puanı / Genel Maç İstatistikleri / Turnuva
+ *  Geçmişi kartları — tempo başına, sadece puanlı insan + turnuva maçları
+ *  (bot ve puansız arkadaş maçları sayılmaz). Sunucu: services/profile_stats.py. */
+export interface TempoRatingStats {
+  value: number;
+  games_played: number;
+  provisional_games: number;
+  weekly_delta: number;
+  /** Son 10 puanlı maçın sonrasındaki puanlar, eskiden yeniye. */
+  history: number[];
+}
+export interface TempoMatchStats {
+  total: number; wins: number; draws: number; losses: number;
+  win_rate: number | null;
+  longest_win_streak: number;
+  best_win_rating: number | null;
+}
+export interface TempoTournamentStats {
+  total: number; games: number; wins: number; draws: number; losses: number;
+  win_rate: number | null; draw_rate: number | null; loss_rate: number | null;
+  first: number; second: number; third: number;
+}
+export interface TempoStats {
+  rating: TempoRatingStats;
+  stats: TempoMatchStats;
+  tournaments: TempoTournamentStats;
+}
+export type MatchStats = Record<'Yıldırım' | 'Hızlı' | 'Klasik', TempoStats>;
+
+/**
+ * `/gamification/me/match-stats` — kendi (sporcu VEYA antrenör, hibrit jeton
+ * ile kendi oyun profili). `childId` verilirse antrenörün salt-okunur sporcu
+ * görünümü: `/teacher/students/{childId}/match-stats` (aynı şekil).
+ */
+export async function fetchMatchStats(childId?: number): Promise<MatchStats | null> {
+  try {
+    const token = getToken();
+    const path = childId != null
+      ? `/teacher/students/${childId}/match-stats`
+      : '/gamification/me/match-stats';
+    const r = await fetch(`${API_BASE}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}

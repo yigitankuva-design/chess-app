@@ -11,7 +11,7 @@ from chess_api.models import (
 )
 from chess_api.schemas.tournament import TournamentCreateRequest
 from chess_api.services.tournaments import (
-    compute_sonneborn_berger, sync_tournament_status, _ends_at,
+    compute_sonneborn_berger, podium_order, sync_tournament_status, _ends_at,
 )
 from chess_api.services.swiss import advance_swiss_tournament
 from chess_api.services.tempo import tempo_category
@@ -316,7 +316,10 @@ async def _standings(db: AsyncSession, tournament_id: int, tempo: str | None = N
             "rating": rating, "title": title,
             "games_played": games_played, "win_rate": win_rate,
         })
-    out.sort(key=lambda d: (-d["score"], -d["sb"], d["child_id"]))
+    # Madde 2026-09-11 (Aşama C): sıra podium_order'dan — profil "Turnuva
+    # Geçmişi" podyumu ile BİREBİR aynı sıralama.
+    rank = {cid: i for i, cid in enumerate(podium_order(all_participants, pairings))}
+    out.sort(key=lambda d: rank[d["child_id"]])
     return out
 
 

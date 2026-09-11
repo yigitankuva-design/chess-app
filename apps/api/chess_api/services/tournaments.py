@@ -241,3 +241,16 @@ def compute_sonneborn_berger(
             sb[winner_id] += score_by_child.get(loser_id, 0.0)
 
     return sb
+
+
+def podium_order(
+    participants: list[TournamentParticipant], pairings: list[TournamentPairing],
+) -> list[int]:
+    """Sıralama (puan → Sonneborn-Berger → child_id) — çekilenler (left_at
+    dolu) LİSTEDE YOK ama averaj hesabına girer. routers/tournaments.py::
+    _standings ve profil "Turnuva Geçmişi" podyumu (services/profile_stats.py)
+    AYNI sırayı bu fonksiyondan alır (Madde 2026-09-11, Aşama C)."""
+    sb = compute_sonneborn_berger(participants, pairings)
+    active = [p for p in participants if p.left_at is None]
+    active.sort(key=lambda p: (-p.score, -sb.get(p.child_id, 0.0), p.child_id))
+    return [p.child_id for p in active]
