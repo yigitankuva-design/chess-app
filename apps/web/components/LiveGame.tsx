@@ -463,6 +463,15 @@ export function LiveGame({ gameId, myColor, tournamentId, berserkAvailable }: Pr
           />
           {firstMoveCountdown !== null && (
             <div
+              // Zafer'in bildirdiği hata: bu kutu tahtanın TAM ORTASINDA
+              // duruyor — yani tam olarak e4/e5/d4/d5 gibi ilk hamlede en
+              // çok kullanılan karelerin üzerinde. pointer-events YOKTU,
+              // bu yüzden geri sayım görünürken sporcu o karelere hiç
+              // tıklayamıyordu/taş sürükleyemiyordu. Sayaç SADECE görsel
+              // olduğu için (gerçek karar sunucuda) buranın tıklamayı
+              // engellemesine hiç gerek yok — "none" ile klikler ALTTAKI
+              // tahtaya geçer; içindeki Berserk düğmesi kendi "auto"'suyla
+              // yine tıklanabilir kalır.
               style={{
                 position: 'absolute',
                 top: '50%',
@@ -473,6 +482,7 @@ export function LiveGame({ gameId, myColor, tournamentId, berserkAvailable }: Pr
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '0.6rem',
+                pointerEvents: 'none',
               }}
             >
               <div
@@ -505,7 +515,7 @@ export function LiveGame({ gameId, myColor, tournamentId, berserkAvailable }: Pr
                     send({ type: 'berserk' });
                   }}
                   className="t-btn-ghost text-sm px-4 py-2"
-                  style={{ borderRadius: 999, fontWeight: 700 }}
+                  style={{ borderRadius: 999, fontWeight: 700, pointerEvents: 'auto' }}
                 >
                   🔥 Berserk
                 </button>

@@ -16,9 +16,9 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 import { LiveGame } from '@/components/LiveGame';
 
-function setup() {
+function setup(berserkAvailable = false) {
   handler = null;
-  return render(<LiveGame gameId={1} myColor="white" />);
+  return render(<LiveGame gameId={1} myColor="white" berserkAvailable={berserkAvailable} />);
 }
 
 beforeEach(() => {
@@ -92,5 +92,20 @@ describe('LiveGame — ilk hamle 15sn geri sayımı (madde 4)', () => {
     act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
     act(() => { vi.advanceTimersByTime(20000); });
     expect(screen.getByText(/İlk hamle: 0sn/)).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-12: geri sayım kutusu tahtanın TAM ORTASINDA (e4/d4 gibi ilk hamle karelerinin üzerinde) durduğu için pointer-events:none olmalı — yoksa altındaki tahta hiç tıklanamaz (Zafer\'in bildirdiği "hamle yapılamıyor" hatası)', () => {
+    setup();
+    act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
+    const timer = screen.getByRole('timer', { name: /İlk hamle için 15 saniye kaldı/ });
+    const overlay = timer.parentElement as HTMLElement;
+    expect(overlay.style.pointerEvents).toBe('none');
+  });
+
+  it('Berserk düğmesi (varsa) kendi pointer-events:auto\'suyla tıklanabilir kalır — üst kutunun "none"u onu ENGELLEMEZ', () => {
+    setup(true);
+    act(() => handler!({ type: 'game_info', moves: [], status: 'active' }));
+    const berserk = screen.getByRole('button', { name: /Berserk/ });
+    expect(berserk.style.pointerEvents).toBe('auto');
   });
 });
