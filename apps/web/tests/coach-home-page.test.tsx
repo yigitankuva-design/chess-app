@@ -40,6 +40,11 @@ vi.mock('@/lib/settings/settings-context', () => ({
 }));
 vi.mock('@/lib/settings/defaults', () => ({ visibleTabsInOrder: () => ['play', 'lessons', 'analiz', 'eglence'] }));
 vi.mock('@/lib/practice/practiceApi', () => ({ fetchLessonScores: async () => null }));
+// Madde 2026-09-11 (Aşama F): /coach artık Bildirimler rozeti için bildirim sayısını çeker.
+const fetchNotifications = vi.fn();
+vi.mock('@/lib/notificationsApi', () => ({
+  fetchNotifications: (...args: unknown[]) => fetchNotifications(...args),
+}));
 vi.mock('@/lib/customTabsApi', () => ({
   listCustomTabs: vi.fn(() => Promise.resolve([
     { id: 5, order_index: 1, label: 'Antrenör Dosyası', emoji: '🎓' },
@@ -52,6 +57,8 @@ beforeEach(() => {
   mockHydrated = true;
   mockToken = 'tok';
   replace.mockClear();
+  fetchNotifications.mockReset();
+  fetchNotifications.mockResolvedValue({ unread_count: 0, items: [] });
   global.fetch = vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })) as never;
 });
 
@@ -70,6 +77,15 @@ describe('Antrenör Paneli — /coach (sporcu Hızlı Erişim kopyası)', () => 
   it('özel sekmeler (ör. mevcut "Antrenör Dosyası" sekmesi) de sporcu sayfasındaki AYNI kaynaktan gelip görünür', async () => {
     render(<CoachHomePage />);
     await waitFor(() => screen.getByText('Antrenör Dosyası'));
+  });
+
+  it('madde 2026-09-11 (Aşama F): antrenörde de 🔔 Bildirimler kartı var, /bildirimler\'e gider, rozet Git\'e basılmamış sayıyı gösterir', async () => {
+    fetchNotifications.mockResolvedValue({ unread_count: 2, items: [] });
+    render(<CoachHomePage />);
+    await waitFor(() => screen.getByLabelText('2 yeni bildirim'));
+    const link = screen.getByText('Bildirimler').closest('a')!;
+    expect(link).toHaveAttribute('href', '/bildirimler');
+    expect(link).toHaveClass('qa-attention');
   });
 
   it('kimlik şeridi "Antrenör" etiketiyle ve öğretmenin adıyla gösterilir (Sporcu DEĞİL)', async () => {

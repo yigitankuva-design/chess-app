@@ -47,6 +47,11 @@ function getConfig(pathname: string, homePath: string, profilePath: string): Nav
     return { title: 'Tekrar', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/badges'))
     return { title: 'Rozetler', back: homePath, rightHref: homePath, rightIcon: 'home' };
+  // Madde 2026-09-11 (Aşama F): Bildirimler sayfası — sporcuda /home'a,
+  // antrenörde /coach'a döner (homePath rol'e göre). Faz 4'te eksik
+  // kalmıştı: bu satır olmadan sayfada "Geri" düğmesi hiç çıkmıyordu.
+  if (pathname.startsWith('/bildirimler'))
+    return { title: 'Bildirimler', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname === '/profile' || pathname === '/coach/profile')
     return { title: 'Profil', back: homePath, rightHref: homePath, rightIcon: 'home' };
   if (pathname.startsWith('/students/'))

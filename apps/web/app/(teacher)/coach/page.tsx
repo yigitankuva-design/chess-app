@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { usePresenceCount } from '@/lib/presence/PresenceContext';
 import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayersBadge';
 import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
+import { fetchNotifications } from '@/lib/notificationsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import { AnalizPanel } from '@/components/analiz/AnalizPanel';
@@ -204,6 +205,11 @@ export default function CoachHomePage() {
   const [customTabDetails, setCustomTabDetails] = useState<Record<number, CustomTabDetail>>({});
   useEffect(() => { listCustomTabs().then(setCustomTabs); }, []);
 
+  // Madde 2026-09-11 (Aşama F): "Bildirimler" kartının rozeti — Git'e
+  // basılmamış bildirim sayısı (home/page.tsx ile AYNI).
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => { fetchNotifications().then((d) => setUnreadCount(d.unread_count)); }, []);
+
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);
   const [openLevel, setOpenLevel] = useState<number | null>(null);
   const [lessonsByLevel, setLessonsByLevel] = useState<Record<number, LessonSummary[]>>({});
@@ -381,11 +387,16 @@ export default function CoachHomePage() {
      sekmeye tıklayınca sadece O sekmenin LED'i yanık kalır, diğerleri söner
      (madde 1, 2026-08-19). `active` kabartma/gömük görünümünü belirler —
      LED bundan AYRI bir kavram: `ledOn` verilmezse `active` ile aynı davranır. */
-  function FeatureTab({ icon, label, color, active, ledOn, onClick, href }: {
+  function FeatureTab({ icon, label, color, active, ledOn, onClick, href, badge }: {
     icon: React.ReactNode; label: string; color: string; active?: boolean; ledOn?: boolean;
     onClick?: () => void; href?: string;
+    /** Madde 2026-09-11 (Aşama F): antrenörün de "Bildirimler" kartı var —
+     *  sporcu ana sayfasındaki (home/page.tsx) FeatureTab ile AYNI rozet +
+     *  dikkat efektleri (Görsel Turu A/10). */
+    badge?: number;
   }) {
     const lit = ledOn ?? active ?? false;
+    const attention = !!badge;
     const style: React.CSSProperties = {
       ...(active ? pressed(16) : raised(16)),
       padding: '1.5rem 0.75rem',
@@ -415,13 +426,23 @@ export default function CoachHomePage() {
     const inner = (
       <>
         <span aria-hidden="true" className="qa-led" data-active={lit ? 'true' : 'false'} />
-        <span className="leading-none" style={{ ...contentStyle, fontSize: '2.8125rem' }}>{icon}</span>
+        <span className="relative inline-block leading-none" style={{ ...contentStyle, fontSize: '2.8125rem' }}>
+          <span className={attention ? 'qa-bell-ring' : undefined}>{icon}</span>
+          {attention && (
+            <span aria-label={`${badge} yeni bildirim`}
+              className="absolute flex items-center justify-center rounded-full text-xs font-extrabold text-white"
+              style={{ top: -6, right: -14, minWidth: 22, height: 22, padding: '0 5px', background: '#ef4444', filter: 'none', opacity: 1 }}>
+              {badge}
+            </span>
+          )}
+        </span>
         <span className="text-lg font-bold leading-tight text-center" style={contentStyle}>{label}</span>
       </>
     );
+    const className = attention ? 'qa-attention' : undefined;
     return href
-      ? <Link href={href} style={style}>{inner}</Link>
-      : <button onClick={onClick} style={style}>{inner}</button>;
+      ? <Link href={href} style={style} className={className}>{inner}</Link>
+      : <button onClick={onClick} style={style} className={className}>{inner}</button>;
   }
 
   if (!authReady) return <p className="t-muted p-4">Yükleniyor...</p>;
@@ -463,6 +484,15 @@ export default function CoachHomePage() {
               />
             );
           })}
+
+          {/* Madde 2026-09-11 (Görsel Turu Aşama F): antrenör de sporcu gibi —
+              🔔 Bildirimler kartı (home/page.tsx ile AYNI, /bildirimler'e gider;
+              antrenörün jetonu artık oyun profilini taşıdığı için bildirim
+              uçları antrenörde de çalışır). */}
+          <FeatureTab
+            icon="🔔" label="Bildirimler" color={QUICK_ACCESS_ACCENT}
+            ledOn={openTab === null} href="/bildirimler" badge={unreadCount}
+          />
 
           {/* Zafer hocanın eklediği ek sekmeler — ayrı sayfaya GİTMEZ, yerleşik
               sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).

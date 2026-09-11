@@ -13,9 +13,23 @@ from chess_api.schemas.auth import (
 from chess_api.services.password import hash_password, verify_password, verify_pin, hash_pin
 from chess_api.services.jwt import encode_token
 from chess_api.services.email import send_verification_email
+from chess_api.services.play_profile import ensure_teacher_play_profile, teacher_token_payload
 from chess_api.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+async def _user_token(db: AsyncSession, user: User) -> str:
+    """Madde 2026-09-11 (Görsel Turu Aşama F): antrenör jetonu artık oyun
+    profilini de (child_profile_id) taşır — antrenör sporcu uçlarını
+    (Maç/Ders/Pratik/Bildirimler/aktiflik) TEK jetonla kullanır. Profil yoksa
+    burada oluşturulur (eski antrenörler için migration da var; bu, güvenlik
+    ağı). Diğer roller DEĞİŞMEDİ."""
+    if user.role == UserRole.teacher:
+        profile = await ensure_teacher_play_profile(db, user)
+        await db.commit()
+        return encode_token(teacher_token_payload(user, profile))
+    return encode_token({"user_id": user.id, "role": user.role.value})
 
 
 @router.post(
@@ -88,7 +102,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     if user.approval_status != "approved":
         detail = "Hesabınız reddedildi" if user.approval_status == "rejected" else "Hesabınız onay bekliyor"
         raise HTTPException(status_code=403, detail=detail)
-    token = encode_token({"user_id": user.id, "role": user.role.value})
+    token = await _user_token(db, user)
     return AuthResponse(
         access_token=token, user_id=user.id, role=user.role, name=user.name,
     )
@@ -124,7 +138,7 @@ async def teacher_signup(
         import logging
         logging.exception("Failed to send verification email (signup continues)")
 
-    token = encode_token({"user_id": user.id, "role": user.role.value})
+    token = await _user_token(db, user)
     return AuthResponse(
         access_token=token,
         user_id=user.id,
@@ -338,7 +352,9 @@ async def teacher_register(
         import logging
         logging.exception("Failed to send verification email (signup continues)")
 
-    token = encode_token({"user_id": user.id, "role": user.role.value})
+    # Madde 2026-09-11 (Aşama F): oyun profili kayıt anında açılır (onay
+    # beklerken de) — admin onaylayınca ilk girişte hazır olsun.
+    token = await _user_token(db, user)
     return AuthResponse(
         access_token=token,
         user_id=user.id,

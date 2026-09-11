@@ -71,6 +71,20 @@ describe('AppNav — madde 2026-09-04 (4): uygulama genelinde TEK geri butonu', 
     expect(screen.getByLabelText('Geri')).toBeInTheDocument();
   });
 
+  it('madde 2026-09-11 (Aşama F): /bildirimler geri butonuna sahip — sporcuda /home\'a, antrenörde /coach\'a döner', () => {
+    pathname = '/bildirimler';
+    Object.defineProperty(window, 'history', { value: { length: 1 }, writable: true, configurable: true });
+    const { unmount } = render(<AppNav />);
+    fireEvent.click(screen.getByLabelText('Geri'));
+    expect(push).toHaveBeenCalledWith('/home');
+    unmount();
+    push.mockClear();
+    mockRole = 'teacher';
+    render(<AppNav />);
+    fireEvent.click(screen.getByLabelText('Geri'));
+    expect(push).toHaveBeenCalledWith('/coach');
+  });
+
   it('bir sayfa useBackOverride ile özel mantık kaydettiyse, buton onu çağırır — router.back() DEĞİL', () => {
     pathname = '/custom/5/alt-konu/9';
     const customBack = vi.fn();
