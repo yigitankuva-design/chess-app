@@ -10,7 +10,8 @@ import { BoardColorSelector } from '@/components/BoardColorSelector';
 import { PieceSetSelector } from '@/components/PieceSetSelector';
 import { fetchDaySummary } from '@/lib/activity/activityApi';
 import type { DaySummary } from '@/lib/activity/activityApi';
-import { fetchTeacherProgress, uploadTeacherPhoto } from '@/lib/gamification/meApi';
+import { fetchTeacherProgress, uploadTeacherPhoto, updateTeacherProfile } from '@/lib/gamification/meApi';
+import { ContactEditor, LocationEditor, NicknameEditor } from '@/components/profile/ProfileEditors';
 import type { MyProgress } from '@/lib/gamification/meApi';
 import { resizeImageToDataUrl } from '@/lib/image/resizeImage';
 
@@ -185,9 +186,12 @@ export default function CoachProfilePage() {
     <main className="px-4 pt-5 pb-12 max-w-xl mx-auto space-y-3">
 
       {/* 1) İsim + fotoğraf — tıklanınca cihazdan/kameradan seçim. */}
-      <div className="t-card p-4 flex items-center gap-4">
+      {/* Madde 2026-09-11 (Aşama B / S3-b): sağa nickname yuvası eklendi —
+          kart ikiye bölündüğü için (mobilde her yarı ~140px) isim text-lg →
+          text-base, avatar w-16 → w-14 (sporcu kartıyla AYNI ölçüler). */}
+      <div className="t-card p-4 flex items-center gap-3 relative">
         <label
-          className="w-16 h-16 rounded-full flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden cursor-pointer relative"
+          className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden cursor-pointer relative"
           style={{ background: 'var(--t-surface-2)' }}
           title="Fotoğraf yükle"
         >
@@ -206,23 +210,40 @@ export default function CoachProfilePage() {
           />
         </label>
         <div className="min-w-0 flex-1">
-          {teacherName && <p className="font-bold text-lg leading-tight truncate">{teacherName}</p>}
-          <p className="text-xs t-muted uppercase tracking-widest mt-0.5">Antrenör</p>
+          {teacherName && <p className="font-bold text-base leading-tight truncate">{teacherName}</p>}
+          <p className="text-[10px] t-muted uppercase tracking-widest mt-0.5">Antrenör</p>
           {photoError && <p className="text-xs mt-0.5" style={{ color: 'var(--t-err-text)' }}>Fotoğraf yüklenemedi, tekrar dene.</p>}
+        </div>
+
+        <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
+
+        {/* Madde 2026-09-11 (Görsel Turu Aşama B / S3-b): antrenörde de
+            nickname alanı — isim salt-okunur, nickname 3 ayda 1 değişir.
+            Nickname antrenörün OYUN profilinde saklanır (Aşama F) ve maçlarda
+            gerçek isim yerine görünür (Madde 11). */}
+        <div className="min-w-0 flex-1">
+          <NicknameEditor
+            value={me.nickname} nextChangeAt={me.nickname_next_change_at}
+            onSave={updateTeacherProfile}
+            onSaved={(nickname, next) => setMe((prev) => (prev ? { ...prev, nickname, nickname_next_change_at: next } : prev))}
+          />
         </div>
       </div>
 
       {/* 2) Ülke + il + üyelik tarihi — madde 2026-09-07: bayrak %100
           büyütüldü. Madde 2026-09-09 (AŞAMA 4): il artık GERÇEK (antrenörün
           "Kayıt Ol" formunda girdiği) — sporcu tarafındaki AYNI desen. */}
-      <div className="t-card p-4 flex items-center gap-2">
+      <div className="t-card p-4 flex items-center gap-2 relative">
         <span className="text-5xl flex-shrink-0">🇹🇷</span>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold">
-            Türkiye{me.province && <span className="t-muted font-normal"> ({me.province})</span>}
-          </p>
-          <p className="t-muted mt-0.5">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
-        </div>
+        {/* Madde 2026-09-11 (Aşama B / Madde 3): ülke (liste, Türkiye
+            varsayılan) + il (81 il) antrenör tarafından düzenlenir. */}
+        <LocationEditor
+          layout="antrenor"
+          country={me.country} province={me.province}
+          memberSinceLabel={formatMemberSince(me.member_since)}
+          onSave={updateTeacherProfile}
+          onSaved={(country, province) => setMe((prev) => (prev ? { ...prev, country, province } : prev))}
+        />
       </div>
 
       {/* 3) İletişim Bilgileri — madde 2026-09-09 (Üyelik Girişi Yenileme,
@@ -234,22 +255,14 @@ export default function CoachProfilePage() {
         <div className="mb-3 pb-3 border-b" style={{ borderColor: 'var(--t-border)' }}>
           <span className="text-xs font-bold uppercase tracking-wide t-muted">İletişim Bilgileri</span>
         </div>
-        <div className="flex flex-col gap-2 text-sm">
-          <div className="flex items-center gap-2.5">
-            <PhoneIcon />
-            <span className={me.athlete_phone ? undefined : 't-muted italic'}>{me.athlete_phone ?? 'Telefon girilmedi'}</span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <MailIcon />
-            <span className={me.athlete_email ? undefined : 't-muted italic'}>{me.athlete_email ?? 'E-posta girilmedi'}</span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <KnightIcon />
-            <span className={me.lichess_username ? undefined : 't-muted italic'}>
-              {me.lichess_username ?? 'Lichess kullanıcı adı girilmedi'}
-            </span>
-          </div>
-        </div>
+        {/* Madde 2026-09-11 (Aşama B / Madde 3): telefon + Lichess
+            düzenlenebilir; e-posta salt-okunur (giriş kimliği). */}
+        <ContactEditor
+          phone={me.athlete_phone} email={me.athlete_email} lichess={me.lichess_username}
+          onSave={updateTeacherProfile}
+          onSaved={(phone, lichess) => setMe((prev) => (prev ? { ...prev, athlete_phone: phone, lichess_username: lichess } : prev))}
+          icons={{ phone: <PhoneIcon />, mail: <MailIcon />, knight: <KnightIcon /> }}
+        />
       </div>
 
       {/* 4) Performans Puanı — sporcu tarafında da ZATEN örnek veri. */}

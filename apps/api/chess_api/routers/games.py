@@ -70,6 +70,9 @@ async def start_bot_game(
         game_id=game.id,
         fen=payload.start_fen or INITIAL_FEN,
         your_color="white" if payload.student_color == "w" else "black",
+        # Madde 2026-09-11 (Madde 11): bot maçında sporcunun KENDİ adı da
+        # nickname olsun (BotGame bunu cihazdaki gerçek isim yerine kullanır).
+        player_name=child.public_name,
     )
 
 
@@ -191,18 +194,19 @@ async def list_my_games(
     for game in games:
         if game.type == GameType.bot:
             opponent = {"type": "bot", "level": game.black_bot_level}
-            white_name = (await db.get(ChildProfile, game.white_child_id)).display_name if game.white_child_id else None
+            # Madde 2026-09-11 (Madde 11): maçlarda nickname (yoksa gerçek isim).
+            white_name = (await db.get(ChildProfile, game.white_child_id)).public_name if game.white_child_id else None
             black_name = f"Bot · Düzey {game.black_bot_level}" if game.black_bot_level is not None else "Bot"
         else:
             other_id = (
                 game.black_child_id if game.white_child_id == child.id else game.white_child_id
             )
             other = await db.get(ChildProfile, other_id) if other_id else None
-            opponent = {"type": "human", "name": other.display_name if other else None}
+            opponent = {"type": "human", "name": other.public_name if other else None}
             white = await db.get(ChildProfile, game.white_child_id) if game.white_child_id else None
             black = await db.get(ChildProfile, game.black_child_id) if game.black_child_id else None
-            white_name = white.display_name if white else None
-            black_name = black.display_name if black else None
+            white_name = white.public_name if white else None
+            black_name = black.public_name if black else None
 
         # Madde 2026-09-06 (8): Açılış Pratiği'nden başlayan maçlarda (start_fen
         # bilinen bir OpeningVariant'a eşleşiyorsa) açılış/varyant ismi —

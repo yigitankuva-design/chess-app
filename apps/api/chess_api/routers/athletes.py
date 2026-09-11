@@ -43,5 +43,6 @@ async def list_athletes(
         rating = title = None
         if valid_tempo:
             rating, title = await get_rating_and_title(db, c.id, valid_tempo)
-        out.append({"child_id": c.id, "display_name": c.display_name, "rating": rating, "title": title})
+        # Madde 2026-09-11 (Madde 11): maç bağlamında nickname (yoksa gerçek isim).
+        out.append({"child_id": c.id, "display_name": c.public_name, "rating": rating, "title": title})
     return out

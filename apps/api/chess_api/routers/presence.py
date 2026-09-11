@@ -17,5 +17,5 @@ async def presence_ping(child: ChildProfile = Depends(get_current_child)):
     sayiyi da o tasir (tek uc, tek istek).
     """
     now = time.time()
-    touch(child.id, child.display_name, now)
+    touch(child.id, child.public_name, now)  # Madde 11: aktif oyuncularda nickname
     return {"count": active_count(exclude=child.id, now=now)}

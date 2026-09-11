@@ -45,3 +45,19 @@ class ChildProfile(Base):
     # AYNI amaç (18+ kendi kaydolan sporcu orada, veli-yönetimli sporcu
     # burada tutulur). NULLABLE — tek isteğe bağlı alan (Zafer'in kuralı).
     lichess_username: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+
+    # Madde 2026-09-11 (Görsel Turu Aşama B): sporcu kendi profilini düzenler.
+    # `country` — NULL = Türkiye (uygulama şimdilik tek ülke; liste var ama
+    # varsayılan Türkiye). `nickname` — maçlarda/lobide/turnuvada GERÇEK İSİM
+    # YERİNE görünen ad (Madde 11); yoksa display_name gösterilir. Benzersiz
+    # (büyük/küçük harf duyarsız — uygulama katmanında kontrol). 3 ayda en
+    # fazla 1 kez değiştirilebilir: `nickname_changed_at` + 90 gün.
+    # Antrenörün oyun profili de (Aşama F) aynı alanları kullanır.
+    country: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    nickname: Mapped[Optional[str]] = mapped_column(String(40), nullable=True, index=True)
+    nickname_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    @property
+    def public_name(self) -> str:
+        """Madde 11: maç bağlamlarında görünen ad — nickname, yoksa gerçek isim."""
+        return self.nickname or self.display_name

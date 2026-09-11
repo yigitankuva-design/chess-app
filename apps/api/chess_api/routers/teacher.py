@@ -13,6 +13,8 @@ from chess_api.routers.practice import (
     _compute_lesson_scores, _compute_practice_detail,
     _compute_attempts_summary, _compute_attempts,
 )
+from chess_api.services.play_profile import ensure_teacher_play_profile
+from chess_api.services.profile_edit import set_nickname, nickname_next_change_at, clean_optional
 from pydantic import BaseModel, Field
 
 _ALPHABET = string.ascii_uppercase + string.digits
@@ -146,6 +148,7 @@ async def _get_child_for_teacher(
 @router.get("/me/profile-summary")
 async def teacher_profile_summary(
     current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Madde 2026-09-07 (Antrenör Paneli): antrenörün KENDİ Profil sayfası
     (`/coach/profile`) sporcunun ProfileView'ını (bkz. components/profile/
@@ -157,6 +160,12 @@ async def teacher_profile_summary(
     ARTIK gerçek — antrenörün "Kayıt Ol" formunda girdiği bilgiler (bkz.
     User.province/phone/lichess_username, AŞAMA 1-3)."""
     _ensure_teacher(current)
+    # Madde 2026-09-11 (Aşama B): nickname antrenörün OYUN PROFİLİNDE (Aşama F)
+    # tutulur — maçlarda görünen ad. Ülke/il/telefon/Lichess antrenör
+    # hesabında (User).
+    play = await ensure_teacher_play_profile(db, current)
+    await db.commit()
+    next_at = nickname_next_change_at(play)
     return {
         "rank_name": "", "rank_icon": "", "xp_total": 0, "next_rank_xp": 0,
         "badges_earned": 0, "badges_total": 0,
@@ -164,11 +173,60 @@ async def teacher_profile_summary(
         "display_name": current.name,
         "avatar": "default",
         "photo_data_url": current.photo_data_url,
+        "country": current.country,
         "province": current.province,
         "athlete_phone": current.phone, "athlete_email": current.email,
         "lichess_username": current.lichess_username,
+        "nickname": play.nickname,
+        "nickname_changed_at": play.nickname_changed_at.isoformat() if play.nickname_changed_at else None,
+        "nickname_next_change_at": next_at.isoformat() if next_at else None,
         "father_name": None, "father_phone": None, "father_email": None,
         "mother_name": None, "mother_phone": None, "mother_email": None,
+    }
+
+
+class TeacherProfileEditRequest(BaseModel):
+    """Madde 2026-09-11 (Aşama B / Madde 3): antrenörün KENDİ düzenleyebildiği
+    alanlar — isim ve e-posta salt-okunur (şemada YOK). Gönderilmeyen alan
+    değişmez; boş string telefon/Lichess'i temizler."""
+    country: str | None = Field(default=None, max_length=60)
+    province: str | None = Field(default=None, max_length=60)
+    phone: str | None = Field(default=None, max_length=30)
+    lichess_username: str | None = Field(default=None, max_length=60)
+    nickname: str | None = Field(default=None, max_length=40)
+
+
+@router.patch("/me/profile")
+async def edit_teacher_profile(
+    payload: TeacherProfileEditRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Antrenör kendi profilini düzenler: ülke/şehir/telefon/Lichess → User;
+    nickname → oyun profili (sporcuyla AYNI 3-ay kuralı ve benzersizlik)."""
+    _ensure_teacher(current)
+    sent = payload.model_fields_set
+    if "country" in sent:
+        current.country = clean_optional(payload.country, 60)
+    if "province" in sent:
+        current.province = clean_optional(payload.province, 60)
+    if "phone" in sent:
+        current.phone = clean_optional(payload.phone, 30)
+    if "lichess_username" in sent:
+        current.lichess_username = clean_optional(payload.lichess_username, 60)
+    play = await ensure_teacher_play_profile(db, current)
+    if "nickname" in sent and payload.nickname is not None and payload.nickname.strip():
+        await set_nickname(db, play, payload.nickname)
+    await db.commit()
+    await db.refresh(current)
+    await db.refresh(play)
+    next_at = nickname_next_change_at(play)
+    return {
+        "country": current.country, "province": current.province,
+        "athlete_phone": current.phone, "lichess_username": current.lichess_username,
+        "nickname": play.nickname,
+        "nickname_changed_at": play.nickname_changed_at.isoformat() if play.nickname_changed_at else None,
+        "nickname_next_change_at": next_at.isoformat() if next_at else None,
     }
 
 

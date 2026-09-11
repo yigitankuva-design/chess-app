@@ -140,7 +140,10 @@ export function BotGame({
    *  pratik mat/pat beklemeden biter, ilerleme analizi gösterilir. */
   const [limitReached, setLimitReached] = useState(false);
   // Sporcunun adi girişte saklaniyor; yoksa nötr bir etiket kullanilir.
-  const [studentName] = useState(() => getAthleteName() || 'Sen');
+  // Madde 2026-09-11 (Aşama B / Madde 11): sunucu `/games/bot/start`
+  // yanıtında `player_name` (nickname varsa o) dönerse cihazdaki gerçek
+  // isim yerine ONU gösteririz — maçlarda nickname görünür.
+  const [studentName, setStudentName] = useState(() => getAthleteName() || 'Sen');
   const [studentAvatar] = useState(() => getSavedAvatar());
   const [thinking, setThinking] = useState(false);
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
@@ -209,6 +212,7 @@ export function BotGame({
           if (res.ok) {
             const data = await res.json();
             gameIdRef.current = data.game_id;
+            if (!cancelled && typeof data.player_name === 'string' && data.player_name) setStudentName(data.player_name);
           }
         } catch { /* offline OK */ }
       }

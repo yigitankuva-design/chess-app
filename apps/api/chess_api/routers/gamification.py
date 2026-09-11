@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import ChildProfile, Badge, ChildBadge, Rank, ChildRank
+from chess_api.services.profile_edit import nickname_next_change_at
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
@@ -78,6 +79,12 @@ async def _compute_progress(child: ChildProfile, db: AsyncSession) -> dict:
         # Hepsi NULL olabilir (veli henüz doldurmadıysa) — frontend bunu
         # zaten "ikon avatar göster"/"iletişim bilgisi eksik" olarak yorumlar.
         "photo_data_url": child.photo_data_url,
+        # Madde 2026-09-11 (Görsel Turu Aşama B): düzenlenebilir alanlar +
+        # nickname (3 ayda 1 kuralı için sonraki değişiklik tarihi).
+        "country": child.country,
+        "nickname": child.nickname,
+        "nickname_changed_at": child.nickname_changed_at.isoformat() if child.nickname_changed_at else None,
+        "nickname_next_change_at": (lambda n: n.isoformat() if n else None)(nickname_next_change_at(child)),
         "province": child.province,
         "athlete_phone": child.athlete_phone,
         "athlete_email": child.athlete_email,

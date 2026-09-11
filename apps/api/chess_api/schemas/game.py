@@ -19,6 +19,8 @@ class StartBotGameResponse(BaseModel):
     game_id: int
     fen: str
     your_color: str
+    # Madde 2026-09-11 (Madde 11): maçta görünen ad (nickname, yoksa isim).
+    player_name: str | None = None
 
 
 class MakeMoveRequest(BaseModel):

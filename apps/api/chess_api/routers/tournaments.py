@@ -295,10 +295,12 @@ async def _standings(db: AsyncSession, tournament_id: int, tempo: str | None = N
     names: dict[int, str] = {}
     child_ids = [p.child_id for p in participants]
     if child_ids:
+        # Madde 2026-09-11 (Madde 11): sıralamada nickname (yoksa gerçek isim).
         rows = (await db.execute(
-            select(ChildProfile.id, ChildProfile.display_name).where(ChildProfile.id.in_(child_ids))
+            select(ChildProfile.id, ChildProfile.nickname, ChildProfile.display_name)
+            .where(ChildProfile.id.in_(child_ids))
         )).all()
-        names = {cid: name for cid, name in rows}
+        names = {cid: (nick or name) for cid, nick, name in rows}
 
     out = []
     for p in participants:
@@ -326,10 +328,12 @@ async def _recent_pairings(db: AsyncSession, tournament_id: int) -> list[dict]:
     child_ids = {p.white_child_id for p in rows} | {p.black_child_id for p in rows}
     names: dict[int, str] = {}
     if child_ids:
+        # Madde 2026-09-11 (Madde 11): eşleşmelerde nickname (yoksa gerçek isim).
         name_rows = (await db.execute(
-            select(ChildProfile.id, ChildProfile.display_name).where(ChildProfile.id.in_(child_ids))
+            select(ChildProfile.id, ChildProfile.nickname, ChildProfile.display_name)
+            .where(ChildProfile.id.in_(child_ids))
         )).all()
-        names = {cid: name for cid, name in name_rows}
+        names = {cid: (nick or name) for cid, nick, name in name_rows}
     return [{
         "id": p.id,
         "white_child_id": p.white_child_id, "white_name": names.get(p.white_child_id),
@@ -356,7 +360,7 @@ async def _my_active_pairing(db: AsyncSession, tournament_id: int, child_id: int
     opponent = await db.get(ChildProfile, opponent_id)
     return {
         "id": pairing.id, "opponent_id": opponent_id,
-        "opponent_name": opponent.display_name if opponent else None,
+        "opponent_name": opponent.public_name if opponent else None,  # Madde 11
         "my_color": "white" if pairing.white_child_id == child_id else "black",
         "game_id": pairing.game_id,
     }

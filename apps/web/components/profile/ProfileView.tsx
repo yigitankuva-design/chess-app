@@ -12,7 +12,8 @@ import { PieceSetSelector } from '@/components/PieceSetSelector';
 import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
 import { fetchDaySummary } from '@/lib/activity/activityApi';
 import type { DaySummary } from '@/lib/activity/activityApi';
-import { fetchMyProgress, uploadMyPhoto } from '@/lib/gamification/meApi';
+import { fetchMyProgress, uploadMyPhoto, updateMyProfile } from '@/lib/gamification/meApi';
+import { ContactEditor, LocationEditor, NicknameEditor } from '@/components/profile/ProfileEditors';
 import type { MyProgress } from '@/lib/gamification/meApi';
 import { resizeImageToDataUrl } from '@/lib/image/resizeImage';
 
@@ -261,8 +262,7 @@ const CONTACT_PILLS: { id: ContactPerson; label: string }[] = [
 ];
 
 /** Seçili kişinin telefon/e-posta çifti — `MyProgress`'in ilgili alanları. */
-function contactFor(me: MyProgress, person: ContactPerson): { phone: string | null; email: string | null } {
-  if (person === 'sporcu') return { phone: me.athlete_phone, email: me.athlete_email };
+function contactFor(me: MyProgress, person: Exclude<ContactPerson, 'sporcu'>): { phone: string | null; email: string | null } {
   if (person === 'baba') return { phone: me.father_phone, email: me.father_email };
   return { phone: me.mother_phone, email: me.mother_email };
 }
@@ -431,10 +431,10 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
           ikiye bölündü — solda GERÇEK isim (fotoğraf/foto yükleme AYNEN
           kaldı), sağda NICKNAME (mevcut ikon/avatar emoji — daha önce sadece
           fotoğraf yoksa YEDEK olarak görünüyordu, şimdi kendi yuvası var).
-          Nickname alanının KENDİSİ (girilmesi/değiştirilmesi) henüz yok —
-          Zafer'in kararı: "şimdilik tasarım alanı, görev bilgisi sonra" —
-          bu yüzden sağ taraf sadece placeholder gösteriyor. */}
-      <div className="t-card p-4">
+          Madde 2026-09-11 (Aşama B / Madde 3): nickname artık gerçek,
+          düzenlenebilir alan (NicknameEditor) — kalem ikonu kartın sağ
+          üst köşesinde (bu yüzden kart `relative`). */}
+      <div className="t-card p-4 relative">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {readOnly ? (
@@ -477,10 +477,14 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
             <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
               {avatarEmoji(resolvedAvatarId)}
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wide t-muted">Nickname</p>
-              <p className="font-bold text-base leading-tight truncate t-muted italic">Henüz eklenmedi</p>
-            </div>
+            {/* Madde 2026-09-11 (Görsel Turu Aşama B / Madde 3): nickname
+                artık düzenlenebilir (3 ayda 1) — antrenör görünümünde
+                (readOnly) sadece gösterilir. İsim salt-okunur kalır. */}
+            <NicknameEditor
+              value={me.nickname} nextChangeAt={me.nickname_next_change_at} readOnly={readOnly}
+              onSave={updateMyProfile}
+              onSaved={(nickname, next) => setMe((prev) => (prev ? { ...prev, nickname, nickname_next_change_at: next } : prev))}
+            />
           </div>
         </div>
       </div>
@@ -490,21 +494,21 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
           Madde 2026-09-09: Zafer'in görseline göre 3 bölüme ayrıldı (bayrak |
           ülke+il | üyelik tarihi), aralarına dikey ayırıcı çizgi eklendi —
           önceden ülke+il ile üyelik tarihi ALT ALTA tek blok içindeydi. */}
-      <div className="t-card p-4 flex items-center gap-3">
+      <div className="t-card p-4 flex items-center gap-3 relative">
         {/* Madde 2026-09-07: bayrak %100 büyütüldü (Zafer'in isteğiyle,
             antrenör profiliyle AYNI değişiklik — text-2xl'in tam iki katı
             olan text-5xl'e çıkarıldı). */}
         <span className="text-5xl flex-shrink-0">🇹🇷</span>
         <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold truncate">
-            Türkiye{me.province && <span className="t-muted font-normal"> ({me.province})</span>}
-          </p>
-        </div>
-        <div className="w-px self-stretch" style={{ background: 'var(--t-border)' }} />
-        <div className="flex-1 min-w-0">
-          <p className="t-muted truncate">Üyelik tarihi {formatMemberSince(me.member_since)}</p>
-        </div>
+        {/* Madde 2026-09-11 (Aşama B / Madde 3): ülke artık gerçek bir alan
+            (`me.country`, liste — Türkiye varsayılan) + il 81 il listesinden
+            düzenlenir; antrenör görünümünde salt-okunur. */}
+        <LocationEditor
+          country={me.country} province={me.province}
+          memberSinceLabel={formatMemberSince(me.member_since)} readOnly={readOnly}
+          onSave={updateMyProfile}
+          onSaved={(country, province) => setMe((prev) => (prev ? { ...prev, country, province } : prev))}
+        />
       </div>
 
       {/* 3) İletişim Bilgileri — madde 2026-09-07 (GRUP C): başlık altı çizgi,
@@ -530,7 +534,17 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
             ))}
           </div>
         </div>
-        {contactTab ? (() => {
+        {contactTab === 'sporcu' ? (
+          /* Madde 2026-09-11 (Aşama B / Madde 3): sporcunun kendi telefonu +
+             Lichess adı düzenlenebilir; e-posta salt-okunur (giriş kimliği).
+             Baba/Anne bilgileri veli tarafından girilir — burada düzenlenmez. */
+          <ContactEditor
+            phone={me.athlete_phone} email={me.athlete_email} lichess={me.lichess_username}
+            readOnly={readOnly} onSave={updateMyProfile}
+            onSaved={(phone, lichess) => setMe((prev) => (prev ? { ...prev, athlete_phone: phone, lichess_username: lichess } : prev))}
+            icons={{ phone: <PhoneIcon />, mail: <MailIcon />, knight: <KnightIcon /> }}
+          />
+        ) : contactTab ? (() => {
           const { phone, email } = contactFor(me, contactTab);
           return (
             <div className="flex flex-col gap-2 text-sm">
@@ -542,16 +556,6 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
                 <MailIcon />
                 <span className={email ? undefined : 't-muted italic'}>{email ?? 'E-posta girilmedi'}</span>
               </div>
-              {/* Madde 2026-09-09 (AŞAMA 4): Lichess kullanıcı adı SADECE
-                  sporcunun kendi bilgisi — Baba/Anne'de yok. */}
-              {contactTab === 'sporcu' && (
-                <div className="flex items-center gap-2.5">
-                  <KnightIcon />
-                  <span className={me.lichess_username ? undefined : 't-muted italic'}>
-                    {me.lichess_username ?? 'Lichess kullanıcı adı girilmedi'}
-                  </span>
-                </div>
-              )}
             </div>
           );
         })() : (

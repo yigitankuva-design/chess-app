@@ -319,8 +319,9 @@ async def game_ws(websocket: WebSocket, game_id: int, token: str = Query(...)):
             black_rating, black_title = await get_rating_and_title(db, g.black_child_id, tempo)
         await websocket.send_json({
             "type": "game_info",
-            "white_name": w.display_name if w else default_name,
-            "black_name": b.display_name if b else default_name,
+            # Madde 2026-09-11 (Madde 11): maçlarda nickname (yoksa gerçek isim).
+            "white_name": w.public_name if w else default_name,
+            "black_name": b.public_name if b else default_name,
             "white_avatar": w.avatar if w else default_avatar,
             "black_avatar": b.avatar if b else default_avatar,
             "white_ms": g.white_ms,
@@ -768,9 +769,10 @@ async def lobby_online(child: ChildProfile = Depends(get_current_child)):
 
 
 async def _resolve_display_name(child_id: int) -> str:
+    """Madde 2026-09-11 (Madde 11): lobi/teklif/meydan okumada nickname (yoksa gerçek isim)."""
     async with get_session_factory()() as db:
         child = await db.get(ChildProfile, child_id)
-        return child.display_name if child else "Sporcu"
+        return child.public_name if child else "Sporcu"
 
 
 async def _handle_challenge(child_id: int, msg: dict) -> None:

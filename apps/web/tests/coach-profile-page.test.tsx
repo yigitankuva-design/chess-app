@@ -31,6 +31,13 @@ let mockToken: string | null = 'tok';
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => mockToken }));
 
 const uploadTeacherPhoto = vi.fn((..._args: unknown[]) => Promise.resolve(true));
+const updateTeacherProfile = vi.fn((..._args: unknown[]) => Promise.resolve({
+  ok: true as const,
+  data: {
+    country: 'Türkiye', province: 'Eskişehir', athlete_phone: '0532', lichess_username: 'hocam',
+    nickname: 'Hoca', nickname_changed_at: '2026-09-11T00:00:00Z', nickname_next_change_at: '2026-12-10T00:00:00Z',
+  },
+}));
 vi.mock('@/lib/gamification/meApi', () => ({
   fetchTeacherProgress: vi.fn(() => Promise.resolve({
     rank_name: '', rank_icon: '', xp_total: 0, next_rank_xp: 0,
@@ -41,10 +48,12 @@ vi.mock('@/lib/gamification/meApi', () => ({
     photo_data_url: null, province: 'Bilecik',
     athlete_phone: '5551234567', athlete_email: 'ahmet@test.com',
     lichess_username: 'ahmetchess',
+    country: 'Türkiye', nickname: null, nickname_changed_at: null, nickname_next_change_at: null,
     father_name: null, father_phone: null, father_email: null,
     mother_name: null, mother_phone: null, mother_email: null,
   })),
   uploadTeacherPhoto: (...args: unknown[]) => uploadTeacherPhoto(...args),
+  updateTeacherProfile: (...args: unknown[]) => updateTeacherProfile(...args),
 }));
 vi.mock('@/lib/activity/activityApi', () => ({ fetchDaySummary: vi.fn(() => Promise.resolve(null)) }));
 vi.mock('@/lib/image/resizeImage', () => ({
@@ -59,6 +68,7 @@ beforeEach(() => {
   push.mockClear();
   logout.mockClear();
   uploadTeacherPhoto.mockClear();
+  updateTeacherProfile.mockClear();
 });
 
 import CoachProfilePage from '@/app/(teacher)/coach/profile/page';
@@ -143,5 +153,50 @@ describe('Antrenör Paneli — /coach/profile (sporcu Profili kopyası, düzenle
     render(<CoachProfilePage />);
     expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
+  });
+});
+
+describe('Madde 2026-09-11 (Görsel Turu Aşama B / Madde 3 + S3-b): antrenör profil düzenleme', () => {
+  it('kimlik kartında Nickname alanı var; isim salt-okunur (düzenleme girişi yok)', async () => {
+    render(<CoachProfilePage />);
+    await waitFor(() => screen.getByText('Ahmet Antrenör'));
+    expect(screen.getByText('Nickname')).toBeInTheDocument();
+    expect(screen.getByText('Henüz eklenmedi')).toBeInTheDocument();
+    expect(screen.queryByLabelText('İsim')).not.toBeInTheDocument();
+  });
+
+  it('nickname kaydedilince updateTeacherProfile çağrılır ve yeni değer + 3 ay kilidi görünür', async () => {
+    render(<CoachProfilePage />);
+    await waitFor(() => screen.getByText('Ahmet Antrenör'));
+    fireEvent.click(screen.getByLabelText('Nickname düzenle'));
+    fireEvent.change(screen.getByLabelText('Nickname'), { target: { value: 'Hoca' } });
+    fireEvent.click(screen.getByText('Kaydet'));
+    await waitFor(() => expect(updateTeacherProfile).toHaveBeenCalledWith({ nickname: 'Hoca' }));
+    await waitFor(() => screen.getByText('Hoca'));
+    expect(screen.queryByLabelText('Nickname düzenle')).not.toBeInTheDocument(); // kilit
+    expect(screen.getByText(/gün sonra değiştirebilirsin/)).toBeInTheDocument();
+  });
+
+  it('ülke/il düzenlenir: 81 il listesinden seçilip kaydedilir', async () => {
+    render(<CoachProfilePage />);
+    await waitFor(() => screen.getByText('Ahmet Antrenör'));
+    fireEvent.click(screen.getByLabelText('Ülke ve şehir düzenle'));
+    fireEvent.change(screen.getByLabelText('Şehir'), { target: { value: 'Eskişehir' } });
+    fireEvent.click(screen.getByText('Kaydet'));
+    await waitFor(() => expect(updateTeacherProfile).toHaveBeenCalledWith({ country: 'Türkiye', province: 'Eskişehir' }));
+    await waitFor(() => screen.getByText('(Eskişehir)'));
+  });
+
+  it('iletişim: telefon + Lichess düzenlenir, e-posta değiştirilemez', async () => {
+    render(<CoachProfilePage />);
+    await waitFor(() => screen.getByText('Ahmet Antrenör'));
+    fireEvent.click(screen.getByLabelText('İletişim bilgilerini düzenle'));
+    expect(screen.getByText('(değiştirilemez)')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: '0532' } });
+    fireEvent.change(screen.getByLabelText('Lichess kullanıcı adı'), { target: { value: 'hocam' } });
+    fireEvent.click(screen.getByText('Kaydet'));
+    await waitFor(() => expect(updateTeacherProfile).toHaveBeenCalledWith({ athlete_phone: '0532', lichess_username: 'hocam' }));
+    await waitFor(() => screen.getByText('hocam'));
+    expect(screen.getByText('ahmet@test.com')).toBeInTheDocument();
   });
 });

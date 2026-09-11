@@ -55,6 +55,10 @@ class User(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     province: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     lichess_username: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    # Madde 2026-09-11 (Görsel Turu Aşama B): antrenör kendi profilinden ülke
+    # düzenler (NULL = Türkiye). Kimlik/iletişim antrenör hesabında kalır;
+    # oyun profili (Aşama F) bunları taşımaz.
+    country: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     kvkk_consent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     approval_status: Mapped[str] = mapped_column(String(20), server_default="approved")
 

@@ -1,4 +1,5 @@
 'use client';
+import { TURKIYE_ILLERI } from '@/lib/turkiye';
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -77,20 +78,9 @@ const REQUIRED_MARK = <span className="text-rose-400">*</span>;
  * ikisini birden sağlıyor (yazarken filtrelenen bir öneri listesi açılır,
  * ayrıca listeden tıklanabilir), ekstra bir kütüphane/bileşen gerekmiyor.
  */
-const TURKIYE_ILLERI = [
-  'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara',
-  'Antalya', 'Ardahan', 'Artvin', 'Aydın', 'Balıkesir', 'Bartın', 'Batman',
-  'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa',
-  'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Düzce', 'Edirne',
-  'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun',
-  'Gümüşhane', 'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 'İzmir',
-  'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu', 'Kayseri',
-  'Kırıkkale', 'Kırklareli', 'Kırşehir', 'Kilis', 'Kocaeli', 'Konya',
-  'Kütahya', 'Malatya', 'Manisa', 'Mardin', 'Mersin', 'Muğla', 'Muş',
-  'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye', 'Rize', 'Sakarya', 'Samsun',
-  'Siirt', 'Sinop', 'Sivas', 'Şanlıurfa', 'Şırnak', 'Tekirdağ', 'Tokat',
-  'Trabzon', 'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak',
-];
+// Madde 2026-09-11 (Aşama B): liste lib/turkiye.ts'e taşındı — profil
+// düzenleme (sporcu + antrenör) ile AYNI kaynak.
+
 
 function EyeIcon() {
   return (

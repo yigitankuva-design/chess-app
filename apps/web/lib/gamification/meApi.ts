@@ -24,6 +24,14 @@ export interface MyProgress {
   /** Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 4): yeni "Kayıt Ol"
    *  formunun eklediği Lichess kullanıcı adı. */
   lichess_username: string | null;
+  /** Madde 2026-09-11 (Görsel Turu Aşama B): düzenlenebilir alanlar.
+   *  `country` null = Türkiye. `nickname` maçlarda gerçek isim yerine
+   *  görünen ad (Madde 11); `nickname_next_change_at` doluysa ve gelecekteyse
+   *  3-ay kilidi aktiftir. Antrenör özetinde de aynı alanlar gelir. */
+  country?: string | null;
+  nickname?: string | null;
+  nickname_changed_at?: string | null;
+  nickname_next_change_at?: string | null;
   father_name: string | null;
   father_phone: string | null;
   father_email: string | null;
@@ -117,4 +125,63 @@ export async function uploadTeacherPhoto(photoDataUrl: string): Promise<boolean>
   } catch {
     return false;
   }
+}
+
+/** Madde 2026-09-11 (Görsel Turu Aşama B / Madde 3): profil düzenleme.
+ *  Gönderilmeyen alan değişmez; boş string telefon/Lichess'i temizler. */
+export interface ProfileEditPatch {
+  country?: string | null;
+  province?: string | null;
+  athlete_phone?: string | null;
+  lichess_username?: string | null;
+  nickname?: string | null;
+}
+
+export interface ProfileEditResult {
+  country: string | null;
+  province: string | null;
+  athlete_phone: string | null;
+  lichess_username: string | null;
+  nickname: string | null;
+  nickname_changed_at: string | null;
+  nickname_next_change_at: string | null;
+}
+
+export type ProfileEditOutcome =
+  | { ok: true; data: ProfileEditResult }
+  | { ok: false; error: string };
+
+async function patchProfile(path: string, body: Record<string, unknown>): Promise<ProfileEditOutcome> {
+  try {
+    const token = getToken();
+    if (!token) return { ok: false, error: 'Giriş yapılmamış' };
+    const r = await fetch(`${API_BASE}${path}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const detail = (data as { detail?: unknown }).detail;
+      return { ok: false, error: typeof detail === 'string' ? detail : 'Kaydedilemedi' };
+    }
+    return { ok: true, data: data as ProfileEditResult };
+  } catch {
+    return { ok: false, error: 'Sunucuya ulaşılamadı' };
+  }
+}
+
+/** Sporcu kendi profilini düzenler — PATCH /children/me/profile. */
+export function updateMyProfile(patch: ProfileEditPatch): Promise<ProfileEditOutcome> {
+  return patchProfile('/children/me/profile', { ...patch });
+}
+
+/** Antrenör kendi profilini düzenler — PATCH /teacher/me/profile
+ *  (telefon alanı sunucuda `phone`; burada sporcuyla AYNI `athlete_phone`
+ *  adıyla alınıp çevrilir ki iki profil sayfası aynı formu kullanabilsin). */
+export function updateTeacherProfile(patch: ProfileEditPatch): Promise<ProfileEditOutcome> {
+  const { athlete_phone, ...rest } = patch;
+  const body: Record<string, unknown> = { ...rest };
+  if ('athlete_phone' in patch) body.phone = athlete_phone;
+  return patchProfile('/teacher/me/profile', body);
 }

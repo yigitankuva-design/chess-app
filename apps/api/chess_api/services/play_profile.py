@@ -51,6 +51,11 @@ async def ensure_teacher_play_profile(db: AsyncSession, user: User) -> ChildProf
         return existing
     profile = ChildProfile(
         parent_user_id=user.id,
+        # Madde 2026-09-11 (Aşama B canlı kontrolü): antrenör "Arkadaşınla
+        # Oyna" lobisinde KENDİ öğrencilerini görsün, öğrenciler de onu —
+        # lobi `teacher_user_id` eşitliğiyle kurulur (athletes.py), bu yüzden
+        # antrenörün oyun profili kendi hoca grubuna bağlanır.
+        teacher_user_id=user.id,
         display_name=user.name,
         age=_age_from_birth_date(user.birth_date),
         avatar="default",
