@@ -3,8 +3,10 @@ import { getToken } from '@/lib/auth-storage';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /** Madde 2026-09-11 (Ödev Sistemi Faz 4): sporcu "Bildirimler" sekmesi —
- *  genel amaçlı (6 tür), şu an sadece "odev" türü gerçek veri taşıyor. */
-export type NotificationType = 'odev' | 'turnuva' | 'online_ders' | 'pratik' | 'mac' | 'eglence';
+ *  genel amaçlı (6 tür), şu an sadece "odev" türü gerçek veri taşıyor.
+ *  Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): `hoca_notu` eklendi —
+ *  antrenör profile not yazınca/değiştirince gerçek veri taşır. */
+export type NotificationType = 'odev' | 'turnuva' | 'online_ders' | 'pratik' | 'mac' | 'eglence' | 'hoca_notu';
 
 export interface NotificationTarget {
   lesson_step_id: number;
@@ -63,6 +65,7 @@ export const NOTIFICATION_TYPE_META: Record<NotificationType, { emoji: string; l
   pratik: { emoji: '🧩', label: 'Pratik' },
   mac: { emoji: '🎮', label: 'Maç' },
   eglence: { emoji: '🎉', label: 'Eğlence' },
+  hoca_notu: { emoji: '📝', label: 'Hoca Notu' },
 };
 
 /** "Ödeve Git" — pratik sayfasının beklediği query string'i kurar

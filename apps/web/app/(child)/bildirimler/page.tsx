@@ -45,6 +45,11 @@ export default function BildirimlerPage() {
     void markNotificationVisited(item.id);
     if (item.type === 'odev' && item.target) {
       router.push(odevTargetHref(item.target));
+    } else if (item.type === 'hoca_notu') {
+      // Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): hedef alt konu
+      // YOK (not sayfaya değil profile ait) — doğrudan sporcunun kendi
+      // profiline gider, "Hoca notu" kartı orada görünür.
+      router.push('/profile');
     }
   }
 

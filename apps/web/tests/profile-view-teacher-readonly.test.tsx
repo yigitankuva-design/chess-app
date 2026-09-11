@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ProfileView } from '@/components/profile/ProfileView';
 
@@ -80,5 +80,49 @@ describe('Madde 2026-09-11 (Aşama C): antrenör görünümünde istatistikler �
     expect(screen.getByText('2.lik').previousSibling).toHaveTextContent('1');
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/teacher/students/7/match-stats'))).toBe(true);
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/gamification/me/match-stats'))).toBe(false);
+  });
+});
+
+describe('Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): antrenör öğrenci profilinde hoca notu yönetir', () => {
+  it('mevcut notu gösterir, yeni not yazınca PUT çağrılır ve kart güncellenir', async () => {
+    const fetchMock = vi.fn((url: string, opts?: RequestInit) => {
+      if (url.includes('/teacher/students/7/profile-summary')) {
+        return Promise.resolve({ ok: true, json: async () => ({ ...TEACHER_ME, coach_note: { text: 'Eski not', teacher_name: 'Emir Dinç', created_at: '2026-09-10T10:00:00Z' } }) });
+      }
+      if (url.includes('/teacher/students/7/note') && opts?.method === 'PUT') {
+        return Promise.resolve({ ok: true, json: async () => ({ text: 'Yeni not', teacher_name: 'Emir Dinç', created_at: '2026-09-11T10:00:00Z' }) });
+      }
+      return Promise.resolve({ ok: false, json: async () => null });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ProfileView childId={7} />);
+    await waitFor(() => screen.getByText('Eski not'));
+
+    fireEvent.click(screen.getByLabelText('Notu değiştir'));
+    fireEvent.change(screen.getByLabelText('Not'), { target: { value: 'Yeni not' } });
+    fireEvent.click(screen.getByText('Kaydet'));
+
+    await waitFor(() => screen.getByText('Yeni not'));
+    expect(screen.queryByText('Eski not')).not.toBeInTheDocument();
+    const putCall = fetchMock.mock.calls.find(([u, o]) => String(u).includes('/teacher/students/7/note') && (o as RequestInit)?.method === 'PUT');
+    expect(putCall).toBeTruthy();
+    expect(JSON.parse((putCall![1] as RequestInit).body as string)).toEqual({ text: 'Yeni not' });
+  });
+
+  it('"Sil" DELETE çağırır ve kart placeholder\'a döner', async () => {
+    const fetchMock = vi.fn((url: string, opts?: RequestInit) => {
+      if (url.includes('/teacher/students/7/profile-summary')) {
+        return Promise.resolve({ ok: true, json: async () => ({ ...TEACHER_ME, coach_note: { text: 'Silinecek', teacher_name: 'Emir Dinç', created_at: '2026-09-10T10:00:00Z' } }) });
+      }
+      if (url.includes('/teacher/students/7/note') && opts?.method === 'DELETE') {
+        return Promise.resolve({ ok: true, json: async () => ({ ok: true }) });
+      }
+      return Promise.resolve({ ok: false, json: async () => null });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ProfileView childId={7} />);
+    await waitFor(() => screen.getByText('Silinecek'));
+    fireEvent.click(screen.getByText('Sil'));
+    await waitFor(() => screen.getByText('Hoca notu eklendiğinde burada görünecek.'));
   });
 });

@@ -144,8 +144,9 @@ async def test_hic_odev_gonderilmemis_sporcuda_bos_liste(client, db):
 
 @pytest.mark.asyncio
 async def test_farkli_turlerin_hepsi_gecerli_enum(client, db):
+    # Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): hoca_notu eklendi.
     assert {t.value for t in NotificationType} == {
-        "odev", "turnuva", "online_ders", "pratik", "mac", "eglence",
+        "odev", "turnuva", "online_ders", "pratik", "mac", "eglence", "hoca_notu",
     }
 
 

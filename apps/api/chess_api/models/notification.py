@@ -10,13 +10,18 @@ class NotificationType(str, enum.Enum):
     AMAÇLIDIR — Zafer'in isteğiyle 6 tür tanımlı. Şu an sadece `odev` için
     gerçek bir üretici (POST /homework) var; diğerleri (turnuva/online_ders/
     pratik/mac/eglence) ileride kendi tetikleyicilerini alacak — tip zaten
-    hazır, sadece kimse şu an bu satırları oluşturmuyor."""
+    hazır, sadece kimse şu an bu satırları oluşturmuyor.
+
+    Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): `hoca_notu` eklendi —
+    antrenör bir sporcunun profiline not yazınca/değiştirince üretilir
+    (bkz. routers/teacher.py, models/coach_note.py)."""
     odev = "odev"
     turnuva = "turnuva"
     online_ders = "online_ders"
     pratik = "pratik"
     mac = "mac"
     eglence = "eglence"
+    hoca_notu = "hoca_notu"
 
 
 class Notification(Base):

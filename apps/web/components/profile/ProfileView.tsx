@@ -11,7 +11,10 @@ import { PieceSetSelector } from '@/components/PieceSetSelector';
 import { LessonProgressCard } from '@/components/profile/LessonProgressCard';
 import { fetchDaySummary } from '@/lib/activity/activityApi';
 import type { DaySummary } from '@/lib/activity/activityApi';
-import { fetchMyProgress, fetchMatchStats, uploadMyPhoto, updateMyProfile } from '@/lib/gamification/meApi';
+import {
+  fetchMyProgress, fetchMatchStats, uploadMyPhoto, updateMyProfile, writeCoachNote, deleteCoachNote,
+} from '@/lib/gamification/meApi';
+import { CoachNoteCard } from '@/components/profile/CoachNoteCard';
 import { ContactEditor, LocationEditor, NicknameEditor } from '@/components/profile/ProfileEditors';
 import { RatingCard, MatchStatsCard, TournamentCard } from '@/components/profile/MatchStatsCards';
 import type { MyProgress, MatchStats } from '@/lib/gamification/meApi';
@@ -120,14 +123,6 @@ function formatDuration(totalSeconds: number): string {
   const minutes = totalMinutes % 60;
   if (hours <= 0) return `${minutes} dk`;
   return `${hours} saat ${minutes} dk`;
-}
-
-function ChatIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--t-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
 }
 
 /** Madde 2026-09-07 (GRUP C): "İletişim Bilgileri" kartı — Zafer'in
@@ -563,16 +558,28 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
       {/* 9) Turnuva Geçmişi — madde 2026-09-11 (Aşama C): gerçek veri. */}
       <TournamentCard data={matchStats} />
 
-      {/* 10) Hoca notu/geri bildirimi */}
-      <div className="t-card p-4 flex gap-3">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--t-surface-2)' }}>
-          <ChatIcon />
-        </div>
-        <div>
-          <p className="text-xs font-bold t-muted mb-0.5">Zafer Hoca&apos;dan not</p>
-          <p className="text-sm t-muted italic">Hoca notu eklendiğinde burada görünecek.</p>
-        </div>
-      </div>
+      {/* 10) Hoca notu — madde 2026-09-11 (Aşama E / Madde 9): gerçek veri.
+          `readOnly` (childId verilince) = antrenörün öğrenci görünümü →
+          yazma/silme yetkisi SADECE orada. Antrenörün KENDİ profilinde
+          (coach/profile) bu kart hiç render EDİLMİYOR (o sayfa bu bileşeni
+          kullanmıyor) — ayrı bir "gizle" bayrağı gerekmiyor. */}
+      <CoachNoteCard
+        note={me.coach_note}
+        canManage={readOnly}
+        onSave={async (text) => {
+          if (childId == null) return false;
+          const saved = await writeCoachNote(childId, text);
+          if (!saved) return false;
+          setMe((prev) => (prev ? { ...prev, coach_note: saved } : prev));
+          return true;
+        }}
+        onDelete={async () => {
+          if (childId == null) return false;
+          const ok = await deleteCoachNote(childId);
+          if (ok) setMe((prev) => (prev ? { ...prev, coach_note: null } : prev));
+          return ok;
+        }}
+      />
 
       {/* Ana sayfa / Geri — madde 2026-09-07 (GRUP B): antrenör görünümünde
           "/home" ÇOCUĞA özel bir rota, antrenör oraya gitmemeli — bir önceki

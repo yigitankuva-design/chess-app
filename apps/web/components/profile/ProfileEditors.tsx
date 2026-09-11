@@ -42,8 +42,10 @@ const inputStyle = {
 const inputClass = 'rounded-lg px-3 py-2 text-sm w-full mt-1';
 const labelClass = 'block text-[10px] font-bold uppercase tracking-wide t-muted';
 
-/** Alttan açılan düzenleme paneli — tam genişlik, Kaydet/Vazgeç. */
-function EditSheet({ title, busy, err, onSave, onCancel, children }: {
+/** Alttan açılan düzenleme paneli — tam genişlik, Kaydet/Vazgeç. Dışa
+ *  açık — CoachNoteCard.tsx (Aşama E) da AYNI mobil-dar-kart deseniyle
+ *  bunu kullanır (kendi kopyasını yazmak yerine). */
+export function EditSheet({ title, busy, err, onSave, onCancel, children }: {
   title: string; busy: boolean; err: string | null; onSave: () => void; onCancel: () => void; children: React.ReactNode;
 }) {
   return (

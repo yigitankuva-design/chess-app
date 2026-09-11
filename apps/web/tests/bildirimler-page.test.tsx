@@ -74,3 +74,20 @@ it('Git\'e basınca ziyaret işaretlenir ve ödev hedefine yönlendirir', async 
   await waitFor(() => expect(screen.queryByText('YENİ')).not.toBeInTheDocument());
   expect(screen.queryByText('1 yeni bildirim')).not.toBeInTheDocument();
 });
+
+it('madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): hoca_notu türünde Git\'e basınca /profile\'a gider', async () => {
+  mocks.fetchNotifications.mockResolvedValue({
+    unread_count: 1,
+    items: [{
+      id: 9, type: 'hoca_notu', title: 'Hoca sana bir not bıraktı', subtitle: 'Açılışta daha dikkatli ol.',
+      created_at: '2026-09-11T10:00:00Z', visited_at: null, target: null,
+    }],
+  });
+  render(<BildirimlerPage />);
+  await waitFor(() => screen.getByText('Hoca sana bir not bıraktı'));
+  expect(screen.getByText('📝')).toBeInTheDocument();
+  fireEvent.click(screen.getByTitle('Git'));
+
+  await waitFor(() => expect(mocks.markNotificationVisited).toHaveBeenCalledWith(9));
+  expect(routerPush).toHaveBeenCalledWith('/profile');
+});

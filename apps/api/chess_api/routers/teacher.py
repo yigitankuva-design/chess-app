@@ -1,11 +1,14 @@
 import secrets
 import string
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
-from chess_api.models import User, UserRole, Class, ChildProfile, ParentSurvey
+from chess_api.models import (
+    User, UserRole, Class, ChildProfile, ParentSurvey, CoachNote, Notification, NotificationType,
+)
 from chess_api.services.leaderboard import class_leaderboard
 from chess_api.routers.gamification import _compute_progress
 from chess_api.routers.activity import _compute_day_summary
@@ -16,6 +19,7 @@ from chess_api.routers.practice import (
 from chess_api.services.play_profile import ensure_teacher_play_profile
 from chess_api.services.profile_edit import set_nickname, nickname_next_change_at, clean_optional
 from chess_api.services.profile_stats import compute_match_stats
+from chess_api.services.coach_notes import get_coach_note_payload
 from pydantic import BaseModel, Field
 
 _ALPHABET = string.ascii_uppercase + string.digits
@@ -288,6 +292,64 @@ async def student_day_summary(
     """`/activity/day-summary` ile AYNI veri — antrenörün salt-okunur görünümü."""
     child = await _get_child_for_teacher(child_id, current, db)
     return await _compute_day_summary(child, date_str, db)
+
+
+class CoachNoteRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+@router.put("/students/{child_id}/note")
+async def write_coach_note(
+    child_id: int,
+    payload: CoachNoteRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): antrenör bir
+    sporcunun profiline not yazar/değiştirir. S4 (Zafer): SADECE SON not
+    tutulur (upsert) — ayrı bir "düzenle" ucu YOK, yeniden yazmak zaten
+    değiştirmekle eşdeğer. Her yazımda (ilk kez veya değişiklik) sporcuya
+    YENİ bir bildirim düşer ("not yazarsa bildirim görünsün")."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(422, "Not boş olamaz")
+
+    note = (await db.execute(
+        select(CoachNote).where(CoachNote.child_id == child.id)
+    )).scalar_one_or_none()
+    if note is None:
+        note = CoachNote(child_id=child.id, teacher_user_id=current.id, text=text)
+        db.add(note)
+    else:
+        note.text = text
+        note.teacher_user_id = current.id
+
+    db.add(Notification(
+        child_id=child.id, type=NotificationType.hoca_notu,
+        title=f"{current.name} sana bir not bıraktı", subtitle=text[:200],
+        visible_from=date.today(),
+    ))
+    await db.commit()
+    return await get_coach_note_payload(db, child.id)
+
+
+@router.delete("/students/{child_id}/note")
+async def delete_coach_note(
+    child_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """S4 (Zafer): "silinebilir" — antrenör kendi yazdığı notu kaldırır.
+    Geçmiş bildirim satırlarına DOKUNULMAZ (bell geçmişi kalır)."""
+    child = await _get_child_for_teacher(child_id, current, db)
+    note = (await db.execute(
+        select(CoachNote).where(CoachNote.child_id == child.id)
+    )).scalar_one_or_none()
+    if note is not None:
+        await db.delete(note)
+        await db.commit()
+    return {"ok": True}
 
 
 @router.get("/students/{child_id}/practice/lessons/{lesson_id}/scores")

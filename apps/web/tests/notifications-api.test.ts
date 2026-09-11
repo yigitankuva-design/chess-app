@@ -43,9 +43,9 @@ describe('notificationsApi', () => {
     expect(href).toBe('/pratik/suresiz?konu=Merkez%20Kavram%C4%B1&step=5&ders=10');
   });
 
-  it('NOTIFICATION_TYPE_META — 6 türün hepsi tanımlı', () => {
+  it('NOTIFICATION_TYPE_META — 7 türün hepsi tanımlı (madde 2026-09-11, Aşama E: hoca_notu eklendi)', () => {
     expect(Object.keys(NOTIFICATION_TYPE_META).sort()).toEqual(
-      ['eglence', 'mac', 'odev', 'online_ders', 'pratik', 'turnuva'].sort(),
+      ['eglence', 'hoca_notu', 'mac', 'odev', 'online_ders', 'pratik', 'turnuva'].sort(),
     );
   });
 });

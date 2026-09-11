@@ -42,6 +42,7 @@ const ME = {
   nickname_changed_at: null as string | null, nickname_next_change_at: null as string | null,
   father_name: 'Baba', father_phone: '05559876543', father_email: null,
   mother_name: 'Anne', mother_phone: null, mother_email: 'anne@example.com',
+  coach_note: null as { text: string; teacher_name: string; created_at: string } | null,
 };
 
 function stubFetch() {
@@ -226,5 +227,27 @@ describe('Madde 2026-09-11 (Görsel Turu Aşama B / Madde 3): sporcu profil düz
     await waitFor(() => screen.getByText('İletişim Bilgileri'));
     fireEvent.click(screen.getByText('Sporcu'));
     expect(screen.queryByLabelText(/düzenle/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): sporcu kendi profilinde hoca notunu görür', () => {
+  it('not yoksa placeholder, yönetim düğmesi YOK (sporcu yazamaz/silemez)', async () => {
+    stubFetch();
+    render(<ProfileView />);
+    await waitFor(() => screen.getByText('Hoca notu eklendiğinde burada görünecek.'));
+    expect(screen.queryByLabelText('Not yaz')).not.toBeInTheDocument();
+  });
+
+  it('not varsa öğretmen adı + metni gösterir', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('/activity/day-summary')) return Promise.resolve({ ok: false, json: async () => null });
+      return Promise.resolve({ ok: true, json: async () => ({
+        ...ME, coach_note: { text: 'Harika ilerliyorsun!', teacher_name: 'Ahmet Hoca', created_at: '2026-09-11T10:00:00Z' },
+      }) });
+    }) as unknown as typeof fetch);
+    render(<ProfileView />);
+    await waitFor(() => screen.getByText('Harika ilerliyorsun!'));
+    expect(screen.getByText("Ahmet Hoca'dan not")).toBeInTheDocument();
+    expect(screen.queryByText('Sil')).not.toBeInTheDocument();
   });
 });

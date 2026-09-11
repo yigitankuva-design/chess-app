@@ -38,6 +38,16 @@ export interface MyProgress {
   mother_name: string | null;
   mother_phone: string | null;
   mother_email: string | null;
+  /** Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): antrenörün yazdığı
+   *  SON not — yoksa null. Antrenörün KENDİ profilinde (hibrit jeton) her
+   *  zaman null (kimse ona not yazmaz). */
+  coach_note: CoachNote | null;
+}
+
+export interface CoachNote {
+  text: string;
+  teacher_name: string;
+  created_at: string;
 }
 
 /**
@@ -234,5 +244,42 @@ export async function fetchMatchStats(childId?: number): Promise<MatchStats | nu
     return await r.json();
   } catch {
     return null;
+  }
+}
+
+/**
+ * Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): antrenör bir sporcunun
+ * profiline not yazar/değiştirir — SADECE SON not tutulur (S4: "düzenlenmez",
+ * yeniden yazmak zaten değiştirmekle eşdeğer). Her çağrı sporcuya bir
+ * bildirim düşürür (backend). null = kaydedilemedi.
+ */
+export async function writeCoachNote(childId: number, text: string): Promise<CoachNote | null> {
+  try {
+    const token = getToken();
+    if (!token) return null;
+    const r = await fetch(`${API_BASE}/teacher/students/${childId}/note`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+/** S4 (Zafer): "silinebilir" — antrenör kendi yazdığı notu kaldırır. */
+export async function deleteCoachNote(childId: number): Promise<boolean> {
+  try {
+    const token = getToken();
+    if (!token) return false;
+    const r = await fetch(`${API_BASE}/teacher/students/${childId}/note`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return r.ok;
+  } catch {
+    return false;
   }
 }
