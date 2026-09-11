@@ -81,6 +81,16 @@ function PratikInner() {
    *  ilerleme. `odevRepeat` = ödev ZATEN tamamlandı, sporcu tekrar-amaçlı
    *  çözüyor → sorular RASTGELE, cevaplar KAYDEDİLMEZ (Zafer'in kararı). */
   const isOdev = slug === 'suresiz';
+  // Madde 2026-09-11 (Görsel Turu Aşama D / Madde 7): "İnceleme" modu —
+  // sporcu VEYA antrenör, Sporcu Profili "Ödevlerim" panelindeki cevaplanmış
+  // (yeşil/kırmızı) bir karta tıklayınca AÇILIR — o soruyu SABİT settekinin
+  // (ilk N) İÇİNDEN, belirtilen index'te tek başına gösterir. Hiçbir şey
+  // KAYDEDİLMEZ (fetchOdevProgress/submitOdevAnswer hiç çağrılmaz) — bu
+  // yüzden ziyaretçinin kimliği (sporcunun kendisi mi, antrenör mü) önemsiz;
+  // ikisi de aynı soruyu görür, istediği kadar tekrar çözebilir.
+  const reviewParam = searchParams.get('review');
+  const reviewIndex = reviewParam !== null && reviewParam !== '' ? Number(reviewParam) : null;
+  const isReview = isOdev && reviewIndex !== null && Number.isInteger(reviewIndex) && reviewIndex >= 0;
   const [odevRepeat, setOdevRepeat] = useState(false);
   const [odevJustCompleted, setOdevJustCompleted] = useState(false);
   const odevSetSizeRef = useRef(0);
@@ -184,6 +194,19 @@ function PratikInner() {
         if (isOdev) {
           const n = Math.max(0, Math.min(resolvedPick, pool.length));
           odevSetSizeRef.current = n;
+
+          // Madde 2026-09-11 (Aşama D / Madde 7): İnceleme modu — ödevin
+          // tamamlanma durumundan BAĞIMSIZ, SABİT ilk-N settekinin
+          // istenen index'teki tek sorusunu gösterir. fetchOdevProgress
+          // BİLEREK çağrılmaz (kaydetmiyoruz, kime ait olduğu önemsiz).
+          if (isReview) {
+            const idx = Math.min(Math.max(reviewIndex ?? 0, 0), Math.max(n - 1, 0));
+            const ex = n > 0 ? pool[idx] : undefined;
+            setExercises(ex ? [ex] : []);
+            setLoading(false);
+            return;
+          }
+
           const prog = await fetchOdevProgress(stepId);
           if (prog?.completed) {
             setOdevRepeat(true);
@@ -227,7 +250,11 @@ function PratikInner() {
       })
       .catch(() => { setExercises([]); setLoading(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, lessonId, stepId]);
+    // reviewIndex de dep: aynı alt konu içinde farklı bir soru kartına
+    // tıklanırsa (review=2 → review=4) sayfa yeniden mount OLMAYABİLİR
+    // (App Router aynı route'ta query değişince component'i korur) — bu
+    // satır olmadan eski soruda kalınırdı.
+  }, [mode, lessonId, stepId, reviewIndex]);
 
   // Kilit durumu (token yoksa null döner → kilit uygulanmaz)
   useEffect(() => {
@@ -386,6 +413,62 @@ function PratikInner() {
         title={mode.title}
         description="Bu pratiği başlatmak için Hızlı Erişim → Dersler'den bir alt konu seç."
       />
+    );
+  }
+
+  // Madde 2026-09-11 (Görsel Turu Aşama D / Madde 7): İnceleme modu — kilit,
+  // süre, puan, "tamamlandı" mesajları YOK; sadece TEK bir soru, istenildiği
+  // kadar tekrar çözülebilir, HİÇBİR ŞEY sunucuya yazılmaz (bkz. useEffect'teki
+  // isReview dalı — submitOdevAnswer/fetchOdevProgress hiç çağrılmaz).
+  if (isReview) {
+    return (
+      <main id="main-content" className="px-4 pt-5 pb-12 practice-shell mx-auto">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl leading-none">🔍</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-extrabold t-premium text-lg leading-tight">Soru İncelemesi</p>
+            {konu && <p className="text-xs t-muted mt-0.5 truncate">{konu}</p>}
+          </div>
+        </div>
+
+        {loading && <p className="text-sm t-muted">Soru yükleniyor...</p>}
+
+        {!loading && (!exercises || exercises.length === 0) && (
+          <div className="t-card-i p-5 text-center rounded-xl">
+            <p className="text-3xl mb-2">📭</p>
+            <p className="font-bold text-sm mb-1">Bu soru bulunamadı</p>
+            <p className="text-xs t-muted mb-4">Alt konunun soru havuzu değişmiş olabilir.</p>
+            <Link href="/home" className="t-btn inline-block px-5 py-2.5 text-sm">Ana Sayfaya Dön</Link>
+          </div>
+        )}
+
+        {!loading && exercises && exercises.length > 0 && (
+          <>
+            <p className="text-xs t-muted mb-2">
+              Bu soruyu istediğin kadar tekrar çözebilirsin — cevabın, Ödevlerim
+              kartındaki rengi DEĞİŞTİRMEZ (kartın rengi ilk çözümle ilişkilidir).
+            </p>
+            <BoardExercise
+              key={runId}
+              exercises={exercises}
+              done={false}
+              onCorrect={() => {}}
+            />
+            {/* quitSlot İÇİNE değil DIŞINA konur: soru doğru cevaplanınca
+                BoardExercise kendi "Tüm egzersizler tamamlandı!" ekranına
+                geçiyor ve quitSlot'u ARTIK RENDER ETMİYOR — bu düğme
+                İncelemenin HER durumunda (çözülmüş/çözülmemiş) görünsün diye
+                ayrı, hep var olan bir düğme olarak eklendi. */}
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="t-card-i w-full py-3 px-4 text-center text-sm font-semibold mt-2"
+            >
+              İncelemeyi Bitir
+            </button>
+          </>
+        )}
+      </main>
     );
   }
 

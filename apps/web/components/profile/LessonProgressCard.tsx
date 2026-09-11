@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   isSubtopicUnlocked, isLessonCompleted, thresholdFor,
 } from '@/lib/practice/unlock';
@@ -448,17 +449,36 @@ export function LessonProgressCard({ childId }: LessonProgressCardProps = {}) {
                               {practiceDetail.pool_size === 0 ? (
                                 <p className="text-xs t-muted py-1">Bu alt konu için henüz soru eklenmedi.</p>
                               ) : (
-                                // Zafer'in isteği: soru kartları %20 büyütüldü (22px → 26px) ve ortalandı.
-                                <div
-                                  className="grid gap-1.5 mx-auto justify-center"
-                                  style={{ gridTemplateColumns: `repeat(${Math.min(practiceDetail.pool_size, 5)}, 26px)`, maxWidth: '100%' }}
-                                >
-                                  {Array.from({ length: practiceDetail.pool_size }, (_, i) => {
-                                    const result = practiceDetail.per_question_correct?.[i];
-                                    const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
-                                    return <div key={i} className="aspect-square rounded-md" style={{ background: bg }} />;
-                                  })}
-                                </div>
+                                <>
+                                  {/* Zafer'in isteği: soru kartları %20 büyütüldü (22px → 26px) ve ortalandı. */}
+                                  <div
+                                    className="grid gap-1.5 mx-auto justify-center"
+                                    style={{ gridTemplateColumns: `repeat(${Math.min(practiceDetail.pool_size, 5)}, 26px)`, maxWidth: '100%' }}
+                                  >
+                                    {Array.from({ length: practiceDetail.pool_size }, (_, i) => {
+                                      const result = practiceDetail.per_question_correct?.[i];
+                                      const bg = result === true ? 'var(--t-ok-text)' : result === false ? 'var(--t-err-text)' : 'var(--t-surface-2)';
+                                      // Madde 2026-09-11 (Görsel Turu Aşama D / Madde 7): cevaplanmış
+                                      // (yeşil/kırmızı) kart TIKLANABİLİR — sporcu VEYA antrenör o
+                                      // soruyu İnceleme modunda açıp tekrar çözebilir; henüz
+                                      // cevaplanmamış (gri) kart tıklanamaz. İnceleme cevabı
+                                      // KAYDETMEZ — kartın rengi ilk çözümle ilişkili kalır.
+                                      if (result === null || result === undefined) {
+                                        return <div key={i} className="aspect-square rounded-md" style={{ background: bg }} />;
+                                      }
+                                      return (
+                                        <Link
+                                          key={i}
+                                          href={`/pratik/suresiz?konu=${encodeURIComponent(openSubtopic.title)}&step=${openSubtopic.stepId}&ders=${lessonId}&review=${i}`}
+                                          aria-label={`${i + 1}. soruyu incele (${result ? 'doğru cevaplanmıştı' : 'yanlış cevaplanmıştı'})`}
+                                          className="aspect-square rounded-md transition-opacity hover:opacity-80"
+                                          style={{ background: bg }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                  <p className="text-[11px] t-muted mt-1.5">Bir soruya dokunarak inceleyebilirsin.</p>
+                                </>
                               )}
                             </div>
                           )}

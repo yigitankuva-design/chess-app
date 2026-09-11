@@ -148,6 +148,52 @@ describe('LessonProgressCard — Sporcu Profili Ders İlerlemesi + Ödevlerim (m
     expect(screen.getByText(/Tahtanın Genel Özellikleri - 1 konusuna ait/)).toBeInTheDocument();
   });
 
+  it('madde 2026-09-11 (Görsel Turu Aşama D / Madde 7): cevaplanmış (yeşil/kırmızı) kareler İnceleme moduna bağlantı verir, gri (cevaplanmamış) kare tıklanamaz', async () => {
+    stubFetch();
+    fetchPracticeDetail.mockResolvedValue({
+      best_score: 0, best_correct: 2, best_total: 5, attempts_count: 1,
+      per_question_correct: [true, false, null, true, null],
+      pool_size: 5, completed: false, answered_count: 3,
+    });
+    render(<LessonProgressCard />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Ödevini Yap'));
+    await waitFor(() => screen.getByText('Ödevlerim'));
+
+    // index 0 (doğru) ve 1 (yanlış) tıklanabilir bağlantı; index 2, 4 (gri) DEĞİL.
+    const dogru = screen.getByLabelText('1. soruyu incele (doğru cevaplanmıştı)');
+    const yanlis = screen.getByLabelText('2. soruyu incele (yanlış cevaplanmıştı)');
+    expect(dogru.tagName).toBe('A');
+    expect(dogru).toHaveAttribute('href', '/pratik/suresiz?konu=Tahtan%C4%B1n%20Genel%20%C3%96zellikleri&step=100&ders=10&review=0');
+    expect(yanlis).toHaveAttribute('href', '/pratik/suresiz?konu=Tahtan%C4%B1n%20Genel%20%C3%96zellikleri&step=100&ders=10&review=1');
+    expect(screen.queryByLabelText(/3\. soruyu incele/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/5\. soruyu incele/)).not.toBeInTheDocument();
+    expect(screen.getByText('Bir soruya dokunarak inceleyebilirsin.')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-11 (Aşama D): antrenör (childId) görünümünde de aynı İnceleme bağlantıları görünür', async () => {
+    stubFetch();
+    fetchPracticeDetail.mockResolvedValue({
+      best_score: 0, best_correct: 1, best_total: 5, attempts_count: 1,
+      per_question_correct: [false, null, null, null, null],
+      pool_size: 5, completed: false, answered_count: 1,
+    });
+    render(<LessonProgressCard childId={7} />);
+    await waitFor(() => screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    fireEvent.click(screen.getByLabelText('1. konu: Tahta ve Taşlar'));
+    await waitFor(() => screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    fireEvent.click(screen.getByText('Ödevini Yap'));
+    await waitFor(() => expect(fetchPracticeDetail).toHaveBeenCalledWith(100, 'suresiz', 7));
+
+    expect(screen.getByLabelText('1. soruyu incele (yanlış cevaplanmıştı)')).toHaveAttribute(
+      'href', '/pratik/suresiz?konu=Tahtan%C4%B1n%20Genel%20%C3%96zellikleri&step=100&ders=10&review=0',
+    );
+  });
+
   it('madde 2026-09-06 (Görsel 6): "Süreli Pratik Yap" seçilince Günlük/Haftalık/Aylık/Yıllık tablosu gösterilir', async () => {
     stubFetch();
     render(<LessonProgressCard />);

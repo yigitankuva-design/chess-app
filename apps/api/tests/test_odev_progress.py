@@ -182,3 +182,37 @@ async def test_odev_olmayan_step_404(client, child_auth):
                           headers={"Authorization": f"Bearer {token}"},
                           json={"question_index": 0, "correct": True})
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_soru_bir_kez_cevaplaninca_odev_bitmeden_once_de_uzerine_yazilmaz(client, child_auth, db):
+    """Madde 2026-09-11 (Görsel Turu Aşama D / Madde 7): "ilk cevap kazanır"
+    kuralı ÖDEVİN TAMAMI bitmeden ÖNCE de soru bazında geçerli — İnceleme
+    modunda (veya herhangi bir tekrar-gönderimde) aynı index'e ikinci kez
+    gelinse bile ilk cevap SABİT kalır, ne doğru→yanlış ne yanlış→doğru
+    değişir; kartın rengi sadece ilk çözümle ilişkilidir."""
+    token, _ = child_auth
+    _, step_id = await _make_step_with_pool(db, count=5)
+    h = {"Authorization": f"Bearer {token}"}
+
+    r = await client.post(f"/practice/steps/{step_id}/odev/answer", headers=h,
+                          json={"question_index": 0, "correct": False})
+    assert r.json()["per_question_correct"][0] is False
+
+    # Ödev HENÜZ tamamlanmadı (sadece 1/5) — aynı soruya "doğru" ile tekrar
+    # gelinse bile (İnceleme modu / yeniden gönderim) İLK cevap (yanlış) kalır.
+    r2 = await client.post(f"/practice/steps/{step_id}/odev/answer", headers=h,
+                           json={"question_index": 0, "correct": True})
+    assert r2.status_code == 200
+    assert r2.json()["per_question_correct"][0] is False
+    assert r2.json()["answered_count"] == 1
+    assert r2.json()["correct_count"] == 0
+
+    # Ters yön: doğru cevaplanan bir soru da yanlışla EZİLEMEZ.
+    r3 = await client.post(f"/practice/steps/{step_id}/odev/answer", headers=h,
+                           json={"question_index": 1, "correct": True})
+    assert r3.json()["per_question_correct"][1] is True
+    r4 = await client.post(f"/practice/steps/{step_id}/odev/answer", headers=h,
+                           json={"question_index": 1, "correct": False})
+    assert r4.json()["per_question_correct"][1] is True
+    assert r4.json()["correct_count"] == 1  # sadece index 1 doğru sayılır

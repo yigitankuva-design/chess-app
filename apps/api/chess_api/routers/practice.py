@@ -236,6 +236,15 @@ async def odev_answer(
 
     Ödev ZATEN tamamlanmışsa (completed_at dolu) hiçbir şey yazılmaz — sonraki
     TEKRAR çözümler istatistiğe girmez (Zafer'in kararı). Sadece ilk çözüm sayılır.
+
+    Madde 2026-09-11 (Görsel Turu Aşama D / Madde 7): bu kural HOMEWORK'ÜN
+    TAMAMI bitmeden ÖNCE de, SORU BAZINDA geçerli — bir soru bir kez
+    cevaplandıysa (`str(index) in amap`), ödev henüz tamamlanmamış olsa
+    BİLE üzerine yazılmaz. Normal "Ödevini Yap" akışında zaten hiçbir
+    zaman aynı index'e ikinci kez gelinmez (sadece ileri gider — bkz.
+    pratik/[mode]/page.tsx), ama yeni "İnceleme" modu (sporcu/antrenör
+    yanlış cevaplanan bir karta tıklayıp o soruyu tekrar çözebiliyor)
+    hiç kayıt göndermese de, bu satır API katmanında ikinci bir güvence.
     """
     step = await db.get(LessonStep, step_id)
     if step is None:
@@ -248,6 +257,9 @@ async def odev_answer(
 
     if payload.question_index >= max(n, 1):
         raise HTTPException(status_code=400, detail="question_index out of range")
+
+    if row is not None and str(payload.question_index) in (row.answered_map or {}):
+        return _odev_progress_payload(step, row)  # bu soru DAHA ÖNCE cevaplandı — sabit kalır
 
     if row is None:
         row = ChildOdevProgress(
