@@ -1,29 +1,31 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Square } from 'chess.js';
 import { ChessBoard } from '@/components/ChessBoard';
 import { assignExerciseCodes } from '@/lib/exerciseCodes';
 import type { PositionPoolEntry } from '@/lib/customTabsApi';
 import { useAuth } from '@/lib/auth-context';
-import { AssignHomeworkPanel } from '@/components/admin/AssignHomeworkPanel';
 
 interface Props {
   pool: PositionPoolEntry[];
   /**
-   * Madde 2026-09-07 (GRUP D): "Ödev Gönder" ikonu SADECE antrenör (`role
-   * === 'teacher'`) bu Alt Konu'yu görüntülerken ve bu iki prop verilmişken
-   * gösterilir — çocuk kendi "Hızlı Erişim" görünümünde ikonu GÖRMEZ.
+   * "Ödev Gönder" düğmesi SADECE antrenör (`role === 'teacher'`) bu Alt
+   * Konu'yu görüntülerken ve bu proplar verilmişken gösterilir — çocuk
+   * kendi "Hızlı Erişim" görünümünde düğmeyi GÖRMEZ.
    * (bkz. app/(child)/custom/[id]/alt-konu/[sectionId]/page.tsx)
    */
   sourceSectionId?: number;
   sourceSectionTitle?: string;
+  /** Madde 2026-09-11 (Ödev Sistemi Faz 3): "Ödev Gönder"e basınca gidilecek
+   *  "Ödev Gönder" sayfasının URL'i için özel sekmenin id'si. */
+  sourceTabId?: number;
   /**
    * Madde 2026-09-11 (Ödev Sistemi Faz 2): bu Alt Konu'nun Dersler
    * müfredatındaki karşılığı (LessonStep id). null/undefined ise "Ödev
    * Gönder" düğmesi DEVRE DIŞI görünür ("bu alt konu müfredata bağlı değil")
    * — admin panelden (Sekmeler › Çalışmalar › Dersler › Alt Konu) bağlanması
-   * gerekir. Verilmezse (eski/standalone kullanım, testler) düğme yine
-   * bağsız-uyarısı gösterir; SADECE antrenör görünümünde anlamlıdır.
+   * gerekir.
    */
   linkedLessonStepId?: number | null;
   /**
@@ -104,8 +106,9 @@ const STEP_CIRCLE_SIZE = 52;
  *    kartının sağına da ok koy" isteği); gidilecek grup yoksa DEVRE DIŞI.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
-export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, linkedLessonStepId, onPoolLabelChange }: Props) {
+export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, sourceTabId, linkedLessonStepId, onPoolLabelChange }: Props) {
   const auth = useAuth();
+  const router = useRouter();
   const [groupIdx, setGroupIdx] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
   /** Madde 2026-08-25: bu sayfaya ÖZEL, YEREL bir tercih — BotGame/LiveGame'in
@@ -147,14 +150,20 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
     setStepIdx(0);
   }
 
-  // Madde 2026-09-09 (GRUP D'nin devamı): "Ödev Gönder" tetikleyicisi artık
-  // tahtanın SAĞ ALT köşesindeki satırda — koşulu (SADECE antrenör +
-  // kaynak bölüm verilmiş) burada bir kez hesaplayıp hem o satırda hem
-  // (varsa gelecekte) başka yerde kullanmak için değişkene alıyoruz.
+  // "Ödev Gönder" düğmesi tahtanın SAĞ ALT köşesindeki satırda — SADECE
+  // antrenör + kaynak bölüm verilmişken görünür.
   const showSendHomework = auth.role === 'teacher' && sourceSectionId != null && sourceSectionTitle != null;
   // Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu müfredata bağlı değilse
   // "Ödev Gönder" tıklanamaz — admin panelden bağlanması gerekir.
   const homeworkLinked = linkedLessonStepId != null;
+
+  // Madde 2026-09-11 (Ödev Sistemi Faz 3): "Ödev Gönder" artık popup değil,
+  // AYRI bir "Ödev Gönder" sayfasına yönlendirir (Zafer'in isteği).
+  function goToSendHomework() {
+    const params = new URLSearchParams({ section: String(sourceSectionId) });
+    if (sourceTabId != null) params.set('tab', String(sourceTabId));
+    router.push(`/coach/odev-gonder?${params.toString()}`);
+  }
 
   return (
     <div className="space-y-3">
@@ -232,37 +241,24 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
               </button>
             </div>
 
-            {/* Madde 2026-09-07 (GRUP D): "Ödev Gönder" — SADECE antrenör
-                görünümünde. AssignHomeworkPanel'in mevcut form mantığı
-                (sınıf/öğrenci seç, Alt Konu hedefle, gönder) AYNEN kullanılır
-                — sadece tetikleyici GÖRSELİ bu özel ikonla değiştiriliyor
-                (renderTrigger), form davranışı NestedSectionTree'deki
-                kullanımla AYNI (KURAL #3). Madde 2026-09-09 (devam 3):
-                buton %40 büyütüldü (36px → 50px, Zafer'in isteği). Madde
-                2026-09-10: satırın ORTASINDA (adım okları solda, konum
-                okları sağda — justify-between'in 2. çocuğu). */}
+            {/* Madde 2026-09-11 (Ödev Sistemi Faz 3): "Ödev Gönder" — SADECE
+                antrenör görünümünde. Artık popup DEĞİL: ayrı "Ödev Gönder"
+                sayfasına yönlendirir (sınıf sekmeleri → öğrenci seçimi →
+                tarihler → not → gönder). Satırın ORTASINDA (adım okları
+                solda, konum okları sağda). YEŞİL zemin (Zafer'in görseli). */}
             {showSendHomework && homeworkLinked && (
-              <AssignHomeworkPanel
-                sourceSectionId={sourceSectionId!}
-                sourceSectionTitle={sourceSectionTitle!}
-                renderTrigger={(open, toggle) => (
-                  <button
-                    type="button" onClick={toggle} aria-expanded={open}
-                    aria-label="Ödev Gönder"
-                    title="Ödev Gönder"
-                    className="rounded-xl flex items-center justify-center transition-colors"
-                    style={{
-                      // Madde 2026-09-10 (2. görsel): Zafer'in görselinde bu
-                      // buton YEŞİL — siyah zeminden yeşile çevrildi (kağıt
-                      // uçak ikonu beyaz kaldı, kontrast iyi).
-                      width: SEND_HOMEWORK_BTN_SIZE, height: SEND_HOMEWORK_BTN_SIZE,
-                      background: '#22c55e', border: '3px solid #0a0a0a',
-                    }}
-                  >
-                    <SendHomeworkIcon />
-                  </button>
-                )}
-              />
+              <button
+                type="button" onClick={goToSendHomework}
+                aria-label="Ödev Gönder"
+                title="Ödev Gönder"
+                className="rounded-xl flex items-center justify-center transition-colors"
+                style={{
+                  width: SEND_HOMEWORK_BTN_SIZE, height: SEND_HOMEWORK_BTN_SIZE,
+                  background: '#22c55e', border: '3px solid #0a0a0a',
+                }}
+              >
+                <SendHomeworkIcon />
+              </button>
             )}
             {/* Madde 2026-09-11 (Ödev Sistemi Faz 2): Alt Konu müfredata bağlı
                 değilse "Ödev Gönder" DEVRE DIŞI — admin (Sekmeler › Çalışmalar ›

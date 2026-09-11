@@ -40,7 +40,6 @@ vi.mock('@/lib/settings/settings-context', () => ({
 }));
 vi.mock('@/lib/settings/defaults', () => ({ visibleTabsInOrder: () => ['play', 'lessons', 'analiz', 'eglence'] }));
 vi.mock('@/lib/practice/practiceApi', () => ({ fetchLessonScores: async () => null }));
-vi.mock('@/lib/assignmentsApi', () => ({ listMyAssignments: async () => [] }));
 vi.mock('@/lib/customTabsApi', () => ({
   listCustomTabs: vi.fn(() => Promise.resolve([
     { id: 5, order_index: 1, label: 'Antrenör Dosyası', emoji: '🎓' },

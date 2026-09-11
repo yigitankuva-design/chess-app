@@ -16,14 +16,20 @@ vi.mock('@/components/ChessBoard', () => ({
   ),
 }));
 
-// Madde 2026-09-07 (GRUP D): "Ödev Gönder" ikonu role'e göre koşullu —
-// mockRole test başına değiştirilebilir.
+// "Ödev Gönder" düğmesi role'e göre koşullu — mockRole test başına değişir.
 let mockRole: 'teacher' | 'athlete' | null = null;
 vi.mock('@/lib/auth-context', () => ({
   useAuth: () => ({ login: vi.fn(), logout: vi.fn(), token: 'tok', role: mockRole, userId: 1 }),
 }));
 
+// Madde 2026-09-11 (Ödev Sistemi Faz 3): "Ödev Gönder" artık /coach/odev-gonder
+// sayfasına yönlendirir (eski AssignHomeworkPanel popup kaldırıldı).
+const routerPush = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: routerPush }) }));
+
 import { AltKonuWalkthrough } from '@/components/custom/AltKonuWalkthrough';
+
+beforeEach(() => { routerPush.mockClear(); });
 
 const FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const FEN2 = '8/8/8/4k3/8/8/4P3/4K3 w - - 0 1';
@@ -324,14 +330,27 @@ describe('AltKonuWalkthrough — "Ödev Gönder" ikonu (madde 2026-09-07, GRUP D
     expect(screen.queryByLabelText('Ödev Gönder — bu alt konu müfredata bağlı değil')).not.toBeInTheDocument();
   });
 
+  it('madde 2026-09-11 (Faz 3): "Ödev Gönder"e basınca /coach/odev-gonder sayfasına yönlendirir', () => {
+    mockRole = 'teacher';
+    render(
+      <AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceTabId={3}
+        sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />,
+    );
+    fireEvent.click(screen.getByLabelText('Ödev Gönder'));
+    expect(routerPush).toHaveBeenCalledTimes(1);
+    const url = routerPush.mock.calls[0][0] as string;
+    expect(url).toContain('/coach/odev-gonder');
+    expect(url).toContain('section=7');
+    expect(url).toContain('tab=3');
+  });
+
   it('madde 2026-09-09 (görsel referans): İleri/Geri ve Ödev Gönder AYNI satırda — oklar solda, Ödev Gönder sağda', () => {
     mockRole = 'teacher';
     render(<AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Tahtanın Genel Özellikleri - 1" linkedLessonStepId={42} />);
     const nextBtn = screen.getByLabelText('Sonraki adım');
     const sendBtn = screen.getByLabelText('Ödev Gönder');
-    // Oklar ve Ödev Gönder (AssignHomeworkPanel kendi sarmalayıcısıyla) AYNI
-    // satırın (flex justify-between) içinde — oklar sol-alt, Ödev Gönder
-    // sağ-alt köşede hizalanır (tahtanın hemen altında).
+    // Oklar ve Ödev Gönder AYNI satırın (flex justify-between) içinde —
+    // oklar sol-alt, Ödev Gönder sağ-alt köşede (tahtanın hemen altında).
     const row = sendBtn.closest('.justify-between');
     expect(row).not.toBeNull();
     expect(row).toContainElement(nextBtn);

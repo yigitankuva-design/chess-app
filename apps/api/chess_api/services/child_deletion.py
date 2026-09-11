@@ -11,7 +11,7 @@ from chess_api.models import (
     ParentTimeLimit, ChildActivityLog, ParentSurveyResponse,
     Game, GameMove, Device,
     TournamentParticipant, TournamentPairing,
-    ChildOdevProgress,
+    ChildOdevProgress, HomeworkRecipient,
 )
 
 
@@ -45,6 +45,10 @@ async def delete_child_cascade(db: AsyncSession, child: ChildProfile) -> None:
     await db.execute(delete(ChildLessonStepResult).where(ChildLessonStepResult.child_id == child_id))
     await db.execute(delete(ChildLessonProgress).where(ChildLessonProgress.child_id == child_id))
     await db.execute(delete(ChildOdevProgress).where(ChildOdevProgress.child_id == child_id))
+    # Madde 2026-09-11 (Ödev Sistemi Faz 3): bu çocuğa gönderilmiş ödevlerin
+    # alıcı satırları — Homework kaydı (öğretmen tarafı) durur, sadece bu
+    # çocuğun alıcılığı kalkar.
+    await db.execute(delete(HomeworkRecipient).where(HomeworkRecipient.child_id == child_id))
     await db.execute(delete(ChildPuzzleAttempt).where(ChildPuzzleAttempt.child_id == child_id))
     await db.execute(delete(SRSCard).where(SRSCard.child_id == child_id))
     await db.execute(delete(ChildBadge).where(ChildBadge.child_id == child_id))

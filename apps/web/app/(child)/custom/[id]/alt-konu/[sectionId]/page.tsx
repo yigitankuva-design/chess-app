@@ -93,6 +93,7 @@ export default function AltKonuPage() {
         pool={section.position_pool ?? []}
         sourceSectionId={section.id}
         sourceSectionTitle={section.title}
+        sourceTabId={tabId}
         linkedLessonStepId={section.linked_lesson_step_id ?? null}
         onPoolLabelChange={setPoolLabel}
       />

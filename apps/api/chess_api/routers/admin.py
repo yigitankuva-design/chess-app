@@ -25,6 +25,7 @@ from chess_api.schemas.auth import (
 )
 from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult, ChildOdevProgress
+from chess_api.models.homework import Homework, HomeworkRecipient
 from chess_api.models.opening import Opening, OpeningVariant, OpeningType
 from chess_api.models.fun_activity import FunActivity
 from chess_api.models.pool_image import PoolImage
@@ -40,6 +41,21 @@ def _ensure_admin(u: User):
     # ARTIK giremez, kendi /coach paneline yönlendirilir.
     if u.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Admin only")
+
+
+async def _delete_homeworks_for_steps(db: AsyncSession, step_ids: list[int]) -> None:
+    """Madde 2026-09-11 (Ödev Sistemi Faz 3): verilen ders adımlarını hedefleyen
+    ödevleri alıcılarıyla birlikte siler (adım/ders silinince ödev anlamsız
+    kalır). FK-güvenli sıra: önce alıcılar, sonra ödev."""
+    if not step_ids:
+        return
+    hw_ids = (await db.execute(
+        select(Homework.id).where(Homework.lesson_step_id.in_(step_ids))
+    )).scalars().all()
+    if not hw_ids:
+        return
+    await db.execute(delete(HomeworkRecipient).where(HomeworkRecipient.homework_id.in_(hw_ids)))
+    await db.execute(delete(Homework).where(Homework.id.in_(hw_ids)))
 
 
 @router.get("/parents", response_model=list[AdminParentSummary])
@@ -611,6 +627,8 @@ async def delete_lesson(
             .where(CustomTabSection.linked_lesson_step_id.in_(step_ids))
             .values(linked_lesson_step_id=None)
         )
+        # Faz 3: bu adımları hedefleyen ödevleri de sil.
+        await _delete_homeworks_for_steps(db, list(step_ids))
     await db.execute(delete(LessonStep).where(LessonStep.lesson_id == lesson_id))
     await db.delete(lesson)
     await db.commit()
@@ -1065,6 +1083,9 @@ async def delete_step(
         .where(CustomTabSection.linked_lesson_step_id == step_id)
         .values(linked_lesson_step_id=None)
     )
+    # Madde 2026-09-11 (Ödev Sistemi Faz 3): bu adımı hedefleyen ödevler
+    # (Homework) anlamsız kalır — alıcılarıyla birlikte silinir.
+    await _delete_homeworks_for_steps(db, [step_id])
     await db.delete(step)
     await db.commit()
     return {"deleted": True, "results_deleted": results}
@@ -1774,6 +1795,18 @@ async def delete_custom_tab(
     tab = await db.get(CustomTab, tab_id)
     if not tab:
         raise HTTPException(status_code=404, detail="Custom tab not found")
+    # Madde 2026-09-11 (Ödev Sistemi Faz 3): bu sekmenin bölümlerinden birini
+    # "kaynak" gösteren ödevlerin izlenebilirlik bağını boşalt (FK ihlali
+    # olmasın; ödev kaydı korunur).
+    sec_ids = (await db.execute(
+        select(CustomTabSection.id).where(CustomTabSection.custom_tab_id == tab_id)
+    )).scalars().all()
+    if sec_ids:
+        await db.execute(
+            update(Homework)
+            .where(Homework.source_custom_tab_section_id.in_(sec_ids))
+            .values(source_custom_tab_section_id=None)
+        )
     await db.execute(delete(CustomTabSection).where(CustomTabSection.custom_tab_id == tab_id))
     await db.delete(tab)
     await db.commit()
@@ -1935,6 +1968,15 @@ async def delete_custom_tab_section(
             break
         to_delete.extend(children)
         frontier = list(children)
+    # Madde 2026-09-11 (Ödev Sistemi Faz 3): bu bölümlerden HANGİSİ bir ödevin
+    # "kaynak alt konusu" olarak kayıtlıysa (source_custom_tab_section_id),
+    # önce o bağı boşalt — yoksa bölüm silme FK ihlaliyle patlar. Ödev kaydı
+    # (Homework) durur; sadece izlenebilirlik bağı kopar.
+    await db.execute(
+        update(Homework)
+        .where(Homework.source_custom_tab_section_id.in_(to_delete))
+        .values(source_custom_tab_section_id=None)
+    )
     # En derin seviyeden köke doğru silinir ki FK constraint hatası olmasın.
     for sid in reversed(to_delete):
         row = await db.get(CustomTabSection, sid)
