@@ -17,6 +17,7 @@ import { ActivePlayersBadge, activeColor } from '@/components/play/ActivePlayers
 import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
 import type { CustomTabSummary, CustomTabDetail } from '@/lib/customTabsApi';
 import { isAntrenorCalismalarTab } from '@/lib/customTabs/calismalarTab';
+import { fetchNotifications } from '@/lib/notificationsApi';
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import { AnalizPanel } from '@/components/analiz/AnalizPanel';
 import { raised, pressed, PathNode, Branch, SH_LIGHT, VerticalDivider } from '@/components/ui/neumorphic';
@@ -187,6 +188,11 @@ export default function ChildHomePage() {
   useEffect(() => {
     listCustomTabs().then((tabs) => setCustomTabs(tabs.filter((t) => !isAntrenorCalismalarTab(t))));
   }, []);
+
+  // Madde 2026-09-11 (Ödev Sistemi Faz 4): "Bildirimler" sekmesindeki kırmızı
+  // rozet — henüz "Git" ile ziyaret edilmemiş, görünür bildirim sayısı.
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => { fetchNotifications().then((d) => setUnreadCount(d.unread_count)); }, []);
 
   const [modules, setModules] = useState<ModuleSummary[] | null>(null);
   const [openLevel, setOpenLevel] = useState<number | null>(null);
@@ -366,9 +372,13 @@ export default function ChildHomePage() {
      sekmeye tıklayınca sadece O sekmenin LED'i yanık kalır, diğerleri söner
      (madde 1, 2026-08-19). `active` kabartma/gömük görünümünü belirler —
      LED bundan AYRI bir kavram: `ledOn` verilmezse `active` ile aynı davranır. */
-  function FeatureTab({ icon, label, color, active, ledOn, onClick, href }: {
+  function FeatureTab({ icon, label, color, active, ledOn, onClick, href, badge }: {
     icon: React.ReactNode; label: string; color: string; active?: boolean; ledOn?: boolean;
     onClick?: () => void; href?: string;
+    /** Madde 2026-09-11 (Ödev Sistemi Faz 4): "Bildirimler" kartının kırmızı
+     *  rozeti — görünür VE henüz ziyaret edilmemiş bildirim sayısı. 0/undefined
+     *  ise hiç gösterilmez. */
+    badge?: number;
   }) {
     const lit = ledOn ?? active ?? false;
     const style: React.CSSProperties = {
@@ -400,6 +410,13 @@ export default function ChildHomePage() {
     const inner = (
       <>
         <span aria-hidden="true" className="qa-led" data-active={lit ? 'true' : 'false'} />
+        {!!badge && (
+          <span aria-label={`${badge} yeni bildirim`}
+            className="absolute top-2 right-2 flex items-center justify-center rounded-full text-xs font-extrabold text-white"
+            style={{ minWidth: 22, height: 22, padding: '0 5px', background: '#ef4444' }}>
+            {badge}
+          </span>
+        )}
         <span className="leading-none" style={{ ...contentStyle, fontSize: '2.8125rem' }}>{icon}</span>
         <span className="text-lg font-bold leading-tight text-center" style={contentStyle}>{label}</span>
       </>
@@ -446,6 +463,18 @@ export default function ChildHomePage() {
               />
             );
           })}
+
+          {/* Madde 2026-09-11 (Ödev Sistemi Faz 4): "Bildirimler" — Zafer'in
+              admin'den sıralayabildiği/kaldırabildiği içerik sekmeleri
+              (orderedTabs) İLE Zafer hocanın kendi eklediği özel sekmeler
+              ARASINDA SABİT bir sistem kartı. Diğerleri gibi aynı ekranda
+              AÇILMAZ — ayrı "/bildirimler" sayfasına gider (liste + "Git"
+              deep-link doğası gereği). Kırmızı rozet = görünür + henüz
+              ziyaret edilmemiş bildirim sayısı. */}
+          <FeatureTab
+            icon="🔔" label="Bildirimler" color={QUICK_ACCESS_ACCENT}
+            ledOn={openTab === null} href="/bildirimler" badge={unreadCount}
+          />
 
           {/* Zafer hocanın eklediği ek sekmeler — ayrı sayfaya GİTMEZ, yerleşik
               sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).

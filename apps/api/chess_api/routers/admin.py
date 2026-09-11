@@ -26,6 +26,7 @@ from chess_api.schemas.auth import (
 from chess_api.models.progress import ChildLessonStepResult
 from chess_api.models.practice import ChildPracticeResult, ChildOdevProgress
 from chess_api.models.homework import Homework, HomeworkRecipient
+from chess_api.models.notification import Notification
 from chess_api.models.opening import Opening, OpeningVariant, OpeningType
 from chess_api.models.fun_activity import FunActivity
 from chess_api.models.pool_image import PoolImage
@@ -44,9 +45,10 @@ def _ensure_admin(u: User):
 
 
 async def _delete_homeworks_for_steps(db: AsyncSession, step_ids: list[int]) -> None:
-    """Madde 2026-09-11 (Ödev Sistemi Faz 3): verilen ders adımlarını hedefleyen
-    ödevleri alıcılarıyla birlikte siler (adım/ders silinince ödev anlamsız
-    kalır). FK-güvenli sıra: önce alıcılar, sonra ödev."""
+    """Madde 2026-09-11 (Ödev Sistemi Faz 3/4): verilen ders adımlarını
+    hedefleyen ödevleri alıcılarıyla ve bildirimleriyle birlikte siler
+    (adım/ders silinince ödev anlamsız kalır). FK-güvenli sıra: önce
+    alıcılar + bildirimler, sonra ödev."""
     if not step_ids:
         return
     hw_ids = (await db.execute(
@@ -55,6 +57,7 @@ async def _delete_homeworks_for_steps(db: AsyncSession, step_ids: list[int]) -> 
     if not hw_ids:
         return
     await db.execute(delete(HomeworkRecipient).where(HomeworkRecipient.homework_id.in_(hw_ids)))
+    await db.execute(delete(Notification).where(Notification.homework_id.in_(hw_ids)))
     await db.execute(delete(Homework).where(Homework.id.in_(hw_ids)))
 
 

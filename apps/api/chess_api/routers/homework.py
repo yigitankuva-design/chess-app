@@ -2,8 +2,9 @@
 ödev olarak gönderir. Eski `class_assignments` (modül/ders seviyeli ödev +
 GRUP D) tamamen kaldırıldı; bu onun yerine geçer, SADECE Alt Konu üzerinden.
 
-Sporcu tarafı ("Bildirimler" sekmesi, "Ödeve Git") Faz 4'te eklenecek —
-bu router şimdilik yalnız antrenör uçlarını içerir (gönderme + gönderilenler).
+Sporcu tarafı ("Bildirimler" sekmesi, "Ödeve Git") Faz 4'te chess_api.
+routers.notifications'a eklendi — bu router antrenör uçlarını içerir
+(gönderme + gönderilenler) ve gönderirken bildirim satırlarını üretir.
 """
 from datetime import date as date_type
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,7 +15,7 @@ from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
 from chess_api.models import (
     User, UserRole, Class, ChildProfile, Module, Lesson, LessonStep,
-    Homework, HomeworkRecipient, CustomTabSection,
+    Homework, HomeworkRecipient, CustomTabSection, Notification, NotificationType,
 )
 
 router = APIRouter(prefix="/homework", tags=["homework"])
@@ -40,6 +41,14 @@ def _step_title(step: LessonStep) -> str:
     return (step.content_json or {}).get("title") or f"#{step.id}"
 
 
+async def _resolve_step_chain(db: AsyncSession, step: LessonStep) -> tuple[str, str | None, str | None]:
+    """(alt_konu_title, konu_title, duzey_title) — /homework/target ve bildirim
+    metni üretimi (send_homework) AYNI zinciri kullanır."""
+    lesson = await db.get(Lesson, step.lesson_id)
+    module = await db.get(Module, lesson.module_id) if lesson else None
+    return _step_title(step), (lesson.title if lesson else None), (module.name if module else None)
+
+
 @router.get("/target")
 async def homework_target(
     section_id: int,
@@ -60,14 +69,13 @@ async def homework_target(
     step = await db.get(LessonStep, step_id)
     if not step:
         return {"linked": False, "section_title": section.title}
-    lesson = await db.get(Lesson, step.lesson_id)
-    module = await db.get(Module, lesson.module_id) if lesson else None
+    alt_konu_title, konu_title, duzey_title = await _resolve_step_chain(db, step)
     return {
         "linked": True,
         "lesson_step_id": step_id,
-        "alt_konu_title": _step_title(step),
-        "konu_title": lesson.title if lesson else None,
-        "duzey_title": module.name if module else None,
+        "alt_konu_title": alt_konu_title,
+        "konu_title": konu_title,
+        "duzey_title": duzey_title,
         "section_title": section.title,
     }
 
@@ -148,6 +156,20 @@ async def send_homework(
         db.add(HomeworkRecipient(
             homework_id=hw.id, child_id=rid, via_class_id=via_class.get(rid),
         ))
+
+    # Madde 2026-09-11 (Ödev Sistemi Faz 4): her alıcıya "Bildirimler"
+    # sekmesinde görünecek bir satır — start_date'ten ÖNCE görünmez
+    # (visible_from). Başlık/alt başlık gönderim anında SABİTLENİR (snapshot)
+    # — Alt Konu/ders adı sonradan değişse bile bildirim metni bozulmaz.
+    alt_konu_title, konu_title, duzey_title = await _resolve_step_chain(db, step)
+    subtitle = " › ".join(t for t in (duzey_title, konu_title) if t) or None
+    for rid in recipient_ids:
+        db.add(Notification(
+            child_id=rid, type=NotificationType.odev,
+            title=f"Yeni Ödev: {alt_konu_title}", subtitle=subtitle,
+            visible_from=start, homework_id=hw.id,
+        ))
+
     await db.commit()
     await db.refresh(hw)
     return {"id": hw.id, "recipient_count": len(recipient_ids)}

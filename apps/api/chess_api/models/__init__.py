@@ -12,6 +12,7 @@ from chess_api.models.game import Game, GameMove, GameType, GameStatus, GameResu
 from chess_api.models.gamification import Badge, ChildBadge, Rank, ChildRank
 from chess_api.models.class_ import Class
 from chess_api.models.homework import Homework, HomeworkRecipient
+from chess_api.models.notification import Notification, NotificationType
 from chess_api.models.parent import (
     ParentTimeLimit, ChildActivityLog, ParentSurvey, ParentSurveyResponse,
 )
@@ -44,4 +45,5 @@ __all__ = [
     "ParentTimeLimit", "ChildActivityLog", "ParentSurvey", "ParentSurveyResponse",
     "Class",
     "Homework", "HomeworkRecipient",
+    "Notification", "NotificationType",
 ]

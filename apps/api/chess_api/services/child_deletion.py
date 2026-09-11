@@ -11,7 +11,7 @@ from chess_api.models import (
     ParentTimeLimit, ChildActivityLog, ParentSurveyResponse,
     Game, GameMove, Device,
     TournamentParticipant, TournamentPairing,
-    ChildOdevProgress, HomeworkRecipient,
+    ChildOdevProgress, HomeworkRecipient, Notification,
 )
 
 
@@ -49,6 +49,8 @@ async def delete_child_cascade(db: AsyncSession, child: ChildProfile) -> None:
     # alıcı satırları — Homework kaydı (öğretmen tarafı) durur, sadece bu
     # çocuğun alıcılığı kalkar.
     await db.execute(delete(HomeworkRecipient).where(HomeworkRecipient.child_id == child_id))
+    # Madde 2026-09-11 (Ödev Sistemi Faz 4): bu çocuğun "Bildirimler" satırları.
+    await db.execute(delete(Notification).where(Notification.child_id == child_id))
     await db.execute(delete(ChildPuzzleAttempt).where(ChildPuzzleAttempt.child_id == child_id))
     await db.execute(delete(SRSCard).where(SRSCard.child_id == child_id))
     await db.execute(delete(ChildBadge).where(ChildBadge.child_id == child_id))
