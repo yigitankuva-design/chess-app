@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/re
 
 vi.mock('@/lib/auth-storage', () => ({ getAthleteName: () => 'Test Sporcu', getToken: () => 'tok' }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('@/lib/auth-context', () => ({ useAuth: () => ({ role: 'child' }) }));
 vi.mock('@/lib/settings/settings-context', () => ({
   useSettings: () => ({
     settings: {

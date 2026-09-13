@@ -5,6 +5,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '5' }),
   useRouter: () => ({ back: vi.fn() }),
 }));
+vi.mock('@/lib/auth-context', () => ({ useAuth: () => ({ role: 'child' }) }));
 vi.mock('@/lib/customTabsApi', () => ({ getCustomTab: vi.fn() }));
 vi.mock('@/components/ChessBoard', () => ({
   ChessBoard: ({ fen }: { fen: string }) => <div data-testid="board" data-fen={fen} />,

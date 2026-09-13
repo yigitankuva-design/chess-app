@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
 import type { CustomTabSection } from '@/lib/customTabsApi';
 import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
@@ -22,6 +23,20 @@ const ALT_KONU_DEPTH = 3;
 
 function isDerslerRoot(s: CustomTabSection): boolean {
   return s.section_kind === DERSLER_ROOT_KIND || s.title === DERSLER_TITLE;
+}
+
+/** Madde 2026-09-13 (Sınıflarım — Madde 2, düzeltme): antrenörün
+ *  "Çalışmalar" sekmesinin İÇİNDE (admin tarafından eklenmiş) kök-seviye
+ *  bir bölüm — "Dersler" kökü ile AYNI desen (section_kind='siniflarim',
+ *  bkz. SiniflarimSectionKind migration). Bu bileşen hem sporcu hem
+ *  antrenör tarafında AYNI (paylaşılan) — sadece antrenör için ayrı sayfaya
+ *  (/coach/classes) yönlendirir; sporcu tarafında normal (boş) akordiyon
+ *  davranışına düşer. */
+const SINIFLARIM_TITLE = 'Sınıflarım';
+const SINIFLARIM_KIND = 'siniflarim';
+
+function isSiniflarim(s: CustomTabSection): boolean {
+  return s.section_kind === SINIFLARIM_KIND || s.title === SINIFLARIM_TITLE;
 }
 
 interface Props {
@@ -58,6 +73,7 @@ export function NestedSectionAccordion({
   tabId, sections, parentId, depth, accentColor, inDersler = false, initialOpenPath,
 }: Props) {
   const router = useRouter();
+  const { role } = useAuth();
   const [openId, setOpenId] = useState<number | null>(() => initialOpenPath?.[0] ?? null);
   const children = sections
     .filter((s) => (s.parent_id ?? null) === parentId)
@@ -82,11 +98,11 @@ export function NestedSectionAccordion({
               active={open}
               size={size}
               tint={depth === 0 ? accentColor : 'var(--t-text-1)'}
-              onClick={() => (
-                isAltKonu
-                  ? router.push(`/custom/${tabId}/alt-konu/${s.id}`)
-                  : setOpenId((p) => (p === s.id ? null : s.id))
-              )}
+              onClick={() => {
+                if (isSiniflarim(s) && role === 'teacher') { router.push('/coach/classes'); return; }
+                if (isAltKonu) { router.push(`/custom/${tabId}/alt-konu/${s.id}`); return; }
+                setOpenId((p) => (p === s.id ? null : s.id));
+              }}
             />
             {open && !isAltKonu && (
               <Branch offset={offset}>

@@ -5,6 +5,7 @@ import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('@/lib/auth-context', () => ({ useAuth: () => ({ role: 'child' }) }));
 
 describe('lib/customTabs/pendingOpenPath — madde 2026-08-25', () => {
   it('yazılan yol, doğru tabId ile okununca döner ve SİLİNİR (tek seferlik)', () => {

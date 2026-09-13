@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+let mockRole: 'child' | 'teacher' = 'child';
+vi.mock('@/lib/auth-context', () => ({ useAuth: () => ({ role: mockRole }) }));
 vi.mock('@/components/play/OpeningPractice', () => ({
   OpeningPractice: ({ onReadyToStart, onOpenKonumPratigi, onOpenTeoriPratigi }: {
     onReadyToStart?: (variant: { id: number }, criteria: {
@@ -352,6 +354,34 @@ describe('CustomTabPanel', () => {
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
 
     expect(push).toHaveBeenCalledWith('/custom/5/alt-konu/203');
+  });
+
+  it('madde 2026-09-13 (düzeltme): antrenör "Sınıflarım" bölümüne (section_kind=\'siniflarim\') tıklayınca /coach/classes\'e gider, akordiyon açılmaz', () => {
+    mockRole = 'teacher';
+    push.mockClear();
+    const tab: CustomTabDetail = {
+      id: 4, label: 'Çalışmalar', emoji: '⭐',
+      sections: [
+        { id: 16, order_index: 2, title: 'Sınıflarım', body: '', images: [], practice_positions: [], parent_id: null, section_kind: 'siniflarim' },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Sınıflarım'));
+    expect(push).toHaveBeenCalledWith('/coach/classes');
+  });
+
+  it('madde 2026-09-13 (düzeltme): sporcu tarafında "Sınıflarım" bölümüne tıklamak yönlendirme YAPMAZ (normal akordiyon)', () => {
+    mockRole = 'child';
+    push.mockClear();
+    const tab: CustomTabDetail = {
+      id: 4, label: 'Çalışmalar', emoji: '⭐',
+      sections: [
+        { id: 16, order_index: 2, title: 'Sınıflarım', body: '', images: [], practice_positions: [], parent_id: null, section_kind: 'siniflarim' },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Sınıflarım'));
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('Konu (Tahta ve Taşlar) seviyesinde hâlâ NORMAL iç içe akordiyon davranışı sürer (konum havuzu YOK)', () => {

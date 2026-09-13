@@ -501,9 +501,10 @@ export default function CoachHomePage() {
               sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).
               İkonu admin'in ikon havuzundan seçtiği emoji belirler (madde
               1/3, 2026-08-19) — Pratik Yap dahil hepsi aynı kurala uyar.
-              Madde 2026-09-13: "Sınıflarım" (kind='siniflarim') bu kuralın
-              TEK istisnası — ayrı bir sayfaya (/coach/classes) gider,
-              akordiyon içinde açılmaz (bkz. SiniflarimKind migration). */}
+              Madde 2026-09-13: "Sınıflarım" AYRI sayfaya gider ama bu bir
+              üst-seviye özel sekme DEĞİL — "Çalışmalar" sekmesinin İÇİNDEKİ
+              bir bölüm (bkz. NestedSectionAccordion.tsx, section_kind=
+              'siniflarim'). Bu üst-seviye kutucuk döngüsü değişmedi. */}
           {customTabs.map((ct) => (
             <FeatureTab
               key={ct.id}
@@ -511,10 +512,7 @@ export default function CoachHomePage() {
               label={ct.label}
               color={QUICK_ACCESS_ACCENT}
               active={openTab === ct.id} ledOn={openTab === ct.id || openTab === null}
-              onClick={() => {
-                if (ct.kind === 'siniflarim') { router.push('/coach/classes'); return; }
-                toggleCustomTab(ct.id);
-              }}
+              onClick={() => toggleCustomTab(ct.id)}
             />
           ))}
         </div>
