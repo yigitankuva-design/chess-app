@@ -57,6 +57,11 @@ class ChildProfile(Base):
     nickname: Mapped[Optional[str]] = mapped_column(String(40), nullable=True, index=True)
     nickname_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Madde 2026-09-13 (Sınıf Listesi yönetimi): antrenörün ▲/▼ ile
+    # belirlediği, bu sporcunun KENDİ sınıfı içindeki sırası — Class.
+    # order_index ile AYNI desen ama NULLABLE (class_id boşken anlamsız).
+    class_order_index: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
     @property
     def public_name(self) -> str:
         """Madde 11: maç bağlamlarında görünen ad — nickname, yoksa gerçek isim."""

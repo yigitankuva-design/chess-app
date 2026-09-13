@@ -14,6 +14,9 @@ export interface TeacherClass {
   id: number;
   name: string;
   join_code: string;
+  /** Madde 2026-09-13 (Sınıflarım yönetimi): ▲/▼ ile belirlenen sıra —
+   *  liste zaten bu sıraya göre gelir, alan sadece bilgi amaçlı. */
+  order_index: number;
 }
 
 export interface ClassStudent {
@@ -21,6 +24,11 @@ export interface ClassStudent {
   display_name: string;
   avatar?: string;
   age?: number;
+  /** Madde 2026-09-13 (Sınıf Listesi yönetimi): gerçek foto/nickname
+   *  gösterimi + ▲/▼ sıralaması için. */
+  nickname: string | null;
+  photo_data_url: string | null;
+  order_index: number | null;
 }
 
 export interface HomeworkTarget {
@@ -85,6 +93,72 @@ export async function createClass(name: string): Promise<TeacherClass | null> {
     return await r.json();
   } catch {
     return null;
+  }
+}
+
+/** Madde 2026-09-13 (Sınıflarım yönetimi): sınıfı yeniden adlandırır. */
+export async function renameClass(classId: number, name: string): Promise<TeacherClass | null> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/classes/${classId}`, {
+      method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ name }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Madde 2026-09-13 (Sınıflarım yönetimi): sınıfı siler — sunucu tarafında
+ *  içindeki öğrenci/ödev/anket bağlantıları önce çözülür (bkz. teacher.py
+ *  delete_class). */
+export async function deleteClass(classId: number): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/classes/${classId}`, {
+      method: 'DELETE', headers: authHeaders(),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Madde 2026-09-13 (Sınıflarım yönetimi): ▲/▼ düğmesi — komşu sınıfla
+ *  sırayı takas eder. Listenin ucundaysa sunucu 400 döner. */
+export async function moveClass(classId: number, direction: 'up' | 'down'): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/classes/${classId}/move`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify({ direction }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Madde 2026-09-13 (Sınıf Listesi yönetimi): ▲/▼ düğmesi — bir sınıftaki
+ *  komşu sporcuyla sırayı takas eder. */
+export async function moveStudent(classId: number, childId: number, direction: 'up' | 'down'): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/classes/${classId}/students/${childId}/move`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify({ direction }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Madde 2026-09-13 (Sınıf Listesi yönetimi, "Sınıf Değiştir"): mevcut
+ *  add_student ucu force=true ile — öğrenci başka bir sınıftaysa da taşır. */
+export async function changeStudentClass(newClassId: number, childId: number): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/classes/${newClassId}/students/${childId}?force=true`, {
+      method: 'POST', headers: authHeaders(),
+    });
+    return r.ok;
+  } catch {
+    return false;
   }
 }
 

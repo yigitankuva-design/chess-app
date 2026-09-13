@@ -3,11 +3,12 @@ import string
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update, func
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user
 from chess_api.models import (
     User, UserRole, Class, ChildProfile, ParentSurvey, CoachNote, Notification, NotificationType,
+    HomeworkRecipient,
 )
 from chess_api.services.leaderboard import class_leaderboard
 from chess_api.routers.gamification import _compute_progress
@@ -27,6 +28,14 @@ _ALPHABET = string.ascii_uppercase + string.digits
 
 class CreateClassRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+
+
+class RenameClassRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class MoveClassRequest(BaseModel):
+    direction: str = Field(pattern="^(up|down)$")
 
 
 class CreateSurveyRequest(BaseModel):
@@ -49,10 +58,10 @@ async def list_classes(
 ):
     _ensure_teacher(current)
     result = await db.execute(
-        select(Class).where(Class.teacher_user_id == current.id)
+        select(Class).where(Class.teacher_user_id == current.id).order_by(Class.order_index)
     )
     return [
-        {"id": c.id, "name": c.name, "join_code": c.join_code}
+        {"id": c.id, "name": c.name, "join_code": c.join_code, "order_index": c.order_index}
         for c in result.scalars().all()
     ]
 
@@ -64,15 +73,92 @@ async def create_class(
     db: AsyncSession = Depends(get_db),
 ):
     _ensure_teacher(current)
+    existing_count = await db.scalar(
+        select(func.count(Class.id)).where(Class.teacher_user_id == current.id)
+    )
     cls = Class(
         teacher_user_id=current.id,
         name=payload.name,
         join_code=''.join(secrets.choice(_ALPHABET) for _ in range(8)),
+        order_index=existing_count or 0,
     )
     db.add(cls)
     await db.commit()
     await db.refresh(cls)
-    return {"id": cls.id, "name": cls.name, "join_code": cls.join_code}
+    return {"id": cls.id, "name": cls.name, "join_code": cls.join_code, "order_index": cls.order_index}
+
+
+def _get_own_class_sync(cls: Class | None, current: User) -> Class:
+    """Madde 2026-09-13 (Sınıflarım yönetimi): rename/delete/move'un ÜÇÜNÜN
+    de kullandığı ortak sahiplik kontrolü — mevcut uçlarla (class_students,
+    add_student, vb.) AYNI desen."""
+    if not cls or cls.teacher_user_id != current.id:
+        raise HTTPException(403)
+    return cls
+
+
+@router.patch("/classes/{class_id}")
+async def rename_class(
+    class_id: int,
+    payload: RenameClassRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_teacher(current)
+    cls = _get_own_class_sync(await db.get(Class, class_id), current)
+    cls.name = payload.name
+    await db.commit()
+    return {"id": cls.id, "name": cls.name, "join_code": cls.join_code, "order_index": cls.order_index}
+
+
+@router.delete("/classes/{class_id}", status_code=200)
+async def delete_class(
+    class_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-13 (Sınıflarım yönetimi): silmeden ÖNCE bu sınıfa
+    işaret eden 3 nullable foreign key'i (child_profiles.class_id,
+    homework_recipients.via_class_id, parent_surveys.target_class_id)
+    NULL'a çeker — hiçbirinde ondelete tanımlı değil, yoksa Postgres FK
+    ihlali verir. `remove_student` (class_id'yi None yapan mevcut uç) ile
+    AYNI kural: sadece class_id, teacher_user_id'ye DOKUNULMAZ."""
+    _ensure_teacher(current)
+    cls = _get_own_class_sync(await db.get(Class, class_id), current)
+    await db.execute(
+        update(ChildProfile).where(ChildProfile.class_id == class_id)
+        .values(class_id=None, class_order_index=None)
+    )
+    await db.execute(update(HomeworkRecipient).where(HomeworkRecipient.via_class_id == class_id).values(via_class_id=None))
+    await db.execute(update(ParentSurvey).where(ParentSurvey.target_class_id == class_id).values(target_class_id=None))
+    await db.delete(cls)
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/classes/{class_id}/move")
+async def move_class(
+    class_id: int,
+    payload: MoveClassRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sınıflarım'daki ▲/▼ düğmeleri — komşu sınıfla order_index'i takas
+    eder. Listenin başında yukarı / sonunda aşağı istenirse no-op (400)."""
+    _ensure_teacher(current)
+    cls = _get_own_class_sync(await db.get(Class, class_id), current)
+    result = await db.execute(
+        select(Class).where(Class.teacher_user_id == current.id).order_by(Class.order_index)
+    )
+    ordered = result.scalars().all()
+    idx = next(i for i, c in enumerate(ordered) if c.id == class_id)
+    neighbor_idx = idx - 1 if payload.direction == "up" else idx + 1
+    if neighbor_idx < 0 or neighbor_idx >= len(ordered):
+        raise HTTPException(400, "Bu yönde taşınamaz")
+    neighbor = ordered[neighbor_idx]
+    cls.order_index, neighbor.order_index = neighbor.order_index, cls.order_index
+    await db.commit()
+    return {"ok": True}
 
 
 @router.get("/classes/{class_id}/students")
@@ -87,9 +173,16 @@ async def class_students(
         raise HTTPException(403)
     result = await db.execute(
         select(ChildProfile).where(ChildProfile.class_id == class_id)
+        .order_by(ChildProfile.class_order_index)
     )
     return [
-        {"id": c.id, "display_name": c.display_name, "avatar": c.avatar, "age": c.age}
+        {
+            "id": c.id, "display_name": c.display_name, "avatar": c.avatar, "age": c.age,
+            # Madde 2026-09-13 (Sınıf Listesi yönetimi): gerçek foto/nickname
+            # gösterimi + ▲/▼ sıralaması için.
+            "nickname": c.nickname, "photo_data_url": c.photo_data_url,
+            "order_index": c.class_order_index,
+        }
         for c in result.scalars().all()
     ]
 
@@ -421,6 +514,14 @@ async def add_student(
     if child.class_id is not None and child.class_id != class_id and not force:
         raise HTTPException(409, "Bu öğrenci zaten başka bir sınıfa kayıtlı")
     child.class_id = class_id
+    # Madde 2026-09-13 (Sınıf Listesi yönetimi, "Sınıf Değiştir"): yeni
+    # katılan/taşınan öğrenci bu sınıfın SONUNA eklenir.
+    existing_count = await db.scalar(
+        select(func.count(ChildProfile.id)).where(
+            ChildProfile.class_id == class_id, ChildProfile.id != child_id,
+        )
+    )
+    child.class_order_index = existing_count or 0
     await db.commit()
     return {"ok": True}
 
@@ -440,6 +541,39 @@ async def remove_student(
     if not child or child.class_id != class_id:
         raise HTTPException(404, "Student not in this class")
     child.class_id = None
+    child.class_order_index = None
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/classes/{class_id}/students/{child_id}/move")
+async def move_student(
+    class_id: int,
+    child_id: int,
+    payload: MoveClassRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sınıf Listesi'ndeki ▲/▼ düğmeleri — move_class ile AYNI desen, bu
+    sefer AYNI sınıftaki komşu öğrenciyle class_order_index takası."""
+    _ensure_teacher(current)
+    cls = await db.get(Class, class_id)
+    if not cls or cls.teacher_user_id != current.id:
+        raise HTTPException(403)
+    child = await db.get(ChildProfile, child_id)
+    if not child or child.class_id != class_id:
+        raise HTTPException(404, "Student not in this class")
+    result = await db.execute(
+        select(ChildProfile).where(ChildProfile.class_id == class_id)
+        .order_by(ChildProfile.class_order_index)
+    )
+    ordered = result.scalars().all()
+    idx = next(i for i, c in enumerate(ordered) if c.id == child_id)
+    neighbor_idx = idx - 1 if payload.direction == "up" else idx + 1
+    if neighbor_idx < 0 or neighbor_idx >= len(ordered):
+        raise HTTPException(400, "Bu yönde taşınamaz")
+    neighbor = ordered[neighbor_idx]
+    child.class_order_index, neighbor.class_order_index = neighbor.class_order_index, child.class_order_index
     await db.commit()
     return {"ok": True}
 

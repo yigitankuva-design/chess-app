@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func
 from pydantic import BaseModel, Field
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user, get_current_child
@@ -123,6 +123,14 @@ async def join_class(
         raise HTTPException(status_code=404, detail="Sınıf bulunamadı")
     child.class_id = cls.id
     child.teacher_user_id = cls.teacher_user_id
+    # Madde 2026-09-13 (Sınıf Listesi yönetimi): teacher.py::add_student
+    # ile AYNI kural — sınıfa yeni katılan sporcu listenin SONUNA eklenir.
+    existing_count = await db.scalar(
+        select(func.count(ChildProfile.id)).where(
+            ChildProfile.class_id == cls.id, ChildProfile.id != child.id,
+        )
+    )
+    child.class_order_index = existing_count or 0
     await db.commit()
     return {"joined": True, "class_name": cls.name}
 

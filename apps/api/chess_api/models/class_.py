@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime
+from sqlalchemy import String, Integer, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -11,6 +11,10 @@ class Class(Base):
     name: Mapped[str] = mapped_column(String(80))
     join_code: Mapped[str] = mapped_column(String(8), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Madde 2026-09-13 (Sınıflarım yönetimi): antrenörün ▲/▼ ile
+    # belirlediği sıra — CustomTab.order_index ile AYNI desen, oluşturma
+    # anında açıkça atanır (bkz. teacher.py create_class/move_class).
+    order_index: Mapped[int] = mapped_column(Integer)
 
 
 # Madde 2026-09-11 (Ödev Sistemi Faz 3): eski `ClassAssignment` (modül/ders
