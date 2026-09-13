@@ -459,9 +459,12 @@ export default function CoachHomePage() {
         </div>
       )}
 
-      <section aria-label={L.sections.quickAccess}>
+      {/* Madde 2026-09-13: sporcu tarafındaki (home/page.tsx) KARDEŞ blokla
+          AYNI sebep — artık sabit "Antrenör Paneli", admin'in paylaşılan
+          "Hızlı Erişim" ayarından BAĞIMSIZ. */}
+      <section aria-label="Antrenör Paneli">
         <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3">
-          {L.sections.quickAccess}
+          Antrenör Paneli
         </p>
 
         {/* Sekmeler — admin sırasına göre; aynı anda yalnızca biri açık */}
@@ -497,7 +500,10 @@ export default function CoachHomePage() {
           {/* Zafer hocanın eklediği ek sekmeler — ayrı sayfaya GİTMEZ, yerleşik
               sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).
               İkonu admin'in ikon havuzundan seçtiği emoji belirler (madde
-              1/3, 2026-08-19) — Pratik Yap dahil hepsi aynı kurala uyar. */}
+              1/3, 2026-08-19) — Pratik Yap dahil hepsi aynı kurala uyar.
+              Madde 2026-09-13: "Sınıflarım" (kind='siniflarim') bu kuralın
+              TEK istisnası — ayrı bir sayfaya (/coach/classes) gider,
+              akordiyon içinde açılmaz (bkz. SiniflarimKind migration). */}
           {customTabs.map((ct) => (
             <FeatureTab
               key={ct.id}
@@ -505,7 +511,10 @@ export default function CoachHomePage() {
               label={ct.label}
               color={QUICK_ACCESS_ACCENT}
               active={openTab === ct.id} ledOn={openTab === ct.id || openTab === null}
-              onClick={() => toggleCustomTab(ct.id)}
+              onClick={() => {
+                if (ct.kind === 'siniflarim') { router.push('/coach/classes'); return; }
+                toggleCustomTab(ct.id);
+              }}
             />
           ))}
         </div>

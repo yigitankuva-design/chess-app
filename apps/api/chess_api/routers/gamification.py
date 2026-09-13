@@ -7,6 +7,7 @@ from chess_api.models import ChildProfile, Badge, ChildBadge, Rank, ChildRank
 from chess_api.services.profile_edit import nickname_next_change_at
 from chess_api.services.profile_stats import compute_match_stats
 from chess_api.services.coach_notes import get_coach_note_payload
+from chess_api.services.class_info import get_class_info_payload
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
@@ -104,6 +105,9 @@ async def _compute_progress(child: ChildProfile, db: AsyncSession) -> dict:
         # KENDİ profili (hibrit jeton) burada da geçer ama kimse antrenöre
         # not yazmaz, hep None döner; kart zaten coach/profile'da hiç yok.
         "coach_note": await get_coach_note_payload(db, child.id),
+        # Madde 2026-09-13 (Sınıflarım — Madde 3): sporcunun katıldığı sınıf
+        # (varsa) — {class_name, teacher_name, student_count} | None.
+        "class_info": await get_class_info_payload(db, child),
     }
 
 

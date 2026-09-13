@@ -446,9 +446,17 @@ export default function ChildHomePage() {
         </div>
       )}
 
-      <section aria-label={L.sections.quickAccess}>
+      {/* Madde 2026-09-13: "Hızlı Erişim" (admin panelinden düzenlenebilen
+          `labels.sections.quickAccess`) sabit "Sporcu Paneli"ye çevrildi —
+          Zafer'in isteği: sporcu ve antrenör ekranı ARTIK FARKLI metin
+          göstersin (öncesinde ikisi de AYNI paylaşılan admin ayarını
+          kullanıyordu, bkz. coach/page.tsx'teki KARDEŞ blok). Admin'in
+          "Yazılar & Etiketler" sayfasındaki "Hızlı Erişim" kutusu artık bu
+          başlığı ETKİLEMİYOR (KURAL #3 kapsamı dışında — Zafer'in açık
+          isteği, sabit metin istedi). */}
+      <section aria-label="Sporcu Paneli">
         <p className="text-sm font-bold t-premium uppercase tracking-widest mb-3">
-          {L.sections.quickAccess}
+          Sporcu Paneli
         </p>
 
         {/* Sekmeler — admin sırasına göre; aynı anda yalnızca biri açık */}

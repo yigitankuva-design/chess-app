@@ -13,8 +13,10 @@ import { fetchDaySummary } from '@/lib/activity/activityApi';
 import type { DaySummary } from '@/lib/activity/activityApi';
 import {
   fetchMyProgress, fetchMatchStats, uploadMyPhoto, updateMyProfile, writeCoachNote, deleteCoachNote,
+  joinClass,
 } from '@/lib/gamification/meApi';
 import { CoachNoteCard } from '@/components/profile/CoachNoteCard';
+import { ClassInfoCard } from '@/components/profile/ClassInfoCard';
 import { ContactEditor, LocationEditor, NicknameEditor } from '@/components/profile/ProfileEditors';
 import { RatingCard, MatchStatsCard, TournamentCard } from '@/components/profile/MatchStatsCards';
 import type { MyProgress, MatchStats } from '@/lib/gamification/meApi';
@@ -465,6 +467,21 @@ export function ProfileView({ childId }: ProfileViewProps = {}) {
           <p className="text-xs t-muted text-center py-2">Bilgileri görmek için yukarıdan birini seç.</p>
         )}
       </div>
+
+      {/* Sınıf Bilgileri — madde 2026-09-13 (Sınıflarım — Madde 3):
+          İletişim Bilgileri'nin hemen altında. `readOnly` (antrenörün
+          öğrenci görünümü) katılma eylemini GÖSTERMEZ — sadece bilgi. */}
+      <ClassInfoCard
+        classInfo={me.class_info}
+        canJoin={!readOnly}
+        onJoin={async (code) => {
+          const res = await joinClass(code);
+          if (!res.ok) return { ok: false, error: res.error };
+          const fresh = await fetchMyProgress();
+          if (fresh) setMe(fresh);
+          return { ok: true };
+        }}
+      />
 
       {/* 4) Performans Puanı, 5) Genel Maç İstatistikleri — madde 2026-09-11
           (Aşama C): gerçek veri, ortak kartlar (MatchStatsCards.tsx). */}

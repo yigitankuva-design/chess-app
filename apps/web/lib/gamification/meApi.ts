@@ -42,12 +42,21 @@ export interface MyProgress {
    *  SON not — yoksa null. Antrenörün KENDİ profilinde (hibrit jeton) her
    *  zaman null (kimse ona not yazmaz). */
   coach_note: CoachNote | null;
+  /** Madde 2026-09-13 (Sınıflarım — Madde 3): sporcunun katıldığı sınıf —
+   *  henüz katılmadıysa null ("Sınıfa Katıl" butonu gösterilir). */
+  class_info: ClassInfo | null;
 }
 
 export interface CoachNote {
   text: string;
   teacher_name: string;
   created_at: string;
+}
+
+export interface ClassInfo {
+  class_name: string;
+  teacher_name: string | null;
+  student_count: number;
 }
 
 /**
@@ -281,5 +290,31 @@ export async function deleteCoachNote(childId: number): Promise<boolean> {
     return r.ok;
   } catch {
     return false;
+  }
+}
+
+export type JoinClassOutcome =
+  | { ok: true; class_name: string }
+  | { ok: false; error: string };
+
+/** Madde 2026-09-13 (Sınıflarım — Madde 3): sporcu KENDİ profilinden,
+ *  antrenörün verdiği kodu girerek sınıfa katılır — POST /children/me/join-class. */
+export async function joinClass(joinCode: string): Promise<JoinClassOutcome> {
+  try {
+    const token = getToken();
+    if (!token) return { ok: false, error: 'Giriş yapılmamış' };
+    const r = await fetch(`${API_BASE}/children/me/join-class`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ join_code: joinCode }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const detail = (data as { detail?: unknown }).detail;
+      return { ok: false, error: typeof detail === 'string' ? detail : 'Katılınamadı' };
+    }
+    return { ok: true, class_name: (data as { class_name: string }).class_name };
+  } catch {
+    return { ok: false, error: 'Sunucuya ulaşılamadı' };
   }
 }

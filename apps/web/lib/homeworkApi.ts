@@ -74,6 +74,20 @@ export async function fetchClassStudents(classId: number): Promise<ClassStudent[
   }
 }
 
+/** Madde 2026-09-13 (Sınıflarım): yeni sınıf oluşturur; join_code sunucuda
+ *  üretilir (bkz. teacher.py create_class). */
+export async function createClass(name: string): Promise<TeacherClass | null> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/classes`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify({ name }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchHomeworkTarget(sectionId: number): Promise<HomeworkTarget | null> {
   try {
     const r = await fetch(`${API_BASE}/homework/target?section_id=${sectionId}`, { headers: authHeaders() });

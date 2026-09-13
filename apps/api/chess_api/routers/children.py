@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_user, get_current_child
 from chess_api.models import (
-    User, ChildProfile, UserRole,
+    User, ChildProfile, UserRole, Class,
     ChildLessonProgress, ChildLessonStepResult,
     ChildPuzzleAttempt, SRSCard, ChildBadge, ChildRank,
     ParentTimeLimit, ChildActivityLog, ParentSurveyResponse,
@@ -98,6 +98,33 @@ async def upload_my_photo(
     child.photo_data_url = payload.photo_data_url
     await db.commit()
     return {"ok": True}
+
+
+class JoinClassRequest(BaseModel):
+    join_code: str = Field(min_length=1, max_length=20)
+
+
+@router.post("/me/join-class")
+async def join_class(
+    payload: JoinClassRequest,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-13 (Sınıflarım — Madde 3): sporcu KENDİ profilinden,
+    antrenörün oluşturduğu sınıfın kodunu girerek sınıfa katılır. Bu
+    uygulamada Veli Paneli olmadığı için (Zafer'in onayı 2026-09-13) —
+    bkz. parent.py'deki aynı isimli veli-tarafı uç — sporcunun sınıfa
+    katılabildiği yol budur."""
+    result = await db.execute(
+        select(Class).where(Class.join_code == payload.join_code.strip().upper())
+    )
+    cls = result.scalar_one_or_none()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Sınıf bulunamadı")
+    child.class_id = cls.id
+    child.teacher_user_id = cls.teacher_user_id
+    await db.commit()
+    return {"joined": True, "class_name": cls.name}
 
 
 @router.post("", response_model=ChildProfileResponse, status_code=201)
