@@ -89,13 +89,14 @@ class GameMove(Base):
 
 
 class GameAnalysis(Base):
-    """Madde 2026-09-14 (3b/4): bir maçın "Analiz Et" özetinin SAKLANMIŞ
-    hâli — motor hâlâ İSTEMCİDE (tarayıcıda) çalışıyor, bu tablo sadece
-    SONUCU tutar (backend'e stockfish eklenmedi). Amaç: aynı maç ikinci kez
-    açıldığında (Maçlarımın Analizi) motor baştan çalışmasın; "Hatalarını
-    Gözden Geçir" de `mistake_moves_json`'ı doğrudan kullanabilsin (madde
-    3c). Hesaplama `apps/web/lib/chess/gameSummary.ts::computeGameSummary`
-    ile BİREBİR aynı alanlar — bkz. o dosyadaki GameSummary tipi."""
+    """Madde 2026-09-14 (sunucu analiz motoru): bir maçın "Analiz Et"
+    özetinin SAKLANMIŞ hâli — motor artık BACKEND'de (native Stockfish,
+    bkz. services/game_analysis_engine.py) çalışıyor, bu tablo sonucu
+    tutar. Amaç: aynı maç ikinci kez açıldığında (Maçlarımın Analizi)
+    motor baştan çalışmasın; "Hatalarını Gözden Geçir" de
+    `mistake_moves_json`'ı doğrudan kullanabilsin. Hesaplama
+    `apps/web/lib/chess/gameSummary.ts::computeGameSummary`'nin BİREBİR
+    Python karşılığıdır (bkz. o dosyadaki GameSummary tipi)."""
     __tablename__ = "game_analyses"
     id: Mapped[int] = mapped_column(primary_key=True)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), unique=True, index=True)
@@ -107,10 +108,17 @@ class GameAnalysis(Base):
     phase_accuracy_opening: Mapped[float | None] = mapped_column(Float, nullable=True)
     phase_accuracy_middlegame: Mapped[float | None] = mapped_column(Float, nullable=True)
     phase_accuracy_endgame: Mapped[float | None] = mapped_column(Float, nullable=True)
-    # Madde 2026-09-14 (3c): kusurlu/hata/vahim-hata olarak işaretlenen HER
+    # Madde 2026-09-14: kusurlu/hata/vahim-hata olarak işaretlenen HER
     # hamle — [{ply, fen_before, played_san, best_move, cp_loss, severity}].
     # "Hatalarını Gözden Geçir" bu listeyi MovePieceSolver egzersizlerine
     # çevirir; ayrı bir Puzzle satırı OLUŞTURULMAZ (o, admin küratörlüğündeki
     # bambaşka bir bulmaca bankası — bkz. models/puzzle.py).
     mistake_moves_json: Mapped[list] = mapped_column(JSON, default=list)
+    # Madde 2026-09-14 (sunucu analiz motoru): HER ply için ham motor
+    # skoru — [{ply, cp, mate}], hep BEYAZ açısından. mistake_moves_json
+    # SADECE eşik aşan (sporcunun) hamleleri tutar; bu alan HER ply'ı
+    # (iki taraf da) tutar çünkü notasyon kalite işaretleri (?/??/!/!!,
+    # bkz. apps/web/lib/chess/moveQuality.ts::classifyMoveQuality)
+    # ardışık HER ply çiftine bakar, sadece hatalı olanlara değil.
+    eval_by_ply_json: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

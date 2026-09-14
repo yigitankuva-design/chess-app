@@ -15,6 +15,19 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000"
     ENV: str = "development"
 
+    # Madde 2026-09-14 (sunucu analiz motoru): tam maç analizi artık
+    # istemci WASM yerine burada, native Stockfish ile hesaplanıyor —
+    # bkz. services/game_analysis_engine.py. Değerler tahmini başlangıç
+    # noktası; gerçek Railway CPU'suna göre canlıda ölçülüp ayarlanmalı.
+    STOCKFISH_PATH: str = "stockfish"
+    ANALYSIS_DEPTH: int = 18
+    ANALYSIS_MOVETIME_MS: int = 400
+    ANALYSIS_THREADS: int = 2
+    ANALYSIS_HASH_MB: int = 128
+    # Sunucu genelinde aynı anda çalışabilecek analiz işi sayısı — Railway
+    # kaynakları paylaşımlı, bu sınır aşırı CPU rekabetini önler.
+    ANALYSIS_CONCURRENCY: int = 1
+
 
 _settings: Settings | None = None
 

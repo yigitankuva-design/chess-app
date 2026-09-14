@@ -19,8 +19,7 @@ import { ChessBoard } from './ChessBoard';
 import { useBoardNotation } from '@/lib/board-notation-context';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
-import { computeGameSummary } from '@/lib/chess/gameSummary';
-import { saveGameAnalysis } from '@/lib/chess/gameAnalysisApi';
+import { useServerGameAnalysis } from '@/lib/chess/useServerGameAnalysis';
 import { GameExportBlock } from '@/components/analiz/GameExportBlock';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
 import { getSavedAvatar } from '@/lib/avatars';
@@ -161,34 +160,21 @@ export function BotGame({
   const fens = useMemo(() => fensFromSan(startFen, sanHistory), [startFen, sanHistory]);
   const nav = useMoveHistoryNav(fens);
 
-  /** Madde 2026-09-03 (2): "Analiz Et" özet kartı — SADECE `showAnalysis`
-   *  true olunca (tıklanınca) motor tüm maçı arka planda değerlendirir.
-   *  `useMoveQualityEval` "Maçlarım" analizinde kullanılan AYNI hook —
-   *  ikinci bir motor entegrasyonu YAZILMADI. */
+  /** Madde 2026-09-06 (üçüncü tur/4): "Pratik Yap" moveLimit akışının
+   *  ilerleme analizi — bu maçlar `game.status` sunucuda `finished`
+   *  olarak İŞARETLENMEZ (moveLimit tamamen istemci kararı), bu yüzden
+   *  sunucu analiz motoru bunlara UYGULANAMAZ — istemci motoru (WASM)
+   *  BURADA DEĞİŞMEDEN kullanılmaya devam eder. */
   const evalMoves = useMemo(
     () => fens.slice(1).map((fenAfter, i) => ({ ply: i + 1, fenAfter })),
     [fens],
   );
-  const { evalByPly, bestMoveByPly, progress: analysisProgress } = useMoveQualityEval(fens[0], evalMoves, showAnalysis || limitReached);
-  const gameSummary = useMemo(
-    () => (showAnalysis ? computeGameSummary(evalByPly, fens, studentColor, sanHistory, bestMoveByPly) : null),
-    [showAnalysis, evalByPly, fens, studentColor, sanHistory, bestMoveByPly],
-  );
+  const { evalByPly: practiceEvalByPly, progress: practiceProgress } = useMoveQualityEval(fens[0], evalMoves, limitReached);
 
-  // Madde 2026-09-14 (3b/4): analiz TAMAMEN bitince (motor tüm ply'ları
-  // değerlendirdi) özeti backend'e kaydet — aynı maç ikinci kez açıldığında
-  // (Maçlarımın Analizi) motor baştan çalışmasın. `savedForGameRef` aynı
-  // maç için İKİ KEZ POST edilmesini engeller (kaydetme başarısız da olsa
-  // sporcunun gördüğü sonucu etkilemez — bkz. saveGameAnalysis).
-  const savedForGameRef = useRef<number | null>(null);
-  useEffect(() => {
-    const gid = gameIdRef.current;
-    if (!showAnalysis || !gameSummary || gid == null) return;
-    if (analysisProgress.done < analysisProgress.total) return;
-    if (savedForGameRef.current === gid) return;
-    savedForGameRef.current = gid;
-    void saveGameAnalysis(gid, gameSummary);
-  }, [showAnalysis, gameSummary, analysisProgress]);
+  /** Madde 2026-09-15 (sunucu analiz motoru): "Analiz Et" tıklanınca
+   *  (`showAnalysis`) gerçek maç özeti artık BACKEND'de (native Stockfish)
+   *  hesaplanır — bkz. lib/chess/useServerGameAnalysis.ts. */
+  const { summary: gameSummary, evalByPly: analysisEvalByPly, status: analysisStatus } = useServerGameAnalysis(gameIdRef.current, showAnalysis);
 
   const tc = timeControl ?? null;
   const [whiteTime, setWhiteTime] = useState(restoredRef.current?.whiteTime ?? (tc ? tc.base : 0));
@@ -571,7 +557,7 @@ export function BotGame({
       // Madde 2026-09-14 (3a): "Analiz Et" açıkken hamle kalitesi işaretleri
       // (?/??/!/!!) görünsün — canlı oyun sırasında (showAnalysis=false)
       // hâlâ düz metin.
-      evalByPly={showAnalysis ? evalByPly : undefined}
+      evalByPly={showAnalysis ? analysisEvalByPly : undefined}
     />
   );
   const extra = (
@@ -635,8 +621,8 @@ export function BotGame({
         // "Analiz Et" ile AYNI feedbackOverride mekanizması).
         feedbackOverride={limitReached ? (
           <MoveLimitAnalysisSummary
-            evalByPly={evalByPly}
-            progress={analysisProgress}
+            evalByPly={practiceEvalByPly}
+            progress={practiceProgress}
             totalPly={(moveLimit ?? 0) * 2}
             studentColor={studentColor}
           />
@@ -694,7 +680,7 @@ export function BotGame({
         <div className="space-y-2">
           <MatchAnalysisSummary
             summary={gameSummary}
-            progress={analysisProgress}
+            status={analysisStatus}
             onLearnFromMistakes={learnFromMistakes}
           />
           {/* Madde 2026-09-14 (3d): motor sonucunu beklemeye gerek yok —

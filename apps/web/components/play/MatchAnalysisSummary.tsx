@@ -1,11 +1,12 @@
 'use client';
 import { Fragment } from 'react';
 import type { GameSummary } from '@/lib/chess/gameSummary';
+import type { AnalysisStatus } from '@/lib/chess/useServerGameAnalysis';
 
 interface Props {
-  /** null = henüz hesaplanmadı (motor arka planda çalışıyor). */
+  /** null = henüz hesaplanmadı (motor sunucuda çalışıyor). */
   summary: GameSummary | null;
-  progress: { done: number; total: number };
+  status: AnalysisStatus;
   onLearnFromMistakes: () => void;
 }
 
@@ -18,17 +19,26 @@ function pct(v: number | null): string {
  * Lichess'ten alınmıştı; SADECE genel bilgi yapısı (4 sayı + 4 yüzde satırı +
  * bir CTA butonu) esinlenilip KENDİ neumorphic dilimizle (t-card-i/t-ac/t-btn)
  * yeniden çizildi — hiçbir renk/görsel/kod kopyalanmadı (telif kuralı).
- * Sayılar `lib/chess/gameSummary.ts`'teki `computeGameSummary`'den gelir.
+ * Sayılar `lib/chess/gameSummary.ts`'teki `computeGameSummary`'nin sunucu
+ * (native Stockfish) karşılığından gelir — bkz. `useServerGameAnalysis`.
+ * Madde 2026-09-15 (sunucu analiz motoru): motor artık backend'de
+ * çalıştığı için hamle-hamle ilerleme YÜZDESİ istemcide bilinmiyor —
+ * kesirli bir çubuk yerine belirsiz bir bekleme durumu gösterilir (sahte
+ * bir yüzde uydurmaktan daha dürüst).
  */
-export function MatchAnalysisSummary({ summary, progress, onLearnFromMistakes }: Props) {
-  if (!summary || progress.done < progress.total) {
-    const donePct = progress.total > 0 ? (progress.done / progress.total) * 100 : 0;
+export function MatchAnalysisSummary({ summary, status, onLearnFromMistakes }: Props) {
+  if (status === 'error') {
+    return (
+      <div className="t-card-i p-4 text-center" data-testid="analysis-error">
+        <p className="text-sm t-muted">Analiz şu an alınamadı. Az sonra tekrar dene.</p>
+      </div>
+    );
+  }
+
+  if (!summary || status !== 'done') {
     return (
       <div className="t-card-i p-4 space-y-2 text-center" data-testid="analysis-loading">
         <p className="text-sm t-muted">Motor maçı inceliyor…</p>
-        <div className="t-prog-track">
-          <div className="t-prog-fill" style={{ width: `${donePct}%` }} />
-        </div>
       </div>
     );
   }

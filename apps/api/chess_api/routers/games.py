@@ -2,7 +2,6 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
-from pydantic import BaseModel
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
 from chess_api.models import (
@@ -17,6 +16,7 @@ from chess_api.services.rank_engine import add_xp
 from chess_api.services.activity_logger import log_activity
 from chess_api.services.time_limit_check import check_time_limit
 from chess_api.services.tempo import tempo_category
+from chess_api.services.game_analysis_engine import is_in_flight, launch_analysis
 
 router = APIRouter(prefix="/games", tags=["games"])
 
@@ -280,33 +280,6 @@ async def game_moves(
     return [{"ply": m.ply, "san": m.san, "fen_after": m.fen_after} for m in moves]
 
 
-class MistakeMove(BaseModel):
-    """Madde 2026-09-14 (3c): tek bir kusurlu/hata/vahim-hata hamle —
-    'Hatalarını Gözden Geçir'in ürettiği MovePieceSolver egzersizinin
-    girdisi (fen_before + best_move)."""
-    ply: int
-    fen_before: str
-    played_san: str
-    best_move: str
-    cp_loss: int
-    severity: str  # 'inaccuracy' | 'mistake' | 'blunder'
-
-
-class SaveGameAnalysisRequest(BaseModel):
-    """Madde 2026-09-14 (3b): apps/web/lib/chess/gameSummary.ts::GameSummary
-    ile BİREBİR aynı alanlar — istemci motoru çalıştırıp hesapladıktan SONRA
-    burayı çağırır, backend'de stockfish YOK."""
-    inaccuracies: int
-    mistakes: int
-    blunders: int
-    acpl: int | None = None
-    accuracy: float | None = None
-    phase_accuracy_opening: float | None = None
-    phase_accuracy_middlegame: float | None = None
-    phase_accuracy_endgame: float | None = None
-    mistake_moves: list[MistakeMove] = []
-
-
 async def _get_own_game(game_id: int, child: ChildProfile, db: AsyncSession) -> Game:
     """game_detail/game_moves ile AYNI sahiplik deseni — analiz uçlarının
     ikisi de bunu kullanır."""
@@ -319,51 +292,32 @@ async def _get_own_game(game_id: int, child: ChildProfile, db: AsyncSession) -> 
 
 
 @router.post("/{game_id}/analysis", status_code=200)
-async def save_game_analysis(
+async def request_game_analysis(
     game_id: int,
-    payload: SaveGameAnalysisRequest,
     child: ChildProfile = Depends(get_current_child),
     db: AsyncSession = Depends(get_db),
 ):
-    """Madde 2026-09-14 (3b/4): 'Analiz Et' özetini kaydeder (upsert) — aynı
-    maç ikinci kez açıldığında (Maçlarımın Analizi) motor baştan çalışmasın
-    diye. mistake_moves 3c'nin pratik egzersizleri için ayrıca saklanır."""
-    await _get_own_game(game_id, child, db)
+    """Madde 2026-09-14 (sunucu analiz motoru): istemci artık bir sonuç
+    YÜKLEMİYOR — bu uç sadece "bu maçı analiz et" TETİKLEYİCİSİDİR. Motor
+    arka planda (native Stockfish, bkz. services/game_analysis_engine.py)
+    çalışır; istemci sonucu GET /{game_id}/analysis'i POLL ederek alır.
+    Zaten hesaplanmışsa doğrudan sonucu döner (motor tekrar ÇALIŞMAZ)."""
+    game = await _get_own_game(game_id, child, db)
+    if game.status != GameStatus.finished:
+        raise HTTPException(status_code=400, detail="Game not finished yet")
+
     existing = (await db.execute(
         select(GameAnalysis).where(GameAnalysis.game_id == game_id)
     )).scalar_one_or_none()
-    mistake_moves_json = [m.model_dump() for m in payload.mistake_moves]
-    if existing is None:
-        existing = GameAnalysis(game_id=game_id, inaccuracies=0, mistakes=0, blunders=0)
-        db.add(existing)
-    existing.inaccuracies = payload.inaccuracies
-    existing.mistakes = payload.mistakes
-    existing.blunders = payload.blunders
-    existing.acpl = payload.acpl
-    existing.accuracy = payload.accuracy
-    existing.phase_accuracy_opening = payload.phase_accuracy_opening
-    existing.phase_accuracy_middlegame = payload.phase_accuracy_middlegame
-    existing.phase_accuracy_endgame = payload.phase_accuracy_endgame
-    existing.mistake_moves_json = mistake_moves_json
-    await db.commit()
-    return {"ok": True}
+    if existing is not None:
+        return {"status": "done", **_serialize_analysis(existing)}
+    if is_in_flight(game_id):
+        return {"status": "pending"}
+    launch_analysis(game_id)
+    return {"status": "pending"}
 
 
-@router.get("/{game_id}/analysis")
-async def get_game_analysis(
-    game_id: int,
-    child: ChildProfile = Depends(get_current_child),
-    db: AsyncSession = Depends(get_db),
-):
-    """Madde 2026-09-14 (3b/4): daha önce kaydedilmiş özet varsa döner —
-    motor ÇALIŞTIRMAZ. Yoksa 404 (frontend bu durumda İSTEMCİDE hesaplayıp
-    sonra POST /analysis ile kaydeder — geriye dönük uyum)."""
-    await _get_own_game(game_id, child, db)
-    analysis = (await db.execute(
-        select(GameAnalysis).where(GameAnalysis.game_id == game_id)
-    )).scalar_one_or_none()
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not computed yet")
+def _serialize_analysis(analysis: GameAnalysis) -> dict:
     return {
         "inaccuracies": analysis.inaccuracies,
         "mistakes": analysis.mistakes,
@@ -376,4 +330,24 @@ async def get_game_analysis(
             "endgame": analysis.phase_accuracy_endgame,
         },
         "mistake_moves": analysis.mistake_moves_json,
+        "eval_by_ply": analysis.eval_by_ply_json,
     }
+
+
+@router.get("/{game_id}/analysis")
+async def get_game_analysis(
+    game_id: int,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-14 (sunucu analiz motoru): sonuç hazırsa döner — motor
+    ÇALIŞTIRMAZ. Henüz hazır değilse (hiç istenmedi VEYA hâlâ hesaplanıyor)
+    404 — frontend bu durumda POLL etmeye devam eder (bkz. hatalarim
+    sayfasındaki mevcut "birkaç deneme" deseninin genişletilmiş hâli)."""
+    await _get_own_game(game_id, child, db)
+    analysis = (await db.execute(
+        select(GameAnalysis).where(GameAnalysis.game_id == game_id)
+    )).scalar_one_or_none()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not computed yet")
+    return {"status": "done", **_serialize_analysis(analysis)}

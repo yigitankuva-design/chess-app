@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/components/analiz/AnalysisBoard', () => ({
@@ -25,23 +25,28 @@ vi.mock('@/lib/analiz/analizApi', () => ({
   getGameMoves: (...args: unknown[]) => getGameMoves(...args),
 }));
 
-// Madde 2026-09-05 (3): gerçek motor/Worker burada test edilmiyor (bkz.
-// use-move-quality-eval.test.tsx) — bu dosya yalnızca GameAnalysisSection'ın
-// KENDİ mantığını (maç seçimi, hamle listesi, tekerlek, silme) test ediyor.
-vi.mock('@/lib/chess/useMoveQualityEval', () => ({
-  useMoveQualityEval: () => ({ evalByPly: {}, bestMoveByPly: {}, progress: { done: 0, total: 0 } }),
+// Madde 2026-09-15 (sunucu analiz motoru): motor artık backend'de (native
+// Stockfish) çalışıyor — bu dosya yalnızca GameAnalysisSection'ın KENDİ
+// mantığını (maç seçimi, hamle listesi, tekerlek, silme, özet gösterimi)
+// test ediyor; `useServerGameAnalysis`'in KENDİ istek/poll mantığı
+// use-server-game-analysis.test.tsx'te ayrıca sınanıyor, burada mock'lanır.
+const useServerGameAnalysis = vi.fn();
+vi.mock('@/lib/chess/useServerGameAnalysis', () => ({
+  useServerGameAnalysis: (...args: unknown[]) => useServerGameAnalysis(...args),
 }));
 
-// Madde 2026-09-14 (madde 4): GameAnalysisSection artık backend'den
-// önceden kaydedilmiş özeti sorar (fetchGameAnalysis) ve istemcide
-// hesaplananı kaydeder (saveGameAnalysis) — motor/Worker burada test
-// edilmiyor (useMoveQualityEval zaten yukarıda mock'landı).
-const fetchGameAnalysis = vi.fn();
-const saveGameAnalysis = vi.fn();
-vi.mock('@/lib/chess/gameAnalysisApi', () => ({
-  fetchGameAnalysis: (...args: unknown[]) => fetchGameAnalysis(...args),
-  saveGameAnalysis: (...args: unknown[]) => saveGameAnalysis(...args),
-}));
+function mockAnalysis(status: 'pending' | 'done' | 'error', overrides: Record<string, unknown> = {}) {
+  useServerGameAnalysis.mockReturnValue({
+    status,
+    evalByPly: {},
+    summary: status === 'done' ? {
+      inaccuracies: 0, mistakes: 0, blunders: 0, acpl: null, accuracy: null,
+      phaseAccuracy: { opening: null, middlegame: null, endgame: null },
+      mistakeMoves: [],
+      ...overrides,
+    } : null,
+  });
+}
 
 import { GameAnalysisSection } from '@/components/analiz/GameAnalysisSection';
 
@@ -62,6 +67,10 @@ const MOVES = [
   { ply: 1, san: 'e4', fen_after: 'FEN_AFTER_E4' },
   { ply: 2, san: 'e5', fen_after: 'FEN_AFTER_E5' },
 ];
+
+beforeEach(() => {
+  mockAnalysis('pending');
+});
 
 describe('GameAnalysisSection', () => {
   it('mount olunca maç listesi çekilir ve gösterilir', async () => {
@@ -201,42 +210,32 @@ describe('GameAnalysisSection — "Bu Hamleden Sonrasını Sil" (madde 2026-09-0
   });
 });
 
-describe('GameAnalysisSection — madde 2026-09-14 (madde 4): özet metrikleri + PGN/FEN', () => {
-  it('kaydedilmiş özet VARSA (fetchGameAnalysis dolu döner) motor beklemeden gösterilir', async () => {
+describe('GameAnalysisSection — madde 2026-09-15 (sunucu analiz motoru): özet metrikleri + PGN/FEN', () => {
+  it('analiz hazırsa (status "done") özet gösterilir', async () => {
     listMyGames.mockResolvedValue(GAMES);
     getGameMoves.mockResolvedValue(MOVES);
-    fetchGameAnalysis.mockResolvedValue({
-      inaccuracies: 2, mistakes: 1, blunders: 0, acpl: 45, accuracy: 78,
-      phaseAccuracy: { opening: 90, middlegame: 70, endgame: null },
-      mistakeMoves: [],
-    });
+    mockAnalysis('done', { inaccuracies: 2, mistakes: 1, blunders: 0, acpl: 45, accuracy: 78 });
     render(<GameAnalysisSection />);
     fireEvent.click(await screen.findByText('Bot · Düzey 4'));
 
-    await waitFor(() => expect(fetchGameAnalysis).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(useServerGameAnalysis).toHaveBeenCalledWith(7, true));
     expect(await screen.findByTestId('analysis-summary')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument(); // Kusurlu hamle sayısı
   });
 
-  it('kaydedilmiş özet YOKSA (404/null) istemcide hesaplanan özet TAMAMLANINCA backend\'e kaydedilir', async () => {
+  it('analiz henüz hazır değilse (status "pending") bekleme kartı gösterilir', async () => {
     listMyGames.mockResolvedValue(GAMES);
     getGameMoves.mockResolvedValue(MOVES);
-    fetchGameAnalysis.mockResolvedValue(null);
+    mockAnalysis('pending');
     render(<GameAnalysisSection />);
     fireEvent.click(await screen.findByText('Bot · Düzey 4'));
 
-    await waitFor(() => expect(fetchGameAnalysis).toHaveBeenCalledWith(7));
-    // useMoveQualityEval mock'u progress {done:0,total:0} döndürüyor — bu
-    // "tamamlandı" sayılır (0 ply, hiç hamle değerlendirilmesi gerekmiyor).
-    await waitFor(() => expect(saveGameAnalysis).toHaveBeenCalledWith(7, expect.objectContaining({
-      inaccuracies: 0, mistakes: 0, blunders: 0,
-    })));
+    expect(await screen.findByTestId('analysis-loading')).toBeInTheDocument();
   });
 
   it('"PGN Kopyala"/"FEN Kopyala" görünür bloğu render edilir', async () => {
     listMyGames.mockResolvedValue(GAMES);
     getGameMoves.mockResolvedValue(MOVES);
-    fetchGameAnalysis.mockResolvedValue(null);
     render(<GameAnalysisSection />);
     fireEvent.click(await screen.findByText('Bot · Düzey 4'));
     await screen.findByTestId('analysis-board');

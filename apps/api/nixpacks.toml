@@ -1,0 +1,8 @@
+# Madde 2026-09-14 (sunucu analiz motoru): native Stockfish binary'si —
+# hem bot hamlesi (services/bot_engine.py) hem tam maç analizi
+# (services/game_analysis_engine.py) chess.engine.popen_uci("stockfish")
+# ile PATH'ten çağırıyor. Nixpacks'ın Python fazını otomatik algılaması
+# bu paketi İÇERMİYOR — [phases.setup] burada onunla BİRLEŞİR (üzerine
+# yazmaz), stockfish nixpkgs paketini PATH'e ekler.
+[phases.setup]
+nixPkgs = ["stockfish"]

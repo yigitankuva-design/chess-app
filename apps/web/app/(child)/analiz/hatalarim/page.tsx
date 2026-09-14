@@ -1,12 +1,12 @@
 'use client';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Chess } from 'chess.js';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
 import { AnalizPageHeader } from '@/components/analiz/AnalizPageHeader';
 import { MovePieceSolver } from '@/components/lesson-steps/MovePieceSolver';
 import type { MovePieceSequenceEx } from '@/components/lesson-steps/BoardExercise';
-import { fetchGameAnalysis } from '@/lib/chess/gameAnalysisApi';
+import { useServerGameAnalysis } from '@/lib/chess/useServerGameAnalysis';
 import type { MistakeMoveInfo } from '@/lib/chess/gameSummary';
 
 const SEVERITY_LABEL: Record<MistakeMoveInfo['severity'], string> = {
@@ -39,6 +39,9 @@ function uciToSan(fen: string, uci: string): string | null {
  * o pozisyonda gerçekten doğru hamleyi bulmaya çalışır (Zafer'in onayı:
  * "interaktif — doğru hamleyi bul"). Puzzle/SRS bankasına (routers/
  * puzzles.py) KARIŞMAZ — bu egzersizler o maça özel, kalıcı kaydedilmez.
+ * Madde 2026-09-15 (sunucu analiz motoru): bu sayfaya DOĞRUDAN bağlantıyla
+ * gelinebildiği için (BotGame'in her zaman önce tetiklediği varsayılamaz)
+ * `useServerGameAnalysis` KENDİSİ tetikleyip (POST) sonucu poll eder (GET).
  */
 export default function HatalarimPage() {
   return (
@@ -54,28 +57,15 @@ function HatalarimPageInner() {
   const params = useSearchParams();
   const gameId = Number(params.get('gameId'));
 
-  // undefined = yükleniyor, null = analiz bulunamadı (birkaç deneme sonrası).
-  const [mistakes, setMistakes] = useState<MistakeMoveInfo[] | null | undefined>(undefined);
+  const analysis = useServerGameAnalysis(gameId || null, !!gameId);
   const [index, setIndex] = useState(0);
   const [wrongMsg, setWrongMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!gameId) { setMistakes(null); return; }
-    let cancelled = false;
-    // Madde 2026-09-14: BotGame özeti hesaplanır hesaplanmaz backend'e
-    // POST'luyor (bkz. saveGameAnalysis) — ama bu sayfaya gelinen an ile
-    // o kaydın tamamlanması arasında kısa bir yarış olabilir. 3 deneme,
-    // aralarla — basit ve yeterli (karmaşık bir bekleme mekanizması yok).
-    async function load(attempt: number) {
-      const summary = await fetchGameAnalysis(gameId);
-      if (cancelled) return;
-      if (summary) { setMistakes(summary.mistakeMoves); return; }
-      if (attempt < 2) { setTimeout(() => load(attempt + 1), 1200); return; }
-      setMistakes(null);
-    }
-    void load(0);
-    return () => { cancelled = true; };
-  }, [gameId]);
+  // undefined = yükleniyor, null = analiz bulunamadı/hazır değil.
+  const mistakes: MistakeMoveInfo[] | null | undefined =
+    analysis.status === 'done' ? (analysis.summary?.mistakeMoves ?? [])
+      : analysis.status === 'error' ? null
+        : undefined;
 
   const current = mistakes?.[index] ?? null;
   const exercise: MovePieceSequenceEx | null = useMemo(() => {
