@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Integer, Boolean, Enum, ForeignKey, DateTime, Text
+from sqlalchemy import String, Integer, Float, Boolean, Enum, ForeignKey, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from chess_api.database import Base
 
@@ -86,3 +86,31 @@ class GameMove(Base):
     fen_after: Mapped[str] = mapped_column(String(120))
     time_left_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     by_child_id: Mapped[int | None] = mapped_column(ForeignKey("child_profiles.id"), nullable=True)
+
+
+class GameAnalysis(Base):
+    """Madde 2026-09-14 (3b/4): bir maçın "Analiz Et" özetinin SAKLANMIŞ
+    hâli — motor hâlâ İSTEMCİDE (tarayıcıda) çalışıyor, bu tablo sadece
+    SONUCU tutar (backend'e stockfish eklenmedi). Amaç: aynı maç ikinci kez
+    açıldığında (Maçlarımın Analizi) motor baştan çalışmasın; "Hatalarını
+    Gözden Geçir" de `mistake_moves_json`'ı doğrudan kullanabilsin (madde
+    3c). Hesaplama `apps/web/lib/chess/gameSummary.ts::computeGameSummary`
+    ile BİREBİR aynı alanlar — bkz. o dosyadaki GameSummary tipi."""
+    __tablename__ = "game_analyses"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), unique=True, index=True)
+    inaccuracies: Mapped[int] = mapped_column(Integer)
+    mistakes: Mapped[int] = mapped_column(Integer)
+    blunders: Mapped[int] = mapped_column(Integer)
+    acpl: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accuracy: Mapped[float | None] = mapped_column(Float, nullable=True)
+    phase_accuracy_opening: Mapped[float | None] = mapped_column(Float, nullable=True)
+    phase_accuracy_middlegame: Mapped[float | None] = mapped_column(Float, nullable=True)
+    phase_accuracy_endgame: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Madde 2026-09-14 (3c): kusurlu/hata/vahim-hata olarak işaretlenen HER
+    # hamle — [{ply, fen_before, played_san, best_move, cp_loss, severity}].
+    # "Hatalarını Gözden Geçir" bu listeyi MovePieceSolver egzersizlerine
+    # çevirir; ayrı bir Puzzle satırı OLUŞTURULMAZ (o, admin küratörlüğündeki
+    # bambaşka bir bulmaca bankası — bkz. models/puzzle.py).
+    mistake_moves_json: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

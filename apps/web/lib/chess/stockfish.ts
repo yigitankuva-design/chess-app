@@ -6,16 +6,30 @@ export class StockfishEngine {
 
   async init(): Promise<void> {
     if (typeof window === 'undefined') return;
-    // Madde 2026-09-05: Stockfish 18, NNUE'li, tek-thread WASM derlemesi
-    // ("lite single") — eski 2018 model NNUE-öncesi motorun yerine (COOP/COEP
-    // header GEREKTİRMEZ, her tarayıcıda çalışır). Protokol (Worker +
-    // postMessage(string)/onmessage UCI) AYNI — bu sınıf değişmedi.
-    this.worker = new Worker('/stockfish/stockfish-18-lite-single.js');
+    // Madde 2026-09-14 (3b): SharedArrayBuffer destekleniyorsa (tarayıcı +
+    // next.config.mjs'teki COOP/COEP header'ları, SADECE /play ve /analiz
+    // rotalarında) ÇOKLU ÇEKİRDEKLİ "lite" motor yüklenir — aynı NNUE ağı,
+    // ama aynı sürede çok daha fazla ihtimal taranır (daha derin arama).
+    // Yoksa (eski tarayıcı/uyumsuz ortam, ya da header'ların olmadığı bir
+    // sayfa) MEVCUT tek-thread dosyaya düşülür — Lichess'in web istemcisinin
+    // kullandığı AYNI özellik-algılama + yedek plan deseni. Dosya boyutu
+    // ikisinde de ~7MB (Zafer'in "113MB'lık tam motor çok büyük" kararı
+    // sonrası elenen SEÇENEK bu değil — ikisi de "lite" ağ, fark sadece
+    // tek/çoklu çekirdek).
+    const multiThread = typeof SharedArrayBuffer !== 'undefined';
+    const file = multiThread ? 'stockfish-18-lite.js' : 'stockfish-18-lite-single.js';
+    this.worker = new Worker(`/stockfish/${file}`);
     this.worker.onmessage = (e: MessageEvent) => {
       const line = typeof e.data === 'string' ? e.data : (e.data?.data ?? '');
       this.listeners.forEach((l) => l(line));
     };
     this.send('uci');
+    if (multiThread) {
+      // Çoğu cihazda 1-4 çekirdek arası makul bir denge — UI thread'ini
+      // boğmadan gerçek bir hızlanma sağlar.
+      const threads = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
+      this.send(`setoption name Threads value ${threads}`);
+    }
     this.send('isready');
   }
 

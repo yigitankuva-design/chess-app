@@ -63,3 +63,25 @@ describe('MoveList — madde 2026-09-06 (4): her satırda SABİT 3 hamle çifti'
     expect(screen.getByLabelText('Hamleler').textContent).not.toContain(',');
   });
 });
+
+describe('MoveList — madde 2026-09-14 (3a): hamle kalitesi işaretleri (Analiz Et özeti)', () => {
+  // ply1 (beyaz, e4): 0 → -400 = beyaz için -400cp → vahim hata "??" kırmızı.
+  const EVAL_BY_PLY = { 0: { cp: 0, mate: null }, 1: { cp: -400, mate: null } };
+
+  it('evalByPly verilmezse hamleler işaretsiz kalır (canlı oyun sırasındaki mevcut davranış)', () => {
+    render(<MoveList san={['e4']} />);
+    expect(screen.getByText('e4')).toBeInTheDocument();
+  });
+
+  it('evalByPly verilince vahim hata yapan hamlenin sonuna "??" eklenir ve kırmızı gösterilir', () => {
+    render(<MoveList san={['e4']} evalByPly={EVAL_BY_PLY} />);
+    const el = screen.getByText('e4??');
+    expect(el).toBeInTheDocument();
+    expect(el).toHaveStyle({ color: '#f87171' });
+  });
+
+  it('tıklanabilir modda (onSelectPly verilince) da işaret görünür', () => {
+    render(<MoveList san={['e4']} evalByPly={EVAL_BY_PLY} onSelectPly={() => {}} />);
+    expect(screen.getByText('e4??')).toBeInTheDocument();
+  });
+});

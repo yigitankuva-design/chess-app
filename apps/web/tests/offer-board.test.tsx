@@ -64,6 +64,14 @@ describe('OfferBoard', () => {
     expect(takeOffer).toHaveBeenCalledWith(9);
   });
 
+  /** Madde 2026-09-14 (madde 2): Zafer'in gönderdiği görselde işaretlediği
+   *  "+" işareti kaldırıldı — buton artık sadece "Maç Teklif Et" yazıyor. */
+  it('madde 2026-09-14 (madde 2): "+ Maç Teklif Et" butonunda artık "+" YOKTUR', () => {
+    render(<OfferBoard />);
+    expect(screen.getByRole('button', { name: 'Maç Teklif Et' })).toBeInTheDocument();
+    expect(screen.queryByText('+ Maç Teklif Et')).not.toBeInTheDocument();
+  });
+
   it('Maç Teklif Et formu açılır ve createOffer doğru değerlerle çağrılır', () => {
     render(<OfferBoard />);
     fireEvent.click(screen.getByRole('button', { name: /Maç Teklif Et/ }));

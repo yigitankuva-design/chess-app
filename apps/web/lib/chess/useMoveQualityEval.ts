@@ -8,9 +8,15 @@ import type { WhiteScore } from './moveQuality';
  *  görüntülenen pozisyonu 3 hatla) BAĞIMSIZ, tek hatlı ayarlar — bu hook
  *  arka planda TÜM geçmişi sırayla değerlendirir. Madde 2026-09-05 (motor
  *  yükseltmesi): NNUE'li motor aynı sürede daha derin/isabetli sonuç
- *  verdiği için derinlik/süre artırıldı (14/400ms → 18/800ms). */
-const EVAL_DEPTH = 18;
-const EVAL_MOVETIME_MS = 800;
+ *  verdiği için derinlik/süre artırıldı (14/400ms → 18/800ms).
+ *  Madde 2026-09-14 (3b): Zafer'in onayladığı doğruluk düzeltmesi — çoklu
+ *  çekirdek (stockfish.ts) + bu artış birlikte gerçek derinliği yükseltir;
+ *  motor daha az hata kaçırır (18/800ms → 22/2500ms). Tek-thread yedek
+ *  moda düşen tarayıcılarda da zarar vermez, sadece üst sınıra kadar
+ *  bekler. Tam maç analizinin ~2-3 dakikada bitmesi hedeflendi (Zafer'e
+ *  önceden bildirilen tahmin) — gerçek cihazda ölçülüp ince ayar yapılabilir. */
+const EVAL_DEPTH = 22;
+const EVAL_MOVETIME_MS = 2500;
 
 export interface EvalMove {
   ply: number;
@@ -20,6 +26,11 @@ export interface EvalMove {
 interface Result {
   /** 0 = başlangıç konumu, N = N. hamleden sonraki pozisyon — HEP Beyaz açısından. */
   evalByPly: Record<number, WhiteScore>;
+  /** Madde 2026-09-14 (3c): O POZİSYONDA (ply-1 → ply arasında OYNANMADAN
+   *  önceki konumda) motorun önerdiği en iyi hamle (UCI, örn. "e2e4") —
+   *  "Hatalarını Gözden Geçir" egzersizlerinin çözümü için. Key: ply-1
+   *  (yani evalByPly[ply-1] ile AYNI pozisyonun en iyi hamlesi). */
+  bestMoveByPly: Record<number, string>;
   /** Şu ana kadar değerlendirilen ply sayısı / toplam ply sayısı (ilerleme göstergesi için). */
   progress: { done: number; total: number };
 }
@@ -36,6 +47,7 @@ interface Result {
  *  seçilmemişken gereksiz analiz başlatılmasın diye). */
 export function useMoveQualityEval(baseFen: string, moves: EvalMove[], enabled: boolean = true): Result {
   const [evalByPly, setEvalByPly] = useState<Record<number, WhiteScore>>({});
+  const [bestMoveByPly, setBestMoveByPly] = useState<Record<number, string>>({});
   const engineRef = useRef<StockfishEngine | null>(null);
   const generationRef = useRef(0);
 
@@ -51,6 +63,13 @@ export function useMoveQualityEval(baseFen: string, moves: EvalMove[], enabled: 
     // yapmaz (bu effect `moves` referansı her render'da değişebildiği için
     // sık tetiklenebilir, o yüzden no-op'ta re-render'ı ÇOĞALTMAMAK önemli).
     setEvalByPly((prev) => {
+      const staleKeys = Object.keys(prev).map(Number).filter((ply) => ply > moves.length);
+      if (staleKeys.length === 0) return prev;
+      const next = { ...prev };
+      for (const ply of staleKeys) delete next[ply];
+      return next;
+    });
+    setBestMoveByPly((prev) => {
       const staleKeys = Object.keys(prev).map(Number).filter((ply) => ply > moves.length);
       if (staleKeys.length === 0) return prev;
       const next = { ...prev };
@@ -82,6 +101,9 @@ export function useMoveQualityEval(baseFen: string, moves: EvalMove[], enabled: 
         const best = candidates[0];
         const white = scoreForWhite(best?.scoreCp ?? null, best?.mate ?? null, sideToMove);
         setEvalByPly((prev) => ({ ...prev, [ply]: white }));
+        if (best?.moveUci) {
+          setBestMoveByPly((prev) => ({ ...prev, [ply]: best.moveUci }));
+        }
       }
     }
 
@@ -90,5 +112,5 @@ export function useMoveQualityEval(baseFen: string, moves: EvalMove[], enabled: 
   }, [baseFen, moves, enabled]);
 
   const done = Object.keys(evalByPly).length;
-  return { evalByPly, progress: { done, total: moves.length + 1 } };
+  return { evalByPly, bestMoveByPly, progress: { done, total: moves.length + 1 } };
 }

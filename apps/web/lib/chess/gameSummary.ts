@@ -23,6 +23,20 @@ export interface PhaseAccuracy {
   endgame: number | null;
 }
 
+/** Madde 2026-09-14 (3c): kusurlu/hata/vahim-hata olarak işaretlenen TEK bir
+ *  hamle — "Hatalarını Gözden Geçir" pratiğinin girdisi. `bestMove` UCI
+ *  formatındadır (motorun ürettiği ham çıktı, örn. "e2e4") — SAN'a çevirme
+ *  (gösterim/MovePieceSolver için) chess.js ile `fenBefore` üzerinden
+ *  ayrıca yapılır. */
+export interface MistakeMoveInfo {
+  ply: number;
+  fenBefore: string;
+  playedSan: string;
+  bestMove: string;
+  cpLoss: number;
+  severity: 'inaccuracy' | 'mistake' | 'blunder';
+}
+
 export interface GameSummary {
   inaccuracies: number;
   mistakes: number;
@@ -33,6 +47,10 @@ export interface GameSummary {
   /** 0-100 doğruluk yüzdesi. Sporcunun hiç hamlesi yoksa null. */
   accuracy: number | null;
   phaseAccuracy: PhaseAccuracy;
+  /** Madde 2026-09-14 (3c): kusurlu/hata/vahim hata olan HER hamle, oyun
+   *  sırasına göre — bestMoveByPly verilmediyse (henüz motor o ply'ın en
+   *  iyi hamlesini bulmadıysa) o hamle listeye GİRMEZ. */
+  mistakeMoves: MistakeMoveInfo[];
 }
 
 const INACCURACY_CP = 50;
@@ -115,12 +133,16 @@ function average(values: number[]): number | null {
  * skor (ply 0 = başlangıç). `fens`: `fensFromSan`'den gelen, AYNI indekste
  * FEN dizisi (uzunluk evalByPly ile aynı olmalı — eksik ply'lar atlanır,
  * motor henüz o kadarını değerlendirmemiş olabilir). `studentColor`:
- * sporcunun rengi — sadece bu renkteki hamleler sayılır.
+ * sporcunun rengi — sadece bu renkteki hamleler sayılır. `sanHistory`/
+ * `bestMoveByPly` OPSİYONEL (madde 2026-09-14, 3c) — ikisi de verilirse
+ * `mistakeMoves` doldurulur, verilmezse boş dizi döner (geriye uyumlu).
  */
 export function computeGameSummary(
   evalByPly: Record<number, WhiteScore>,
   fens: string[],
   studentColor: 'w' | 'b',
+  sanHistory?: string[],
+  bestMoveByPly?: Record<number, string>,
 ): GameSummary {
   const startTurn: 'w' | 'b' = (fens[0]?.split(/\s+/)[1] === 'b') ? 'b' : 'w';
 
@@ -128,6 +150,7 @@ export function computeGameSummary(
   const cpLosses: number[] = [];
   const moveAccs: number[] = [];
   const byPhase: Record<Phase, number[]> = { opening: [], middlegame: [], endgame: [] };
+  const mistakeMoves: MistakeMoveInfo[] = [];
 
   for (let ply = 1; ply < fens.length; ply++) {
     const mover: 'w' | 'b' = (ply % 2 === 1) ? startTurn : (startTurn === 'w' ? 'b' : 'w');
@@ -152,6 +175,15 @@ export function computeGameSummary(
     else if (kind === 'mistake') mistakes++;
     else if (kind === 'blunder') blunders++;
 
+    if (kind && sanHistory && bestMoveByPly) {
+      const fenBefore = fens[ply - 1];
+      const playedSan = sanHistory[ply - 1];
+      const bestMove = bestMoveByPly[ply - 1];
+      if (fenBefore && playedSan && bestMove) {
+        mistakeMoves.push({ ply, fenBefore, playedSan, bestMove, cpLoss, severity: kind });
+      }
+    }
+
     const winBefore = winPercent(beforeForStudent);
     const winAfter = winPercent(afterForStudent);
     const acc = moveAccuracyFromWinDrop(winBefore - winAfter);
@@ -168,6 +200,7 @@ export function computeGameSummary(
     blunders,
     acpl: acplAvg === null ? null : Math.round(acplAvg),
     accuracy: average(moveAccs),
+    mistakeMoves,
     phaseAccuracy: {
       opening: average(byPhase.opening),
       middlegame: average(byPhase.middlegame),

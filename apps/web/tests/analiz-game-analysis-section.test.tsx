@@ -29,7 +29,18 @@ vi.mock('@/lib/analiz/analizApi', () => ({
 // use-move-quality-eval.test.tsx) — bu dosya yalnızca GameAnalysisSection'ın
 // KENDİ mantığını (maç seçimi, hamle listesi, tekerlek, silme) test ediyor.
 vi.mock('@/lib/chess/useMoveQualityEval', () => ({
-  useMoveQualityEval: () => ({ evalByPly: {}, progress: { done: 0, total: 0 } }),
+  useMoveQualityEval: () => ({ evalByPly: {}, bestMoveByPly: {}, progress: { done: 0, total: 0 } }),
+}));
+
+// Madde 2026-09-14 (madde 4): GameAnalysisSection artık backend'den
+// önceden kaydedilmiş özeti sorar (fetchGameAnalysis) ve istemcide
+// hesaplananı kaydeder (saveGameAnalysis) — motor/Worker burada test
+// edilmiyor (useMoveQualityEval zaten yukarıda mock'landı).
+const fetchGameAnalysis = vi.fn();
+const saveGameAnalysis = vi.fn();
+vi.mock('@/lib/chess/gameAnalysisApi', () => ({
+  fetchGameAnalysis: (...args: unknown[]) => fetchGameAnalysis(...args),
+  saveGameAnalysis: (...args: unknown[]) => saveGameAnalysis(...args),
 }));
 
 import { GameAnalysisSection } from '@/components/analiz/GameAnalysisSection';
@@ -187,5 +198,50 @@ describe('GameAnalysisSection — "Bu Hamleden Sonrasını Sil" (madde 2026-09-0
     fireEvent.click(screen.getByText('Bu Hamleden Sonrasını Sil'));
     expect(screen.queryByText('e5')).not.toBeInTheDocument();
     expect(screen.getByText('e4')).toBeInTheDocument();
+  });
+});
+
+describe('GameAnalysisSection — madde 2026-09-14 (madde 4): özet metrikleri + PGN/FEN', () => {
+  it('kaydedilmiş özet VARSA (fetchGameAnalysis dolu döner) motor beklemeden gösterilir', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    fetchGameAnalysis.mockResolvedValue({
+      inaccuracies: 2, mistakes: 1, blunders: 0, acpl: 45, accuracy: 78,
+      phaseAccuracy: { opening: 90, middlegame: 70, endgame: null },
+      mistakeMoves: [],
+    });
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+
+    await waitFor(() => expect(fetchGameAnalysis).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId('analysis-summary')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument(); // Kusurlu hamle sayısı
+  });
+
+  it('kaydedilmiş özet YOKSA (404/null) istemcide hesaplanan özet TAMAMLANINCA backend\'e kaydedilir', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    fetchGameAnalysis.mockResolvedValue(null);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+
+    await waitFor(() => expect(fetchGameAnalysis).toHaveBeenCalledWith(7));
+    // useMoveQualityEval mock'u progress {done:0,total:0} döndürüyor — bu
+    // "tamamlandı" sayılır (0 ply, hiç hamle değerlendirilmesi gerekmiyor).
+    await waitFor(() => expect(saveGameAnalysis).toHaveBeenCalledWith(7, expect.objectContaining({
+      inaccuracies: 0, mistakes: 0, blunders: 0,
+    })));
+  });
+
+  it('"PGN Kopyala"/"FEN Kopyala" görünür bloğu render edilir', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    fetchGameAnalysis.mockResolvedValue(null);
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-board');
+
+    expect(screen.getByText('PGN Kopyala')).toBeInTheDocument();
+    expect(screen.getByText('FEN Kopyala')).toBeInTheDocument();
   });
 });

@@ -8,7 +8,7 @@ from chess_api.models.progress import (
 from chess_api.models.puzzle import (
     Puzzle, PuzzleTheme, ChildPuzzleAttempt, SRSCard, SRSItemType,
 )
-from chess_api.models.game import Game, GameMove, GameType, GameStatus, GameResult
+from chess_api.models.game import Game, GameMove, GameType, GameStatus, GameResult, GameAnalysis
 from chess_api.models.gamification import Badge, ChildBadge, Rank, ChildRank
 from chess_api.models.class_ import Class
 from chess_api.models.homework import Homework, HomeworkRecipient
@@ -41,7 +41,7 @@ __all__ = [
     "Module", "Lesson", "LessonStep", "LessonStepType",
     "ChildLessonProgress", "ChildLessonStepResult", "LessonStatus",
     "Puzzle", "PuzzleTheme", "ChildPuzzleAttempt", "SRSCard", "SRSItemType",
-    "Game", "GameMove", "GameType", "GameStatus", "GameResult",
+    "Game", "GameMove", "GameType", "GameStatus", "GameResult", "GameAnalysis",
     "Badge", "ChildBadge", "Rank", "ChildRank",
     "ParentTimeLimit", "ChildActivityLog", "ParentSurvey", "ParentSurveyResponse",
     "Class",

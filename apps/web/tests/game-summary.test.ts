@@ -131,6 +131,40 @@ describe('computeGameSummary', () => {
     expect(summary).toEqual({
       inaccuracies: 0, mistakes: 0, blunders: 0, acpl: null, accuracy: null,
       phaseAccuracy: { opening: null, middlegame: null, endgame: null },
+      mistakeMoves: [],
+    });
+  });
+
+  describe('mistakeMoves (madde 2026-09-14, 3c)', () => {
+    it('sanHistory/bestMoveByPly verilmezse mistakeMoves boş kalır (geriye uyumlu)', () => {
+      const evalByPly = {
+        0: { cp: 0, mate: null },
+        1: { cp: -400, mate: null }, // beyaz için vahim hata
+      };
+      const summary = computeGameSummary(evalByPly, [START, START], 'w');
+      expect(summary.mistakeMoves).toEqual([]);
+    });
+
+    it('hatalı hamle sanHistory/bestMoveByPly ile verilince mistakeMoves doldurulur', () => {
+      const evalByPly = {
+        0: { cp: 0, mate: null },
+        1: { cp: -400, mate: null }, // beyaz 400cp kaybetti → vahim hata
+      };
+      const summary = computeGameSummary(
+        evalByPly, [START, START], 'w', ['e4'], { 0: 'd2d4' },
+      );
+      expect(summary.mistakeMoves).toEqual([
+        { ply: 1, fenBefore: START, playedSan: 'e4', bestMove: 'd2d4', cpLoss: 400, severity: 'blunder' },
+      ]);
+    });
+
+    it('best move eksikse (motor henüz bulmadıysa) o hamle mistakeMoves\'a girmez', () => {
+      const evalByPly = {
+        0: { cp: 0, mate: null },
+        1: { cp: -400, mate: null },
+      };
+      const summary = computeGameSummary(evalByPly, [START, START], 'w', ['e4'], {});
+      expect(summary.mistakeMoves).toEqual([]);
     });
   });
 });

@@ -1,13 +1,18 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 import { Chess } from 'chess.js';
 import { listMyGames, getGameMoves } from '@/lib/analiz/analizApi';
 import type { GameSummary } from '@/lib/analiz/analizApi';
 import { GameHistoryList } from './GameHistoryList';
 import { GameMoveList } from './GameMoveList';
+import { GameExportBlock } from './GameExportBlock';
 import { AnalysisBoard, ANALYSIS_BOARD_MAX_WIDTH } from './AnalysisBoard';
+import { MatchAnalysisSummary } from '@/components/play/MatchAnalysisSummary';
 import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
+import { computeGameSummary } from '@/lib/chess/gameSummary';
+import type { GameSummary as ComputedGameSummary } from '@/lib/chess/gameSummary';
+import { fetchGameAnalysis, saveGameAnalysis } from '@/lib/chess/gameAnalysisApi';
 import { applyMove, currentFen, stepView } from '@/lib/chess/variantMoves';
 import type { PlayedMove, ActiveVariant } from '@/lib/chess/variantMoves';
 
@@ -37,6 +42,10 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
   const [activeVariant, setActiveVariant] = useState<ActiveVariant | null>(null);
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
   const [hideNotation, setHideNotation] = useState(false);
+  /** Madde 2026-09-14 (madde 4): backend'den önceden kaydedilmiş özet —
+   *  undefined = henüz sorulmadı, null = kayıtlı değil (istemcide
+   *  hesaplanır), aksi halde direkt gösterilir (motor beklemeden). */
+  const [persistedSummary, setPersistedSummary] = useState<ComputedGameSummary | null | undefined>(undefined);
 
   useEffect(() => {
     listMyGames().then((g) => {
@@ -53,19 +62,49 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
     setPly(0);
     setActiveVariant(null);
     setOrientation('white');
+    setPersistedSummary(undefined);
     const moves = await getGameMoves(g.id);
     setHistory(moves.map((m) => ({ ply: m.ply, san: m.san, fenAfter: m.fen_after })));
+    setPersistedSummary(await fetchGameAnalysis(g.id));
   }
 
   const baseFen = selectedGame?.start_fen ?? START_FEN;
+  const studentColor = selectedGame?.student_color ?? 'w';
   /** Madde 2026-09-05 (3): hamle kalitesi işaretleri — SADECE kayıtlı ana hat
    *  üzerinden hesaplanır (varyant hamleleri kapsam dışı). React hook
-   *  kuralları gereği erken return'den ÖNCE, koşulsuz çağrılır. */
+   *  kuralları gereği erken return'den ÖNCE, koşulsuz çağrılır.
+   *  Madde 2026-09-14 (madde 4): persistedSummary ZATEN VARSA motor hiç
+   *  çalıştırılmaz (`enabled` false). */
   const evalMoves = useMemo(
     () => history.map((m) => ({ ply: m.ply, fenAfter: m.fenAfter })),
     [history],
   );
-  const { evalByPly, progress } = useMoveQualityEval(baseFen, evalMoves, !!selectedGame);
+  // Madde 2026-09-14 (madde 4): motor notasyon işaretleri (?/??/!/!!) için
+  // HER ZAMAN çalışır (persistedSummary olsa da) — SADECE ÖZET KARTIN
+  // gösterimi persisted varsa hemen (motor beklemeden), yoksa motor
+  // bitince gelir. Aksi halde persisted bir maçta hamle işaretleri hiç
+  // görünmezdi (regresyon).
+  const { evalByPly, bestMoveByPly, progress } = useMoveQualityEval(baseFen, evalMoves, !!selectedGame);
+  const fens = useMemo(() => [baseFen, ...history.map((m) => m.fenAfter)], [baseFen, history]);
+  const computedSummary = useMemo(
+    () => (persistedSummary === null
+      ? computeGameSummary(evalByPly, fens, studentColor, history.map((m) => m.san), bestMoveByPly)
+      : null),
+    [persistedSummary, evalByPly, fens, studentColor, history, bestMoveByPly],
+  );
+
+  // Madde 2026-09-14 (madde 4): istemcide hesaplanan özet TAMAMLANINCA
+  // backend'e kaydedilir — bir SONRAKİ ziyarette motor tekrar çalışmasın.
+  const savedForGameRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!selectedGame || !computedSummary) return;
+    if (progress.done < progress.total) return;
+    if (savedForGameRef.current === selectedGame.id) return;
+    savedForGameRef.current = selectedGame.id;
+    void saveGameAnalysis(selectedGame.id, computedSummary);
+  }, [selectedGame, computedSummary, progress]);
+
+  const displaySummary = persistedSummary ?? computedSummary;
 
   if (!selectedGame) {
     return <GameHistoryList games={games} loading={loading} onSelect={selectGame} />;
@@ -141,6 +180,20 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
         onDeleteAfter={handleDeleteAfter}
         evalByPly={evalByPly} evalProgress={progress}
         activeVariant={activeVariant} onSelectVariantPly={selectVariantPly}
+      />
+      {/* Madde 2026-09-14 (3d): görünür PGN/FEN kopyalama. */}
+      <GameExportBlock sanMoves={history.map((m) => m.san)} currentFen={fen} startFen={baseFen} />
+      {/* Madde 2026-09-14 (madde 4): "Analiz Et" özet kartıyla AYNI bileşen —
+          Kusurlu Hamle/Hata/Vahim Hata/Ortalama Santipiyon/Doğruluk/Açılış-
+          Oyunortası-Oyunsonu artık burada da görünür. */}
+      <MatchAnalysisSummary
+        summary={displaySummary}
+        progress={persistedSummary ? { done: 1, total: 1 } : progress}
+        onLearnFromMistakes={() => {
+          if (typeof window !== 'undefined' && selectedGame) {
+            window.location.href = `/analiz/hatalarim?gameId=${selectedGame.id}`;
+          }
+        }}
       />
     </div>
   );

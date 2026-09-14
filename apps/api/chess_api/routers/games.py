@@ -2,9 +2,12 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+from pydantic import BaseModel
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
-from chess_api.models import ChildProfile, Game, GameMove, GameType, GameStatus, GameResult, OpeningVariant, Opening
+from chess_api.models import (
+    ChildProfile, Game, GameMove, GameType, GameStatus, GameResult, OpeningVariant, Opening, GameAnalysis,
+)
 from chess_api.schemas.game import (
     StartBotGameRequest, StartBotGameResponse, MakeMoveRequest, MoveResponse,
 )
@@ -275,3 +278,102 @@ async def game_moves(
         select(GameMove).where(GameMove.game_id == game_id).order_by(GameMove.ply.asc())
     )).scalars().all()
     return [{"ply": m.ply, "san": m.san, "fen_after": m.fen_after} for m in moves]
+
+
+class MistakeMove(BaseModel):
+    """Madde 2026-09-14 (3c): tek bir kusurlu/hata/vahim-hata hamle —
+    'Hatalarını Gözden Geçir'in ürettiği MovePieceSolver egzersizinin
+    girdisi (fen_before + best_move)."""
+    ply: int
+    fen_before: str
+    played_san: str
+    best_move: str
+    cp_loss: int
+    severity: str  # 'inaccuracy' | 'mistake' | 'blunder'
+
+
+class SaveGameAnalysisRequest(BaseModel):
+    """Madde 2026-09-14 (3b): apps/web/lib/chess/gameSummary.ts::GameSummary
+    ile BİREBİR aynı alanlar — istemci motoru çalıştırıp hesapladıktan SONRA
+    burayı çağırır, backend'de stockfish YOK."""
+    inaccuracies: int
+    mistakes: int
+    blunders: int
+    acpl: int | None = None
+    accuracy: float | None = None
+    phase_accuracy_opening: float | None = None
+    phase_accuracy_middlegame: float | None = None
+    phase_accuracy_endgame: float | None = None
+    mistake_moves: list[MistakeMove] = []
+
+
+async def _get_own_game(game_id: int, child: ChildProfile, db: AsyncSession) -> Game:
+    """game_detail/game_moves ile AYNI sahiplik deseni — analiz uçlarının
+    ikisi de bunu kullanır."""
+    game = await db.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404)
+    if child.id not in (game.white_child_id, game.black_child_id):
+        raise HTTPException(status_code=403, detail="Not your game")
+    return game
+
+
+@router.post("/{game_id}/analysis", status_code=200)
+async def save_game_analysis(
+    game_id: int,
+    payload: SaveGameAnalysisRequest,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-14 (3b/4): 'Analiz Et' özetini kaydeder (upsert) — aynı
+    maç ikinci kez açıldığında (Maçlarımın Analizi) motor baştan çalışmasın
+    diye. mistake_moves 3c'nin pratik egzersizleri için ayrıca saklanır."""
+    await _get_own_game(game_id, child, db)
+    existing = (await db.execute(
+        select(GameAnalysis).where(GameAnalysis.game_id == game_id)
+    )).scalar_one_or_none()
+    mistake_moves_json = [m.model_dump() for m in payload.mistake_moves]
+    if existing is None:
+        existing = GameAnalysis(game_id=game_id, inaccuracies=0, mistakes=0, blunders=0)
+        db.add(existing)
+    existing.inaccuracies = payload.inaccuracies
+    existing.mistakes = payload.mistakes
+    existing.blunders = payload.blunders
+    existing.acpl = payload.acpl
+    existing.accuracy = payload.accuracy
+    existing.phase_accuracy_opening = payload.phase_accuracy_opening
+    existing.phase_accuracy_middlegame = payload.phase_accuracy_middlegame
+    existing.phase_accuracy_endgame = payload.phase_accuracy_endgame
+    existing.mistake_moves_json = mistake_moves_json
+    await db.commit()
+    return {"ok": True}
+
+
+@router.get("/{game_id}/analysis")
+async def get_game_analysis(
+    game_id: int,
+    child: ChildProfile = Depends(get_current_child),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-14 (3b/4): daha önce kaydedilmiş özet varsa döner —
+    motor ÇALIŞTIRMAZ. Yoksa 404 (frontend bu durumda İSTEMCİDE hesaplayıp
+    sonra POST /analysis ile kaydeder — geriye dönük uyum)."""
+    await _get_own_game(game_id, child, db)
+    analysis = (await db.execute(
+        select(GameAnalysis).where(GameAnalysis.game_id == game_id)
+    )).scalar_one_or_none()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not computed yet")
+    return {
+        "inaccuracies": analysis.inaccuracies,
+        "mistakes": analysis.mistakes,
+        "blunders": analysis.blunders,
+        "acpl": analysis.acpl,
+        "accuracy": analysis.accuracy,
+        "phase_accuracy": {
+            "opening": analysis.phase_accuracy_opening,
+            "middlegame": analysis.phase_accuracy_middlegame,
+            "endgame": analysis.phase_accuracy_endgame,
+        },
+        "mistake_moves": analysis.mistake_moves_json,
+    }

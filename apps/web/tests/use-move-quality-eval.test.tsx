@@ -62,6 +62,16 @@ describe('useMoveQualityEval (madde 2026-09-05 (3))', () => {
     await waitFor(() => expect(Object.keys(result.current.evalByPly).map(Number).sort((a, b) => a - b)).toEqual([0, 1]));
   });
 
+  it('madde 2026-09-14 (3c): bestMoveByPly motorun önerdiği hamleyi (UCI) ply-1 için saklar', async () => {
+    analyzeMultiPv.mockResolvedValue([{ moveUci: 'g1f3', scoreCp: 20, mate: null, pvUci: [] }]);
+    const moves = [{ ply: 1, fenAfter: FEN_AFTER_E4 }];
+    const { result } = renderHook(() => useMoveQualityEval(START_FEN, moves));
+
+    await waitFor(() => expect(Object.keys(result.current.evalByPly)).toHaveLength(2));
+    // ply 0 pozisyonunda (henüz hamle oynanmadan) önerilen hamle.
+    expect(result.current.bestMoveByPly[0]).toBe('g1f3');
+  });
+
   it('değerlendirme Beyaz açısından döner (scoreForWhite ile normalize)', async () => {
     // FEN_AFTER_E4'te sıra SİYAH'ta — motor siyah açısından -30 döndürsün,
     // Beyaz açısından +30 olarak saklanmalı.

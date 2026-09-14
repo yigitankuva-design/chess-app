@@ -268,15 +268,15 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs n-muted">Hamle sırası:</span>
           <button type="button" onClick={() => setTurn('w')}
-            className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Beyaz</button>
+            className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-[color:var(--t-border)] text-[color:var(--t-text-1)]'}`}>Beyaz</button>
           <button type="button" onClick={() => setTurn('b')}
-            className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Siyah</button>
+            className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-[color:var(--t-border)] text-[color:var(--t-text-1)]'}`}>Siyah</button>
           <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
-            className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+            className="px-3 py-1.5 rounded-lg text-xs border bg-[color:var(--t-surface-2)] text-[color:var(--t-text-1)] border-[color:var(--t-border)] hover:opacity-80 transition-opacity">
             Başlangıç konumu
           </button>
           <button type="button" onClick={() => onChange(mapToFen({}, turn))}
-            className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+            className="px-3 py-1.5 rounded-lg text-xs border bg-[color:var(--t-surface-2)] text-[color:var(--t-text-1)] border-[color:var(--t-border)] hover:opacity-80 transition-opacity">
             Tahtayı temizle
           </button>
         </div>
@@ -284,11 +284,11 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
         <>
           <div className="flex flex-wrap items-center justify-center gap-2" style={{ maxWidth: 440 }}>
             <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
-              className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+              className="px-3 py-1.5 rounded-lg text-xs border bg-[color:var(--t-surface-2)] text-[color:var(--t-text-1)] border-[color:var(--t-border)] hover:opacity-80 transition-opacity">
               Başlangıç konumu
             </button>
             <button type="button" onClick={() => onChange(mapToFen({}, turn))}
-              className="px-3 py-1.5 rounded-lg text-xs bg-white/5 text-white/80 border border-white/15 hover:bg-white/10">
+              className="px-3 py-1.5 rounded-lg text-xs border bg-[color:var(--t-surface-2)] text-[color:var(--t-text-1)] border-[color:var(--t-border)] hover:opacity-80 transition-opacity">
               Tahtayı temizle
             </button>
           </div>
@@ -296,9 +296,9 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
           <div className="flex items-center gap-2">
             <span className="text-xs n-muted">Hamle sırası:</span>
             <button type="button" onClick={() => setTurn('w')}
-              className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Beyaz</button>
+              className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-[color:var(--t-border)] text-[color:var(--t-text-1)]'}`}>Beyaz</button>
             <button type="button" onClick={() => setTurn('b')}
-              className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-white/15 text-white/70'}`}>Siyah</button>
+              className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-[color:var(--t-border)] text-[color:var(--t-text-1)]'}`}>Siyah</button>
           </div>
         </>
       )}

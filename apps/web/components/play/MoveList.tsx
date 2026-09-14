@@ -4,6 +4,12 @@ import { parseFenStart } from '@/lib/play/moveList';
 import { turkishMoveRows } from '@/lib/play/sanTr';
 import type { TurkishMove } from '@/lib/play/sanTr';
 import { useBoardNotation } from '@/lib/board-notation-context';
+import { classifyMoveQuality } from '@/lib/chess/moveQuality';
+import type { WhiteScore } from '@/lib/chess/moveQuality';
+
+/** NotationCard.tsx'teki AYNI renk eşlemesi — analiz ekranlarında hamle
+ *  kalitesi işaretleri her yerde aynı görünsün. */
+const QUALITY_COLOR = { bad: '#f87171', good: '#7dd3fc' } as const;
 
 interface Props {
   /** Oynanan hamleler (SAN, chess.js'ten İngilizce gelir). */
@@ -15,12 +21,16 @@ interface Props {
   onSelectPly?: (ply: number) => void;
   /** O anda tahtada gosterilen yari-hamle — gorsel olarak isaretlenir. */
   activePly?: number;
+  /** Madde 2026-09-14 (3a): verilirse (Analiz Et özet ekranı) hamlelerin
+   *  yanına NotationCard.tsx'teki AYNI kalite işaretleri (?/??/!/!!) ve
+   *  renk eklenir — ply→skor haritası, 0 = başlangıç (Beyaz açısından). */
+  evalByPly?: Record<number, WhiteScore>;
 }
 
 /** Tahtanin ALTINDA duran hamle notasyonu (madde 1/3).
  *  Hamleler YAN YANA akar, satir bitince alt satirdan devam eder:
  *  "1. e4 – e5, 2. Af3 – Ac6, 3. Fc4 – Fc5 …"  Yazim TURKCEDIR. */
-export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
+export function MoveList({ san, startFen, onSelectPly, activePly, evalByPly }: Props) {
   const rows = turkishMoveRows(san, parseFenStart(startFen));
   const boxRef = useRef<HTMLDivElement>(null);
   const { hideNotation, toggleHideNotation } = useBoardNotation();
@@ -34,7 +44,15 @@ export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
    *  notasyon aynen duz metin kalir. */
   function move(m: TurkishMove | null, fallback: string) {
     if (!m) return <>{fallback}</>;
-    if (!onSelectPly) return <>{m.san}</>;
+    const mover: 'w' | 'b' = m.ply % 2 === 1 ? 'w' : 'b';
+    const before = evalByPly?.[m.ply - 1];
+    const after = evalByPly?.[m.ply];
+    const quality = before && after ? classifyMoveQuality(before, after, mover) : null;
+    const label = m.san + (quality?.symbol ?? '');
+    const qualityColor = quality ? QUALITY_COLOR[quality.tone] : undefined;
+    if (!onSelectPly) {
+      return <span style={qualityColor ? { color: qualityColor, fontWeight: 700 } : undefined}>{label}</span>;
+    }
     const active = activePly === m.ply;
     return (
       <button
@@ -42,9 +60,13 @@ export function MoveList({ san, startFen, onSelectPly, activePly }: Props) {
         onClick={() => onSelectPly(m.ply)}
         aria-current={active ? 'true' : undefined}
         className="underline-offset-2 hover:underline"
-        style={active ? { fontWeight: 700, textDecoration: 'underline' } : undefined}
+        style={{
+          fontWeight: active || qualityColor ? 700 : undefined,
+          textDecoration: active ? 'underline' : undefined,
+          color: qualityColor,
+        }}
       >
-        {m.san}
+        {label}
       </button>
     );
   }

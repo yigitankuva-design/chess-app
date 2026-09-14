@@ -108,7 +108,7 @@ export function OfferBoard() {
         <button type="button" onClick={() => setFormOpen(true)}
           className="w-full py-3 rounded-xl text-sm font-bold"
           style={{ background: 'var(--t-accent)', color: '#fff' }}>
-          + Maç Teklif Et
+          Maç Teklif Et
         </button>
       ) : (
         <div className="t-card-i p-4 space-y-4">

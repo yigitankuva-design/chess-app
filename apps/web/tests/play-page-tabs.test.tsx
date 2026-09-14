@@ -106,4 +106,16 @@ describe('/play — "Maç Türü" yazısı kaldırıldı (madde 4 ve 8)', () => 
     fireEvent.click(screen.getByText('Arkadaşla Oyna'));
     expect(screen.queryByLabelText('Maç türü seçimine dön')).not.toBeInTheDocument();
   });
+
+  /** Madde 2026-09-14 (madde 2): "Arkadaşla Oyna" başlığı ve alt sekme
+   *  etiketlerindeki 🤝/📋/🔍 ikonları kaldırıldı (Zafer'in gönderdiği
+   *  görselde işaretlediği 4 ikondan 3'ü — OfferBoard içindeki "+" mock'landığı
+   *  için burada test edilemez, kendi test dosyasında ayrıca doğrulanır). */
+  it('Arkadaşla Oyna başlığında ve sekmelerde emoji ikon YOKTUR', () => {
+    render(<PlayPage />);
+    fireEvent.click(screen.getByText('Arkadaşla Oyna'));
+    expect(screen.getByText('Lobideki Maç Teklifleri')).toBeInTheDocument();
+    expect(screen.getByText('Arkadaşına Maç Teklif Et')).toBeInTheDocument();
+    expect(screen.queryByText(/🤝|📋|🔍/)).not.toBeInTheDocument();
+  });
 });

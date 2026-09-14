@@ -4,6 +4,7 @@ import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { AnalysisBoard } from './AnalysisBoard';
 import { NotationCard } from './NotationCard';
+import { GameExportBlock } from './GameExportBlock';
 import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
 import { applyMove, currentFen, stepView } from '@/lib/chess/variantMoves';
 import type { PlayedMove, ActiveVariant } from '@/lib/chess/variantMoves';
@@ -86,6 +87,8 @@ export function FreePlayAnalysis() {
         evalByPly={evalByPly} evalProgress={progress}
         activeVariant={activeVariant} onSelectVariantPly={selectVariantPly}
       />
+      {/* Madde 2026-09-14 (3d): görünür PGN/FEN kopyalama. */}
+      <GameExportBlock sanMoves={history.map((m) => m.san)} currentFen={fen} startFen={START_FEN} />
     </div>
   );
 }

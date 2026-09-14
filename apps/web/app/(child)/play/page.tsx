@@ -342,10 +342,10 @@ function PlayInner() {
     );
     return (
       <main id="main-content" className="px-4 pt-5 pb-12 max-w-lg mx-auto space-y-4">
-        <p className="font-semibold text-sm">🤝 Arkadaşla Oyna</p>
+        <p className="font-semibold text-sm">Arkadaşla Oyna</p>
         <div className="flex gap-2">
-          {tab('board', '📋 Lobideki Maç Teklifleri')}
-          {tab('search', '🔍 Arkadaşına Maç Teklif Et')}
+          {tab('board', 'Lobideki Maç Teklifleri')}
+          {tab('search', 'Arkadaşına Maç Teklif Et')}
         </div>
         {friendSubMode === 'board' ? <OfferBoard /> : <FriendChallenge />}
       </main>

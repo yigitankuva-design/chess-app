@@ -20,6 +20,8 @@ import { useBoardNotation } from '@/lib/board-notation-context';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { useMoveQualityEval } from '@/lib/chess/useMoveQualityEval';
 import { computeGameSummary } from '@/lib/chess/gameSummary';
+import { saveGameAnalysis } from '@/lib/chess/gameAnalysisApi';
+import { GameExportBlock } from '@/components/analiz/GameExportBlock';
 import { getToken, getAthleteName } from '@/lib/auth-storage';
 import { getSavedAvatar } from '@/lib/avatars';
 import {
@@ -167,11 +169,26 @@ export function BotGame({
     () => fens.slice(1).map((fenAfter, i) => ({ ply: i + 1, fenAfter })),
     [fens],
   );
-  const { evalByPly, progress: analysisProgress } = useMoveQualityEval(fens[0], evalMoves, showAnalysis || limitReached);
+  const { evalByPly, bestMoveByPly, progress: analysisProgress } = useMoveQualityEval(fens[0], evalMoves, showAnalysis || limitReached);
   const gameSummary = useMemo(
-    () => (showAnalysis ? computeGameSummary(evalByPly, fens, studentColor) : null),
-    [showAnalysis, evalByPly, fens, studentColor],
+    () => (showAnalysis ? computeGameSummary(evalByPly, fens, studentColor, sanHistory, bestMoveByPly) : null),
+    [showAnalysis, evalByPly, fens, studentColor, sanHistory, bestMoveByPly],
   );
+
+  // Madde 2026-09-14 (3b/4): analiz TAMAMEN bitince (motor tüm ply'ları
+  // değerlendirdi) özeti backend'e kaydet — aynı maç ikinci kez açıldığında
+  // (Maçlarımın Analizi) motor baştan çalışmasın. `savedForGameRef` aynı
+  // maç için İKİ KEZ POST edilmesini engeller (kaydetme başarısız da olsa
+  // sporcunun gördüğü sonucu etkilemez — bkz. saveGameAnalysis).
+  const savedForGameRef = useRef<number | null>(null);
+  useEffect(() => {
+    const gid = gameIdRef.current;
+    if (!showAnalysis || !gameSummary || gid == null) return;
+    if (analysisProgress.done < analysisProgress.total) return;
+    if (savedForGameRef.current === gid) return;
+    savedForGameRef.current = gid;
+    void saveGameAnalysis(gid, gameSummary);
+  }, [showAnalysis, gameSummary, analysisProgress]);
 
   const tc = timeControl ?? null;
   const [whiteTime, setWhiteTime] = useState(restoredRef.current?.whiteTime ?? (tc ? tc.base : 0));
@@ -401,17 +418,19 @@ export function BotGame({
     }
   }
 
-  /** Madde 2026-09-03 (2): "Analiz Et" özet kartındaki CTA — mevcut
-   *  "Maçlarım" hamle-hamle analiz ekranına YÖNLENDİRİR (ikinci bir
-   *  hamle-gezinme ekranı YAZILMADI). `next/navigation`'ın `useRouter`'ı
-   *  KASITLI kullanılmadı — BotGame testlerinin BÜYÜK ÇOĞUNLUĞU App Router
-   *  context'i olmadan render ediyor (invariant hatası verir); düz `window.location`
-   *  ile yönlendirme hem router bağımlılığı istemez hem de bu ekrandan
-   *  çıkış zaten tam sayfa geçişi kadar nadir bir eylemdir. Kayıt hiç
+  /** Madde 2026-09-14 (3c): "Analiz Et" özet kartındaki CTA — ARTIK maçı
+   *  yeniden analiz ettiren "Maçlarım" ekranına DEĞİL, bu maçın kusurlu/
+   *  hata/vahim-hata hamlelerinden oluşan interaktif pratiğe (/analiz/
+   *  hatalarim) gider — sporcu her pozisyonda doğru hamleyi bulmaya
+   *  çalışır. `next/navigation`'ın `useRouter`'ı KASITLI kullanılmadı —
+   *  BotGame testlerinin BÜYÜK ÇOĞUNLUĞU App Router context'i olmadan
+   *  render ediyor (invariant hatası verir); düz `window.location` ile
+   *  yönlendirme hem router bağımlılığı istemez hem de bu ekrandan çıkış
+   *  zaten tam sayfa geçişi kadar nadir bir eylemdir. Kayıt hiç
    *  oluşmadıysa (çevrimdışı) sessizce hiçbir şey yapmaz. */
   function learnFromMistakes() {
     if (gameIdRef.current != null && typeof window !== 'undefined') {
-      window.location.href = `/analiz/maclarim?gameId=${gameIdRef.current}`;
+      window.location.href = `/analiz/hatalarim?gameId=${gameIdRef.current}`;
     }
   }
 
@@ -549,6 +568,10 @@ export function BotGame({
       startFen={startFen}
       onSelectPly={nav.goTo}
       activePly={nav.isLive ? undefined : nav.viewIndex}
+      // Madde 2026-09-14 (3a): "Analiz Et" açıkken hamle kalitesi işaretleri
+      // (?/??/!/!!) görünsün — canlı oyun sırasında (showAnalysis=false)
+      // hâlâ düz metin.
+      evalByPly={showAnalysis ? evalByPly : undefined}
     />
   );
   const extra = (
@@ -668,11 +691,20 @@ export function BotGame({
       // (kazandın/kaybettin) YERİNE analiz özeti gelir — extra'da AYRI bir
       // yerde (notasyonun altında) değil.
       feedbackOverride={showAnalysis ? (
-        <MatchAnalysisSummary
-          summary={gameSummary}
-          progress={analysisProgress}
-          onLearnFromMistakes={learnFromMistakes}
-        />
+        <div className="space-y-2">
+          <MatchAnalysisSummary
+            summary={gameSummary}
+            progress={analysisProgress}
+            onLearnFromMistakes={learnFromMistakes}
+          />
+          {/* Madde 2026-09-14 (3d): motor sonucunu beklemeye gerek yok —
+              hamleler zaten oynandı, hemen kopyalanabilir. */}
+          <GameExportBlock
+            sanMoves={sanHistory}
+            currentFen={fens[nav.isLive ? fens.length - 1 : nav.viewIndex] ?? fens[fens.length - 1]}
+            startFen={startFen}
+          />
+        </div>
       ) : undefined}
       extra={extra}
     />
