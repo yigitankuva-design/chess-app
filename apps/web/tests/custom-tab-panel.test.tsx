@@ -384,6 +384,34 @@ describe('CustomTabPanel', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('madde 2026-09-15 (düzeltme): antrenör "Online Ders Oluştur" bölümüne (section_kind=\'online_ders_olustur\') tıklayınca /coach/dersler-canli\'ye gider, akordiyon açılmaz', () => {
+    mockRole = 'teacher';
+    push.mockClear();
+    const tab: CustomTabDetail = {
+      id: 4, label: 'Çalışmalar', emoji: '⭐',
+      sections: [
+        { id: 189, order_index: 3, title: 'Online Ders Oluştur', body: '', images: [], practice_positions: [], parent_id: null, section_kind: 'online_ders_olustur' },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Online Ders Oluştur'));
+    expect(push).toHaveBeenCalledWith('/coach/dersler-canli');
+  });
+
+  it('madde 2026-09-15 (düzeltme): sporcu tarafında "Online Ders Oluştur" bölümüne tıklamak yönlendirme YAPMAZ (normal akordiyon)', () => {
+    mockRole = 'child';
+    push.mockClear();
+    const tab: CustomTabDetail = {
+      id: 4, label: 'Çalışmalar', emoji: '⭐',
+      sections: [
+        { id: 189, order_index: 3, title: 'Online Ders Oluştur', body: '', images: [], practice_positions: [], parent_id: null, section_kind: 'online_ders_olustur' },
+      ],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Online Ders Oluştur'));
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('Konu (Tahta ve Taşlar) seviyesinde hâlâ NORMAL iç içe akordiyon davranışı sürer (konum havuzu YOK)', () => {
     const tab: CustomTabDetail = {
       id: 5, label: 'Antrenör', emoji: '🎓',

@@ -12,9 +12,9 @@ taşıyor, bkz. services/play_profile.py — o yüzden host'u child_profile_id
 ile DEĞİL, role='teacher' + coach_user_id eşleşmesiyle ayırt ediyoruz).
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,6 +49,22 @@ class CreateLiveLessonRequest(BaseModel):
     scheduled_at: datetime
     duration_minutes: int = Field(gt=0, le=240)
     join_mode: LiveLessonJoinMode = LiveLessonJoinMode.auto
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def _naive_utc_scheduled_at(cls, v: datetime) -> datetime:
+        """BUG FIX (2026-09-15) — tournaments.py::TournamentCreateRequest'teki
+        AYNI hata: tarayıcı `new Date(...).toISOString()` ile "Z" ekli
+        (tz-AWARE) bir tarih gönderir. live_lessons.scheduled_at kolonu düz
+        DateTime (timezone=False) — asyncpg AWARE bir datetime'i bu tür
+        kolona yazmaya çalışırken 'timestamp cannot be aware' hatası ATAR ve
+        istek 500 ile patlar (SQLite kullanan testler bu hatayı YAKALAMAZ, bu
+        yüzden test kapısından geçmişti — canlıda, Zafer'in "Dersi Oluştur"a
+        basınca aldığı hata buydu). AWARE gelen değer UTC'ye çevrilip tzinfo
+        silinir; NAIVE gelen (doğrudan API çağrıları) değişmeden bırakılır."""
+        if v.tzinfo is not None:
+            return v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
 
 
 def _serialize(lesson: LiveLesson) -> dict:

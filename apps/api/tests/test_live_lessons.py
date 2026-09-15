@@ -19,6 +19,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from chess_api.routers import live_lessons as live_lessons_router
+from chess_api.routers.live_lessons import CreateLiveLessonRequest
 from chess_api.services.live_lesson_room import get_room, _reset_for_tests as _reset_rooms
 
 TEST_LK_SECRET = "test-secret-32-bytes-minimum-xx"
@@ -105,6 +106,44 @@ def _patch_ws_db(monkeypatch, db_engine):
     AYNI desen, test DB'sine yönlendirir."""
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     monkeypatch.setattr(live_lessons_router, "get_session_factory", lambda: factory)
+
+
+def test_scheduled_at_tz_aware_gelirse_naive_utcye_cevrilir():
+    """BUG FIX (2026-09-15) — tournaments.py::TournamentCreateRequest'teki
+    AYNI hata (bkz. test_tournaments.py::test_starts_at_tz_aware_...):
+    tarayıcı `new Date(...).toISOString()` ile "Z" ekli (tz-AWARE) bir tarih
+    gönderir; live_lessons.scheduled_at kolonu düz DateTime (timezone=False)
+    olduğu için asyncpg AWARE bir değer gelince 'timestamp cannot be aware'
+    hatası atıp 500 ile patlıyordu — SQLite kullanan testler bu hatayı hiç
+    GÖRMEDİ (canlıda, Zafer'in "Dersi Oluştur"a basınca aldığı hata buydu).
+    Schema artık AWARE gelen değeri naive UTC'ye çeviriyor."""
+    req = CreateLiveLessonRequest(
+        class_id=1, title="X", scheduled_at="2026-09-20T10:00:00.000Z", duration_minutes=45,
+    )
+    assert req.scheduled_at.tzinfo is None
+    assert req.scheduled_at.hour == 10
+
+    # Naive giriş (doğrudan API çağrıları) değişmeden kalır.
+    req2 = CreateLiveLessonRequest(
+        class_id=1, title="X", scheduled_at="2026-09-20T10:00:00", duration_minutes=45,
+    )
+    assert req2.scheduled_at.tzinfo is None
+    assert req2.scheduled_at.hour == 10
+
+
+@pytest.mark.asyncio
+async def test_tarayici_gibi_tz_aware_scheduled_at_ile_olusturma_basarili(client):
+    """Uçtan uca: gerçek tarayıcının gönderdiği "Z" ekli ISO string ile
+    ders oluşturma BAŞARILI olmalı (bkz. yukarıdaki schema testi) —
+    bu regresyon olmasaydı bu test 500 ile patlardı."""
+    ttok, _ = await _teacher(client, "hocatz@t.com")
+    class_id, _, _ = await _class_with_students(client, ttok, n=1)
+
+    r = await client.post("/live-lessons", headers=auth(ttok), json={
+        "class_id": class_id, "title": "Tarayıcı Testi",
+        "scheduled_at": "2026-09-20T10:00:00.000Z", "duration_minutes": 45,
+    })
+    assert r.status_code == 201, r.text
 
 
 @pytest.mark.asyncio

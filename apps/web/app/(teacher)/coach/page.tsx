@@ -497,15 +497,6 @@ export default function CoachHomePage() {
             ledOn={openTab === null} href="/bildirimler" badge={unreadCount}
           />
 
-          {/* Madde 2026-09-15 (Online Dersler): "Çalışmalar"ın (admin
-              yönettiği CustomTab sistemi) İÇİNDE DEĞİL — Play/Analiz gibi
-              sabit bir üst-seviye özellik, çünkü bu canlı/dinamik bir akış,
-              admin içeriği değil. */}
-          <FeatureTab
-            icon="🎥" label="Online Dersler" color={QUICK_ACCESS_ACCENT}
-            ledOn={openTab === null} href="/coach/dersler-canli"
-          />
-
           {/* Zafer hocanın eklediği ek sekmeler — ayrı sayfaya GİTMEZ, yerleşik
               sekmeler gibi ana ekranda açılır (kullanıcı kararı 2026-08-09).
               İkonu admin'in ikon havuzundan seçtiği emoji belirler (madde
