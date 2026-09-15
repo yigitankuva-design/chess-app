@@ -29,6 +29,12 @@ vi.mock('@/components/play/OpeningPractice', () => ({
   ),
 }));
 
+vi.mock('@/components/play/AdayHamlePractice', () => ({
+  AdayHamlePractice: ({ sectionId }: { sectionId: number }) => (
+    <div data-testid="aday-hamle-practice">aday hamle pratiği içeriği — bölüm {sectionId}</div>
+  ),
+}));
+
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 
@@ -200,6 +206,23 @@ describe('CustomTabPanel', () => {
     render(<CustomTabPanel tab={bos} />);
     fireEvent.click(screen.getByText('Boş Pratik'));
     expect(screen.getByText(/Henüz konum eklenmedi/)).toBeInTheDocument();
+    expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
+  });
+
+  it('madde 2026-09-16 (düzeltme): Aday Hamle Pratiği açılınca bot-maçı kriterleri DEĞİL, AdayHamlePractice gösterilir', () => {
+    const tab: CustomTabDetail = {
+      id: 1, label: 'Pratik Yap', emoji: '🎯',
+      sections: [{
+        id: 50, order_index: 1, title: 'Aday Hamle Pratiği', section_kind: 'aday_hamle', body: '', images: [],
+        practice_positions: [
+          { id: 'p1', fen: 'x', candidate_moves: [{ move_uci: 'e2e4', move_san: 'e4', score_cp: 30, mate: null }] },
+        ],
+      }],
+    };
+    render(<CustomTabPanel tab={tab} />);
+    fireEvent.click(screen.getByText('Aday Hamle Pratiği'));
+    expect(screen.getByTestId('aday-hamle-practice')).toHaveTextContent('bölüm 50');
+    // Önceki hata: bu genel MatchCriteria (Düzey/Tempo/Süre) dalına düşüyordu.
     expect(screen.queryByText(/Pratiğe Başla/)).not.toBeInTheDocument();
   });
 

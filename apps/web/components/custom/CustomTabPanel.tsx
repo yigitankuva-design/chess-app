@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MatchCriteria } from '@/components/play/MatchCriteria';
 import { OpeningPractice } from '@/components/play/OpeningPractice';
+import { AdayHamlePractice } from '@/components/play/AdayHamlePractice';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 import {
-  sectionEmoji, sortPratikSections, OPENING_KIND, OYUNSONU_KIND, OYUNSONU_CATEGORIES, groupByCategory,
-  isPratikYapTab,
+  sectionEmoji, sortPratikSections, OPENING_KIND, OYUNSONU_KIND, ADAY_HAMLE_KIND,
+  OYUNSONU_CATEGORIES, groupByCategory, isPratikYapTab,
 } from '@/lib/customTabs/pratikYap';
 import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
 import { PathNode, Branch } from '@/components/ui/neumorphic';
@@ -157,6 +158,8 @@ export function CustomTabPanel({ tab, accentColor }: Props) {
                       })()}
                     </div>
                   )
+                ) : s.section_kind === ADAY_HAMLE_KIND ? (
+                  <AdayHamlePractice sectionId={s.id} positions={s.practice_positions} />
                 ) : s.practice_positions.length === 0 ? (
                   <p className="t-muted text-sm">Henüz konum eklenmedi.</p>
                 ) : (

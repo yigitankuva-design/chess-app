@@ -30,8 +30,10 @@ from chess_api.models.rating import ChildTempoRating
 from chess_api.models.live_lesson import (
     LiveLesson, LiveLessonParticipant, LiveLessonStatus, LiveLessonJoinMode, LiveLessonParticipantStatus,
 )
+from chess_api.models.aday_hamle import ChildAdayHamleSession
 
 __all__ = [
+    "ChildAdayHamleSession",
     "LiveLesson", "LiveLessonParticipant", "LiveLessonStatus", "LiveLessonJoinMode", "LiveLessonParticipantStatus",
     "Tournament", "TournamentStatus", "TournamentType", "TournamentParticipant", "TournamentPairing",
     "ChildTempoRating",
