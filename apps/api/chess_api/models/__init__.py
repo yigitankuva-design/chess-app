@@ -27,8 +27,12 @@ from chess_api.models.tournament import (
     Tournament, TournamentStatus, TournamentType, TournamentParticipant, TournamentPairing,
 )
 from chess_api.models.rating import ChildTempoRating
+from chess_api.models.live_lesson import (
+    LiveLesson, LiveLessonParticipant, LiveLessonStatus, LiveLessonJoinMode, LiveLessonParticipantStatus,
+)
 
 __all__ = [
+    "LiveLesson", "LiveLessonParticipant", "LiveLessonStatus", "LiveLessonJoinMode", "LiveLessonParticipantStatus",
     "Tournament", "TournamentStatus", "TournamentType", "TournamentParticipant", "TournamentPairing",
     "ChildTempoRating",
     "AppSettings",

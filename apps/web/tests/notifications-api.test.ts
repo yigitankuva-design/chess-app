@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('@/lib/auth-storage', () => ({ getToken: () => 'tok' }));
 
 import {
-  fetchNotifications, markNotificationVisited, odevTargetHref, NOTIFICATION_TYPE_META,
+  fetchNotifications, markNotificationVisited, odevTargetHref, onlineDersTargetHref, NOTIFICATION_TYPE_META,
 } from '@/lib/notificationsApi';
 
 beforeEach(() => { vi.restoreAllMocks(); });
@@ -41,6 +41,11 @@ describe('notificationsApi', () => {
   it('odevTargetHref — pratik/suresiz linkini home/coach ile AYNI desende kurar', () => {
     const href = odevTargetHref({ lesson_step_id: 5, lesson_id: 10, alt_konu_title: 'Merkez Kavramı' });
     expect(href).toBe('/pratik/suresiz?konu=Merkez%20Kavram%C4%B1&step=5&ders=10');
+  });
+
+  it('onlineDersTargetHref — madde 2026-09-15: /dersler-canli/{id} linkini kurar', () => {
+    expect(onlineDersTargetHref({ live_lesson_id: 42, live_lesson_status: 'scheduled' }))
+      .toBe('/dersler-canli/42');
   });
 
   it('NOTIFICATION_TYPE_META — 7 türün hepsi tanımlı (madde 2026-09-11, Aşama E: hoca_notu eklendi)', () => {

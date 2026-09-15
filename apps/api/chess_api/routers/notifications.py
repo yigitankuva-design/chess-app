@@ -8,7 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from chess_api.database import get_db
 from chess_api.dependencies.auth import get_current_child
-from chess_api.models import ChildProfile, Notification, NotificationType, Homework, LessonStep
+from chess_api.models import (
+    ChildProfile, Notification, NotificationType, Homework, LessonStep, LiveLesson,
+)
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -49,6 +51,16 @@ async def list_notifications(
             select(LessonStep).where(LessonStep.id.in_(step_ids))
         )).scalars().all()}
 
+    # Madde 2026-09-15 (Online Dersler): type=online_ders satırları için
+    # "Online Derse Katıl" linkini kurmaya yetecek veri — odev'in
+    # homework_id çözümüyle AYNI desen.
+    live_lesson_ids = {n.live_lesson_id for n in rows if n.live_lesson_id is not None}
+    live_lessons: dict[int, LiveLesson] = {}
+    if live_lesson_ids:
+        live_lessons = {l.id: l for l in (await db.execute(
+            select(LiveLesson).where(LiveLesson.id.in_(live_lesson_ids))
+        )).scalars().all()}
+
     items = []
     unread = 0
     for n in rows:
@@ -63,6 +75,9 @@ async def list_notifications(
                     "lesson_id": step.lesson_id,
                     "alt_konu_title": _step_title(step),
                 }
+        elif n.type == NotificationType.online_ders and n.live_lesson_id in live_lessons:
+            lesson = live_lessons[n.live_lesson_id]
+            target = {"live_lesson_id": lesson.id, "live_lesson_status": lesson.status.value}
         items.append({
             "id": n.id,
             "type": n.type.value,

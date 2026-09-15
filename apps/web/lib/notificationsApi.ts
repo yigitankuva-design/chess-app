@@ -8,11 +8,19 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
  *  antrenör profile not yazınca/değiştirince gerçek veri taşır. */
 export type NotificationType = 'odev' | 'turnuva' | 'online_ders' | 'pratik' | 'mac' | 'eglence' | 'hoca_notu';
 
-export interface NotificationTarget {
+export interface OdevTarget {
   lesson_step_id: number;
   lesson_id: number;
   alt_konu_title: string;
 }
+
+/** Madde 2026-09-15 (Online Dersler): type=online_ders'te dolu. */
+export interface OnlineDersTarget {
+  live_lesson_id: number;
+  live_lesson_status: 'scheduled' | 'live' | 'ended';
+}
+
+export type NotificationTarget = OdevTarget | OnlineDersTarget;
 
 export interface NotificationItem {
   id: number;
@@ -70,7 +78,13 @@ export const NOTIFICATION_TYPE_META: Record<NotificationType, { emoji: string; l
 
 /** "Ödeve Git" — pratik sayfasının beklediği query string'i kurar
  *  (home/coach'taki mevcut "Ödevini Yap" linkleriyle AYNI desen). */
-export function odevTargetHref(target: NotificationTarget): string {
+export function odevTargetHref(target: OdevTarget): string {
   return `/pratik/suresiz?konu=${encodeURIComponent(target.alt_konu_title)}`
     + `&step=${target.lesson_step_id}&ders=${target.lesson_id}`;
+}
+
+/** Madde 2026-09-15 (Online Dersler): "Online Derse Katıl" — sporcunun
+ *  katılım ekranına gider (bkz. app/(child)/dersler-canli/[id]/page.tsx). */
+export function onlineDersTargetHref(target: OnlineDersTarget): string {
+  return `/dersler-canli/${target.live_lesson_id}`;
 }

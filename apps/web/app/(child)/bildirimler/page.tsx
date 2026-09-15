@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  fetchNotifications, markNotificationVisited, NOTIFICATION_TYPE_META, odevTargetHref,
+  fetchNotifications, markNotificationVisited, NOTIFICATION_TYPE_META, odevTargetHref, onlineDersTargetHref,
 } from '@/lib/notificationsApi';
-import type { NotificationItem } from '@/lib/notificationsApi';
+import type { NotificationItem, OdevTarget, OnlineDersTarget } from '@/lib/notificationsApi';
 
 /**
  * Madde 2026-09-11 (Ödev Sistemi Faz 4): sporcunun genel amaçlı bildirim
@@ -44,7 +44,9 @@ export default function BildirimlerPage() {
     });
     void markNotificationVisited(item.id);
     if (item.type === 'odev' && item.target) {
-      router.push(odevTargetHref(item.target));
+      router.push(odevTargetHref(item.target as OdevTarget));
+    } else if (item.type === 'online_ders' && item.target) {
+      router.push(onlineDersTargetHref(item.target as OnlineDersTarget));
     } else if (item.type === 'hoca_notu') {
       // Madde 2026-09-11 (Görsel Turu Aşama E / Madde 9): hedef alt konu
       // YOK (not sayfaya değil profile ait) — doğrudan sporcunun kendi

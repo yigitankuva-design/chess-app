@@ -49,3 +49,6 @@ class Notification(Base):
     visited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     homework_id: Mapped[int | None] = mapped_column(ForeignKey("homeworks.id"), nullable=True, index=True)
+    # Madde 2026-09-15 (Online Dersler): SADECE type=online_ders'te dolu —
+    # "Online Derse Katıl" düğmesinin hedefini çözer (homework_id ile AYNI desen).
+    live_lesson_id: Mapped[int | None] = mapped_column(ForeignKey("live_lessons.id"), nullable=True, index=True)

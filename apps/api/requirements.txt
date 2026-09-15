@@ -16,6 +16,7 @@ httpx==0.27.2
 fastapi-mail==1.4.1
 aiosqlite==0.20.0
 apscheduler==3.10.4
+livekit-api==1.2.1
 
 # Dev
 pytest==8.3.3

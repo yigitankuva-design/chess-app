@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     # kaynakları paylaşımlı, bu sınır aşırı CPU rekabetini önler.
     ANALYSIS_CONCURRENCY: int = 1
 
+    # Madde 2026-09-15 (Online Dersler): kendi sunucumuzda (self-hosted)
+    # barındırılan LiveKit — Zafer'in Railway'de kurduğu servisten gelen
+    # gerçek değerler. Varsayılansız: bu üçü verilmeden ders özelliği
+    # (token üretimi) çalışamaz, sessizce yanlış bir sunucuya bağlanmaz.
+    LIVEKIT_URL: str = ""
+    LIVEKIT_API_KEY: str = ""
+    LIVEKIT_API_SECRET: str = ""
+
 
 _settings: Settings | None = None
 
