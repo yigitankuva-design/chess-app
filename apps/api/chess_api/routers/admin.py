@@ -1665,6 +1665,17 @@ class CustomTabSectionCreateRequest(BaseModel):
     section_kind: str | None = Field(default=None, max_length=20)
 
 
+class CandidateMove(BaseModel):
+    """Madde 2026-09-15: Aday Hamle Pratiği'nde admin'in "Analiz Et" ile motora
+    bir kez buldurduğu, "Kaydet"le kalıcılaşan cevap anahtarındaki TEK bir
+    aday hamle. Sporcu pratik yaparken motor BİR DAHA ÇALIŞMAZ — bu kayıtlı
+    liste (en fazla 3 eleman) sporcunun hamlesiyle karşılaştırılır."""
+    move_uci: str = Field(min_length=4, max_length=5)
+    move_san: str = Field(min_length=2, max_length=10)
+    score_cp: int | None = None
+    mate: int | None = None
+
+
 class PracticePosition(BaseModel):
     id: str = Field(min_length=1)
     fen: str = Field(min_length=1)
@@ -1676,6 +1687,10 @@ class PracticePosition(BaseModel):
     code: str | None = None
     # Konumun hangi oyuncular arasında oynandığı — yalnızca Kazanç Konumu'nda girilir.
     owner: str | None = None
+    # Madde 2026-09-15: SADECE Aday Hamle Pratiği'nde dolar — admin'in motora
+    # bir kez analiz ettirip kaydettiği 3 aday hamlelik cevap anahtarı. Diğer
+    # havuzlarda (Kazanç/Oyunsonu/genel) her zaman None kalır.
+    candidate_moves: list[CandidateMove] | None = None
 
 
 class PositionPoolStep(BaseModel):

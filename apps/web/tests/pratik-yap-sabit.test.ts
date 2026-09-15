@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PRATIK_YAP_LABEL, OPENING_ROW, OPENING_KIND, KAZANC_KIND, OYUNSONU_KIND, FIXED_SECTIONS,
+  PRATIK_YAP_LABEL, OPENING_ROW, OPENING_KIND, KAZANC_KIND, OYUNSONU_KIND, ADAY_HAMLE_KIND, FIXED_SECTIONS,
   isFixedSection, sectionEmoji, sortPratikSections,
 } from '@/lib/customTabs/pratikYap';
 
@@ -12,12 +12,13 @@ describe('pratikYap sabitleri', () => {
     expect(OPENING_ROW.kind).toBe(OPENING_KIND);
   });
 
-  it('üç sabit alt sekme tanımlıdır (madde 2026-09-02: Açılış da gerçek kayıt oldu)', () => {
-    expect(FIXED_SECTIONS.map((s) => s.kind)).toEqual([OPENING_KIND, KAZANC_KIND, OYUNSONU_KIND]);
+  it('dört sabit alt sekme tanımlıdır (madde 2026-09-15: Aday Hamle Pratiği eklendi)', () => {
+    expect(FIXED_SECTIONS.map((s) => s.kind)).toEqual([OPENING_KIND, KAZANC_KIND, OYUNSONU_KIND, ADAY_HAMLE_KIND]);
     expect(FIXED_SECTIONS.map((s) => s.title)).toEqual([
       'Açılış Pratiği Yap',
       'Kazanç Konumunu Pratik Yap',
       'Oyunsonu Pratiği Yap',
+      'Aday Hamle Pratiği',
     ]);
   });
 
@@ -25,6 +26,7 @@ describe('pratikYap sabitleri', () => {
     expect(isFixedSection(OPENING_KIND)).toBe(true);
     expect(isFixedSection(KAZANC_KIND)).toBe(true);
     expect(isFixedSection(OYUNSONU_KIND)).toBe(true);
+    expect(isFixedSection(ADAY_HAMLE_KIND)).toBe(true);
     expect(isFixedSection(null)).toBe(false);
     expect(isFixedSection(undefined)).toBe(false);
     expect(isFixedSection('bilinmeyen')).toBe(false);
@@ -36,6 +38,7 @@ describe('pratikYap sabitleri', () => {
     expect(sectionEmoji(OPENING_KIND)).toBe('📖');
     expect(sectionEmoji(KAZANC_KIND)).toBe('🏆');
     expect(sectionEmoji(OYUNSONU_KIND)).toBe('🏁');
+    expect(sectionEmoji(ADAY_HAMLE_KIND)).toBe('🧠');
     expect(sectionEmoji(null)).toBeNull();
     expect(sectionEmoji('bilinmeyen')).toBeNull();
   });

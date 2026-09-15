@@ -38,6 +38,15 @@ interface FixedSectionDef { kind: string; title: string; emoji: string }
 export const OPENING_KIND = 'opening';
 export const KAZANC_KIND = 'kazanc';
 export const OYUNSONU_KIND = 'oyunsonu';
+/** Madde 2026-09-15: Aday Hamle Pratiği — admin bir pozisyona motorla 3 aday
+ *  hamle buldurup cevap anahtarı olarak kaydeder (bkz.
+ *  CandidateMovePoolFields/CandidateMoveAnalysisPanel). Diğer 3 sabit bölüm
+ *  gibi section_kind'e göre tanınır — Zafer'in "Pratik" sekmesine elle
+ *  eklediği ilk kopya section_kind=null olduğu için eşleşmez; bu satır
+ *  eklendikten sonra sekme ilk açıldığında section_kind='aday_hamle' ile
+ *  YENİ bir kopya otomatik oluşturulur, eski boş kopya admin tarafından elle
+ *  silinmelidir. */
+export const ADAY_HAMLE_KIND = 'aday_hamle';
 
 /** Açılış Pratiği Yap açılınca sporcuya OpeningPractice (açılış seç →
  *  kriter → maç) gösterilir; admin tarafında içeriği (açılış/tür/varyant
@@ -50,10 +59,17 @@ const KAZANC_ROW: FixedSectionDef = { kind: KAZANC_KIND, title: 'Kazanç Konumun
 /** Konumları 5 kategoriye ayrılan bölüm. */
 const OYUNSONU_ROW: FixedSectionDef = { kind: OYUNSONU_KIND, title: 'Oyunsonu Pratiği Yap', emoji: '🏁' };
 
+/** Konum başına 3 aday hamlelik cevap anahtarı (motorla bir kez üretilir).
+ *  🎯 KULLANILMADI — o, sıradan (section_kind'siz) bölümlerin sporcu
+ *  tarafındaki varsayılan ikonu (bkz. CustomTabSection.emoji doc'u); aynısını
+ *  kullanmak bu sabit bölümü sıradan bir bölümden görsel olarak ayırt
+ *  edilemez kılardı. */
+const ADAY_HAMLE_ROW: FixedSectionDef = { kind: ADAY_HAMLE_KIND, title: 'Aday Hamle Pratiği', emoji: '🧠' };
+
 /** Her zaman var olması gereken alt sekmeler (yoksa otomatik oluşturulur,
  *  varlık kontrolü section_kind'e göre yapılır — bkz. admin/settings/tabs
  *  toggleCustomTab). Sıra burada değil, gerçek order_index'te tutulur. */
-export const FIXED_SECTIONS: FixedSectionDef[] = [OPENING_ROW, KAZANC_ROW, OYUNSONU_ROW];
+export const FIXED_SECTIONS: FixedSectionDef[] = [OPENING_ROW, KAZANC_ROW, OYUNSONU_ROW, ADAY_HAMLE_ROW];
 
 /**
  * "Oyunsonu Pratiği Yap" alt sekmesindeki 5 kategori. Konumlar bu başlıklara

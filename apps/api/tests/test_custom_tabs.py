@@ -204,7 +204,7 @@ async def test_konum_havuzu_kaydedilir(client, db):
                            json={"practice_positions": [{"id": "p1", "fen": fen}]})
     assert r.status_code == 200
     assert r.json()["practice_positions"] == [
-        {"id": "p1", "fen": fen, "category": None, "code": None, "owner": None}
+        {"id": "p1", "fen": fen, "category": None, "code": None, "owner": None, "candidate_moves": None}
     ]
 
 
@@ -264,6 +264,52 @@ async def test_konum_kodu_korunur(client, db):
 
 
 @pytest.mark.asyncio
+async def test_aday_hamle_cevap_anahtari_kaydedilir(client, db):
+    """Madde 2026-09-15: Aday Hamle Pratiği'nde admin'in analiz sonucu
+    kaydettiği 3 aday hamle (candidate_moves), diğer alanlar gibi TÜM
+    listenin yeniden yazılmasıyla kalıcılaşır ve geri okunabilir."""
+    tok = await _teacher_token(client, db, "ah1@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Aday Hamle Pratiği", "body": "", "images": []})).json()
+
+    fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1"
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"practice_positions": [{
+                               "id": "p1", "fen": fen,
+                               "candidate_moves": [
+                                   {"move_uci": "f3g5", "move_san": "Ng5", "score_cp": 40, "mate": None},
+                                   {"move_uci": "d2d3", "move_san": "d3", "score_cp": 20, "mate": None},
+                                   {"move_uci": "e1g1", "move_san": "O-O", "score_cp": 15, "mate": None},
+                               ],
+                           }]})
+    assert r.status_code == 200
+    moves = r.json()["practice_positions"][0]["candidate_moves"]
+    assert len(moves) == 3
+    assert moves[0] == {"move_uci": "f3g5", "move_san": "Ng5", "score_cp": 40, "mate": None}
+
+    detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
+    assert len(detail["sections"][0]["practice_positions"][0]["candidate_moves"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_aday_hamle_cevap_anahtari_gecersiz_hamle_reddedilir(client, db):
+    tok = await _teacher_token(client, db, "ah2@t.com")
+    h = {"Authorization": f"Bearer {tok}"}
+    tab = (await client.post("/admin/custom-tabs", headers=h, json={"label": "Pratik"})).json()
+    section = (await client.post(f"/admin/custom-tabs/{tab['id']}/sections", headers=h,
+                                 json={"title": "Aday Hamle Pratiği", "body": "", "images": []})).json()
+
+    r = await client.patch(f"/admin/custom-tab-sections/{section['id']}", headers=h,
+                           json={"practice_positions": [{
+                               "id": "p1", "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+                               "candidate_moves": [{"move_uci": "xy", "move_san": "?", "score_cp": None, "mate": None}],
+                           }]})
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client, db):
     tok = await _teacher_token(client, db, "ctp3@t.com")
     h = {"Authorization": f"Bearer {tok}"}
@@ -276,7 +322,7 @@ async def test_genel_bolum_gorunumu_konum_havuzunu_icerir(client, db):
 
     detail = (await client.get(f"/custom-tabs/{tab['id']}")).json()
     assert detail["sections"][0]["practice_positions"] == [
-        {"id": "p1", "fen": fen, "category": None, "code": None, "owner": None}
+        {"id": "p1", "fen": fen, "category": None, "code": None, "owner": None, "candidate_moves": None}
     ]
 
 

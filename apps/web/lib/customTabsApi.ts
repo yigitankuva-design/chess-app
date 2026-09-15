@@ -13,13 +13,26 @@ export interface CustomTabSummary {
   kind?: string | null;
 }
 
+/** Madde 2026-09-15: Aday Hamle Pratiği'nin cevap anahtarındaki tek bir aday
+ *  hamle — admin'in "Analiz Et" ile motora bir kez buldurup kaydettiği. */
+export interface CandidateMove {
+  move_uci: string;
+  move_san: string;
+  score_cp: number | null;
+  mate: number | null;
+}
+
 export interface CustomTabSection {
   id: number;
   order_index: number;
   title: string;
   body: string;
   images: string[];
-  practice_positions: { id: string; fen: string; category?: string | null; owner?: string | null }[];
+  practice_positions: {
+    id: string; fen: string; category?: string | null; owner?: string | null;
+    /** SADECE Aday Hamle Pratiği'nde dolar — diğer havuzlarda hep null/yok. */
+    candidate_moves?: CandidateMove[] | null;
+  }[];
   /** İkon havuzundan seçilmiş bölüm ikonu — yoksa sporcu tarafı eski
    *  varsayılana (Kazanç/Oyunsonu için 🏆/🏁, diğerleri için 🎯) düşer. */
   emoji?: string | null;
@@ -201,7 +214,10 @@ export async function updateCustomTabSection(
   sectionId: number,
   patch: {
     title?: string; body?: string; images?: string[];
-    practice_positions?: { id: string; fen: string; category?: string | null; owner?: string | null }[];
+    practice_positions?: {
+      id: string; fen: string; category?: string | null; owner?: string | null;
+      candidate_moves?: CandidateMove[] | null;
+    }[];
     emoji?: string;
     position_pool?: PositionPoolEntry[];
     konum_pratigi_pool?: KonumPratigiQuestion[];

@@ -142,10 +142,16 @@ describe('Admin özel sekme — alt sekmeler kart içinde (inline)', () => {
     // Madde 2026-09-02: "Açılış Pratiği Yap" da artık diğer 2 sabit alt
     // sekme gibi gerçekten OLUŞTURULMASI gereken bir kayıt — mock boş dönerse
     // ekranda hiç görünmez.
+    // id: title.length'e dayanmıyor — "Aday Hamle Pratiği" (18) ile "Açılış
+    // Pratiği Yap" (18) aynı uzunlukta olduğu için React key çakışması
+    // üretiyordu (madde 2026-09-15). Her çağrı kendi sayacından benzersiz id alır.
     (createCustomTabSection as ReturnType<typeof vi.fn>).mockImplementation(
-      (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
-        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
-      }),
+      (() => {
+        let nextId = 100;
+        return (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
+          id: nextId++, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
+        });
+      })(),
     );
     global.fetch = vi.fn((url: string) => {
       if (String(url).endsWith('/openings')) {
@@ -255,10 +261,16 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 9, label: 'Pratik Yap', emoji: '🧩', sections: [],
     });
+    // id: title.length'e dayanmıyor — "Aday Hamle Pratiği" (18) ile "Açılış
+    // Pratiği Yap" (18) aynı uzunlukta olduğu için React key çakışması
+    // üretiyordu (madde 2026-09-15). Her çağrı kendi sayacından benzersiz id alır.
     (createCustomTabSection as ReturnType<typeof vi.fn>).mockImplementation(
-      (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
-        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
-      }),
+      (() => {
+        let nextId = 100;
+        return (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
+          id: nextId++, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
+        });
+      })(),
     );
 
     render(<AdminTabsPage />);
@@ -274,6 +286,10 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     await waitFor(() => {
       expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Oyunsonu Pratiği Yap', '', [], undefined, undefined, 'oyunsonu');
     });
+    // Madde 2026-09-15: Aday Hamle Pratiği 4. sabit bölüm olarak eklendi.
+    await waitFor(() => {
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Aday Hamle Pratiği', '', [], undefined, undefined, 'aday_hamle');
+    });
   });
 
   it('madde 2026-09-08: sekme "Pratik" olarak yeniden adlandırılmış olsa da (kind=\'pratik_yap\' ile) eksik sabit alt sekmeler yine oluşturulur', async () => {
@@ -283,10 +299,16 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     (getCustomTab as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 9, label: 'Pratik', emoji: '🧩', kind: 'pratik_yap', sections: [],
     });
+    // id: title.length'e dayanmıyor — "Aday Hamle Pratiği" (18) ile "Açılış
+    // Pratiği Yap" (18) aynı uzunlukta olduğu için React key çakışması
+    // üretiyordu (madde 2026-09-15). Her çağrı kendi sayacından benzersiz id alır.
     (createCustomTabSection as ReturnType<typeof vi.fn>).mockImplementation(
-      (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
-        id: title.length, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
-      }),
+      (() => {
+        let nextId = 100;
+        return (_tabId: number, title: string, _body: string, _images: string[], _emoji?: string, _parentId?: number, sectionKind?: string) => Promise.resolve({
+          id: nextId++, order_index: 1, title, body: '', images: [], practice_positions: [], section_kind: sectionKind ?? null,
+        });
+      })(),
     );
 
     render(<AdminTabsPage />);
@@ -305,6 +327,10 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
     await waitFor(() => {
       expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Oyunsonu Pratiği Yap', '', [], undefined, undefined, 'oyunsonu');
     });
+    // Madde 2026-09-15: Aday Hamle Pratiği 4. sabit bölüm olarak eklendi.
+    await waitFor(() => {
+      expect(createCustomTabSection).toHaveBeenCalledWith(9, 'Aday Hamle Pratiği', '', [], undefined, undefined, 'aday_hamle');
+    });
   });
 
   it('sabit sekmeler zaten varsa TEKRAR oluşturulmaz', async () => {
@@ -317,6 +343,7 @@ describe('Admin — Pratik Yap 3 sabit alt sekme', () => {
         { id: 0, order_index: 0, title: 'Açılış Pratiği Yap', section_kind: 'opening', body: '', images: [], practice_positions: [] },
         { id: 1, order_index: 1, title: 'Kazanç Konumunu Pratik Yap', section_kind: 'kazanc', body: '', images: [], practice_positions: [] },
         { id: 2, order_index: 2, title: 'Oyunsonu Pratiği Yap', section_kind: 'oyunsonu', body: '', images: [], practice_positions: [] },
+        { id: 3, order_index: 3, title: 'Aday Hamle Pratiği', section_kind: 'aday_hamle', body: '', images: [], practice_positions: [] },
       ],
     });
 

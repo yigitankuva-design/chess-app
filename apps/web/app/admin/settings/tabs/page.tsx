@@ -14,6 +14,8 @@ import type { CustomTabSummary, CustomTabDetail, KonumPratigiQuestion, TeoriPrat
 import { compressImageToDataUri } from '@/lib/imageCompress';
 import { PositionPoolFields } from '@/components/admin/PositionPoolFields';
 import { CategorizedPositionPool } from '@/components/admin/CategorizedPositionPool';
+import { CandidateMovePoolFields } from '@/components/admin/CandidateMovePoolFields';
+import type { CandidateMove } from '@/components/admin/CandidateMovePoolView';
 import { OpeningCategoryCards } from '@/components/admin/OpeningCategoryCards';
 import { FunActivityFields } from '@/components/admin/FunActivityFields';
 import { PlaySettingsFields } from '@/components/admin/PlaySettingsFields';
@@ -22,7 +24,7 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { InlineTitleEdit } from '@/components/admin/InlineTitleEdit';
 import { START_FEN } from '@/components/BoardEditor';
 import {
-  FIXED_SECTIONS, OPENING_KIND, OYUNSONU_KIND, KAZANC_KIND,
+  FIXED_SECTIONS, OPENING_KIND, OYUNSONU_KIND, KAZANC_KIND, ADAY_HAMLE_KIND,
   isFixedSection, sectionEmoji, sortPratikSections, isPratikYapTab,
 } from '@/lib/customTabs/pratikYap';
 
@@ -341,9 +343,11 @@ export default function AdminTabsPage() {
   /**
    * fenOverride: FEN yapıştırma dalından gelir; yoksa elle dizilen konum kaydedilir.
    * category: yalnızca Oyunsonu Pratiği'nde dolu gelir (5 kategori kartı).
+   * candidateMoves: SADECE Aday Hamle Pratiği'nde dolu gelir (madde 2026-09-15).
    */
   async function savePosition(
     tabId: number, sectionId: number, fenOverride?: string, category?: string, owner?: string,
+    candidateMoves?: CandidateMove[],
   ) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
@@ -352,6 +356,7 @@ export default function AdminTabsPage() {
       fen: fenOverride ?? poolFen,
       ...(category ? { category } : {}),
       ...(owner ? { owner } : {}),
+      ...(candidateMoves ? { candidate_moves: candidateMoves } : {}),
     };
     const nextPool = [...existing.practice_positions, newPos];
     const ok = await updateCustomTabSection(sectionId, { practice_positions: nextPool });
@@ -374,7 +379,10 @@ export default function AdminTabsPage() {
   /** Havuzdaki bir konumu düzenleyip yeniden kaydeder (kodu değişmez). */
   async function updatePosition(
     tabId: number, sectionId: number, positionId: string,
-    next: { id: string; fen: string; category?: string | null; code?: string; owner?: string | null },
+    next: {
+      id: string; fen: string; category?: string | null; code?: string; owner?: string | null;
+      candidate_moves?: CandidateMove[] | null;
+    },
   ) {
     const existing = customTabDetails[tabId]?.sections.find((s) => s.id === sectionId);
     if (!existing) return;
@@ -995,6 +1003,18 @@ export default function AdminTabsPage() {
                                         fen={poolFen} turn={poolTurn}
                                         onFenChange={setPoolFen} onTurnChange={setPoolTurn}
                                         onSavePosition={(f, cat) => savePosition(c.id, s.id, f, cat)}
+                                        pool={s.practice_positions}
+                                        onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
+                                        onUpdatePosition={(posId, next) => updatePosition(c.id, s.id, posId, next)}
+                                      />
+                                    ) : s.section_kind === ADAY_HAMLE_KIND ? (
+                                      /* Madde 2026-09-15: her pozisyonun kendi 3 aday hamlelik
+                                         cevap anahtarı vardır — motor SADECE burada, admin
+                                         "Analiz Et"e basınca çalışır. */
+                                      <CandidateMovePoolFields
+                                        fen={poolFen} turn={poolTurn}
+                                        onFenChange={setPoolFen} onTurnChange={setPoolTurn}
+                                        onSavePosition={(f, candidateMoves) => savePosition(c.id, s.id, f, undefined, undefined, candidateMoves)}
                                         pool={s.practice_positions}
                                         onDeletePosition={(posId) => deletePosition(c.id, s.id, posId)}
                                         onUpdatePosition={(posId, next) => updatePosition(c.id, s.id, posId, next)}
