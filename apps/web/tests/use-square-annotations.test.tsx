@@ -109,3 +109,13 @@ describe('clearAnnotations (madde 1)', () => {
     expect(result.current.squareStyles.e4).toBeUndefined();
   });
 });
+
+describe('marks (madde 2026-09-16, Antrenör Ekranı Faz B)', () => {
+  it('ham renk haritasını da döner — canlı ders yayını bunu kullanır', () => {
+    const { result } = renderHook(() => useSquareAnnotations('r1'));
+    act(() => result.current.onSquareRightClick({ square: 'e4' }));
+    expect(result.current.marks).toEqual({ e4: 'green' });
+    act(() => result.current.onSquareRightClick({ square: 'e4' }));
+    expect(result.current.marks).toEqual({});
+  });
+});

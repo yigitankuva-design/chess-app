@@ -117,6 +117,25 @@ describe('useLiveLessonRoom', () => {
     expect(result.current.handRaises).toEqual([]);
   });
 
+  it('arrows/marks mesajları durumu günceller, sendArrows/sendMarks doğru JSON gönderir (madde 2026-09-16, Faz B)', () => {
+    const { result } = renderHook(() => useLiveLessonRoom(1, true));
+    act(() => latestSocket().emitOpen());
+
+    act(() => latestSocket().emitMessage({ type: 'arrows', arrows: [{ from: 'e2', to: 'e4', color: 'green' }] }));
+    expect(result.current.arrows).toEqual([{ from: 'e2', to: 'e4', color: 'green' }]);
+
+    act(() => latestSocket().emitMessage({ type: 'marks', marks: { e4: 'red' } }));
+    expect(result.current.marks).toEqual({ e4: 'red' });
+
+    act(() => result.current.sendArrows([{ from: 'd2', to: 'd4', color: 'blue' }]));
+    act(() => result.current.sendMarks({ d4: 'yellow' }));
+    const sent = latestSocket().sent.map((s) => JSON.parse(s));
+    expect(sent).toEqual([
+      { type: 'arrows', arrows: [{ from: 'd2', to: 'd4', color: 'blue' }] },
+      { type: 'marks', marks: { d4: 'yellow' } },
+    ]);
+  });
+
   it('chat_message sohbet listesine eklenir', () => {
     const { result } = renderHook(() => useLiveLessonRoom(1, false));
     act(() => latestSocket().emitMessage({ type: 'chat_message', from: 'Antrenör', text: 'Merhaba', is_host: true }));

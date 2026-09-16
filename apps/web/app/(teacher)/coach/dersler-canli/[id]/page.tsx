@@ -6,6 +6,10 @@ import { LiveKitRoom, RoomAudioRenderer, VideoTrack, useTracks } from '@livekit/
 import { Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth-context';
 import { ChessBoard } from '@/components/ChessBoard';
+import { BoardEditor } from '@/components/BoardEditor';
+import { EvalBar } from '@/components/analiz/EvalBar';
+import { StockfishEngine } from '@/lib/chess/stockfish';
+import { scoreForWhite } from '@/lib/chess/analysisFormat';
 import {
   fetchLiveLesson, startLiveLesson, endLiveLesson, admitLiveLessonParticipant,
 } from '@/lib/liveLessonsApi';
@@ -15,6 +19,9 @@ import type { ClassStudent } from '@/lib/homeworkApi';
 import { useLiveLessonRoom } from '@/lib/useLiveLessonRoom';
 import type { ChatMessage } from '@/lib/useLiveLessonRoom';
 
+const EVAL_DEPTH = 18;
+const EVAL_MOVETIME_MS = 800;
+
 /**
  * Madde 2026-09-15 (Online Dersler): antrenörün ders odası. LiveKit SADECE
  * ses/görüntü taşır (`LiveKitRoom`); paylaşılan tahta/katılım/sohbet
@@ -22,10 +29,15 @@ import type { ChatMessage } from '@/lib/useLiveLessonRoom';
  *
  * Madde 2026-09-16 (Antrenör Ekranı, Faz A): geniş masaüstü düzeni (tahta +
  * sağda katılımcılar paneli), ikon+renk tabanlı sustur/yetki kontrolleri,
- * "Hepsini Kapat", "söz hakkı istiyor" bildirimi, Ekran Ayarları. Mod
- * değiştirme (Konum/Anlatım Tahtası) ve değerlendirme çubuğu Faz B/C'de
- * gelecek — bu yüzden o alanlara ait Ekran Ayarları düğmeleri henüz YOK
- * (boş bir alanı açıp kapatmanın anlamı olmayacağı için bilerek ertelendi).
+ * "Hepsini Kapat", "söz hakkı istiyor" bildirimi, Ekran Ayarları.
+ *
+ * Madde 2026-09-16 (Faz B): "Anlatım Ortamı" — Analiz Tahtası (varsayılan,
+ * hamle oynanan tahta + antrenörün tarayıcısında hesaplanan değerlendirme
+ * çubuğu) / Konum Tahtası (BoardEditor, taş paleti ile serbest pozisyon
+ * dizme — `resetBoard` üzerinden sporcuya canlı yayınlanır, YENİ bir WS
+ * mesaj tipi gerekmedi). Antrenörün çizdiği ok/daire işaretleri de artık
+ * sporcuya yayınlanıyor (sporcu tarafında GÖSTERİMİ henüz yok — sonraki
+ * round). "Anlatım Tahtası" (Dersler köprüsü) Faz C'de gelecek.
  */
 export default function DerslerCanliHostPage() {
   const router = useRouter();
@@ -95,16 +107,52 @@ function HandIcon() {
 interface ScreenSettings {
   camera: boolean;
   notation: boolean;
+  evalBar: boolean;
 }
+
+type HostViewMode = 'analiz' | 'konum' | 'anlatim';
 
 function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   lessonId: number; lesson: LiveLesson; students: ClassStudent[]; onEnded: () => void;
 }) {
   const room = useLiveLessonRoom(lessonId, true);
   const cameraTracks = useTracks([Track.Source.Camera]);
-  const [screen, setScreen] = useState<ScreenSettings>({ camera: true, notation: true });
+  const [screen, setScreen] = useState<ScreenSettings>({ camera: true, notation: true, evalBar: true });
   const [panelHeight, setPanelHeight] = useState<number | null>(null);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  // Madde 2026-09-16 (Antrenör Ekranı, Faz B): "Anlatım Ortamını Değiştir" —
+  // 'anlatim' (Dersler/Çalışmalar köprüsü) Faz C'de gelecek, tip şimdiden
+  // hazır ama henüz seçilebilir bir düğmesi yok.
+  const [hostViewMode, setHostViewMode] = useState<HostViewMode>('analiz');
+  const engineRef = useRef<StockfishEngine | null>(null);
+  const evalRequestRef = useRef(0);
+  const [scoreCp, setScoreCp] = useState<number | null>(null);
+  const [mate, setMate] = useState<number | null>(null);
+
+  useEffect(() => () => { engineRef.current?.destroy(); }, []);
+
+  // Madde 2026-09-16 (Faz B): değerlendirme çubuğu — SADECE Analiz Tahtası
+  // modunda ve açıkken çalışır (Konum Tahtası modunda tahta geçersiz/eksik
+  // pozisyonlar içerebilir, motora göndermenin anlamı yok). Antrenörün
+  // TARAYICISINDA hesaplanır, sporcuya YAYINLANMAZ.
+  useEffect(() => {
+    if (hostViewMode !== 'analiz' || !screen.evalBar) return;
+    const requestId = ++evalRequestRef.current;
+    (async () => {
+      if (!engineRef.current) {
+        const eng = new StockfishEngine();
+        await eng.init();
+        eng.setSkill(20);
+        engineRef.current = eng;
+      }
+      const result = await engineRef.current.analyze(room.fen, EVAL_DEPTH, EVAL_MOVETIME_MS);
+      if (requestId !== evalRequestRef.current) return;
+      const sideToMove: 'w' | 'b' = room.fen.split(' ')[1] === 'b' ? 'b' : 'w';
+      const white = scoreForWhite(result.scoreCp, result.mate, sideToMove);
+      setScoreCp(white.cp);
+      setMate(white.mate);
+    })();
+  }, [room.fen, hostViewMode, screen.evalBar]);
 
   function studentName(id: number): string {
     return students.find((s) => s.id === id)?.display_name ?? `#${id}`;
@@ -171,7 +219,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
         <div className="space-y-4 min-w-0">
-          {screen.camera && cameraTracks.length > 0 && (
+          {screen.camera && cameraTracks.length > 0 && hostViewMode !== 'konum' && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {cameraTracks.map((t) => (
                 <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
@@ -180,7 +228,25 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
             </div>
           )}
 
-          <ChessBoard fen={room.fen} interactive onPieceDrop={handleDrop} boardOrientation="white" />
+          {hostViewMode === 'analiz' && (
+            <div className="flex items-stretch gap-2">
+              {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} />}
+              <div style={{ width: '100%' }}>
+                <ChessBoard fen={room.fen} interactive onPieceDrop={handleDrop} boardOrientation="white"
+                  onArrowsChange={room.sendArrows} onMarksChange={room.sendMarks} />
+              </div>
+            </div>
+          )}
+
+          {hostViewMode === 'konum' && (
+            <BoardEditor
+              fen={room.fen}
+              turn={room.fen.split(' ')[1] === 'b' ? 'b' : 'w'}
+              onChange={(fen) => room.resetBoard(fen)}
+              onTurnChange={() => {}}
+              paletteLayout="split"
+            />
+          )}
 
           {screen.notation && (
             <div className="t-card p-3">
@@ -204,6 +270,16 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
         </div>
 
         <div className="space-y-4">
+          <div className="t-card p-3 space-y-2">
+            <p className="text-xs font-bold uppercase tracking-widest t-muted">Anlatım Ortamı</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <ModeButton label="Analiz Tahtası" active={hostViewMode === 'analiz'}
+                onClick={() => setHostViewMode('analiz')} />
+              <ModeButton label="Konum Tahtası" active={hostViewMode === 'konum'}
+                onClick={() => setHostViewMode('konum')} />
+            </div>
+          </div>
+
           {room.pendingRequests.length > 0 && (
             <div className="t-card p-3 space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest t-muted">Katılım İstekleri</p>
@@ -282,11 +358,25 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
             <div className="grid grid-cols-2 gap-1.5">
               <ScreenToggle label="Kamera" on={screen.camera} onClick={() => toggleScreen('camera')} />
               <ScreenToggle label="Notasyon" on={screen.notation} onClick={() => toggleScreen('notation')} />
+              <ScreenToggle label="Değerlendirme" on={screen.evalBar} onClick={() => toggleScreen('evalBar')} />
             </div>
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+function ModeButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
+      style={{
+        background: active ? 'var(--t-accent)' : 'var(--t-surface-2)',
+        color: active ? 'var(--t-accent-fg)' : 'var(--t-text-2)',
+      }}>
+      {label}
+    </button>
   );
 }
 

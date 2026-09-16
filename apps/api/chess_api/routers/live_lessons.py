@@ -389,6 +389,13 @@ async def _handle_ws_message(lesson_id: int, room, is_host: bool, child_id: int 
             room.muted_child_ids.add(target)
             await room.send_to_child(target, {"type": "muted", "muted": True})
         await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
+    elif mtype == "arrows" and is_host:
+        # Madde 2026-09-16 (Antrenör Ekranı, Faz B): antrenörün tahtada
+        # çizdiği oklar — SADECE yayınlanır, oda durumunda tutulmaz (fen
+        # değişince istemci tarafında zaten otomatik temizleniyor).
+        await room.broadcast({"type": "arrows", "arrows": msg.get("arrows", [])})
+    elif mtype == "marks" and is_host:
+        await room.broadcast({"type": "marks", "marks": msg.get("marks", {})})
     elif mtype == "raise_hand" and not is_host:
         # Madde 2026-09-16: sporcunun genel "dikkatini istiyorum" isteği
         # (taş yetkisi/ses açma/soru sorma gibi tüm nedenleri kapsar,

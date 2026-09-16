@@ -43,17 +43,40 @@ const roomState = vi.hoisted(() => ({
   connectedChildIds: [11] as number[], pendingRequests: [] as { childId: number; name: string }[],
   chatMessages: [] as { from: string; text: string; isHost: boolean }[], lessonEnded: false, muted: false,
   mutedChildIds: new Set<number>(), handRaises: [] as number[],
+  arrows: [] as { from: string; to: string; color: string }[], marks: {} as Record<string, string>,
 }));
 const roomActions = vi.hoisted(() => ({
   sendMove: vi.fn(), grantControl: vi.fn(), revokeControl: vi.fn(), resetBoard: vi.fn(),
   muteChild: vi.fn(), muteAll: vi.fn(), raiseHand: vi.fn(), sendChat: vi.fn(),
   dismissPendingRequest: vi.fn(), dismissHandRaise: vi.fn(),
+  sendArrows: vi.fn(), sendMarks: vi.fn(),
 }));
 vi.mock('@/lib/useLiveLessonRoom', () => ({
   useLiveLessonRoom: () => ({ ...roomState, ...roomActions }),
 }));
 
 vi.mock('@/components/ChessBoard', () => ({ ChessBoard: () => <div data-testid="chess-board" /> }));
+
+// Madde 2026-09-16 (Antrenör Ekranı, Faz B): Konum Tahtası + değerlendirme
+// çubuğu için gerçek Stockfish worker'ı/gerçek BoardEditor'ı test etmiyoruz
+// (LiveKit ses/görüntüsü gibi burada da SADECE bu sayfanın kendi mantığı).
+const stockfishMocks = vi.hoisted(() => ({
+  init: vi.fn().mockResolvedValue(undefined),
+  setSkill: vi.fn(),
+  analyze: vi.fn().mockResolvedValue({ bestMove: null, scoreCp: 200, mate: null }),
+  destroy: vi.fn(),
+}));
+vi.mock('@/lib/chess/stockfish', () => ({
+  StockfishEngine: vi.fn().mockImplementation(() => stockfishMocks),
+}));
+
+vi.mock('@/components/BoardEditor', () => ({
+  BoardEditor: ({ onChange }: { onChange: (fen: string) => void }) => (
+    <div data-testid="board-editor">
+      <button type="button" onClick={() => onChange('KONUM_FEN')}>BoardEditor değişti</button>
+    </div>
+  ),
+}));
 
 import DerslerCanliHostPage from '@/app/(teacher)/coach/dersler-canli/[id]/page';
 
@@ -74,6 +97,8 @@ beforeEach(() => {
   roomState.chatMessages = [];
   roomState.mutedChildIds = new Set();
   roomState.handRaises = [];
+  roomState.arrows = [];
+  roomState.marks = {};
   mocks.fetchLiveLesson.mockResolvedValue(LESSON);
   mocks.fetchClassStudents.mockResolvedValue(STUDENTS);
   mocks.startLiveLesson.mockResolvedValue({ token: 't', livekit_url: 'wss://x' });
@@ -157,4 +182,44 @@ it('sohbete mesaj yazıp gönderince sendChat çağrılır', async () => {
   fireEvent.change(screen.getByPlaceholderText('Mesaj yaz…'), { target: { value: 'Herkese selam' } });
   fireEvent.click(screen.getByText('Gönder'));
   expect(roomActions.sendChat).toHaveBeenCalledWith('Herkese selam');
+});
+
+it('madde 2026-09-16 (Antrenör Ekranı, Faz B): varsayılan Analiz Tahtası modunda tahta+değerlendirme çubuğu görünür', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTestId('chess-board'));
+  const meter = screen.getByRole('meter', { name: 'Değerlendirme çubuğu' });
+  expect(meter).toBeInTheDocument();
+  // (Mock) Stockfish sonucu geldikten sonra çubuk güncellenir — bu bekleme
+  // aynı zamanda efektin act() dışında çözülmesini engelliyor.
+  await waitFor(() => expect(meter).toHaveAttribute('aria-valuenow', '76'));
+  expect(screen.queryByTestId('board-editor')).not.toBeInTheDocument();
+});
+
+it('"Konum Tahtası"na geçince BoardEditor görünür, tahta kaybolur; onChange resetBoard çağırır', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTestId('chess-board'));
+  // Değerlendirme çubuğunun ilk (mock) Stockfish hesaplaması act() dışında
+  // çözülmesin diye önce yerleşmesini bekliyoruz.
+  await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
+
+  fireEvent.click(screen.getByText('Konum Tahtası'));
+  expect(screen.queryByTestId('chess-board')).not.toBeInTheDocument();
+  expect(screen.getByTestId('board-editor')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByText('BoardEditor değişti'));
+  expect(roomActions.resetBoard).toHaveBeenCalledWith('KONUM_FEN');
+
+  fireEvent.click(screen.getByText('Analiz Tahtası'));
+  expect(screen.getByTestId('chess-board')).toBeInTheDocument();
+  expect(screen.queryByTestId('board-editor')).not.toBeInTheDocument();
+  // Analiz moduna dönünce değerlendirme efekti tekrar tetiklenir — testin
+  // sonunda act() dışında çözülmesin diye bekliyoruz.
+  await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
+});
+
+it('Ekran Ayarları "Değerlendirme" kapatılınca çubuk kaybolur', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByRole('meter', { name: 'Değerlendirme çubuğu' }));
+  fireEvent.click(screen.getByText('Değerlendirme'));
+  expect(screen.queryByRole('meter', { name: 'Değerlendirme çubuğu' })).not.toBeInTheDocument();
 });

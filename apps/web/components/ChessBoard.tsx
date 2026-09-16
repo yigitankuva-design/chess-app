@@ -16,7 +16,9 @@ import { pieceSetUris } from '@/lib/pieceSets';
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
+import type { AnnotationColor } from '@/lib/chess/useSquareAnnotations';
 import { useBoardArrows } from '@/lib/chess/useBoardArrows';
+import type { BoardArrow } from '@/lib/chess/useBoardArrows';
 import { arrowLine } from '@/lib/chess/arrowGeometry';
 
 interface ChessBoardProps {
@@ -49,6 +51,12 @@ interface ChessBoardProps {
    *  gizlenir, tahta o kadar daha geniş render edilir. Hamle verisi/notasyonu
    *  ETKİLENMEZ — yalnızca bu görsel etiketler kalkar. */
   hideNotation?: boolean;
+  /** Madde 2026-09-16 (Antrenör Ekranı, Faz B): verilirse antrenörün çizdiği
+   *  ok/daire işaretleri her değiştiğinde çağrılır — canlı derste bunları
+   *  sporcuya yayınlamak için (bkz. useLiveLessonRoom.ts::sendArrows/
+   *  sendMarks). Verilmezse davranış ETKİLENMEZ. */
+  onArrowsChange?: (arrows: BoardArrow[]) => void;
+  onMarksChange?: (marks: Record<string, AnnotationColor>) => void;
 }
 
 export function ChessBoard({
@@ -66,6 +74,8 @@ export function ChessBoard({
   historyView = false,
   onLeaveHistory,
   hideNotation = false,
+  onArrowsChange,
+  onMarksChange,
 }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
@@ -85,9 +95,15 @@ export function ChessBoard({
   const scrollRef = useRef(0);
   const scrollLockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boardBoxRef = useRef<HTMLDivElement>(null);
-  const { squareStyles: annotationStyles, onSquareRightClick, clearAnnotations } = useSquareAnnotations(fen);
+  const { squareStyles: annotationStyles, marks, onSquareRightClick, clearAnnotations } = useSquareAnnotations(fen);
   // Madde 7: oklar kendimiz ciziyoruz — kutuphane At hamlesini "L" cizer.
   const { arrows, onPointerDown, onPointerUp, guardSquarePaint, clearArrows } = useBoardArrows(fen);
+
+  // Madde 2026-09-16 (Antrenör Ekranı, Faz B): antrenörün çizdiği ok/daire
+  // işaretlerini canlı derste sporcuya yayınlamak için — verilmezse hiçbir
+  // etkisi yok.
+  useEffect(() => { onArrowsChange?.(arrows); }, [arrows, onArrowsChange]);
+  useEffect(() => { onMarksChange?.(marks); }, [marks, onMarksChange]);
 
   // Clear selection when FEN changes (after a move)
   useEffect(() => {

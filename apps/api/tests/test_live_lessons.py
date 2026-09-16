@@ -511,6 +511,34 @@ async def test_baskasinin_dersinin_baslik_duzenleyemez(client):
 
 
 @pytest.mark.asyncio
+async def test_arrows_ve_marks_sadece_host_yayinlayabilir_herkese_gider():
+    """Madde 2026-09-16 (Antrenör Ekranı, Faz B): antrenörün tahtada
+    çizdiği ok/daire işaretleri host DIŞINDA kimse tarafından
+    gönderilemez (öğrenci gönderirse yoksayılır), host gönderince
+    herkese (host dahil) yayınlanır."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999007, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1 = _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+
+    await _handle_ws_message(999007, room, True, None, {
+        "type": "arrows", "arrows": [{"from": "e2", "to": "e4", "color": "green"}],
+    })
+    assert host.messages[-1] == {"type": "arrows", "arrows": [{"from": "e2", "to": "e4", "color": "green"}]}
+    assert s1.messages[-1] == host.messages[-1]
+
+    await _handle_ws_message(999007, room, True, None, {"type": "marks", "marks": {"e4": "red"}})
+    assert host.messages[-1] == {"type": "marks", "marks": {"e4": "red"}}
+    assert s1.messages[-1] == host.messages[-1]
+
+    # Öğrenci göndermeye çalışırsa yoksayılır — yayınlanmaz.
+    await _handle_ws_message(999007, room, False, 11, {"type": "arrows", "arrows": [{"from": "a2", "to": "a4", "color": "blue"}]})
+    assert host.messages[-1] == {"type": "marks", "marks": {"e4": "red"}}  # değişmedi
+
+
+@pytest.mark.asyncio
 async def test_sohbet_mesaji_herkese_yayinlanir():
     from chess_api.routers.live_lessons import _handle_ws_message
 

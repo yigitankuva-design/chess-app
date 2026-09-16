@@ -37,6 +37,10 @@ function colorForModifiers(ctrl: boolean, alt: boolean): AnnotationColor {
  */
 export function useSquareAnnotations(resetKey: unknown): {
   squareStyles: Record<string, CSSProperties>;
+  /** Madde 2026-09-16 (Antrenör Ekranı, Faz B): ham renk haritası — canlı
+   *  derste antrenörün işaretlerini sporcuya yayınlamak için (`squareStyles`
+   *  sadece render'a uygun CSS, WS'e taşınamaz). */
+  marks: Record<string, AnnotationColor>;
   onSquareRightClick: (args: { square: string }) => void;
   clearAnnotations: () => void;
 } {
@@ -88,5 +92,5 @@ export function useSquareAnnotations(resetKey: unknown): {
 
   const clearAnnotations = useCallback(() => setMarks({}), []);
 
-  return { squareStyles, onSquareRightClick, clearAnnotations };
+  return { squareStyles, marks, onSquareRightClick, clearAnnotations };
 }
