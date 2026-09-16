@@ -75,17 +75,17 @@ it('Git\'e basınca ziyaret işaretlenir ve ödev hedefine yönlendirir', async 
   expect(screen.queryByText('1 yeni bildirim')).not.toBeInTheDocument();
 });
 
-it('madde 2026-09-15 (Online Dersler): online_ders türünde Git\'e basınca katılım ekranına gider', async () => {
+it('madde 2026-09-16 (Canlı Ders adlandırması): online_ders türünde Git\'e basınca katılım ekranına gider', async () => {
   mocks.fetchNotifications.mockResolvedValue({
     unread_count: 1,
     items: [{
-      id: 7, type: 'online_ders', title: 'Yeni Online Ders: Açılış Dersi', subtitle: 'Sınıf A — 20.09.2026 15:00',
+      id: 7, type: 'online_ders', title: 'Yeni Canlı Ders: Açılış Dersi', subtitle: 'Sınıf A — 20.09.2026 15:00',
       created_at: '2026-09-15T10:00:00Z', visited_at: null,
       target: { live_lesson_id: 42, live_lesson_status: 'scheduled' },
     }],
   });
   render(<BildirimlerPage />);
-  await waitFor(() => screen.getByText('Yeni Online Ders: Açılış Dersi'));
+  await waitFor(() => screen.getByText('Yeni Canlı Ders: Açılış Dersi'));
   expect(screen.getByText('🎥')).toBeInTheDocument();
   fireEvent.click(screen.getByTitle('Git'));
 

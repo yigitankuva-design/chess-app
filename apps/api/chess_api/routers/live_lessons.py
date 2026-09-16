@@ -107,7 +107,7 @@ async def create_live_lesson(
     for sid in student_ids:
         db.add(Notification(
             child_id=sid, type=NotificationType.online_ders,
-            title=f"Yeni Online Ders: {lesson.title}",
+            title=f"Yeni Canlı Ders: {lesson.title}",
             subtitle=f"{cls.name} — {payload.scheduled_at.strftime('%d.%m.%Y %H:%M')}",
             # Madde: homework'ün AKSİNE (start_date'e kadar gizli), ders
             # bildirimi HEMEN görünür — sporcu dersin varlığından erkenden

@@ -84,7 +84,7 @@ export default function DerslerCanliJoinPage() {
 
   return (
     <main className="px-4 pt-6 pb-12 max-w-xl mx-auto space-y-4">
-      <h1 className="text-xl font-extrabold t-premium">Online Ders</h1>
+      <h1 className="text-xl font-extrabold t-premium">Canlı Ders</h1>
       {state === 'idle' && (
         <button type="button" onClick={handleJoin}
           className="w-full rounded-xl px-4 py-3 text-sm font-bold"
@@ -138,7 +138,7 @@ function StudentRoomInner({ lessonId, ownChildId, onLeft }: {
   return (
     <main className="px-4 pt-6 pb-12 max-w-xl mx-auto space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-extrabold t-premium">Online Ders</h1>
+        <h1 className="text-xl font-extrabold t-premium">Canlı Ders</h1>
         <button type="button" onClick={handleLeave}
           className="rounded-lg px-3 py-2 text-xs font-bold flex-shrink-0"
           style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}>

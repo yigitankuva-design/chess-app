@@ -69,7 +69,7 @@ export async function markNotificationVisited(id: number): Promise<boolean> {
 export const NOTIFICATION_TYPE_META: Record<NotificationType, { emoji: string; label: string }> = {
   odev: { emoji: '📌', label: 'Ödev' },
   turnuva: { emoji: '🏆', label: 'Turnuva' },
-  online_ders: { emoji: '🎥', label: 'Online Ders' },
+  online_ders: { emoji: '🎥', label: 'Canlı Ders' },
   pratik: { emoji: '🧩', label: 'Pratik' },
   mac: { emoji: '🎮', label: 'Maç' },
   eglence: { emoji: '🎉', label: 'Eğlence' },

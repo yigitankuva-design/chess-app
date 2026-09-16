@@ -76,7 +76,7 @@ export default function DerslerCanliPage() {
 
   return (
     <main className="px-4 pt-6 pb-12 max-w-xl mx-auto space-y-4">
-      <h1 className="text-xl font-extrabold t-premium">Online Dersler</h1>
+      <h1 className="text-xl font-extrabold t-premium">Canlı Dersler</h1>
 
       <div className="t-card p-4 space-y-3">
         <p className="text-xs font-bold uppercase tracking-widest t-muted">Yeni Ders Oluştur</p>

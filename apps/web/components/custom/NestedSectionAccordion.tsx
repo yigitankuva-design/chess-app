@@ -39,17 +39,18 @@ function isSiniflarim(s: CustomTabSection): boolean {
   return s.section_kind === SINIFLARIM_KIND || s.title === SINIFLARIM_TITLE;
 }
 
-/** Madde 2026-09-15 (Online Dersler, düzeltme): Zafer'in "Çalışmalar"
- *  sekmesine kendi eklediği "Online Ders Oluştur" bölümü — Sınıflarım ile
- *  AYNI desen (section_kind='online_ders_olustur', bkz.
- *  OnlineDersOlusturSectionKind migration). Önceden BAĞIMSIZ bir üst-seviye
- *  "Online Dersler" sekmesiydi; Zafer bunu istemedi — ders oluşturma akışı
- *  buraya taşındı. */
-const ONLINE_DERS_OLUSTUR_TITLE = 'Online Ders Oluştur';
-const ONLINE_DERS_OLUSTUR_KIND = 'online_ders_olustur';
+/** Madde 2026-09-15 (Online Dersler, düzeltme; 2026-09-16: "Canlı Ders"
+ *  olarak yeniden adlandırıldı): Zafer'in "Çalışmalar" sekmesine kendi
+ *  eklediği "Canlı Ders Oluştur" bölümü — Sınıflarım ile AYNI desen
+ *  (section_kind='online_ders_olustur' — DB'deki bu değer kalıcı kimlik,
+ *  görünen ada bağlı değil, bkz. OnlineDersOlusturSectionKind ve
+ *  CanliDersOlusturRename migration'ları). Önceden BAĞIMSIZ bir üst-seviye
+ *  sekmeydi; Zafer bunu istemedi — ders oluşturma akışı buraya taşındı. */
+const CANLI_DERS_OLUSTUR_TITLE = 'Canlı Ders Oluştur';
+const CANLI_DERS_OLUSTUR_KIND = 'online_ders_olustur';
 
-function isOnlineDersOlustur(s: CustomTabSection): boolean {
-  return s.section_kind === ONLINE_DERS_OLUSTUR_KIND || s.title === ONLINE_DERS_OLUSTUR_TITLE;
+function isCanliDersOlustur(s: CustomTabSection): boolean {
+  return s.section_kind === CANLI_DERS_OLUSTUR_KIND || s.title === CANLI_DERS_OLUSTUR_TITLE;
 }
 
 interface Props {
@@ -113,7 +114,7 @@ export function NestedSectionAccordion({
               tint={depth === 0 ? accentColor : 'var(--t-text-1)'}
               onClick={() => {
                 if (isSiniflarim(s) && role === 'teacher') { router.push('/coach/classes'); return; }
-                if (isOnlineDersOlustur(s) && role === 'teacher') { router.push('/coach/dersler-canli'); return; }
+                if (isCanliDersOlustur(s) && role === 'teacher') { router.push('/coach/dersler-canli'); return; }
                 if (isAltKonu) { router.push(`/custom/${tabId}/alt-konu/${s.id}`); return; }
                 setOpenId((p) => (p === s.id ? null : s.id));
               }}
