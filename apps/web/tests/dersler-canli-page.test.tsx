@@ -13,12 +13,14 @@ const mocks = vi.hoisted(() => ({
   fetchMyLiveLessons: vi.fn(),
   createLiveLesson: vi.fn(),
   startLiveLesson: vi.fn(),
+  updateLiveLesson: vi.fn(),
   fetchMyClasses: vi.fn(),
 }));
 vi.mock('@/lib/liveLessonsApi', () => ({
   fetchMyLiveLessons: mocks.fetchMyLiveLessons,
   createLiveLesson: mocks.createLiveLesson,
   startLiveLesson: mocks.startLiveLesson,
+  updateLiveLesson: mocks.updateLiveLesson,
 }));
 vi.mock('@/lib/homeworkApi', () => ({ fetchMyClasses: mocks.fetchMyClasses }));
 
@@ -98,4 +100,26 @@ it('"live" ders için "Derse Git" gösterilir, tıklanınca doğrudan oda sayfas
   fireEvent.click(screen.getByText('Derse Git'));
   expect(routerPush).toHaveBeenCalledWith('/coach/dersler-canli/4');
   expect(mocks.startLiveLesson).not.toHaveBeenCalled();
+});
+
+it('madde 2026-09-16 (Antrenör Ekranı, Faz A / madde 5): "Derslerim" başlığı düzenlenebilir', async () => {
+  mocks.fetchMyLiveLessons.mockResolvedValue([{
+    id: 5, class_id: 1, title: 'Eski Başlık', scheduled_at: '2026-09-20T10:00:00',
+    duration_minutes: 30, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
+  }]);
+  mocks.updateLiveLesson.mockResolvedValue({
+    id: 5, class_id: 1, title: 'Yeni Başlık', scheduled_at: '2026-09-20T10:00:00',
+    duration_minutes: 30, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
+  });
+  render(<DerslerCanliPage />);
+  await waitFor(() => screen.getByText('Eski Başlık'));
+
+  fireEvent.click(screen.getByTitle('Başlığı düzenle'));
+  const input = screen.getByDisplayValue('Eski Başlık');
+  fireEvent.change(input, { target: { value: 'Yeni Başlık' } });
+  fireEvent.click(screen.getByText('Kaydet'));
+
+  await waitFor(() => expect(mocks.updateLiveLesson).toHaveBeenCalledWith(5, 'Yeni Başlık'));
+  await waitFor(() => screen.getByText('Yeni Başlık'));
+  expect(screen.queryByText('Eski Başlık')).not.toBeInTheDocument();
 });

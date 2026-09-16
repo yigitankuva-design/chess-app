@@ -86,6 +86,20 @@ export async function startLiveLesson(lessonId: number): Promise<LiveKitConnecti
   }
 }
 
+/** Madde 2026-09-16 (Antrenör Ekranı, Faz A / madde 5): "Derslerim"
+ *  listesinde SADECE başlık düzenlenebilir. */
+export async function updateLiveLesson(lessonId: number, title: string): Promise<LiveLesson | null> {
+  try {
+    const r = await fetch(`${API_BASE}/live-lessons/${lessonId}`, {
+      method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ title }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function endLiveLesson(lessonId: number): Promise<boolean> {
   try {
     const r = await fetch(`${API_BASE}/live-lessons/${lessonId}/end`, {

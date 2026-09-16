@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Square } from 'chess.js';
 import { LiveKitRoom, RoomAudioRenderer, VideoTrack, useTracks } from '@livekit/components-react';
@@ -18,8 +18,14 @@ import type { ChatMessage } from '@/lib/useLiveLessonRoom';
 /**
  * Madde 2026-09-15 (Online Dersler): antrenörün ders odası. LiveKit SADECE
  * ses/görüntü taşır (`LiveKitRoom`); paylaşılan tahta/katılım/sohbet
- * `useLiveLessonRoom`'un AYRI WebSocket'i üzerinden yürür. Ekran tasarımı
- * sonraya bırakıldı (Zafer'in notu) — burada işlevsellik önceliklidir.
+ * `useLiveLessonRoom`'un AYRI WebSocket'i üzerinden yürür.
+ *
+ * Madde 2026-09-16 (Antrenör Ekranı, Faz A): geniş masaüstü düzeni (tahta +
+ * sağda katılımcılar paneli), ikon+renk tabanlı sustur/yetki kontrolleri,
+ * "Hepsini Kapat", "söz hakkı istiyor" bildirimi, Ekran Ayarları. Mod
+ * değiştirme (Konum/Anlatım Tahtası) ve değerlendirme çubuğu Faz B/C'de
+ * gelecek — bu yüzden o alanlara ait Ekran Ayarları düğmeleri henüz YOK
+ * (boş bir alanı açıp kapatmanın anlamı olmayacağı için bilerek ertelendi).
  */
 export default function DerslerCanliHostPage() {
   const router = useRouter();
@@ -66,11 +72,39 @@ export default function DerslerCanliHostPage() {
   );
 }
 
+function MicIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="9" y="2" width="6" height="11" rx="3" />
+      <path d="M5 10v1a7 7 0 0 0 14 0v-1" strokeLinecap="round" />
+      <line x1="12" y1="18" x2="12" y2="22" strokeLinecap="round" />
+      {muted && <line x1="4" y1="3" x2="20" y2="21" strokeLinecap="round" />}
+    </svg>
+  );
+}
+
+function HandIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M8 11V6a2 2 0 1 1 4 0v5M12 11V4a2 2 0 1 1 4 0v7M16 12V7a2 2 0 1 1 4 0v6c0 4-2 8-7 8h-1c-3.2 0-5-1.3-7-4.2l-1.6-2.4a1.6 1.6 0 0 1 2.5-1.9L8 12"
+        strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+interface ScreenSettings {
+  camera: boolean;
+  notation: boolean;
+}
+
 function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   lessonId: number; lesson: LiveLesson; students: ClassStudent[]; onEnded: () => void;
 }) {
   const room = useLiveLessonRoom(lessonId, true);
   const cameraTracks = useTracks([Track.Source.Camera]);
+  const [screen, setScreen] = useState<ScreenSettings>({ camera: true, notation: true });
+  const [panelHeight, setPanelHeight] = useState<number | null>(null);
+  const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   function studentName(id: number): string {
     return students.find((s) => s.id === id)?.display_name ?? `#${id}`;
@@ -91,8 +125,28 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
     onEnded();
   }
 
+  function toggleScreen(key: keyof ScreenSettings) {
+    setScreen((s) => ({ ...s, [key]: !s[key] }));
+  }
+
+  function startResize(e: React.PointerEvent) {
+    resizeRef.current = { startY: e.clientY, startHeight: panelHeight ?? 320 };
+    function onMove(ev: PointerEvent) {
+      if (!resizeRef.current) return;
+      const delta = ev.clientY - resizeRef.current.startY;
+      setPanelHeight(Math.max(180, Math.min(800, resizeRef.current.startHeight + delta)));
+    }
+    function onUp() {
+      resizeRef.current = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
   return (
-    <main className="px-4 pt-6 pb-12 max-w-xl mx-auto space-y-4">
+    <main className="px-4 pt-6 pb-12 max-w-[1600px] mx-auto space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-extrabold t-premium truncate">{lesson.title}</h1>
         <button type="button" onClick={handleEnd}
@@ -102,76 +156,147 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {cameraTracks.map((t) => (
-          <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
-            className="rounded-lg w-full aspect-video object-cover" />
-        ))}
-      </div>
-
-      <ChessBoard fen={room.fen} interactive onPieceDrop={handleDrop} boardOrientation="white" />
-
-      {room.pendingRequests.length > 0 && (
-        <div className="t-card p-3 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest t-muted">Katılım İstekleri</p>
-          {room.pendingRequests.map((p) => (
-            <div key={p.childId} className="flex items-center justify-between gap-2">
-              <span className="text-sm">{p.name}</span>
-              <div className="flex gap-1.5">
-                <button type="button" onClick={async () => {
-                  await admitLiveLessonParticipant(lessonId, p.childId, true);
-                  room.dismissPendingRequest(p.childId);
-                }} className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
-                  style={{ background: '#22c55e', color: '#0a0a0a' }}>
-                  Kabul Et
-                </button>
-                <button type="button" onClick={async () => {
-                  await admitLiveLessonParticipant(lessonId, p.childId, false);
-                  room.dismissPendingRequest(p.childId);
-                }} className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
-                  style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}>
-                  Reddet
-                </button>
-              </div>
-            </div>
+      {room.handRaises.length > 0 && (
+        <div className="space-y-1.5">
+          {room.handRaises.map((cid) => (
+            <button key={cid} type="button" onClick={() => room.dismissHandRaise(cid)}
+              className="w-full t-card p-2.5 flex items-center gap-2 text-left"
+              style={{ border: '1px solid var(--t-accent)' }}>
+              <span className="hand-raise-shake" style={{ color: 'var(--t-accent)' }}><HandIcon /></span>
+              <span className="text-sm font-bold">{studentName(cid)} söz hakkı istiyor</span>
+            </button>
           ))}
         </div>
       )}
 
-      <div className="t-card p-3 space-y-2">
-        <p className="text-xs font-bold uppercase tracking-widest t-muted">
-          Katılımcılar ({room.connectedChildIds.length})
-        </p>
-        {room.connectedChildIds.length === 0 && <p className="text-xs t-muted">Henüz katılan yok.</p>}
-        {room.connectedChildIds.map((cid) => (
-          <div key={cid} className="flex items-center justify-between gap-2">
-            <span className="text-sm">{studentName(cid)}</span>
-            <div className="flex gap-1.5">
-              {room.controllerChildId === cid ? (
-                <button type="button" onClick={() => room.revokeControl()}
-                  className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
-                  style={{ background: 'var(--t-accent)', color: 'var(--t-accent-fg)' }}>
-                  Taş Yetkisini Al
-                </button>
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
+        <div className="space-y-4 min-w-0">
+          {screen.camera && cameraTracks.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {cameraTracks.map((t) => (
+                <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
+                  className="rounded-lg w-full aspect-video object-cover" />
+              ))}
+            </div>
+          )}
+
+          <ChessBoard fen={room.fen} interactive onPieceDrop={handleDrop} boardOrientation="white" />
+
+          {screen.notation && (
+            <div className="t-card p-3">
+              <p className="text-xs font-bold uppercase tracking-widest t-muted mb-2">Notasyon</p>
+              {room.sanHistory.length === 0 ? (
+                <p className="text-xs t-muted">Henüz hamle yok.</p>
               ) : (
-                <button type="button" onClick={() => room.grantControl(cid)}
-                  className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
+                <p className="text-sm font-mono leading-relaxed">
+                  {room.sanHistory.map((san, i) => (
+                    <span key={i}>
+                      {i % 2 === 0 && <span className="t-muted">{Math.floor(i / 2) + 1}. </span>}
+                      {san}{' '}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </div>
+          )}
+
+          <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
+        </div>
+
+        <div className="space-y-4">
+          {room.pendingRequests.length > 0 && (
+            <div className="t-card p-3 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest t-muted">Katılım İstekleri</p>
+              {room.pendingRequests.map((p) => (
+                <div key={p.childId} className="flex items-center justify-between gap-2">
+                  <span className="text-sm">{p.name}</span>
+                  <div className="flex gap-1.5">
+                    <button type="button" onClick={async () => {
+                      await admitLiveLessonParticipant(lessonId, p.childId, true);
+                      room.dismissPendingRequest(p.childId);
+                    }} className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
+                      style={{ background: '#22c55e', color: '#0a0a0a' }}>
+                      Kabul Et
+                    </button>
+                    <button type="button" onClick={async () => {
+                      await admitLiveLessonParticipant(lessonId, p.childId, false);
+                      room.dismissPendingRequest(p.childId);
+                    }} className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
+                      style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}>
+                      Reddet
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="t-card p-3 space-y-2 flex flex-col" style={panelHeight ? { height: panelHeight } : undefined}>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-widest t-muted">
+                Katılımcılar ({room.connectedChildIds.length})
+              </p>
+              {room.connectedChildIds.length > 0 && (
+                <button type="button" onClick={() => room.muteAll()}
+                  className="rounded-lg px-2 py-1 text-xs font-bold flex-shrink-0"
                   style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}>
-                  Taş Oynatma Yetkisi Ver
+                  Hepsini Kapat
                 </button>
               )}
-              <button type="button" onClick={() => room.muteChild(cid)}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
-                style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}>
-                Sustur
-              </button>
+            </div>
+            <div className="space-y-2 overflow-y-auto flex-1">
+              {room.connectedChildIds.length === 0 && <p className="text-xs t-muted">Henüz katılan yok.</p>}
+              {room.connectedChildIds.map((cid) => {
+                const muted = room.mutedChildIds.has(cid);
+                const controlling = room.controllerChildId === cid;
+                return (
+                  <div key={cid} className="flex items-center justify-between gap-2">
+                    <span className="text-sm truncate">{studentName(cid)}</span>
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      <button type="button" title={controlling ? 'Taş yetkisini al' : 'Taş oynatma yetkisi ver'}
+                        onClick={() => (controlling ? room.revokeControl() : room.grantControl(cid))}
+                        className="rounded-full p-1.5" style={{
+                          background: controlling ? '#22c55e' : '#ef4444', color: '#fff',
+                        }}>
+                        <HandIcon />
+                      </button>
+                      <button type="button" title={muted ? 'Sesi aç' : 'Sustur'}
+                        onClick={() => room.muteChild(cid, !muted)}
+                        className="rounded-full p-1.5" style={{
+                          background: muted ? '#ef4444' : '#22c55e', color: '#fff',
+                        }}>
+                        <MicIcon muted={muted} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div onPointerDown={startResize}
+              className="mx-auto w-10 h-1.5 rounded-full cursor-ns-resize flex-shrink-0"
+              style={{ background: 'var(--t-border)' }} />
+          </div>
+
+          <div className="t-card p-3 space-y-2">
+            <p className="text-xs font-bold uppercase tracking-widest t-muted">Ekran Ayarları</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <ScreenToggle label="Kamera" on={screen.camera} onClick={() => toggleScreen('camera')} />
+              <ScreenToggle label="Notasyon" on={screen.notation} onClick={() => toggleScreen('notation')} />
             </div>
           </div>
-        ))}
+        </div>
       </div>
-
-      <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
     </main>
+  );
+}
+
+function ScreenToggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
+      style={{ background: on ? '#22c55e' : '#ef4444', color: on ? '#0a0a0a' : '#fff' }}>
+      {label}
+    </button>
   );
 }
 

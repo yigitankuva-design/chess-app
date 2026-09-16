@@ -423,6 +423,94 @@ async def test_gecersiz_hamle_yoksayilir_yayinlanmaz():
 
 
 @pytest.mark.asyncio
+async def test_mute_ve_unmute_host_tarafindaki_durumu_gunceller():
+    """Madde 2026-09-16 (Antrenör Ekranı, Faz A): önceden susturma hep
+    tek yönlüydü (`muted=True`) ve host'ta hangi öğrencinin susturulduğunu
+    tutan bir durum YOKTU. Artık `muted` bayrağı iki yönlü, `room.
+    muted_child_ids` host'un yeniden bağlanınca göreceği durumu tutuyor,
+    her değişiklik `mute_state_changed` ile host'a (SADECE host'a) geri
+    bildiriliyor."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999004, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1 = _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+
+    await _handle_ws_message(999004, room, True, None, {"type": "mute", "child_id": 11, "muted": True})
+    assert room.muted_child_ids == {11}
+    assert s1.messages[-1] == {"type": "muted", "muted": True}
+    assert host.messages[-1] == {"type": "mute_state_changed", "muted_child_ids": [11]}
+
+    await _handle_ws_message(999004, room, True, None, {"type": "mute", "child_id": 11, "muted": False})
+    assert room.muted_child_ids == set()
+    assert s1.messages[-1] == {"type": "muted", "muted": False}
+    assert host.messages[-1] == {"type": "mute_state_changed", "muted_child_ids": []}
+
+
+@pytest.mark.asyncio
+async def test_mute_all_tum_katilimcilari_susturur():
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999005, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1, s2 = _FakeSender(), _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+    room.join_participant(22, s2)
+
+    await _handle_ws_message(999005, room, True, None, {"type": "mute_all"})
+    assert room.muted_child_ids == {11, 22}
+    assert s1.messages[-1] == {"type": "muted", "muted": True}
+    assert s2.messages[-1] == {"type": "muted", "muted": True}
+
+
+@pytest.mark.asyncio
+async def test_raise_hand_sadece_hosta_gider_ogrencilere_gitmez():
+    """Madde 2026-09-16: "söz hakkı istiyor" — sporcunun genel dikkat
+    isteği (Zafer'in netleştirmesi: taş yetkisi/ses açma/soru sorma gibi
+    tüm nedenleri kapsar) SADECE host'a gitmeli, diğer öğrencilere DEĞİL."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999006, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1, s2 = _FakeSender(), _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+    room.join_participant(22, s2)
+
+    await _handle_ws_message(999006, room, False, 11, {"type": "raise_hand"})
+    assert host.messages[-1] == {"type": "hand_raised", "child_id": 11}
+    assert all(m["type"] != "hand_raised" for m in s1.messages)
+    assert all(m["type"] != "hand_raised" for m in s2.messages)
+
+
+@pytest.mark.asyncio
+async def test_derslerim_baslik_duzenleme(client):
+    """Madde 2026-09-16 (Antrenör Ekranı, Faz A / madde 5): "Derslerim"
+    listesinde SADECE başlık düzenlenebilir."""
+    ttok, _ = await _teacher(client, "hoca7@t.com")
+    class_id, _, _ = await _class_with_students(client, ttok, n=0)
+    lesson_id = await _create_lesson(client, ttok, class_id)
+
+    r = await client.patch(f"/live-lessons/{lesson_id}", headers=auth(ttok), json={"title": "Yeni Başlık"})
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == "Yeni Başlık"
+
+    r = await client.get(f"/live-lessons/{lesson_id}", headers=auth(ttok))
+    assert r.json()["title"] == "Yeni Başlık"
+
+
+@pytest.mark.asyncio
+async def test_baskasinin_dersinin_baslik_duzenleyemez(client):
+    ttok1, _ = await _teacher(client, "hoca7b@t.com")
+    ttok2, _ = await _teacher(client, "hoca7c@t.com")
+    class_id, _, _ = await _class_with_students(client, ttok1, n=0)
+    lesson_id = await _create_lesson(client, ttok1, class_id)
+
+    r = await client.patch(f"/live-lessons/{lesson_id}", headers=auth(ttok2), json={"title": "Başkasının"})
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_sohbet_mesaji_herkese_yayinlanir():
     from chess_api.routers.live_lessons import _handle_ws_message
 

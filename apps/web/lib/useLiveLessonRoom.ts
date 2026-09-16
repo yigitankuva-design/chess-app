@@ -34,13 +34,20 @@ interface State {
   /** Sadece sporcu tarafında: antrenör bu bağlantıyı susturduysa true —
    *  gerçek susturma LiveKit'te olur, bu SADECE arayüz bilgisi. */
   muted: boolean;
+  /** Madde 2026-09-16 (Antrenör Ekranı, Faz A): SADECE host tarafında —
+   *  hangi öğrencilerin şu an susturulmuş olduğu (ikon rengi için). */
+  mutedChildIds: Set<number>;
+  /** Madde 2026-09-16: "söz hakkı istiyor" — sporcunun tıkladığı, host'a
+   *  giden genel dikkat-çekme isteği. Kalıcı DEĞİL, host bildirime
+   *  tıklayınca `dismissHandRaise` ile yerel olarak kapanır. */
+  handRaises: number[];
 }
 
 export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
   const [state, setState] = useState<State>({
     connected: false, fen: START_FEN, sanHistory: [], controllerChildId: null,
     connectedChildIds: [], pendingRequests: [], chatMessages: [], lessonEnded: false,
-    muted: false,
+    muted: false, mutedChildIds: new Set(), handRaises: [],
   });
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -64,6 +71,7 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
             ...s, fen: (msg.fen as string) ?? s.fen,
             sanHistory: (msg.san_history as string[]) ?? [],
             controllerChildId: (msg.controller_child_id as number | null) ?? null,
+            mutedChildIds: new Set((msg.muted_child_ids as number[]) ?? []),
           }));
           break;
         case 'participant_joined':
@@ -91,7 +99,16 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
           setState((s) => ({ ...s, fen: msg.fen as string, sanHistory: [] }));
           break;
         case 'muted':
-          setState((s) => ({ ...s, muted: true }));
+          setState((s) => ({ ...s, muted: (msg.muted as boolean | undefined) ?? true }));
+          break;
+        case 'mute_state_changed':
+          setState((s) => ({ ...s, mutedChildIds: new Set((msg.muted_child_ids as number[]) ?? []) }));
+          break;
+        case 'hand_raised':
+          setState((s) => ({
+            ...s, handRaises: s.handRaises.includes(msg.child_id as number)
+              ? s.handRaises : [...s.handRaises, msg.child_id as number],
+          }));
           break;
         case 'chat_message':
           setState((s) => ({
@@ -125,10 +142,15 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
     grantControl: (childId: number) => send({ type: 'grant_control', child_id: childId }),
     revokeControl: () => send({ type: 'revoke_control' }),
     resetBoard: (fen?: string) => send({ type: 'reset_board', fen }),
-    muteChild: (childId: number) => send({ type: 'mute', child_id: childId }),
+    muteChild: (childId: number, muted = true) => send({ type: 'mute', child_id: childId, muted }),
+    muteAll: () => send({ type: 'mute_all' }),
+    raiseHand: () => send({ type: 'raise_hand' }),
     sendChat: (text: string) => send({ type: 'chat_message', text }),
     dismissPendingRequest: (childId: number) => setState((s) => ({
       ...s, pendingRequests: s.pendingRequests.filter((p) => p.childId !== childId),
+    })),
+    dismissHandRaise: (childId: number) => setState((s) => ({
+      ...s, handRaises: s.handRaises.filter((id) => id !== childId),
     })),
   };
 }

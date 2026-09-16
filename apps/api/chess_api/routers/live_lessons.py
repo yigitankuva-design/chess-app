@@ -151,6 +151,29 @@ async def get_live_lesson(
     return _serialize(lesson)
 
 
+class UpdateLiveLessonRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+
+
+@router.patch("/{lesson_id}")
+async def update_live_lesson(
+    lesson_id: int,
+    payload: UpdateLiveLessonRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-16 (Antrenör Ekranı, Faz A / madde 5): "Derslerim"
+    listesinde SADECE başlık düzenlenebilir — tarih/süre/sınıf gibi diğer
+    alanlar bilerek dışarıda bırakıldı (ders hangi sınıfa/zamana ait
+    olduğunu değiştirmek ayrı, istenmeyen bir iş)."""
+    _ensure_teacher(current)
+    lesson = await _get_lesson_for_coach(lesson_id, current, db)
+    lesson.title = payload.title
+    await db.commit()
+    await db.refresh(lesson)
+    return _serialize(lesson)
+
+
 @router.post("/{lesson_id}/start")
 async def start_live_lesson(
     lesson_id: int,
@@ -351,9 +374,27 @@ async def _handle_ws_message(lesson_id: int, room, is_host: bool, child_id: int 
         await room.broadcast({"type": "board_reset", "fen": room.fen})
     elif mtype == "mute" and is_host:
         target = msg.get("child_id")
+        muted = bool(msg.get("muted", True))
         if target is not None:
-            await mute_child_microphone(lesson_id, target)
-            await room.send_to_child(target, {"type": "muted"})
+            await mute_child_microphone(lesson_id, target, muted=muted)
+            if muted:
+                room.muted_child_ids.add(target)
+            else:
+                room.muted_child_ids.discard(target)
+            await room.send_to_child(target, {"type": "muted", "muted": muted})
+            await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
+    elif mtype == "mute_all" and is_host:
+        for target in list(room.participants.keys()):
+            await mute_child_microphone(lesson_id, target, muted=True)
+            room.muted_child_ids.add(target)
+            await room.send_to_child(target, {"type": "muted", "muted": True})
+        await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
+    elif mtype == "raise_hand" and not is_host:
+        # Madde 2026-09-16: sporcunun genel "dikkatini istiyorum" isteği
+        # (taş yetkisi/ses açma/soru sorma gibi tüm nedenleri kapsar,
+        # bkz. Zafer'in netleştirmesi) — SADECE host'a gider, kalıcı
+        # kaydedilmez, host bildirime tıklayınca kendi ekranında kapanır.
+        await room.send_to_host({"type": "hand_raised", "child_id": child_id})
     elif mtype == "chat_message":
         text = (msg.get("text") or "").strip()[:500]
         if not text:
@@ -423,6 +464,7 @@ async def live_lesson_ws(websocket: WebSocket, lesson_id: int, token: str = Quer
     await websocket.send_json({
         "type": "lesson_state", "fen": room.fen, "san_history": room.san_history,
         "controller_child_id": room.controller_child_id,
+        "muted_child_ids": list(room.muted_child_ids),
     })
     if not is_host:
         await room.broadcast({"type": "participant_joined", "child_id": child_id})

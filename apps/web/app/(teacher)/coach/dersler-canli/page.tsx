@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { fetchMyClasses } from '@/lib/homeworkApi';
 import type { TeacherClass } from '@/lib/homeworkApi';
-import { fetchMyLiveLessons, createLiveLesson, startLiveLesson } from '@/lib/liveLessonsApi';
+import { fetchMyLiveLessons, createLiveLesson, startLiveLesson, updateLiveLesson } from '@/lib/liveLessonsApi';
 import type { LiveLesson, LiveLessonJoinMode } from '@/lib/liveLessonsApi';
 
 /**
@@ -38,6 +38,8 @@ export default function DerslerCanliPage() {
   const [joinMode, setJoinMode] = useState<LiveLessonJoinMode>('auto');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState('');
 
   useEffect(() => {
     if (!token || role !== 'teacher') return;
@@ -47,6 +49,37 @@ export default function DerslerCanliPage() {
       if (cs.length > 0) setClassId(cs[0].id);
     });
   }, [token, role]);
+
+  useEffect(() => {
+    // Madde 2026-09-16 (Antrenör Ekranı, Faz A / madde 3): antrenör canlı
+    // dersten sekmeyi kapatıp/geri gidip bu listeye dönebilir — sayfa
+    // ODAKLANDIĞINDA listeyi tazeler ki "live" durumundaki dersi hemen
+    // görüp "Derse Git" ile tekrar bağlanabilsin (mount tazeliğine
+    // güvenmek yerine).
+    if (!token || role !== 'teacher') return;
+    function onFocus() { fetchMyLiveLessons().then(setLessons); }
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [token, role]);
+
+  function startEdit(l: LiveLesson) {
+    setEditingId(l.id);
+    setEditTitle(l.title);
+  }
+
+  async function saveEdit(lessonId: number) {
+    const trimmed = editTitle.trim();
+    if (!trimmed) return;
+    const updated = await updateLiveLesson(lessonId, trimmed);
+    if (updated) {
+      setLessons((prev) => prev?.map((l) => (l.id === lessonId ? updated : l)) ?? prev);
+    }
+    setEditingId(null);
+  }
 
   if (role !== 'teacher') {
     return <main className="px-4 pt-6 pb-12 max-w-xl mx-auto"><p className="t-muted">Bu sayfa yalnızca antrenörler içindir.</p></main>;
@@ -158,8 +191,35 @@ export default function DerslerCanliPage() {
           <p className="text-xs t-muted">Henüz bir ders oluşturmadın.</p>
         ) : lessons.map((l) => (
           <div key={l.id} className="t-card p-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-bold truncate">{l.title}</p>
+            <div className="min-w-0 flex-1">
+              {editingId === l.id ? (
+                <div className="flex items-center gap-1.5">
+                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} autoFocus
+                    className="flex-1 rounded-lg px-2 py-1 text-sm min-w-0"
+                    style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-1)', border: '1px solid var(--t-border)' }} />
+                  <button type="button" onClick={() => saveEdit(l.id)}
+                    className="rounded-lg px-2 py-1 text-xs font-bold flex-shrink-0"
+                    style={{ background: '#22c55e', color: '#0a0a0a' }}>
+                    Kaydet
+                  </button>
+                  <button type="button" onClick={() => setEditingId(null)}
+                    className="rounded-lg px-2 py-1 text-xs font-bold flex-shrink-0"
+                    style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}>
+                    Vazgeç
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <p className="text-sm font-bold truncate">{l.title}</p>
+                  <button type="button" onClick={() => startEdit(l)} title="Başlığı düzenle"
+                    className="flex-shrink-0 opacity-60 hover:opacity-100" style={{ color: 'var(--t-text-2)' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 20h9" strokeLinecap="round" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              )}
               <p className="text-xs t-muted">
                 {new Date(l.scheduled_at).toLocaleString('tr-TR')} · {l.duration_minutes} dk · {STATUS_LABEL[l.status]}
               </p>

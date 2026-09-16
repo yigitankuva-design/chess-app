@@ -95,11 +95,12 @@ async def close_room(lesson_id: int) -> None:
         _raise_unreachable(lesson_id, "oda kapatma", e)
 
 
-async def mute_child_microphone(lesson_id: int, child_id: int) -> bool:
-    """Antrenörün 'katılımcıyı sustur' kontrolü — önce sporcunun mikrofon
-    track'ini bulur, sonra susturur. Sporcu henüz bağlanmadıysa/mikrofonu
-    açmadıysa track bulunamaz, sessizce False döner (hata değil — sık
-    rastlanan, zararsız bir durum)."""
+async def mute_child_microphone(lesson_id: int, child_id: int, muted: bool = True) -> bool:
+    """Antrenörün 'katılımcıyı sustur/aç' kontrolü — önce sporcunun mikrofon
+    track'ini bulur, sonra `muted` durumuna göre susturur ya da açar (LiveKit
+    `MuteRoomTrackRequest.muted` iki yönde de AYNI çağrı). Sporcu henüz
+    bağlanmadıysa/mikrofonu açmadıysa track bulunamaz, sessizce False döner
+    (hata değil — sık rastlanan, zararsız bir durum)."""
     identity = f"child-{child_id}"
     try:
         async with _client() as lk:
@@ -119,7 +120,7 @@ async def mute_child_microphone(lesson_id: int, child_id: int) -> bool:
             if not track:
                 return False
             await lk.room.mute_published_track(api.MuteRoomTrackRequest(
-                room=room_name(lesson_id), identity=identity, track_sid=track.sid, muted=True,
+                room=room_name(lesson_id), identity=identity, track_sid=track.sid, muted=muted,
             ))
             return True
     except Exception as e:

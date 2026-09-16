@@ -39,13 +39,15 @@ vi.mock('@livekit/components-react', () => ({
 vi.mock('livekit-client', () => ({ Track: { Source: { Camera: 'camera' } } }));
 
 const roomState = vi.hoisted(() => ({
-  connected: true, fen: 'FEN', sanHistory: [], controllerChildId: null as number | null,
+  connected: true, fen: 'FEN', sanHistory: [] as string[], controllerChildId: null as number | null,
   connectedChildIds: [11] as number[], pendingRequests: [] as { childId: number; name: string }[],
   chatMessages: [] as { from: string; text: string; isHost: boolean }[], lessonEnded: false, muted: false,
+  mutedChildIds: new Set<number>(), handRaises: [] as number[],
 }));
 const roomActions = vi.hoisted(() => ({
   sendMove: vi.fn(), grantControl: vi.fn(), revokeControl: vi.fn(), resetBoard: vi.fn(),
-  muteChild: vi.fn(), sendChat: vi.fn(), dismissPendingRequest: vi.fn(),
+  muteChild: vi.fn(), muteAll: vi.fn(), raiseHand: vi.fn(), sendChat: vi.fn(),
+  dismissPendingRequest: vi.fn(), dismissHandRaise: vi.fn(),
 }));
 vi.mock('@/lib/useLiveLessonRoom', () => ({
   useLiveLessonRoom: () => ({ ...roomState, ...roomActions }),
@@ -70,6 +72,8 @@ beforeEach(() => {
   roomState.connectedChildIds = [11];
   roomState.controllerChildId = null;
   roomState.chatMessages = [];
+  roomState.mutedChildIds = new Set();
+  roomState.handRaises = [];
   mocks.fetchLiveLesson.mockResolvedValue(LESSON);
   mocks.fetchClassStudents.mockResolvedValue(STUDENTS);
   mocks.startLiveLesson.mockResolvedValue({ token: 't', livekit_url: 'wss://x' });
@@ -94,23 +98,46 @@ it('LiveKit sunucusuna bağlanılamazsa hata gösterir', async () => {
   await waitFor(() => screen.getByText(/Derse bağlanılamadı/));
 });
 
-it('katılımcı satırında öğrenci adı gösterilir, yetki verme/susturma çalışır', async () => {
+it('katılımcı satırında öğrenci adı gösterilir, yetki verme/susturma ikonları çalışır (madde 2026-09-16, Faz A)', async () => {
   render(<DerslerCanliHostPage />);
   await waitFor(() => screen.getByText('Ali'));
 
-  fireEvent.click(screen.getByText('Taş Oynatma Yetkisi Ver'));
+  fireEvent.click(screen.getByTitle('Taş oynatma yetkisi ver'));
   expect(roomActions.grantControl).toHaveBeenCalledWith(11);
 
-  fireEvent.click(screen.getByText('Sustur'));
-  expect(roomActions.muteChild).toHaveBeenCalledWith(11);
+  fireEvent.click(screen.getByTitle('Sustur'));
+  expect(roomActions.muteChild).toHaveBeenCalledWith(11, true);
 });
 
-it('yetki verilen öğrencide "Taş Yetkisini Al" düğmesi görünür', async () => {
+it('yetki verilen öğrencide ikon "Taş yetkisini al"a döner', async () => {
   roomState.controllerChildId = 11;
   render(<DerslerCanliHostPage />);
-  await waitFor(() => screen.getByText('Taş Yetkisini Al'));
-  fireEvent.click(screen.getByText('Taş Yetkisini Al'));
+  await waitFor(() => screen.getByTitle('Taş yetkisini al'));
+  fireEvent.click(screen.getByTitle('Taş yetkisini al'));
   expect(roomActions.revokeControl).toHaveBeenCalled();
+});
+
+it('susturulmuş öğrencide ikon "Sesi aç"a döner ve tıklayınca açar', async () => {
+  roomState.mutedChildIds = new Set([11]);
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTitle('Sesi aç'));
+  fireEvent.click(screen.getByTitle('Sesi aç'));
+  expect(roomActions.muteChild).toHaveBeenCalledWith(11, false);
+});
+
+it('"Hepsini Kapat" tüm katılımcıları susturur', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByText('Hepsini Kapat'));
+  fireEvent.click(screen.getByText('Hepsini Kapat'));
+  expect(roomActions.muteAll).toHaveBeenCalled();
+});
+
+it('"söz hakkı istiyor" bildirimi öğrenci adıyla görünür ve tıklayınca kapanır', async () => {
+  roomState.handRaises = [11];
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByText('Ali söz hakkı istiyor'));
+  fireEvent.click(screen.getByText('Ali söz hakkı istiyor'));
+  expect(roomActions.dismissHandRaise).toHaveBeenCalledWith(11);
 });
 
 it('katılım isteği kabul/red edilince ilgili API çağrılır ve istek kaldırılır', async () => {

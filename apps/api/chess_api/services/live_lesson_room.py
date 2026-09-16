@@ -27,6 +27,10 @@ class LiveLessonRoom:
         self.fen = start_fen
         self.san_history: list[str] = []
         self.controller_child_id: int | None = None
+        # Madde 2026-09-16 (Antrenör Ekranı, Faz A): host tarafında hangi
+        # öğrencinin şu an susturulmuş olduğunu tutan durum — önceden YOKTU,
+        # susturma tek yönlü ("hep True") olduğu için gerek duyulmamıştı.
+        self.muted_child_ids: set[int] = set()
 
     def join_host(self, sender: Sender) -> int:
         conn_id = self._next_conn_id
@@ -70,6 +74,16 @@ class LiveLessonRoom:
 
     async def send_to_child(self, child_id: int, message: dict) -> None:
         for sender in list(self.participants.get(child_id, {}).values()):
+            try:
+                await sender.send_json(message)
+            except Exception:
+                pass
+
+    async def send_to_host(self, message: dict) -> None:
+        """SADECE antrenöre gönderir — ör. susturma-durumu senkronu ve
+        "söz hakkı istiyor" bildirimleri öğrencilere DEĞİL, sadece host'a
+        gider."""
+        for sender in list(self.host_conns.values()):
             try:
                 await sender.send_json(message)
             except Exception:

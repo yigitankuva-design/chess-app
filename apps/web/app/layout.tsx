@@ -16,10 +16,13 @@ export const metadata: Metadata = {
   },
 };
 
+// Madde 2026-09-16 (Antrenör Ekranı, Faz A): `maximumScale: 1` pinch-zoom'u
+// tamamen kapatıyordu — Zafer canlı ders ekranında (ve app genelinde)
+// yakınlaştırmayı istedi. Üst sınır kaldırıldı, `userScalable` kısıtlaması
+// zaten yoktu.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({
