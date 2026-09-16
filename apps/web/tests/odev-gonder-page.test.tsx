@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/homeworkApi', () => mocks);
 
 import OdevGonderPage from '@/app/(teacher)/coach/odev-gonder/page';
+import { OdevGonderInner } from '@/components/OdevGonderInner';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -102,4 +103,39 @@ it('antrenör değilse sayfa reddeder', async () => {
   mockRole = 'athlete';
   render(<OdevGonderPage />);
   await waitFor(() => screen.getByText(/yalnızca antrenörler/));
+});
+
+describe('OdevGonderInner — gömülü kullanım (madde 2026-09-16, Antrenör Ekranı Faz C)', () => {
+  it('sectionId prop olarak verilir (query param DEĞİL); onClose verilirse "Geri dön" router.back YERİNE onu çağırır', async () => {
+    mocks.fetchHomeworkTarget.mockResolvedValue({ linked: false, section_title: 'Bağsız Konu' });
+    const onClose = vi.fn();
+    render(<OdevGonderInner sectionId={12} onClose={onClose} />);
+    await waitFor(() => expect(mocks.fetchHomeworkTarget).toHaveBeenCalledWith(12));
+    await waitFor(() => screen.getByText(/müfredata bağlı değil/));
+
+    fireEvent.click(screen.getByText('← Geri dön'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(routerBack).not.toHaveBeenCalled();
+  });
+
+  it('onClose verilirse başarılı gönderim sonrası "Antrenör paneline dön" router.push YERİNE onu çağırır', async () => {
+    const onClose = vi.fn();
+    render(<OdevGonderInner sectionId={7} onClose={onClose} />);
+    await waitFor(() => screen.getByText('Ali'));
+    fireEvent.click(screen.getByText('Tüm Sınıf').querySelector('input') as HTMLInputElement);
+    fireEvent.click(screen.getByRole('button', { name: /Ödevi Gönder/ }));
+    await waitFor(() => screen.getByText('Ödev Gönderildi'));
+
+    fireEvent.click(screen.getByText('Antrenör paneline dön'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(routerPush).not.toHaveBeenCalledWith('/coach');
+  });
+
+  it('onClose verilmezse (route kullanımı) davranış AYNEN korunur — router.back/router.push kullanılır', async () => {
+    mocks.fetchHomeworkTarget.mockResolvedValue({ linked: false, section_title: 'Bağsız Konu' });
+    render(<OdevGonderInner sectionId={12} />);
+    await waitFor(() => screen.getByText(/müfredata bağlı değil/));
+    fireEvent.click(screen.getByText('← Geri dön'));
+    expect(routerBack).toHaveBeenCalledTimes(1);
+  });
 });

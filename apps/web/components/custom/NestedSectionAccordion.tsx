@@ -74,6 +74,12 @@ interface Props {
    *  hangi bölümün AÇIK başlayacağı — ilk eleman bu seviyeye, kalanı alt
    *  seviyeye (slice(1) ile) aktarılır. Yalnızca İLK mount'ta kullanılır. */
   initialOpenPath?: number[];
+  /** Madde 2026-09-16 (Antrenör Ekranı, Faz C): verilirse Alt Konu'ya
+   *  tıklanınca `router.push(/custom/.../alt-konu/...)` YERİNE bu callback
+   *  çağrılır — canlı ders içinde route DEĞİŞTİRMEDEN (LiveKitRoom'u
+   *  unmount etmeden) Alt Konu içeriğini göstermek için, `isSiniflarim`/
+   *  `isCanliDersOlustur` dallarıyla AYNI "opsiyonel callback" deseni. */
+  onSelectAltKonu?: (sectionId: number) => void;
 }
 
 /**
@@ -84,7 +90,7 @@ interface Props {
  * + görsel).
  */
 export function NestedSectionAccordion({
-  tabId, sections, parentId, depth, accentColor, inDersler = false, initialOpenPath,
+  tabId, sections, parentId, depth, accentColor, inDersler = false, initialOpenPath, onSelectAltKonu,
 }: Props) {
   const router = useRouter();
   const { role } = useAuth();
@@ -115,6 +121,7 @@ export function NestedSectionAccordion({
               onClick={() => {
                 if (isSiniflarim(s) && role === 'teacher') { router.push('/coach/classes'); return; }
                 if (isCanliDersOlustur(s) && role === 'teacher') { router.push('/coach/dersler-canli'); return; }
+                if (isAltKonu && onSelectAltKonu) { onSelectAltKonu(s.id); return; }
                 if (isAltKonu) { router.push(`/custom/${tabId}/alt-konu/${s.id}`); return; }
                 setOpenId((p) => (p === s.id ? null : s.id));
               }}
@@ -135,6 +142,7 @@ export function NestedSectionAccordion({
                     tabId={tabId} sections={sections} parentId={s.id} depth={depth + 1}
                     accentColor={accentColor} inDersler={childInDersler}
                     initialOpenPath={initialOpenPath?.slice(1)}
+                    onSelectAltKonu={onSelectAltKonu}
                   />
                 </div>
               </Branch>

@@ -386,3 +386,40 @@ describe('AltKonuWalkthrough — sayaç başlığın yanına taşınabilir (madd
     expect(screen.getByText('1 / 1 — Konum Havuzu 001')).toBeInTheDocument();
   });
 });
+
+describe('AltKonuWalkthrough — canlı ders gömülü kullanım (madde 2026-09-16, Antrenör Ekranı Faz C)', () => {
+  const pool = [
+    group('g1', '001', [
+      { id: 's1', fen: FEN, sentence: 'Adım 1 cümlesi', turn: 'w' },
+      { id: 's2', fen: FEN2, sentence: 'Adım 2 cümlesi', turn: 'w' },
+    ]),
+  ];
+
+  it('hideBoard=true iken kendi tahtasını ÇİZMEZ, hideBoard verilmezse eskisi gibi çizer', () => {
+    const { rerender } = render(<AltKonuWalkthrough pool={pool} hideBoard />);
+    expect(screen.queryByText('a')).not.toBeInTheDocument(); // mock ChessBoard'un notasyon işareti
+    rerender(<AltKonuWalkthrough pool={pool} />);
+    expect(screen.getByText('a')).toBeInTheDocument();
+  });
+
+  it('onStepChange mount\'ta İLK adımın fen\'iyle, adım değişince YENİ fen\'le çağrılır', () => {
+    const onStepChange = vi.fn();
+    render(<AltKonuWalkthrough pool={pool} onStepChange={onStepChange} />);
+    expect(onStepChange).toHaveBeenCalledWith(FEN);
+    onStepChange.mockClear();
+    fireEvent.click(screen.getByLabelText('Sonraki adım'));
+    expect(onStepChange).toHaveBeenCalledWith(FEN2);
+  });
+
+  it('onSendHomework verilirse "Ödev Gönder"e basınca router.push YERİNE bu çağrılır', () => {
+    mockRole = 'teacher';
+    const onSendHomework = vi.fn();
+    render(
+      <AltKonuWalkthrough pool={pool} sourceSectionId={7} sourceSectionTitle="Alt Konu"
+        linkedLessonStepId={42} onSendHomework={onSendHomework} />,
+    );
+    fireEvent.click(screen.getByLabelText('Ödev Gönder'));
+    expect(onSendHomework).toHaveBeenCalledTimes(1);
+    expect(routerPush).not.toHaveBeenCalled();
+  });
+});

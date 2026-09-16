@@ -37,6 +37,19 @@ interface Props {
    * ÜSTÜNDE kendi içinde gösterilir — KURAL #3, geriye uyumlu.
    */
   onPoolLabelChange?: (label: string | null) => void;
+  /** Madde 2026-09-16 (Antrenör Ekranı, Faz C): canlı derste "Anlatım
+   *  Tahtası" modunda bu bileşen kendi tahtasını ÇİZMEZ — seçili adımın
+   *  FEN'i canlı dersin ANA tahtasında (`room.resetBoard`) gösterilir.
+   *  Verilmezse (standalone/eski kullanım) davranış AYNEN korunur. */
+  hideBoard?: boolean;
+  /** hideBoard=true iken, ya da her ihtimalde: seçili adımın FEN'i her
+   *  değiştiğinde (grup/adım gezinmesi dahil) çağrılır. */
+  onStepChange?: (fen: string) => void;
+  /** Madde 2026-09-16 (Faz C): verilirse "Ödev Gönder" `/coach/odev-gonder`
+   *  sayfasına YÖNLENDİRMEZ (bu, canlı ders içindeyken LiveKitRoom'u
+   *  unmount edip ses/görüntü bağlantısını KOPARIR) — bunun yerine bu
+   *  callback çağrılır, canlı ders ekranı gömülü bir panelde açar. */
+  onSendHomework?: () => void;
 }
 
 /** Madde 2026-09-07 (GRUP D): özel tasarım "gönder" ikonu (kağıt uçak) —
@@ -108,7 +121,10 @@ const STEP_CIRCLE_SIZE = 52;
  *    kartının sağına da ok koy" isteği); gidilecek grup yoksa DEVRE DIŞI.
  * Tahta ve alt yazı, aktif grubun aktif adımını gösterir.
  */
-export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, sourceTabId, linkedLessonStepId, onPoolLabelChange }: Props) {
+export function AltKonuWalkthrough({
+  pool, sourceSectionId, sourceSectionTitle, sourceTabId, linkedLessonStepId, onPoolLabelChange,
+  hideBoard = false, onStepChange, onSendHomework,
+}: Props) {
   const auth = useAuth();
   const router = useRouter();
   const [groupIdx, setGroupIdx] = useState(0);
@@ -132,6 +148,11 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
     onPoolLabelChange?.(poolLabel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolLabel]);
+
+  useEffect(() => {
+    if (step) onStepChange?.(step.fen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step?.fen]);
 
   if (pool.length === 0) {
     return <p className="t-muted text-sm">Henüz konum eklenmedi.</p>;
@@ -160,8 +181,11 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
   const homeworkLinked = linkedLessonStepId != null;
 
   // Madde 2026-09-11 (Ödev Sistemi Faz 3): "Ödev Gönder" artık popup değil,
-  // AYRI bir "Ödev Gönder" sayfasına yönlendirir (Zafer'in isteği).
+  // AYRI bir "Ödev Gönder" sayfasına yönlendirir (Zafer'in isteği). Madde
+  // 2026-09-16 (Faz C): canlı ders içinde `onSendHomework` verilmişse route
+  // DEĞİŞTİRİLMEZ (bkz. Props açıklaması).
   function goToSendHomework() {
+    if (onSendHomework) { onSendHomework(); return; }
     const params = new URLSearchParams({ section: String(sourceSectionId) });
     if (sourceTabId != null) params.set('tab', String(sourceTabId));
     router.push(`/coach/odev-gonder?${params.toString()}`);
@@ -209,7 +233,9 @@ export function AltKonuWalkthrough({ pool, sourceSectionId, sourceSectionTitle, 
           <p className="text-xs t-muted" style={{ fontWeight: 600 }}>{poolLabel}</p>
         )}
 
-        <ChessBoard fen={step!.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
+        {!hideBoard && (
+          <ChessBoard fen={step!.fen} highlightSquares={[] as Square[]} hideNotation={hideNotation} />
+        )}
 
         {/* Madde 2026-09-09 (görsel referans): İleri/Geri tahtanın SOL ALT
             köşesinde, "Ödev Gönder" ORTADA, "Konum Havuzu" okları SAĞDA —

@@ -78,7 +78,55 @@ vi.mock('@/components/BoardEditor', () => ({
   ),
 }));
 
+// Madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası" — Düzey/Konu/
+// Alt Konu ağacı + Alt Konu içeriği + Ödev Gönder, gerçek bileşenler AYRI
+// dosyalarda zaten test ediliyor (nested-section-accordion-select-alt-konu,
+// alt-konu-walkthrough, odev-gonder-page); burada SADECE bu sayfanın onları
+// doğru prop'larla bağlayıp bağlamadığı test edilir.
+const customTabsMocks = vi.hoisted(() => ({
+  listCustomTabs: vi.fn(),
+  getCustomTab: vi.fn(),
+}));
+vi.mock('@/lib/customTabsApi', () => customTabsMocks);
+
+vi.mock('@/components/custom/NestedSectionAccordion', () => ({
+  NestedSectionAccordion: ({ onSelectAltKonu }: { onSelectAltKonu?: (id: number) => void }) => (
+    <div data-testid="accordion">
+      <button type="button" onClick={() => onSelectAltKonu?.(203)}>Tahtanın Genel Özellikleri</button>
+    </div>
+  ),
+}));
+
+vi.mock('@/components/custom/AltKonuWalkthrough', () => ({
+  AltKonuWalkthrough: ({ sourceSectionTitle, onStepChange, onSendHomework }: {
+    sourceSectionTitle?: string; onStepChange?: (fen: string) => void; onSendHomework?: () => void;
+  }) => (
+    <div data-testid="alt-konu-walkthrough">
+      {sourceSectionTitle}
+      <button type="button" onClick={() => onStepChange?.('STEP_FEN')}>Adım Değiştir</button>
+      <button type="button" onClick={() => onSendHomework?.()}>Ödev Gönder</button>
+    </div>
+  ),
+}));
+
+vi.mock('@/components/OdevGonderInner', () => ({
+  OdevGonderInner: ({ sectionId, onClose }: { sectionId: number; onClose?: () => void }) => (
+    <div data-testid="odev-gonder-inner">
+      Ödev Gönder Paneli #{sectionId}
+      <button type="button" onClick={onClose}>Kapat</button>
+    </div>
+  ),
+}));
+
 import DerslerCanliHostPage from '@/app/(teacher)/coach/dersler-canli/[id]/page';
+
+const CALISMALAR_TAB = {
+  id: 9, label: 'Çalışmalar', emoji: '⭐', kind: 'antrenor_calismalar',
+  sections: [{
+    id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [],
+    practice_positions: [], parent_id: null,
+  }],
+};
 
 const LESSON = {
   id: 7, class_id: 1, title: 'Açılış Dersi', scheduled_at: '2026-09-20T10:00:00',
@@ -102,6 +150,10 @@ beforeEach(() => {
   mocks.fetchLiveLesson.mockResolvedValue(LESSON);
   mocks.fetchClassStudents.mockResolvedValue(STUDENTS);
   mocks.startLiveLesson.mockResolvedValue({ token: 't', livekit_url: 'wss://x' });
+  customTabsMocks.listCustomTabs.mockResolvedValue([
+    { id: 9, order_index: 1, label: 'Çalışmalar', emoji: '⭐', kind: 'antrenor_calismalar' },
+  ]);
+  customTabsMocks.getCustomTab.mockResolvedValue(CALISMALAR_TAB);
 });
 
 it('rol antrenör değilse erişim mesajı gösterir', () => {
@@ -222,4 +274,59 @@ it('Ekran Ayarları "Değerlendirme" kapatılınca çubuk kaybolur', async () =>
   await waitFor(() => screen.getByRole('meter', { name: 'Değerlendirme çubuğu' }));
   fireEvent.click(screen.getByText('Değerlendirme'));
   expect(screen.queryByRole('meter', { name: 'Değerlendirme çubuğu' })).not.toBeInTheDocument();
+});
+
+describe('madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası"', () => {
+  it('moda geçince Çalışmalar sekmesi çekilir, Düzey/Konu ağacı (accordion) görünür', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => expect(customTabsMocks.listCustomTabs).toHaveBeenCalled());
+    await waitFor(() => screen.getByTestId('accordion'));
+    // Bu modda ana tahta salt-okunur olarak KALIR (adım geçişleri onu günceller).
+    expect(screen.getByTestId('chess-board')).toBeInTheDocument();
+    expect(screen.queryByTestId('board-editor')).not.toBeInTheDocument();
+  });
+
+  it('Çalışmalar sekmesi bulunamazsa uyarı gösterir', async () => {
+    customTabsMocks.listCustomTabs.mockResolvedValue([]);
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByText('Çalışmalar sekmesi bulunamadı.'));
+  });
+
+  it('Alt Konu seçilince AltKonuWalkthrough görünür (accordion kaybolur); adım değişince resetBoard çağrılır; "Geri" ile listeye dönülür', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByTestId('accordion'));
+
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(screen.queryByTestId('accordion')).not.toBeInTheDocument();
+    expect(screen.getByTestId('alt-konu-walkthrough')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Adım Değiştir'));
+    expect(roomActions.resetBoard).toHaveBeenCalledWith('STEP_FEN');
+
+    fireEvent.click(screen.getByText('← Konu listesine dön'));
+    expect(screen.getByTestId('accordion')).toBeInTheDocument();
+    expect(screen.queryByTestId('alt-konu-walkthrough')).not.toBeInTheDocument();
+  });
+
+  it('"Ödev Gönder" tetiklenince gömülü panel açılır (sectionId doğru), "Kapat" ile kapanır', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByTestId('accordion'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+
+    expect(screen.queryByTestId('odev-gonder-inner')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Ödev Gönder'));
+    expect(screen.getByText('Ödev Gönder Paneli #203')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Kapat'));
+    expect(screen.queryByTestId('odev-gonder-inner')).not.toBeInTheDocument();
+  });
 });

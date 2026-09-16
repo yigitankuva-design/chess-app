@@ -10,6 +10,12 @@ import { BoardEditor } from '@/components/BoardEditor';
 import { EvalBar } from '@/components/analiz/EvalBar';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { scoreForWhite } from '@/lib/chess/analysisFormat';
+import { NestedSectionAccordion } from '@/components/custom/NestedSectionAccordion';
+import { AltKonuWalkthrough } from '@/components/custom/AltKonuWalkthrough';
+import { OdevGonderInner } from '@/components/OdevGonderInner';
+import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
+import type { CustomTabDetail } from '@/lib/customTabsApi';
+import { isAntrenorCalismalarTab } from '@/lib/customTabs/calismalarTab';
 import {
   fetchLiveLesson, startLiveLesson, endLiveLesson, admitLiveLessonParticipant,
 } from '@/lib/liveLessonsApi';
@@ -37,7 +43,17 @@ const EVAL_MOVETIME_MS = 800;
  * dizme — `resetBoard` üzerinden sporcuya canlı yayınlanır, YENİ bir WS
  * mesaj tipi gerekmedi). Antrenörün çizdiği ok/daire işaretleri de artık
  * sporcuya yayınlanıyor (sporcu tarafında GÖSTERİMİ henüz yok — sonraki
- * round). "Anlatım Tahtası" (Dersler köprüsü) Faz C'de gelecek.
+ * round).
+ *
+ * Madde 2026-09-16 (Faz C): "Anlatım Tahtası" — antrenörün KENDİ
+ * "Çalışmalar" sekmesinin Düzey/Konu/Alt Konu ağacı (aynı `NestedSectionAccordion`,
+ * route DEĞİŞTİRMEDEN — `onSelectAltKonu` ile) canlı ders içine gömülü.
+ * Seçilen Alt Konu `AltKonuWalkthrough`'un kendisiyle (tahtası GİZLİ,
+ * `hideBoard`) gösterilir; adım geçişleri ANA tahtayı (`room.resetBoard`)
+ * günceller. "Ödev Gönder" de route DEĞİŞTİRMEDEN (aksi halde LiveKitRoom
+ * unmount olup ses/görüntü bağlantısı kopardı) gömülü bir modalde açılır —
+ * bkz. `OdevGonderInner` (odev-gonder/page.tsx'ten route-bağımsız hale
+ * getirildi).
  */
 export default function DerslerCanliHostPage() {
   const router = useRouter();
@@ -120,16 +136,30 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   const [screen, setScreen] = useState<ScreenSettings>({ camera: true, notation: true, evalBar: true });
   const [panelHeight, setPanelHeight] = useState<number | null>(null);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
-  // Madde 2026-09-16 (Antrenör Ekranı, Faz B): "Anlatım Ortamını Değiştir" —
-  // 'anlatim' (Dersler/Çalışmalar köprüsü) Faz C'de gelecek, tip şimdiden
-  // hazır ama henüz seçilebilir bir düğmesi yok.
   const [hostViewMode, setHostViewMode] = useState<HostViewMode>('analiz');
   const engineRef = useRef<StockfishEngine | null>(null);
   const evalRequestRef = useRef(0);
   const [scoreCp, setScoreCp] = useState<number | null>(null);
   const [mate, setMate] = useState<number | null>(null);
+  // Madde 2026-09-16 (Faz C): antrenörün "Çalışmalar" sekmesi — undefined =
+  // henüz çekilmedi, null = bulunamadı. "Anlatım Tahtası" moduna İLK
+  // geçişte tembel (lazy) yüklenir.
+  const [calismalarTab, setCalismalarTab] = useState<CustomTabDetail | null | undefined>(undefined);
+  const [selectedAltKonuId, setSelectedAltKonuId] = useState<number | null>(null);
+  const [odevGonderSectionId, setOdevGonderSectionId] = useState<number | null>(null);
 
   useEffect(() => () => { engineRef.current?.destroy(); }, []);
+
+  useEffect(() => {
+    if (hostViewMode !== 'anlatim' || calismalarTab !== undefined) return;
+    (async () => {
+      const tabs = await listCustomTabs();
+      const found = tabs.find((t) => isAntrenorCalismalarTab(t));
+      if (!found) { setCalismalarTab(null); return; }
+      const detail = await getCustomTab(found.id);
+      setCalismalarTab(detail);
+    })();
+  }, [hostViewMode, calismalarTab]);
 
   // Madde 2026-09-16 (Faz B): değerlendirme çubuğu — SADECE Analiz Tahtası
   // modunda ve açıkken çalışır (Konum Tahtası modunda tahta geçersiz/eksik
@@ -219,7 +249,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
         <div className="space-y-4 min-w-0">
-          {screen.camera && cameraTracks.length > 0 && hostViewMode !== 'konum' && (
+          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {cameraTracks.map((t) => (
                 <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
@@ -246,6 +276,47 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               onTurnChange={() => {}}
               paletteLayout="split"
             />
+          )}
+
+          {hostViewMode === 'anlatim' && (
+            <>
+              {/* Madde 2026-09-16 (Faz C): "numaralı adım geçişleri ana
+                  tahtayı günceller" — bu, ANA (sol sütun) tahta; salt-okunur
+                  (Anlatım Tahtası'nda taş oynanmaz, sadece hazır konumlar
+                  gösterilir). */}
+              <ChessBoard fen={room.fen} boardOrientation="white" />
+
+              <div className="t-card p-3 space-y-3">
+                {calismalarTab === undefined && <p className="text-xs t-muted">Çalışmalar sekmesi yükleniyor…</p>}
+                {calismalarTab === null && <p className="text-xs t-muted">Çalışmalar sekmesi bulunamadı.</p>}
+                {calismalarTab && selectedAltKonuId == null && (
+                  <NestedSectionAccordion
+                    tabId={calismalarTab.id} sections={calismalarTab.sections} parentId={null} depth={0}
+                    onSelectAltKonu={setSelectedAltKonuId}
+                  />
+                )}
+                {calismalarTab && selectedAltKonuId != null && (() => {
+                  const section = calismalarTab.sections.find((s) => s.id === selectedAltKonuId);
+                  if (!section) return <p className="text-xs t-muted">Bölüm bulunamadı.</p>;
+                  return (
+                    <div className="space-y-3">
+                      <button type="button" onClick={() => setSelectedAltKonuId(null)}
+                        className="text-xs t-muted underline">← Konu listesine dön</button>
+                      <AltKonuWalkthrough
+                        pool={section.position_pool ?? []}
+                        sourceSectionId={section.id}
+                        sourceSectionTitle={section.title}
+                        sourceTabId={calismalarTab.id}
+                        linkedLessonStepId={section.linked_lesson_step_id ?? null}
+                        hideBoard
+                        onStepChange={(fen) => room.resetBoard(fen)}
+                        onSendHomework={() => setOdevGonderSectionId(section.id)}
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
+            </>
           )}
 
           {screen.notation && (
@@ -277,6 +348,8 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
                 onClick={() => setHostViewMode('analiz')} />
               <ModeButton label="Konum Tahtası" active={hostViewMode === 'konum'}
                 onClick={() => setHostViewMode('konum')} />
+              <ModeButton label="Anlatım Tahtası" active={hostViewMode === 'anlatim'}
+                onClick={() => setHostViewMode('anlatim')} />
             </div>
           </div>
 
@@ -363,6 +436,22 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
           </div>
         </div>
       </div>
+
+      {odevGonderSectionId != null && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-full max-w-xl mt-8 rounded-2xl overflow-hidden t-card">
+            <div className="flex justify-end p-2">
+              <button type="button" onClick={() => setOdevGonderSectionId(null)} aria-label="Kapat"
+                className="rounded-lg px-2.5 py-1 text-xs font-bold"
+                style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}>
+                ✕
+              </button>
+            </div>
+            <OdevGonderInner sectionId={odevGonderSectionId} onClose={() => setOdevGonderSectionId(null)} />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
