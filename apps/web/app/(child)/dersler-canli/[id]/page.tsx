@@ -11,6 +11,7 @@ import {
 import type { LiveKitConnectionInfo } from '@/lib/liveLessonsApi';
 import { useLiveLessonRoom } from '@/lib/useLiveLessonRoom';
 import type { ChatMessage } from '@/lib/useLiveLessonRoom';
+import { WaitingGame } from '@/components/WaitingGame';
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -30,6 +31,10 @@ const POLL_INTERVAL_MS = 2000;
  * HER ZAMAN dikey düzeni kullanır (fiziksel yatay olsa bile); tablet
  * yatayken tahta solda, ikon+sohbet sütunu sağda (Tailwind `md:landscape:`
  * + `order-*` — tek JSX bloğu, iki panel için de aynı kod).
+ *
+ * Madde 2026-09-17 (madde 6): antrenörün ONAY beklenen ekranında
+ * (`state==='pending'`) bekleme mini-oyunu (`WaitingGame`) gömülü —
+ * onaylanınca bu blok zaten unmount olur, ekstra kapatma mantığı gerekmez.
  */
 export default function DerslerCanliJoinPage() {
   const params = useParams<{ id: string }>();
@@ -102,8 +107,9 @@ export default function DerslerCanliJoinPage() {
         </button>
       )}
       {state === 'pending' && (
-        <div className="t-card p-4 text-center space-y-2">
-          <p className="text-sm t-muted">Antrenörünün onayı bekleniyor…</p>
+        <div className="space-y-2">
+          <p className="text-sm t-muted text-center">Antrenörünün onayı bekleniyor…</p>
+          <WaitingGame />
         </div>
       )}
       {state === 'denied' && (

@@ -62,6 +62,14 @@ vi.mock('@/components/ChessBoard', () => ({
   ),
 }));
 
+// Madde 2026-09-17 (madde 6): bekleme mini-oyunu KENDİ test dosyasında
+// (waiting-game.test.tsx / waiting-game-logic.test.ts) kapsamlı test
+// ediliyor — burada sadece "pending" ekranına doğru gömülüp gömülmediği
+// önemli, kendi setInterval döngüsü bu sayfanın testlerine karışmasın.
+vi.mock('@/components/WaitingGame', () => ({
+  WaitingGame: () => <div data-testid="waiting-game" />,
+}));
+
 import DerslerCanliJoinPage from '@/app/(child)/dersler-canli/[id]/page';
 
 beforeEach(() => {
@@ -96,13 +104,14 @@ it('"Derse Katıl" — auto modda anında bağlanır', async () => {
   expect(screen.getByText('Dersten Ayrıl')).toBeInTheDocument();
 });
 
-it('"Derse Katıl" — approval modda önce bekleme ekranı gösterir', async () => {
+it('"Derse Katıl" — approval modda önce bekleme ekranı gösterir, madde 6 mini-oyunu gömülüdür', async () => {
   mocks.requestLiveLessonJoin.mockResolvedValue({ status: 'pending' });
   mocks.pollLiveLessonJoinStatus.mockResolvedValue({ status: 'pending' });
   render(<DerslerCanliJoinPage />);
   fireEvent.click(screen.getByText('Derse Katıl'));
 
   await waitFor(() => screen.getByText('Antrenörünün onayı bekleniyor…'));
+  expect(screen.getByTestId('waiting-game')).toBeInTheDocument();
 });
 
 it('bekleme sırasında antrenör onaylarsa (poll admitted) derse bağlanır', async () => {
