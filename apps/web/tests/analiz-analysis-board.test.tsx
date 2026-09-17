@@ -28,6 +28,15 @@ vi.mock('@/lib/chess/stockfish', () => ({
   },
 }));
 
+// Madde 2026-09-18 (Analiz Et — Lichess Cloud Eval): varsayılan olarak
+// `null` (bulunamadı) — mevcut testler bu şekilde AYNEN yerel motor
+// akışını çalıştırmaya devam eder; ayrı testlerde "bulundu" senaryosu
+// açıkça mock'lanır.
+const fetchLichessCloudEval = vi.fn();
+vi.mock('@/lib/chess/lichessCloudEval', () => ({
+  fetchLichessCloudEval: (...args: unknown[]) => fetchLichessCloudEval(...args),
+}));
+
 import { AnalysisBoard } from '@/components/analiz/AnalysisBoard';
 
 const FEN1 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -35,6 +44,8 @@ const FEN2 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
 
 beforeEach(() => {
   analyzeMultiPv.mockReset();
+  fetchLichessCloudEval.mockReset();
+  fetchLichessCloudEval.mockResolvedValue(null);
 });
 
 describe('AnalysisBoard', () => {
@@ -69,6 +80,12 @@ describe('AnalysisBoard', () => {
     analyzeMultiPv.mockResolvedValueOnce([{ moveUci: 'e7e5', scoreCp: -15, mate: null, pvUci: ['e7e5'] }]);
 
     const { rerender } = render(<AnalysisBoard fen={FEN1} />);
+    // Madde 2026-09-18: artık motor çağrısından ÖNCE bir Lichess kontrolü var
+    // — FEN1'in bu kontrolü geçip (yavaş) motor çağrısına ULAŞMASINI bekle,
+    // yoksa senkron rerender FEN1'i Lichess aşamasında ("requestId eşleşmiyor")
+    // motora hiç gitmeden eler ve bu testin senaryosu kurulamaz.
+    await waitFor(() => expect(analyzeMultiPv).toHaveBeenCalledTimes(1));
+
     rerender(<AnalysisBoard fen={FEN2} />);
     // İkinci (yeni) istek çözülür, ekranda onun sonucu görünür.
     await screen.findByText('1... e5');
@@ -78,6 +95,46 @@ describe('AnalysisBoard', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(screen.getByText('1... e5')).toBeInTheDocument();
     expect(screen.queryByText('+9.99')).not.toBeInTheDocument();
+  });
+});
+
+describe('AnalysisBoard — Lichess Cloud Eval (madde 2026-09-18)', () => {
+  it('Lichess sonuç dönerse yerel motor HİÇ çağrılmaz, "Lichess Cloud" etiketiyle gösterilir', async () => {
+    fetchLichessCloudEval.mockResolvedValue({
+      depth: 34,
+      pvs: [
+        { cp: 30, mate: null, movesUci: ['e2e4', 'e7e5'] },
+        { cp: 20, mate: null, movesUci: ['d2d4'] },
+      ],
+    });
+    render(<AnalysisBoard fen={FEN1} />);
+
+    expect(await screen.findByText('1. e4 e5')).toBeInTheDocument();
+    expect(screen.getByText(/Lichess Cloud · Derinlik 34/)).toBeInTheDocument();
+    expect(analyzeMultiPv).not.toHaveBeenCalled();
+  });
+
+  it('Lichess bulamazsa (null) yerel motora düşülür, "Stockfish" etiketiyle gösterilir', async () => {
+    fetchLichessCloudEval.mockResolvedValue(null);
+    analyzeMultiPv.mockResolvedValue([
+      { moveUci: 'e2e4', scoreCp: 40, mate: null, pvUci: ['e2e4', 'e7e5'] },
+    ]);
+    render(<AnalysisBoard fen={FEN1} />);
+
+    expect(await screen.findByText('1. e4 e5')).toBeInTheDocument();
+    expect(screen.getByText(/Stockfish · Derinlik 18/)).toBeInTheDocument();
+    expect(analyzeMultiPv).toHaveBeenCalledWith(FEN1, 18, 3, 1200);
+  });
+
+  it('Lichess beyaz açısından gelen cp/mate\'i DEĞİŞTİRMEDEN kullanır (scoreForWhite uygulanmaz)', async () => {
+    // Sırada SİYAH olsa bile (FEN2), Lichess'in cp'si zaten beyaz açısından —
+    // yerel motor akışındaki gibi işaret çevrilmemeli.
+    fetchLichessCloudEval.mockResolvedValue({
+      depth: 30, pvs: [{ cp: -25, mate: null, movesUci: ['e7e5'] }],
+    });
+    render(<AnalysisBoard fen={FEN2} />);
+    await screen.findByText('1... e5');
+    expect(screen.getByText('-0.25')).toBeInTheDocument();
   });
 });
 

@@ -4,9 +4,10 @@ import type { Square } from 'chess.js';
 import { ChessBoard } from '@/components/ChessBoard';
 import { EvalBar } from './EvalBar';
 import { CandidateLines } from './CandidateLines';
-import type { CandidateLine } from './CandidateLines';
+import type { CandidateLine, CandidateSource } from './CandidateLines';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { pvUciToSan, formatContinuation, scoreForWhite } from '@/lib/chess/analysisFormat';
+import { fetchLichessCloudEval } from '@/lib/chess/lichessCloudEval';
 
 /** Tahta + eval bar + 3 aday hamle panelinin oturduğu sabit genişlik. */
 export const ANALYSIS_BOARD_MAX_WIDTH = 380;
@@ -56,6 +57,11 @@ export function AnalysisBoard({
   const [scoreCp, setScoreCp] = useState<number | null>(null);
   const [mate, setMate] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  // Madde 2026-09-18 (Analiz Et — Lichess Cloud Eval): açılış pozisyonları
+  // için önce Lichess'in ücretsiz, önceden hesaplanmış önbelleği denenir —
+  // bulunamazsa (404/hata) yerel "lite" motora sessizce düşülür. Kaynak/
+  // derinlik doğru gösterilsin diye ayrıca takip edilir.
+  const [source, setSource] = useState<CandidateSource>({ kind: 'local', depth: ANALYSIS_DEPTH });
 
   useEffect(() => () => { engineRef.current?.destroy(); }, []);
 
@@ -64,6 +70,23 @@ export function AnalysisBoard({
     setLoading(true);
 
     async function run() {
+      const cloud = await fetchLichessCloudEval(fen, MULTI_PV);
+      if (requestId !== requestIdRef.current) return;
+
+      if (cloud) {
+        const nextLines: CandidateLine[] = cloud.pvs.map((pv) => {
+          const san = pvUciToSan(fen, pv.movesUci.slice(0, CONTINUATION_PLIES));
+          // Lichess cp/mate ZATEN beyaz açısından — scoreForWhite YOK.
+          return { scoreCp: pv.cp, mate: pv.mate, continuation: formatContinuation(fen, san) };
+        });
+        setLines(nextLines);
+        setScoreCp(nextLines[0]?.scoreCp ?? null);
+        setMate(nextLines[0]?.mate ?? null);
+        setSource({ kind: 'lichess', depth: cloud.depth });
+        setLoading(false);
+        return;
+      }
+
       if (!engineRef.current) {
         const eng = new StockfishEngine();
         await eng.init();
@@ -87,6 +110,7 @@ export function AnalysisBoard({
       setLines(nextLines);
       setScoreCp(nextLines[0]?.scoreCp ?? null);
       setMate(nextLines[0]?.mate ?? null);
+      setSource({ kind: 'local', depth: ANALYSIS_DEPTH });
       setLoading(false);
     }
 
@@ -105,7 +129,7 @@ export function AnalysisBoard({
         </div>
       </div>
       <div style={{ maxWidth: ANALYSIS_BOARD_MAX_WIDTH }}>
-        <CandidateLines lines={lines} depth={ANALYSIS_DEPTH} loading={loading} />
+        <CandidateLines lines={lines} source={source} loading={loading} />
       </div>
     </div>
   );

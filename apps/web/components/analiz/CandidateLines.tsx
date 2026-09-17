@@ -6,9 +6,18 @@ export interface CandidateLine {
   continuation: string;
 }
 
+/** Madde 2026-09-18 (Analiz Et — Lichess Cloud Eval): sonucun nereden
+ *  geldiği — antrenör/sporcu hangi derinlikte VE hangi kaynaktan bir
+ *  değerlendirme gördüğünü bilsin (Lichess'ten gelirken "Stockfish
+ *  Derinlik 18" göstermek yanlış bilgi olurdu). */
+export interface CandidateSource {
+  kind: 'lichess' | 'local';
+  depth: number;
+}
+
 interface Props {
   lines: CandidateLine[];
-  depth: number;
+  source: CandidateSource;
   loading?: boolean;
 }
 
@@ -23,11 +32,13 @@ function scoreLabel(scoreCp: number | null, mate: number | null): string {
  * Analiz Et sekmesi — motor bilgisi + 3 aday hamle satırı (görsel referans:
  * lichess/chess.com analiz paneli). En iyi satır (0. indeks) vurgulanır.
  */
-export function CandidateLines({ lines, depth, loading = false }: Props) {
+export function CandidateLines({ lines, source, loading = false }: Props) {
   return (
     <div className="space-y-1.5">
       <p className="text-xs t-muted flex items-center gap-1">
-        🔍 Stockfish · Derinlik {depth}
+        {source.kind === 'lichess'
+          ? `☁️ Lichess Cloud · Derinlik ${source.depth}`
+          : `🔍 Stockfish · Derinlik ${source.depth}`}
       </p>
       <div className="space-y-1">
         {!loading && lines.length === 0 && (

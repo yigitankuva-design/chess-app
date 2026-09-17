@@ -6,7 +6,7 @@ describe('CandidateLines', () => {
   it('motor bilgisi ve 3 satırı gösterir', () => {
     render(
       <CandidateLines
-        depth={20}
+        source={{ kind: 'local', depth: 20 }}
         lines={[
           { scoreCp: 50, mate: null, continuation: '1. e4 e5' },
           { scoreCp: 49, mate: null, continuation: '1. d4 d5' },
@@ -22,19 +22,24 @@ describe('CandidateLines', () => {
   });
 
   it('mat skorunu # ile gösterir', () => {
-    render(<CandidateLines depth={20} lines={[{ scoreCp: null, mate: 2, continuation: 'Qh4#' }]} />);
+    render(<CandidateLines source={{ kind: 'local', depth: 20 }} lines={[{ scoreCp: null, mate: 2, continuation: 'Qh4#' }]} />);
     expect(screen.getByText('#2')).toBeInTheDocument();
   });
 
   it('madde 2026-09-03 (2): "analiz ediliyor" ifadesi ARTIK gösterilmez (yüklenirken de)', () => {
-    render(<CandidateLines depth={20} lines={[]} loading />);
+    render(<CandidateLines source={{ kind: 'local', depth: 20 }} lines={[]} loading />);
     expect(screen.queryByText(/analiz ediliyor/)).not.toBeInTheDocument();
     // Yüklenirken "Analiz alınamadı." da gösterilmez (henüz sonuç bekleniyor).
     expect(screen.queryByText('Analiz alınamadı.')).not.toBeInTheDocument();
   });
 
   it('boş ve yüklenmiyor durumunda "analiz alınamadı" gösterir', () => {
-    render(<CandidateLines depth={20} lines={[]} />);
+    render(<CandidateLines source={{ kind: 'local', depth: 20 }} lines={[]} />);
     expect(screen.getByText('Analiz alınamadı.')).toBeInTheDocument();
+  });
+
+  it('madde 2026-09-18 (Lichess Cloud Eval): kaynak "lichess" ise farklı etiket gösterir', () => {
+    render(<CandidateLines source={{ kind: 'lichess', depth: 34 }} lines={[{ scoreCp: 20, mate: null, continuation: '1. e4 e5' }]} />);
+    expect(screen.getByText(/Lichess Cloud · Derinlik 34/)).toBeInTheDocument();
   });
 });
