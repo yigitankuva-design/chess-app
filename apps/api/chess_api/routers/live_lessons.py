@@ -365,8 +365,10 @@ async def _end_floor(lesson_id: int, room) -> None:
         await mute_child_microphone(lesson_id, cid, muted=should_be_muted)
         if should_be_muted:
             room.muted_child_ids.add(cid)
+            room.coach_muted_child_ids.add(cid)
         else:
             room.muted_child_ids.discard(cid)
+            room.coach_muted_child_ids.discard(cid)
         await room.send_to_child(cid, {"type": "muted", "muted": should_be_muted})
     room.hand_raised_ids.discard(ending_child)
     room.floor_child_id = None
@@ -410,16 +412,42 @@ async def _handle_ws_message(lesson_id: int, room, is_host: bool, child_id: int 
             await mute_child_microphone(lesson_id, target, muted=muted)
             if muted:
                 room.muted_child_ids.add(target)
+                room.coach_muted_child_ids.add(target)
             else:
                 room.muted_child_ids.discard(target)
+                room.coach_muted_child_ids.discard(target)
             await room.send_to_child(target, {"type": "muted", "muted": muted})
             await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
     elif mtype == "mute_all" and is_host:
         for target in list(room.participants.keys()):
             await mute_child_microphone(lesson_id, target, muted=True)
             room.muted_child_ids.add(target)
+            room.coach_muted_child_ids.add(target)
             await room.send_to_child(target, {"type": "muted", "muted": True})
         await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
+    elif mtype == "self_mute" and not is_host:
+        # Madde 2026-09-17 (Sporcu Ekranı): sporcu KENDİ mikrofonunu
+        # LiveKit'te doğrudan (saf istemci çağrısıyla, bu WS'e hiç
+        # dokunmadan) açıp kapatabiliyor — antrenör bunu GÖRMÜYORDU çünkü
+        # `muted_child_ids` sadece antrenörün kendi susturma eylemlerinden
+        # güncelleniyordu. Bu mesaj SADECE durum bilgisini senkronlar,
+        # LiveKit'e tekrar mute isteği ATMAZ (zaten sporcunun tarafında
+        # oldu). Antrenör bu sporcuyu ZATEN susturmuşsa (coach_muted_child_
+        # ids'te varsa) sporcunun "aç" isteği YOKSAYILIR — antrenörün
+        # susturması sporcunun kendi isteğinden önce gelir (arayüzde buton
+        # zaten devre dışı, bu backend tarafında aynı kuralın ikinci
+        # savunması). `coach_muted_child_ids` (muted_child_ids DEĞİL)
+        # kontrol edilir ki sporcu kendi ÖNCEKİ self_mute'unu tekrar
+        # açabilsin — sadece antrenörün susturması engel olsun.
+        muted = bool(msg.get("muted", True))
+        if child_id in room.coach_muted_child_ids and not muted:
+            pass
+        else:
+            if muted:
+                room.muted_child_ids.add(child_id)
+            else:
+                room.muted_child_ids.discard(child_id)
+            await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
     elif mtype == "arrows" and is_host:
         # Madde 2026-09-16 (Antrenör Ekranı, Faz B): antrenörün tahtada
         # çizdiği oklar — SADECE yayınlanır, oda durumunda tutulmaz (fen
@@ -462,10 +490,12 @@ async def _handle_ws_message(lesson_id: int, room, is_host: bool, child_id: int 
                     continue
                 await mute_child_microphone(lesson_id, cid, muted=True)
                 room.muted_child_ids.add(cid)
+                room.coach_muted_child_ids.add(cid)
                 await room.send_to_child(cid, {"type": "muted", "muted": True})
             if target in room.muted_child_ids:
                 await mute_child_microphone(lesson_id, target, muted=False)
                 room.muted_child_ids.discard(target)
+                room.coach_muted_child_ids.discard(target)
                 await room.send_to_child(target, {"type": "muted", "muted": False})
             await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
             async with get_session_factory()() as db:

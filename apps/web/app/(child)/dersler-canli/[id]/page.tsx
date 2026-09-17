@@ -178,7 +178,12 @@ function StudentRoomInner({ lessonId, ownChildId, onLeft }: {
 
   function toggleMic() {
     if (room.muted) return; // antrenör susturdu — kendi kendine açamaz
-    localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    const nextEnabled = !isMicrophoneEnabled;
+    localParticipant.setMicrophoneEnabled(nextEnabled);
+    // Madde 2026-09-17: LiveKit çağrısı SES'i değiştirir ama antrenörün
+    // ekranındaki mikrofon ikonuna hiç yansımazdı (o sadece antrenörün
+    // KENDİ susturma eylemlerinden güncelleniyordu) — bunu da bildiriyoruz.
+    room.selfMute(!nextEnabled);
   }
 
   useEffect(() => {

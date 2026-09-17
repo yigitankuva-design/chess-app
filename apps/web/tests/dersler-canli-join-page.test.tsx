@@ -48,6 +48,7 @@ const roomActions = vi.hoisted(() => ({
   sendMove: vi.fn(), grantControl: vi.fn(), revokeControl: vi.fn(), resetBoard: vi.fn(),
   muteChild: vi.fn(), sendChat: vi.fn(), dismissPendingRequest: vi.fn(),
   raiseHand: vi.fn(), grantFloor: vi.fn(), sendArrows: vi.fn(), sendMarks: vi.fn(),
+  selfMute: vi.fn(),
 }));
 vi.mock('@/lib/useLiveLessonRoom', () => ({
   useLiveLessonRoom: () => ({ ...roomState, ...roomActions }),
@@ -177,21 +178,25 @@ describe('madde 2026-09-17 (Sporcu Ekranı): 3 durum ikonu', () => {
     await waitFor(() => screen.getAllByTitle('Taş oynatma yetkin var')[0]);
   });
 
-  it('Mikrofon: antrenör susturmadıysa kendi kendine aç/kapa yapılabilir', async () => {
+  it('Mikrofon: antrenör susturmadıysa kendi kendine aç/kapa yapılabilir, room.selfMute de bilgilendirilir (madde 2026-09-17 düzeltmesi)', async () => {
     await joinRoom();
     const micBtn = screen.getByTitle('Mikrofonu aç');
     expect(micBtn).not.toBeDisabled();
     fireEvent.click(micBtn);
     expect(livekitMocks.setMicrophoneEnabled).toHaveBeenCalledWith(true);
+    // Antrenörün ekranındaki mikrofon ikonu bundan HABERSİZ kalmasın diye
+    // LiveKit çağrısına EK olarak kendi WS kanalımıza da bildiriyoruz.
+    expect(roomActions.selfMute).toHaveBeenCalledWith(false); // "artık açık" = muted:false
   });
 
-  it('Mikrofon: antrenör susturduysa (room.muted) devre dışı, tıklamak setMicrophoneEnabled çağırmaz', async () => {
+  it('Mikrofon: antrenör susturduysa (room.muted) devre dışı, tıklamak ne setMicrophoneEnabled ne selfMute çağırır', async () => {
     roomState.muted = true;
     await joinRoom();
     const micBtn = screen.getByTitle('Antrenör seni sustur');
     expect(micBtn).toBeDisabled();
     fireEvent.click(micBtn);
     expect(livekitMocks.setMicrophoneEnabled).not.toHaveBeenCalled();
+    expect(roomActions.selfMute).not.toHaveBeenCalled();
   });
 
   it('"Söz Hakkı İstiyor": turuncuyken tıklayınca raiseHand(true), maviyken tıklayınca raiseHand(false)', async () => {

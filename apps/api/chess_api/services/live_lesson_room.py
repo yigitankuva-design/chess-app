@@ -31,6 +31,15 @@ class LiveLessonRoom:
         # öğrencinin şu an susturulmuş olduğunu tutan durum — önceden YOKTU,
         # susturma tek yönlü ("hep True") olduğu için gerek duyulmamıştı.
         self.muted_child_ids: set[int] = set()
+        # Madde 2026-09-17 (self_mute düzeltmesi): `muted_child_ids` hem
+        # antrenörün SUSTURMASINDAN hem sporcunun KENDİ tercihinden
+        # (self_mute) güncelleniyor — host ekranı için TEK bir görünen
+        # durum olarak doğru, ama "antrenör bunu ZATEN susturmuş, sporcu
+        # kendi kendine açamaz" kuralını uygulamak için HANGİ öğrencinin
+        # antrenör TARAFINDAN susturulduğunu AYRICA bilmek gerekiyor —
+        # sadece bu alt-küme self_mute'un "aç" isteğini yoksaymak için
+        # kontrol edilir.
+        self.coach_muted_child_ids: set[int] = set()
         # Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): turuncu↔
         # mavi durumdaki öğrenciler (istek YAPMIŞ ya da şu an konuşuyor —
         # ikisi de aynı mavi renk, ayrım aşağıdaki iki alanla tutuluyor).

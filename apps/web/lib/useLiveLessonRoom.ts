@@ -173,6 +173,10 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
     resetBoard: (fen?: string) => send({ type: 'reset_board', fen }),
     muteChild: (childId: number, muted = true) => send({ type: 'mute', child_id: childId, muted }),
     muteAll: () => send({ type: 'mute_all' }),
+    /** Madde 2026-09-17: sporcu KENDİ mikrofonunu (LiveKit istemci
+     *  çağrısıyla) aç/kapa yaptığında, bunu antrenöre de göstermek için
+     *  ayrıca gönderilir — LiveKit çağrısının YERİNE değil, YANINA. */
+    selfMute: (muted: boolean) => send({ type: 'self_mute', muted }),
     raiseHand: (raised: boolean) => send({ type: 'raise_hand', raised }),
     grantFloor: (childId: number) => send({ type: 'grant_floor', child_id: childId }),
     sendArrows: (arrows: BoardArrow[]) => send({ type: 'arrows', arrows }),

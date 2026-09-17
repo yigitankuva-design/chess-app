@@ -159,7 +159,7 @@ describe('useLiveLessonRoom', () => {
     expect(result.current.chatMessages).toEqual([{ from: 'Antrenör', text: 'Merhaba', isHost: true }]);
   });
 
-  it('sendMove/grantControl/revokeControl/muteChild/muteAll/raiseHand/grantFloor/sendChat doğru JSON gönderir', () => {
+  it('sendMove/grantControl/revokeControl/muteChild/muteAll/selfMute/raiseHand/grantFloor/sendChat doğru JSON gönderir', () => {
     const { result } = renderHook(() => useLiveLessonRoom(1, true));
     act(() => latestSocket().emitOpen());
 
@@ -170,6 +170,7 @@ describe('useLiveLessonRoom', () => {
     act(() => result.current.muteChild(5));
     act(() => result.current.muteChild(5, false));
     act(() => result.current.muteAll());
+    act(() => result.current.selfMute(true));
     act(() => result.current.raiseHand(true));
     act(() => result.current.raiseHand(false));
     act(() => result.current.grantFloor(11));
@@ -184,6 +185,7 @@ describe('useLiveLessonRoom', () => {
       { type: 'mute', child_id: 5, muted: true },
       { type: 'mute', child_id: 5, muted: false },
       { type: 'mute_all' },
+      { type: 'self_mute', muted: true },
       { type: 'raise_hand', raised: true },
       { type: 'raise_hand', raised: false },
       { type: 'grant_floor', child_id: 11 },

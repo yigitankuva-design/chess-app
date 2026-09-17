@@ -465,6 +465,68 @@ async def test_mute_all_tum_katilimcilari_susturur():
 
 
 @pytest.mark.asyncio
+async def test_self_mute_antrenor_ekranina_yansir_livekite_tekrar_istek_atmaz(monkeypatch):
+    """Madde 2026-09-17: sporcu kendi mikrofonunu (LiveKit istemci
+    çağrısıyla, bu mesajdan BAĞIMSIZ) açıp kapattığında, antrenörün
+    `muted_child_ids`'i de güncellensin diye bu bilgi mesajı gönderilir.
+    Backend `mute_child_microphone`'u TEKRAR ÇAĞIRMAMALI (LiveKit'e zaten
+    sporcunun kendi tarafında gidildi) — sadece durumu senkronlar."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    calls = []
+
+    async def _track_call(*a, **kw):
+        calls.append((a, kw))
+        return True
+
+    monkeypatch.setattr(live_lessons_router, "mute_child_microphone", _track_call)
+
+    room = get_room(999012, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1 = _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+
+    await _handle_ws_message(999012, room, False, 11, {"type": "self_mute", "muted": True})
+    assert room.muted_child_ids == {11}
+    assert host.messages[-1] == {"type": "mute_state_changed", "muted_child_ids": [11]}
+    assert calls == []  # LiveKit'e tekrar istek ATILMADI
+
+    await _handle_ws_message(999012, room, False, 11, {"type": "self_mute", "muted": False})
+    assert room.muted_child_ids == set()
+    assert host.messages[-1] == {"type": "mute_state_changed", "muted_child_ids": []}
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_self_mute_antrenor_susturmusken_sporcu_kendi_kendine_acamaz():
+    """Antrenörün susturması sporcunun kendi isteğinden ÖNCE gelir —
+    arayüzde buton zaten devre dışı, bu backend tarafındaki İKİNCİ
+    savunma (ör. değiştirilmiş bir istemci mesajı atlatmaya çalışırsa)."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999013, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1 = _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+    # Antrenör GERÇEKTEN susturmuş (mute handler'ı üzerinden — coach_muted_
+    # child_ids de doğru dolsun diye).
+    await _handle_ws_message(999013, room, True, None, {"type": "mute", "child_id": 11, "muted": True})
+    host.messages.clear()
+
+    await _handle_ws_message(999013, room, False, 11, {"type": "self_mute", "muted": False})
+    assert room.muted_child_ids == {11}  # değişmedi
+    assert host.messages == []  # hiçbir şey yayınlanmadı
+
+    # AMA sporcu kendi kendine SUSTURABİLİR (True yönü hep serbest) ve
+    # antrenör açtıktan SONRA sporcu kendi self_mute(False) isteği işler.
+    await _handle_ws_message(999013, room, True, None, {"type": "mute", "child_id": 11, "muted": False})
+    host.messages.clear()
+    await _handle_ws_message(999013, room, False, 11, {"type": "self_mute", "muted": False})
+    assert room.muted_child_ids == set()
+    assert host.messages == [{"type": "mute_state_changed", "muted_child_ids": []}]
+
+
+@pytest.mark.asyncio
 async def test_raise_hand_acar_kapatir_sadece_hosta_ve_kendine_gider():
     """Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): sporcu
     kendi ikonuna basınca (raised=True) turuncudan maviye geçer, host'a
