@@ -284,17 +284,8 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px_280px] items-start">
         <div className="space-y-4 min-w-0">
-          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {cameraTracks.map((t) => (
-                <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
-                  className="rounded-lg w-full aspect-video object-cover" />
-              ))}
-            </div>
-          )}
-
           {hostViewMode === 'analiz' && (
             <div className="flex items-stretch gap-2">
               {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} />}
@@ -377,8 +368,6 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               )}
             </div>
           )}
-
-          <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
         </div>
 
         <div className="space-y-4">
@@ -485,6 +474,17 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               <ScreenToggle label="Değerlendirme" on={screen.evalBar} onClick={() => toggleScreen('evalBar')} />
             </div>
           </div>
+        </div>
+
+        <div className="space-y-4">
+          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
+            <div className="grid grid-cols-1 gap-2">
+              {cameraTracks.map((t) => (
+                <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
+                  className="rounded-lg w-full aspect-video object-cover" />
+              ))}
+            </div>
+          )}
 
           {usage && (
             <div className="t-card p-3 space-y-1">
@@ -499,6 +499,8 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               </p>
             </div>
           )}
+
+          <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
         </div>
       </div>
 
