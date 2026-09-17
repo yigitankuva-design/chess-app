@@ -40,6 +40,10 @@ interface Props {
   activeVariant?: ActiveVariant | null;
   /** Bir varyant hamlesine tıklanınca çağrılır. */
   onSelectVariantPly?: (atPly: number, index: number) => void;
+  /** Madde 2026-09-18: `MatchAnalysisSummary`'de bir hata kategorisi
+   *  (Kusurlu hamle/Hata/Vahim hata) seçiliyken, o kategorideki ply'lar —
+   *  normal ?/?? rengi yerine MOR vurgulanır. */
+  highlightedPlies?: Set<number>;
 }
 
 interface MovePair {
@@ -77,10 +81,11 @@ interface MenuState {
  * Sonrasını Sil" seçenekli bir menü açılır.
  */
 const QUALITY_COLOR = { bad: '#f87171', good: '#7dd3fc' } as const;
+const HIGHLIGHT_COLOR = '#c084fc';
 
 export function NotationCard({
   moves, currentPly, onSelectPly, hideNotation, onToggleHideNotation, onDeleteAfter,
-  evalByPly, evalProgress, activeVariant, onSelectVariantPly,
+  evalByPly, evalProgress, activeVariant, onSelectVariantPly, highlightedPlies,
 }: Props) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
@@ -152,7 +157,8 @@ export function NotationCard({
     const after = evalByPly?.[m.ply];
     const quality = before && after ? classifyMoveQuality(before, after, mover) : null;
     const label = toTurkishSan(m.san) + (quality?.symbol ?? '');
-    const qualityColor = quality ? QUALITY_COLOR[quality.tone] : undefined;
+    const highlighted = highlightedPlies?.has(m.ply) ?? false;
+    const qualityColor = highlighted ? HIGHLIGHT_COLOR : quality ? QUALITY_COLOR[quality.tone] : undefined;
     if (!clickable) {
       return (
         <span className="px-0.5" style={qualityColor ? { color: qualityColor, fontWeight: 700 } : undefined}

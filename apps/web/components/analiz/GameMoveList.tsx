@@ -18,6 +18,8 @@ interface Props {
   /** Madde 2026-09-06 (7): tek seviyeli varyant görüntüleme/seçim (bkz. NotationCard). */
   activeVariant?: ActiveVariant | null;
   onSelectVariantPly?: (atPly: number, index: number) => void;
+  /** Madde 2026-09-18: seçili hata kategorisindeki ply'lar — mor vurgulanır. */
+  highlightedPlies?: Set<number>;
 }
 
 type IconType = 'flip' | 'first' | 'prev' | 'next' | 'last';
@@ -75,7 +77,7 @@ const NavBtn = ({
  */
 export function GameMoveList({
   moves, currentPly, onSelectPly, onFlipBoard, hideNotation, onToggleHideNotation, onDeleteAfter,
-  evalByPly, evalProgress, activeVariant, onSelectVariantPly,
+  evalByPly, evalProgress, activeVariant, onSelectVariantPly, highlightedPlies,
 }: Props) {
   const total = moves.length;
 
@@ -98,6 +100,7 @@ export function GameMoveList({
         onDeleteAfter={onDeleteAfter}
         evalByPly={evalByPly} evalProgress={evalProgress}
         activeVariant={activeVariant} onSelectVariantPly={onSelectVariantPly}
+        highlightedPlies={highlightedPlies}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Chess } from 'chess.js';
 import { useTabGuard } from '@/lib/settings/useTabGuard';
@@ -60,6 +60,10 @@ function HatalarimPageInner() {
   const analysis = useServerGameAnalysis(gameId || null, !!gameId);
   const [index, setIndex] = useState(0);
   const [wrongMsg, setWrongMsg] = useState<string | null>(null);
+  // Madde 2026-09-18: "en iyi hamleyi göster" ipucu — her yeni soruda kapalı
+  // başlar, soru bir İPUCU sonrası da AKTİF kalır (sporcu hâlâ kendisi
+  // oynayabilir) — "Çözümü Göster"ten farkı budur.
+  const [showBestMove, setShowBestMove] = useState(false);
 
   // undefined = yükleniyor, null = analiz bulunamadı/hazır değil.
   const mistakes: MistakeMoveInfo[] | null | undefined =
@@ -79,6 +83,14 @@ function HatalarimPageInner() {
       moves: [san],
     };
   }, [current]);
+
+  useEffect(() => { setShowBestMove(false); }, [current?.ply]);
+
+  function goToNext() {
+    setWrongMsg(null);
+    setShowBestMove(false);
+    setIndex((i) => i + 1);
+  }
 
   if (!gameId) {
     return <main id="main-content" className="px-4 pt-5 max-w-lg mx-auto"><p className="text-sm t-muted">Geçersiz bağlantı.</p></main>;
@@ -127,6 +139,51 @@ function HatalarimPageInner() {
             onWrong={(msg) => setWrongMsg(msg)}
           />
           {wrongMsg && <p className="text-sm text-center" style={{ color: '#f43f5e' }}>{wrongMsg}</p>}
+
+          {(() => {
+            const mover = current.fenBefore.split(' ')[1] === 'b' ? 'Siyah' : 'Beyaz';
+            const moveNumber = Math.ceil(current.ply / 2);
+            const playedLabel = `${moveNumber}${current.ply % 2 === 0 ? '...' : '.'} ${current.playedSan} oynandı`;
+            return (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border-2 px-3 py-2 text-center text-sm font-semibold"
+                    style={{ borderColor: 'var(--t-border)' }}>
+                    Hamle {mover === 'Beyaz' ? 'Beyazda' : 'Siyahta'}
+                  </div>
+                  <div className="rounded-lg border-2 px-3 py-2 text-center text-sm font-semibold"
+                    style={{ borderColor: 'var(--t-border)', color: '#ef4444' }}>
+                    {playedLabel}
+                  </div>
+                </div>
+
+                <button type="button" onClick={() => setShowBestMove(true)}
+                  className="w-full rounded-lg border-2 px-3 py-2 text-sm font-semibold"
+                  style={{ borderColor: '#3b82f6', color: '#3b82f6' }}>
+                  {showBestMove ? `En iyi hamle: ${exercise.moves[0]}` : `${mover}ın en iyi hamlesini göster`}
+                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => {
+                    // Sporcunun çözümü OKUYABİLMESİ için kısa bir gecikmeyle
+                    // sonraki soruya geçilir — "en iyi hamleyi göster"
+                    // ipucundan farkı, bu soruyu doğrudan TAMAMLAR.
+                    setShowBestMove(true);
+                    setTimeout(goToNext, 1200);
+                  }}
+                    className="rounded-lg px-3 py-2 text-sm font-bold"
+                    style={{ background: '#22c55e', color: '#0a0a0a' }}>
+                    Çözümü Göster
+                  </button>
+                  <button type="button" onClick={goToNext}
+                    className="rounded-lg px-3 py-2 text-sm font-bold"
+                    style={{ background: '#22c55e', color: '#0a0a0a' }}>
+                    Bu Soruyu Geç
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </main>

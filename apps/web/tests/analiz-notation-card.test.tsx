@@ -156,6 +156,23 @@ describe('NotationCard — hamle kalitesi işaretleri (madde 2026-09-05 (3))', (
     setup({ evalProgress: { done: 1, total: 3 } });
     expect(screen.getByText('Hamleler değerlendiriliyor... (1/3)')).toBeInTheDocument();
   });
+});
+
+describe('NotationCard — hata kategorisi mor vurgusu (madde 2026-09-18)', () => {
+  const EVAL_BY_PLY = { 0: { cp: 0, mate: null }, 1: { cp: -250, mate: null }, 2: { cp: -500, mate: null } };
+
+  it('highlightedPlies\'taki ply MOR gösterilir — normal ?/! rengini EZER', () => {
+    setup({ evalByPly: EVAL_BY_PLY, highlightedPlies: new Set([1]) });
+    // ply1 normalde kırmızı ("?") olurdu — mor vurgu bunun YERİNE geçer.
+    expect(screen.getByText('e4?')).toHaveStyle({ color: '#c084fc' });
+    // ply2 vurgulanmadı — normal rengi (açık mavi "!") KORUNUR.
+    expect(screen.getByText('e5!')).toHaveStyle({ color: '#7dd3fc' });
+  });
+
+  it('highlightedPlies verilmezse davranış etkilenmez (geriye dönük uyumlu)', () => {
+    setup({ evalByPly: EVAL_BY_PLY });
+    expect(screen.getByText('e4?')).not.toHaveStyle({ color: '#c084fc' });
+  });
 
   it('evalProgress tamamlanınca ilerleme satırı kaybolur', () => {
     setup({ evalProgress: { done: 3, total: 3 } });

@@ -47,3 +47,9 @@ it('pano erişimi başarısız olursa sessizce yoksayılır, hata FIRLATMAZ', as
   render(<GameExportBlock sanMoves={[]} currentFen={START_FEN} />);
   expect(() => fireEvent.click(screen.getByText('FEN Kopyala'))).not.toThrow();
 });
+
+it('madde 2026-09-18: her iki düğmenin de belirgin bir çerçevesi vardır', () => {
+  render(<GameExportBlock sanMoves={[]} currentFen={START_FEN} />);
+  expect(screen.getByText('PGN Kopyala')).toHaveStyle({ border: '2px solid var(--t-accent)' });
+  expect(screen.getByText('FEN Kopyala')).toHaveStyle({ border: '2px solid var(--t-accent)' });
+});

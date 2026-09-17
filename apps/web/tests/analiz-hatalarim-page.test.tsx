@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 /**
  * Madde 2026-09-14 (3c) / 2026-09-15 (sunucu analiz motoru): "Hatalarını
@@ -123,4 +123,62 @@ it('FEN + UCI\'den geçersiz bir hamle üretilirse (bozuk veri) o egzersiz atlan
   ]);
   render(<HatalarimPage />);
   await waitFor(() => screen.getByText('Tüm hatalarını gözden geçirdin!'));
+});
+
+describe('madde 2026-09-18: tahtanın altındaki 4 kart', () => {
+  // ply=19 → 10. hamle, tek sayı → beyazın hamlesi (görseldeki "10. h5 oynandı" ile birebir).
+  const MISTAKES = [
+    { ply: 19, fenBefore: START_FEN, playedSan: 'h5', bestMove: 'e2e4', cpLoss: 150, severity: 'mistake' },
+  ];
+
+  it('"Hamle Beyazda", oynanan hamle ve ipucu düğmesi doğru bilgiyle gösterilir', async () => {
+    mockAnalysis('done', MISTAKES);
+    render(<HatalarimPage />);
+    await waitFor(() => screen.getByText('1/1'));
+
+    expect(screen.getByText('Hamle Beyazda')).toBeInTheDocument();
+    expect(screen.getByText('10. h5 oynandı')).toBeInTheDocument();
+    expect(screen.getByText("Beyazın en iyi hamlesini göster")).toBeInTheDocument();
+    expect(screen.getByText('Çözümü Göster')).toBeInTheDocument();
+    expect(screen.getByText('Bu Soruyu Geç')).toBeInTheDocument();
+  });
+
+  it('"en iyi hamlesini göster" tıklanınca çözüm görünür AMA soru AKTİF kalır', async () => {
+    mockAnalysis('done', MISTAKES);
+    render(<HatalarimPage />);
+    await waitFor(() => screen.getByText('1/1'));
+
+    fireEvent.click(screen.getByText('Beyazın en iyi hamlesini göster'));
+    expect(screen.getByText('En iyi hamle: e4')).toBeInTheDocument();
+    // Soru hâlâ aktif — solver ekranda, ilerleme değişmedi.
+    expect(screen.getByTestId('move-piece-solver')).toBeInTheDocument();
+    expect(screen.getByText('1/1')).toBeInTheDocument();
+  });
+
+  it('"Bu Soruyu Geç" cevabı göstermeden doğrudan sonraki soruya/bitişe geçer', async () => {
+    mockAnalysis('done', MISTAKES);
+    render(<HatalarimPage />);
+    await waitFor(() => screen.getByText('1/1'));
+
+    fireEvent.click(screen.getByText('Bu Soruyu Geç'));
+    expect(screen.queryByText(/En iyi hamle:/)).not.toBeInTheDocument();
+    await waitFor(() => screen.getByText('Tüm hatalarını gözden geçirdin!'));
+  });
+
+  it('"Çözümü Göster" çözümü gösterir, kısa süre sonra sonraki soruya/bitişe geçer', async () => {
+    vi.useFakeTimers();
+    try {
+      mockAnalysis('done', MISTAKES);
+      render(<HatalarimPage />);
+      await vi.waitFor(() => expect(screen.getByText('1/1')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText('Çözümü Göster'));
+      expect(screen.getByText('En iyi hamle: e4')).toBeInTheDocument();
+
+      await act(async () => { vi.advanceTimersByTime(1200); });
+      await vi.waitFor(() => expect(screen.getByText('Tüm hatalarını gözden geçirdin!')).toBeInTheDocument());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

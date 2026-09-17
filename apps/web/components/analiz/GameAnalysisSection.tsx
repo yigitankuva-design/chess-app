@@ -12,6 +12,7 @@ import { MatchAnalysisSummary } from '@/components/play/MatchAnalysisSummary';
 import { useServerGameAnalysis } from '@/lib/chess/useServerGameAnalysis';
 import { applyMove, currentFen, stepView } from '@/lib/chess/variantMoves';
 import type { PlayedMove, ActiveVariant } from '@/lib/chess/variantMoves';
+import type { MistakeMoveInfo } from '@/lib/chess/gameSummary';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -39,6 +40,9 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
   const [activeVariant, setActiveVariant] = useState<ActiveVariant | null>(null);
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
   const [hideNotation, setHideNotation] = useState(false);
+  // Madde 2026-09-18: "Kusurlu hamle"/"Hata"/"Vahim hata" etiketine
+  // tıklanınca o kategorideki hamleler notasyon listesinde mor vurgulanır.
+  const [selectedSeverity, setSelectedSeverity] = useState<MistakeMoveInfo['severity'] | null>(null);
 
   useEffect(() => {
     listMyGames().then((g) => {
@@ -55,6 +59,7 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
     setPly(0);
     setActiveVariant(null);
     setOrientation('white');
+    setSelectedSeverity(null);
     const moves = await getGameMoves(g.id);
     setHistory(moves.map((m) => ({ ply: m.ply, san: m.san, fenAfter: m.fen_after })));
   }
@@ -65,6 +70,13 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
    *  istemci motoru artık bu ekranda hiç çalışmıyor. */
   const analysis = useServerGameAnalysis(selectedGame?.id ?? null, !!selectedGame);
   const evalProgress = analysis.status === 'done' ? { done: 1, total: 1 } : { done: 0, total: 1 };
+  const highlightedPlies = selectedSeverity
+    ? new Set(
+        (analysis.summary?.mistakeMoves ?? [])
+          .filter((m) => m.severity === selectedSeverity)
+          .map((m) => m.ply),
+      )
+    : undefined;
 
   if (!selectedGame) {
     return <GameHistoryList games={games} loading={loading} onSelect={selectGame} />;
@@ -140,6 +152,7 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
         onDeleteAfter={handleDeleteAfter}
         evalByPly={analysis.evalByPly} evalProgress={evalProgress}
         activeVariant={activeVariant} onSelectVariantPly={selectVariantPly}
+        highlightedPlies={highlightedPlies}
       />
       {/* Madde 2026-09-14 (3d): görünür PGN/FEN kopyalama. */}
       <GameExportBlock sanMoves={history.map((m) => m.san)} currentFen={fen} startFen={baseFen} />
@@ -154,6 +167,8 @@ export function GameAnalysisSection({ initialGameId = null }: Props = {}) {
             window.location.href = `/analiz/hatalarim?gameId=${selectedGame.id}`;
           }
         }}
+        selectedSeverity={selectedSeverity}
+        onSelectSeverity={setSelectedSeverity}
       />
     </div>
   );

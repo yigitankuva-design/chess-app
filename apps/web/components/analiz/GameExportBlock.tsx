@@ -53,12 +53,12 @@ export function GameExportBlock({ sanMoves, currentFen, startFen }: Props) {
     <div className="flex gap-2">
       <button type="button" onClick={copyPgn}
         className="flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors"
-        style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-1)' }}>
+        style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-1)', border: '2px solid var(--t-accent)' }}>
         {copiedPgn ? 'PGN Kopyalandı ✓' : 'PGN Kopyala'}
       </button>
       <button type="button" onClick={copyFen}
         className="flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors"
-        style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-1)' }}>
+        style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-1)', border: '2px solid var(--t-accent)' }}>
         {copiedFen ? 'FEN Kopyalandı ✓' : 'FEN Kopyala'}
       </button>
     </div>

@@ -233,6 +233,25 @@ describe('GameAnalysisSection — madde 2026-09-15 (sunucu analiz motoru): özet
     expect(await screen.findByTestId('analysis-loading')).toBeInTheDocument();
   });
 
+  it('madde 2026-09-18: "Kusurlu hamle"ye tıklayınca o ply notasyonda mor vurgulanır, tekrar tıklayınca kalkar', async () => {
+    listMyGames.mockResolvedValue(GAMES);
+    getGameMoves.mockResolvedValue(MOVES);
+    mockAnalysis('done', {
+      inaccuracies: 1, mistakes: 0, blunders: 0, acpl: 20, accuracy: 90,
+      mistakeMoves: [{ ply: 1, fenBefore: START_FEN, playedSan: 'e4', bestMove: 'd2d4', cpLoss: 60, severity: 'inaccuracy' }],
+    });
+    render(<GameAnalysisSection />);
+    fireEvent.click(await screen.findByText('Bot · Düzey 4'));
+    await screen.findByTestId('analysis-summary');
+
+    fireEvent.click(screen.getByText('Kusurlu hamle'));
+    expect(screen.getByText('e4')).toHaveStyle({ color: '#c084fc' });
+    expect(screen.getByText('e5')).not.toHaveStyle({ color: '#c084fc' });
+
+    fireEvent.click(screen.getByText('Kusurlu hamle'));
+    expect(screen.getByText('e4')).not.toHaveStyle({ color: '#c084fc' });
+  });
+
   it('"PGN Kopyala"/"FEN Kopyala" görünür bloğu render edilir', async () => {
     listMyGames.mockResolvedValue(GAMES);
     getGameMoves.mockResolvedValue(MOVES);
