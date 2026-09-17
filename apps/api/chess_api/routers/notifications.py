@@ -2,7 +2,7 @@
 (NotificationType) 6 değeri kapsar, ama şu an sadece POST /homework
 `odev` türünde satır üretiyor (bkz. chess_api.routers.homework).
 """
-from datetime import datetime, date as date_type
+from datetime import datetime, timedelta, date as date_type
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,7 +63,17 @@ async def list_notifications(
 
     items = []
     unread = 0
+    now = datetime.utcnow()
     for n in rows:
+        # Madde 2026-09-17 (madde 1): online_ders bildirimi antrenör derse
+        # katılsın ya da katılmasın, dersin PLANLANAN süresi bitene kadar
+        # görünür — lesson.status'e DEĞİL scheduled_at+duration_minutes
+        # hesabına bakılır. Süre dolunca liste ve unread sayacından düşer.
+        if n.type == NotificationType.online_ders and n.live_lesson_id in live_lessons:
+            lesson = live_lessons[n.live_lesson_id]
+            cutoff = lesson.scheduled_at + timedelta(minutes=lesson.duration_minutes)
+            if now > cutoff:
+                continue
         if n.visited_at is None:
             unread += 1
         target = None

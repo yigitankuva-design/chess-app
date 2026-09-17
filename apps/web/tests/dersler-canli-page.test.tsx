@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   createLiveLesson: vi.fn(),
   startLiveLesson: vi.fn(),
   updateLiveLesson: vi.fn(),
+  deleteLiveLesson: vi.fn(),
   fetchMyClasses: vi.fn(),
 }));
 vi.mock('@/lib/liveLessonsApi', () => ({
@@ -21,6 +22,7 @@ vi.mock('@/lib/liveLessonsApi', () => ({
   createLiveLesson: mocks.createLiveLesson,
   startLiveLesson: mocks.startLiveLesson,
   updateLiveLesson: mocks.updateLiveLesson,
+  deleteLiveLesson: mocks.deleteLiveLesson,
 }));
 vi.mock('@/lib/homeworkApi', () => ({ fetchMyClasses: mocks.fetchMyClasses }));
 
@@ -122,4 +124,44 @@ it('madde 2026-09-16 (Antrenör Ekranı, Faz A / madde 5): "Derslerim" başlığ
   await waitFor(() => expect(mocks.updateLiveLesson).toHaveBeenCalledWith(5, 'Yeni Başlık'));
   await waitFor(() => screen.getByText('Yeni Başlık'));
   expect(screen.queryByText('Eski Başlık')).not.toBeInTheDocument();
+});
+
+it('madde 2026-09-17 (madde 7): "scheduled" dersi silme ikonu onayla siler, listeden kaldırır', async () => {
+  vi.stubGlobal('confirm', vi.fn(() => true));
+  mocks.fetchMyLiveLessons.mockResolvedValue([{
+    id: 6, class_id: 1, title: 'Mükerrer Ders', scheduled_at: '2026-09-20T10:00:00',
+    duration_minutes: 30, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
+  }]);
+  mocks.deleteLiveLesson.mockResolvedValue(true);
+  render(<DerslerCanliPage />);
+  await waitFor(() => screen.getByText('Mükerrer Ders'));
+
+  fireEvent.click(screen.getByTitle('Dersi sil'));
+  expect(window.confirm).toHaveBeenCalled();
+  await waitFor(() => expect(mocks.deleteLiveLesson).toHaveBeenCalledWith(6));
+  await waitFor(() => expect(screen.queryByText('Mükerrer Ders')).not.toBeInTheDocument());
+});
+
+it('madde 2026-09-17 (madde 7): onaylamayınca silinmez', async () => {
+  vi.stubGlobal('confirm', vi.fn(() => false));
+  mocks.fetchMyLiveLessons.mockResolvedValue([{
+    id: 7, class_id: 1, title: 'Kalacak Ders', scheduled_at: '2026-09-20T10:00:00',
+    duration_minutes: 30, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
+  }]);
+  render(<DerslerCanliPage />);
+  await waitFor(() => screen.getByText('Kalacak Ders'));
+
+  fireEvent.click(screen.getByTitle('Dersi sil'));
+  expect(mocks.deleteLiveLesson).not.toHaveBeenCalled();
+  expect(screen.getByText('Kalacak Ders')).toBeInTheDocument();
+});
+
+it('madde 2026-09-17 (madde 7): "live" ders için silme ikonu hiç gösterilmez', async () => {
+  mocks.fetchMyLiveLessons.mockResolvedValue([{
+    id: 8, class_id: 1, title: 'Devam Eden Ders', scheduled_at: '2026-09-20T10:00:00',
+    duration_minutes: 30, join_mode: 'auto', status: 'live', started_at: '2026-09-20T10:00:00', ended_at: null,
+  }]);
+  render(<DerslerCanliPage />);
+  await waitFor(() => screen.getByText('Devam Eden Ders'));
+  expect(screen.queryByTitle('Dersi sil')).not.toBeInTheDocument();
 });

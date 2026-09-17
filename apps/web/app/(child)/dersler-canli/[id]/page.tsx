@@ -126,18 +126,21 @@ export default function DerslerCanliJoinPage() {
   );
 }
 
-function HandIcon() {
+/** Madde 2026-09-17 (madde 2): sporcu ekranındaki 3 durum ikonu %70
+ *  büyütüldü — `size` verilmezse eski davranış (16px) AYNEN korunur,
+ *  bu yüzden diğer kullanım yerleri (varsa) etkilenmez. */
+function HandIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M8 11V6a2 2 0 1 1 4 0v5M12 11V4a2 2 0 1 1 4 0v7M16 12V7a2 2 0 1 1 4 0v6c0 4-2 8-7 8h-1c-3.2 0-5-1.3-7-4.2l-1.6-2.4a1.6 1.6 0 0 1 2.5-1.9L8 12"
         strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function MicIcon({ muted }: { muted: boolean }) {
+function MicIcon({ muted, size = 16 }: { muted: boolean; size?: number }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="9" y="2" width="6" height="11" rx="3" />
       <path d="M5 10v1a7 7 0 0 0 14 0v-1" strokeLinecap="round" />
       <line x1="12" y1="18" x2="12" y2="22" strokeLinecap="round" />
@@ -146,9 +149,9 @@ function MicIcon({ muted }: { muted: boolean }) {
   );
 }
 
-function QuestionIcon() {
+function QuestionIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M9 9a3 3 0 1 1 4 2.83c-.6.24-1 .85-1 1.5V14" strokeLinecap="round" strokeLinejoin="round" />
       <line x1="12" y1="17.5" x2="12" y2="17.51" strokeLinecap="round" />
       <circle cx="12" cy="12" r="9" />
@@ -209,7 +212,7 @@ function StudentRoomInner({ lessonId, ownChildId, onLeft }: {
 
   return (
     <main className="px-4 pt-6 pb-12 max-w-xl md:landscape:max-w-4xl mx-auto">
-      <div className="flex items-center justify-between gap-2">
+      <div className="t-card flex items-center justify-between gap-2 p-3" style={{ border: '2px solid var(--t-accent)' }}>
         <h1 className="text-xl font-extrabold t-premium">Canlı Ders</h1>
         <button type="button" onClick={handleLeave}
           className="rounded-lg px-3 py-2 text-xs font-bold flex-shrink-0"
@@ -232,22 +235,22 @@ function StudentRoomInner({ lessonId, ownChildId, onLeft }: {
 
         <div className="flex flex-col gap-3 md:landscape:w-64 md:landscape:flex-shrink-0">
           <div className="flex flex-row md:landscape:flex-col justify-center gap-3">
-            <div className="order-1 md:landscape:order-3 rounded-full p-2.5"
+            <div className="order-1 md:landscape:order-3 rounded-full p-[17px]"
               title={canMove ? 'Taş oynatma yetkin var' : 'Taş oynatma yetkin yok'}
               style={{ background: canMove ? '#22c55e' : '#ef4444', color: '#fff' }}>
-              <HandIcon />
+              <HandIcon size={27} />
             </div>
             <button type="button" onClick={toggleMic} disabled={room.muted}
-              className="order-2 rounded-full p-2.5 disabled:cursor-not-allowed"
+              className="order-2 rounded-full p-[17px] disabled:cursor-not-allowed"
               title={room.muted ? 'Antrenör seni sustur' : (micOn ? 'Mikrofonu kapat' : 'Mikrofonu aç')}
               style={{ background: micOn ? '#22c55e' : '#ef4444', color: '#fff' }}>
-              <MicIcon muted={!micOn} />
+              <MicIcon muted={!micOn} size={27} />
             </button>
             <button type="button" onClick={() => room.raiseHand(!handRaised)}
-              className={`order-3 md:landscape:order-1 rounded-full p-2.5 ${handRaised ? 'request-floor-blink' : ''}`}
+              className={`order-3 md:landscape:order-1 rounded-full p-[17px] ${handRaised ? 'request-floor-blink' : ''}`}
               title={handRaised ? 'Söz hakkı isteğini iptal et' : 'Söz hakkı iste'}
               style={{ background: handRaised ? '#2563eb' : '#f97316', color: '#fff' }}>
-              <QuestionIcon />
+              <QuestionIcon size={27} />
             </button>
           </div>
 

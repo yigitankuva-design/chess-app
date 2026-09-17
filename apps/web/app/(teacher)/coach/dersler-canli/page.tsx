@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { fetchMyClasses } from '@/lib/homeworkApi';
 import type { TeacherClass } from '@/lib/homeworkApi';
-import { fetchMyLiveLessons, createLiveLesson, startLiveLesson, updateLiveLesson } from '@/lib/liveLessonsApi';
+import {
+  fetchMyLiveLessons, createLiveLesson, startLiveLesson, updateLiveLesson, deleteLiveLesson,
+} from '@/lib/liveLessonsApi';
 import type { LiveLesson, LiveLessonJoinMode } from '@/lib/liveLessonsApi';
 
 /**
@@ -105,6 +107,16 @@ export default function DerslerCanliPage() {
     const info = await startLiveLesson(lessonId);
     if (!info) { setErr('Ders başlatılamadı.'); return; }
     router.push(`/coach/dersler-canli/${lessonId}`);
+  }
+
+  /** Madde 2026-09-17 (madde 7): yanlışlıkla/mükerrer oluşturulmuş dersi
+   *  temizleme — devam eden ("live") ders backend tarafından reddedilir,
+   *  bu yüzden düğme zaten sadece diğer durumlarda gösterilir. */
+  async function handleDelete(lessonId: number) {
+    if (!confirm('Bu dersi silmek istiyor musun?')) return;
+    const ok = await deleteLiveLesson(lessonId);
+    if (!ok) { setErr('Ders silinemedi.'); return; }
+    setLessons((prev) => prev?.filter((l) => l.id !== lessonId) ?? prev);
   }
 
   return (
@@ -218,6 +230,15 @@ export default function DerslerCanliPage() {
                       <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
+                  {l.status !== 'live' && (
+                    <button type="button" onClick={() => handleDelete(l.id)} title="Dersi sil"
+                      className="flex-shrink-0 opacity-60 hover:opacity-100" style={{ color: '#ef4444' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18" strokeLinecap="round" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               )}
               <p className="text-xs t-muted">

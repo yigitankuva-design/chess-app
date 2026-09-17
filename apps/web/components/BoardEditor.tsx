@@ -6,8 +6,12 @@ import {
 } from '@/lib/chess/boardSkin';
 import { PIECE_PALETTE, pieceKey, pieceTypeToFen } from '@/lib/chess/pieceCodes';
 import { useSettings } from '@/lib/settings/settings-context';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
+import type { AnnotationColor } from '@/lib/chess/useSquareAnnotations';
+import { useBoardArrows } from '@/lib/chess/useBoardArrows';
+import type { BoardArrow } from '@/lib/chess/useBoardArrows';
+import { arrowLine } from '@/lib/chess/arrowGeometry';
 
 const { ranks: EDITOR_RANKS, files: EDITOR_FILES_LABELS } = coordLabels('white');
 
@@ -91,18 +95,32 @@ interface Props {
    *  referansındaki düzen. Verilmezse (varsayılan 'side') eski davranış
    *  AYNEN korunur — diğer tüm kullanım yerleri etkilenmez (KURAL #3). */
   paletteLayout?: 'side' | 'split';
+  /** Madde 2026-09-17 (madde 5): antrenörün Konum Tahtası'nda çizdiği
+   *  ok/daire işaretlerini canlı derste sporcuya yayınlamak için —
+   *  `ChessBoard.tsx`'teki AYNI prop deseni. Verilmezse davranış
+   *  ETKİLENMEZ. */
+  onArrowsChange?: (arrows: BoardArrow[]) => void;
+  onMarksChange?: (marks: Record<string, AnnotationColor>) => void;
 }
 
 const WHITE_PALETTE = PIECE_PALETTE.filter((p) => p.code === p.code.toUpperCase());
 const BLACK_PALETTE = PIECE_PALETTE.filter((p) => p.code !== p.code.toUpperCase());
 
-export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout = 'side' }: Props) {
+export function BoardEditor({
+  fen, turn, onChange, onTurnChange, paletteLayout = 'side', onArrowsChange, onMarksChange,
+}: Props) {
   const { settings } = useSettings();
   const boardColors = getBoardColors(settings.board);
   const pieceSet = useMemo(() => getPieceSet(settings.board.pieces), [settings.board.pieces]);
 
   const [selectedPaletteKey, setSelectedPaletteKey] = useState<string | null>(null);
-  const { squareStyles: annotationStyles, onSquareRightClick } = useSquareAnnotations(fen);
+  const { squareStyles: annotationStyles, marks, onSquareRightClick } = useSquareAnnotations(fen);
+  // Madde 2026-09-17 (madde 5): oklar kendimiz çiziyoruz — ChessBoard.tsx'
+  // teki AYNI desen (kütüphane At hamlesini "L" çizer).
+  const { arrows, onPointerDown, onPointerUp, guardSquarePaint } = useBoardArrows(fen);
+
+  useEffect(() => { onArrowsChange?.(arrows); }, [arrows, onArrowsChange]);
+  useEffect(() => { onMarksChange?.(marks); }, [marks, onMarksChange]);
 
   function togglePaletteSelection(code: string) {
     setSelectedPaletteKey((prev) => (prev === code ? null : code));
@@ -168,7 +186,10 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
         onPieceDrop: handleDrop,
         onPieceClick: handlePieceClick,
         onSquareClick: handleSquareClick,
-        onSquareRightClick,
+        onSquareRightClick: guardSquarePaint(onSquareRightClick),
+        // Kütüphanenin oklari KAPALI: At hamlesini L cizdigi icin
+        // (ChessBoard.tsx'teki AYNI gerekce) ok cizimini kendi katmanimiz yapar.
+        allowDrawingArrows: false,
         squareStyles: annotationStyles,
       }}
     >
@@ -214,8 +235,42 @@ export function BoardEditor({ fen, turn, onChange, onTurnChange, paletteLayout =
                   </span>
                 ))}
               </div>
-              <div className="flex-1">
+              <div
+                className="flex-1 relative"
+                onPointerDown={onPointerDown}
+                onPointerUp={onPointerUp}
+                onContextMenu={(e) => e.preventDefault()}
+              >
                 <Chessboard />
+                {/* Ok katmani: taslarin USTUNDE ama tiklamayi ENGELLEMEZ —
+                    ChessBoard.tsx'teki AYNI katman (madde 2026-09-17, madde 5). */}
+                {arrows.length > 0 && (
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 8 8"
+                    preserveAspectRatio="none"
+                    className="absolute inset-0 w-full h-full"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    <defs>
+                      {arrows.map((a, i) => (
+                        <marker key={i} id={`be-ok-${i}`} markerWidth="3.2" markerHeight="3.2"
+                          refX="2.2" refY="1.6" orient="auto">
+                          <path d="M0,0 L3.2,1.6 L0,3.2 z" fill={a.color} />
+                        </marker>
+                      ))}
+                    </defs>
+                    {arrows.map((a, i) => {
+                      const l = arrowLine(a.from, a.to, 'white');
+                      if (!l) return null;
+                      return (
+                        <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+                          stroke={a.color} strokeWidth={0.16} strokeLinecap="round"
+                          markerEnd={`url(#be-ok-${i})`} />
+                      );
+                    })}
+                  </svg>
+                )}
               </div>
             </div>
             <div className="flex" style={{ paddingLeft: 18 }}>

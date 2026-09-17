@@ -13,14 +13,17 @@ websocket bağlantısı yerine `_handle_ws_message`'ı DOĞRUDAN çağırarak
 test edilir — test_live_two_moves.py'nin uyardığı AYNI kısıt: TestClient
 tek portal iş parçacığı kullandığı için iki eşzamanlı bağlantı kilitlenir.
 """
+from datetime import datetime, timedelta
 import jwt as pyjwt
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from chess_api.routers import live_lessons as live_lessons_router
 from chess_api.routers.live_lessons import CreateLiveLessonRequest
 from chess_api.services.live_lesson_room import get_room, _reset_for_tests as _reset_rooms
+from chess_api.models import LiveLesson, LiveLessonParticipant, Notification
 
 TEST_LK_SECRET = "test-secret-32-bytes-minimum-xx"
 
@@ -717,3 +720,117 @@ async def test_sohbet_mesaji_herkese_yayinlanir():
     await _handle_ws_message(999003, room, True, None, {"type": "chat_message", "text": "Merhaba!"})
     assert host.messages[-1] == {"type": "chat_message", "from": "Antrenör", "text": "Merhaba!", "is_host": True}
     assert s1.messages[-1] == host.messages[-1]
+
+
+# Madde 2026-09-17 (9 maddelik düzenleme turu) ---------------------------
+
+@pytest.mark.asyncio
+async def test_madde1_sure_dolunca_bildirim_listeden_duser_antrenor_baslatmasa_bile(client, db):
+    """Antrenör dersi hiç başlatmasa bile (status hâlâ 'scheduled'),
+    scheduled_at + duration_minutes geçince bildirim listeden düşer —
+    lesson.status'e DEĞİL bu hesaba bakılıyor olmalı."""
+    ttok, _ = await _teacher(client, "hocam1@t.com")
+    class_id, _, child_tokens = await _class_with_students(client, ttok, n=1)
+    lesson_id = await _create_lesson(client, ttok, class_id)
+
+    r = await client.get("/notifications", headers=auth(child_tokens[0]))
+    assert len([i for i in r.json()["items"] if i["type"] == "online_ders"]) == 1
+
+    lesson = await db.get(LiveLesson, lesson_id)
+    assert lesson.status.value == "scheduled"  # antrenör hiç başlatmadı
+    lesson.scheduled_at = datetime.utcnow() - timedelta(minutes=lesson.duration_minutes + 1)
+    await db.commit()
+
+    r2 = await client.get("/notifications", headers=auth(child_tokens[0]))
+    assert [i for i in r2.json()["items"] if i["type"] == "online_ders"] == []
+
+
+@pytest.mark.asyncio
+async def test_madde1_sure_dolmadan_bildirim_hala_gorunur(client, db):
+    ttok, _ = await _teacher(client, "hocam2@t.com")
+    class_id, _, child_tokens = await _class_with_students(client, ttok, n=1)
+    lesson_id = await _create_lesson(client, ttok, class_id)
+
+    lesson = await db.get(LiveLesson, lesson_id)
+    lesson.scheduled_at = datetime.utcnow() - timedelta(minutes=lesson.duration_minutes - 1)
+    await db.commit()
+
+    r = await client.get("/notifications", headers=auth(child_tokens[0]))
+    assert len([i for i in r.json()["items"] if i["type"] == "online_ders"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_madde6_kota_tahmini_baslamis_bitmis_ve_devam_eden_dersleri_toplar(client, db):
+    ttok, _ = await _teacher(client, "hocam3@t.com")
+    class_id, _, _ = await _class_with_students(client, ttok, n=1)
+    lesson_id = await _create_lesson(client, ttok, class_id)
+
+    now = datetime.utcnow()
+    lesson = await db.get(LiveLesson, lesson_id)
+    lesson.started_at = now - timedelta(minutes=10)
+    lesson.ended_at = now - timedelta(minutes=4)  # bitmiş: tam 6 dk
+    await db.commit()
+
+    lesson_id2 = await _create_lesson(client, ttok, class_id)
+    lesson2 = await db.get(LiveLesson, lesson_id2)
+    lesson2.started_at = now - timedelta(minutes=3)  # hâlâ devam ediyor: ~3 dk (now'a kadar)
+    await db.commit()
+
+    r = await client.get("/live-lessons/usage-estimate", headers=auth(ttok))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["free_tier_minutes"] == 5000
+    assert 8 <= body["estimated_minutes"] <= 10  # ~6 + ~3, saniye farkına tolerans
+
+
+@pytest.mark.asyncio
+async def test_madde7_antrenor_kendi_dersini_siler_bagli_kayitlar_da_silinir(client, db):
+    ttok, _ = await _teacher(client, "hocam4@t.com")
+    class_id, _, child_tokens = await _class_with_students(client, ttok, n=1)
+    lesson_id = await _create_lesson(client, ttok, class_id)
+    await client.post(f"/live-lessons/{lesson_id}/join-request", headers=auth(child_tokens[0]))
+
+    assert (await db.execute(
+        select(Notification).where(Notification.live_lesson_id == lesson_id)
+    )).scalar_one_or_none() is not None
+    assert (await db.execute(
+        select(LiveLessonParticipant).where(LiveLessonParticipant.lesson_id == lesson_id)
+    )).scalar_one_or_none() is not None
+
+    r = await client.delete(f"/live-lessons/{lesson_id}", headers=auth(ttok))
+    assert r.status_code == 200, r.text
+
+    assert await db.get(LiveLesson, lesson_id) is None
+    assert (await db.execute(
+        select(Notification).where(Notification.live_lesson_id == lesson_id)
+    )).scalar_one_or_none() is None
+    assert (await db.execute(
+        select(LiveLessonParticipant).where(LiveLessonParticipant.lesson_id == lesson_id)
+    )).scalar_one_or_none() is None
+
+    r2 = await client.get("/notifications", headers=auth(child_tokens[0]))
+    assert [i for i in r2.json()["items"] if i["type"] == "online_ders"] == []
+
+
+@pytest.mark.asyncio
+async def test_madde7_baskasinin_dersi_silinemez(client, db):
+    ttok1, _ = await _teacher(client, "hocam5a@t.com")
+    ttok2, _ = await _teacher(client, "hocam5b@t.com")
+    class_id, _, _ = await _class_with_students(client, ttok1, n=1)
+    lesson_id = await _create_lesson(client, ttok1, class_id)
+
+    r = await client.delete(f"/live-lessons/{lesson_id}", headers=auth(ttok2))
+    assert r.status_code == 403
+    assert await db.get(LiveLesson, lesson_id) is not None
+
+
+@pytest.mark.asyncio
+async def test_madde7_devam_eden_ders_silinemez(client, db):
+    ttok, _ = await _teacher(client, "hocam6@t.com")
+    class_id, _, _ = await _class_with_students(client, ttok, n=1)
+    lesson_id = await _create_lesson(client, ttok, class_id)
+    await client.post(f"/live-lessons/{lesson_id}/start", headers=auth(ttok))
+
+    r = await client.delete(f"/live-lessons/{lesson_id}", headers=auth(ttok))
+    assert r.status_code == 400
+    assert await db.get(LiveLesson, lesson_id) is not None

@@ -12,10 +12,10 @@ taşıyor, bkz. services/play_profile.py — o yüzden host'u child_profile_id
 ile DEĞİL, role='teacher' + coach_user_id eşleşmesiyle ayırt ediyoruz).
 """
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from chess_api.database import get_db, get_session_factory
@@ -140,6 +140,36 @@ async def _get_lesson_for_coach(lesson_id: int, current: User, db: AsyncSession)
     return lesson
 
 
+@router.get("/usage-estimate")
+async def get_usage_estimate(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-17 (madde 6): LiveKit Cloud'un ücretsiz "Build"
+    planında gerçek kullanım/kota API'si YOK (Analytics API sadece Scale
+    plan ve üzeri) — bu yüzden KENDİ verimizle KABA bir tahmin sunuyoruz.
+    Kota LiveKit HESABI genelinde (tek bir antrenöre özel değil), bu
+    yüzden TÜM antrenörlerin dersleri toplanır. Oda açık kaldığı süreye
+    dayanır — LiveKit'in gerçek faturalandırdığı KATILIMCI-başı bağlantı
+    dakikasından farklıdır, bu yüzden gerçek kullanım muhtemelen daha
+    yüksektir (frontend'de bu netlikle belirtilir). ÖNEMLİ: bu route
+    `/{lesson_id}`'den ÖNCE tanımlı olmalı — aksi halde "usage-estimate"
+    metni bir lesson_id gibi eşleşmeye çalışılıp 422 döner."""
+    _ensure_teacher(current)
+    now = datetime.utcnow()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    rows = (await db.execute(
+        select(LiveLesson.started_at, LiveLesson.ended_at).where(
+            LiveLesson.started_at.is_not(None), LiveLesson.started_at >= month_start,
+        )
+    )).all()
+    total_minutes = sum(
+        ((ended_at or now) - started_at).total_seconds() / 60
+        for started_at, ended_at in rows
+    )
+    return {"estimated_minutes": round(total_minutes), "free_tier_minutes": 5000}
+
+
 @router.get("/{lesson_id}")
 async def get_live_lesson(
     lesson_id: int,
@@ -172,6 +202,29 @@ async def update_live_lesson(
     await db.commit()
     await db.refresh(lesson)
     return _serialize(lesson)
+
+
+@router.delete("/{lesson_id}")
+async def delete_live_lesson(
+    lesson_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-17 (madde 7): "Derslerim" listesinden yanlışlıkla
+    oluşturulmuş/mükerrer bir dersi silme. Devam eden ("live") bir ders
+    silinemez — önce bitirilmeli. ORM cascade tanımlı olmadığı için
+    bağlı Notification/LiveLessonParticipant satırları burada ELLE
+    silinir — aksi halde madde 1'in bildirim filtresine rağmen silinen
+    bir derse ait "hayalet" bildirim kalırdı."""
+    _ensure_teacher(current)
+    lesson = await _get_lesson_for_coach(lesson_id, current, db)
+    if lesson.status == LiveLessonStatus.live:
+        raise HTTPException(400, "Devam eden bir ders silinemez — önce bitir")
+    await db.execute(delete(Notification).where(Notification.live_lesson_id == lesson_id))
+    await db.execute(delete(LiveLessonParticipant).where(LiveLessonParticipant.lesson_id == lesson_id))
+    await db.delete(lesson)
+    await db.commit()
+    return {"ok": True}
 
 
 @router.post("/{lesson_id}/start")

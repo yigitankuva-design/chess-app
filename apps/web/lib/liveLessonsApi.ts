@@ -111,6 +111,37 @@ export async function endLiveLesson(lessonId: number): Promise<boolean> {
   }
 }
 
+/** Madde 2026-09-17 (madde 7): "Derslerim" listesinden yanlışlıkla/
+ *  mükerrer oluşturulmuş bir dersi silme — devam eden ("live") ders
+ *  backend tarafından reddedilir. */
+export async function deleteLiveLesson(lessonId: number): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/live-lessons/${lessonId}`, {
+      method: 'DELETE', headers: authHeaders(),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+export interface LiveLessonUsageEstimate {
+  estimated_minutes: number;
+  free_tier_minutes: number;
+}
+
+/** Madde 2026-09-17 (madde 6): LiveKit'in ücretsiz kotasına göre KABA bir
+ *  tahmin — gerçek API bu planda erişilemiyor (bkz. backend docstring'i). */
+export async function fetchLiveLessonUsageEstimate(): Promise<LiveLessonUsageEstimate | null> {
+  try {
+    const r = await fetch(`${API_BASE}/live-lessons/usage-estimate`, { headers: authHeaders() });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 export type JoinRequestResult =
   | { status: 'pending' }
   | { status: 'admitted'; token: string; livekit_url: string }

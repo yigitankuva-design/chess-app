@@ -236,4 +236,21 @@ describe('madde 2026-09-17 (Sporcu Ekranı): 3 durum ikonu', () => {
     expect(board).toHaveAttribute('data-arrows', JSON.stringify([{ from: 'e2', to: 'e4', color: 'green' }]));
     expect(board).toHaveAttribute('data-marks', JSON.stringify({ e4: 'red' }));
   });
+
+  it('madde 2026-09-17 (madde 2): 3 ikon %70 büyütülmüş (16px → 27px)', async () => {
+    await joinRoom();
+    const hand = screen.getByTitle('Taş oynatma yetkin yok').querySelector('svg');
+    const mic = screen.getByTitle('Mikrofonu aç').querySelector('svg');
+    const question = screen.getByTitle('Söz hakkı iste').querySelector('svg');
+    for (const svg of [hand, mic, question]) {
+      expect(svg).toHaveAttribute('width', '27');
+      expect(svg).toHaveAttribute('height', '27');
+    }
+  });
+
+  it('madde 2026-09-17 (madde 3): "Canlı Ders" başlık satırı belirgin çerçeveli', async () => {
+    await joinRoom();
+    const header = screen.getByText('Canlı Ders').closest('div');
+    expect(header).toHaveStyle({ border: '2px solid var(--t-accent)' });
+  });
 });

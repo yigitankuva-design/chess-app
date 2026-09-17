@@ -2,11 +2,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Square } from 'chess.js';
-import { LiveKitRoom, RoomAudioRenderer, VideoTrack, useTracks } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer, VideoTrack, useTracks, useLocalParticipant } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth-context';
 import { ChessBoard } from '@/components/ChessBoard';
-import { BoardEditor } from '@/components/BoardEditor';
+import { BoardEditor, EMPTY_FEN, START_FEN } from '@/components/BoardEditor';
 import { EvalBar } from '@/components/analiz/EvalBar';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { scoreForWhite } from '@/lib/chess/analysisFormat';
@@ -18,7 +18,9 @@ import type { CustomTabDetail } from '@/lib/customTabsApi';
 import { isAntrenorCalismalarTab } from '@/lib/customTabs/calismalarTab';
 import {
   fetchLiveLesson, startLiveLesson, endLiveLesson, admitLiveLessonParticipant,
+  fetchLiveLessonUsageEstimate,
 } from '@/lib/liveLessonsApi';
+import type { LiveLessonUsageEstimate } from '@/lib/liveLessonsApi';
 import type { LiveLesson, LiveKitConnectionInfo } from '@/lib/liveLessonsApi';
 import { fetchClassStudents } from '@/lib/homeworkApi';
 import type { ClassStudent } from '@/lib/homeworkApi';
@@ -153,6 +155,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
 }) {
   const room = useLiveLessonRoom(lessonId, true);
   const cameraTracks = useTracks([Track.Source.Camera]);
+  const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const [screen, setScreen] = useState<ScreenSettings>({ camera: true, notation: true, evalBar: true });
   const [panelHeight, setPanelHeight] = useState<number | null>(null);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
@@ -167,8 +170,27 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   const [calismalarTab, setCalismalarTab] = useState<CustomTabDetail | null | undefined>(undefined);
   const [selectedAltKonuId, setSelectedAltKonuId] = useState<number | null>(null);
   const [odevGonderSectionId, setOdevGonderSectionId] = useState<number | null>(null);
+  // Madde 2026-09-17 (madde 6): LiveKit'in ücretsiz kotasına göre KABA
+  // tahmin — gerçek API bu planda erişilemiyor (bkz. backend endpoint'i).
+  const [usage, setUsage] = useState<LiveLessonUsageEstimate | null>(null);
 
   useEffect(() => () => { engineRef.current?.destroy(); }, []);
+
+  useEffect(() => { fetchLiveLessonUsageEstimate().then(setUsage); }, []);
+
+  // Madde 2026-09-17 (madde 4): "Anlatım Ortamları" birbirinden bağımsız —
+  // mod değişince tahta o modun kendi varsayılanına sıfırlanır, bir önceki
+  // moddaki konum diğerine TAŞINMAZ.
+  function switchMode(mode: HostViewMode) {
+    if (mode === hostViewMode) return;
+    setHostViewMode(mode);
+    if (mode === 'anlatim') {
+      room.resetBoard(EMPTY_FEN);
+      setSelectedAltKonuId(null);
+    } else {
+      room.resetBoard(START_FEN);
+    }
+  }
 
   useEffect(() => {
     if (hostViewMode !== 'anlatim' || calismalarTab !== undefined) return;
@@ -247,11 +269,19 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
     <main className="px-4 pt-6 pb-12 max-w-[1600px] mx-auto space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-extrabold t-premium truncate">{lesson.title}</h1>
-        <button type="button" onClick={handleEnd}
-          className="rounded-lg px-3 py-2 text-xs font-bold flex-shrink-0"
-          style={{ background: '#ef4444', color: '#fff' }}>
-          Dersi Sonlandır
-        </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button type="button" onClick={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
+            title={isMicrophoneEnabled ? 'Mikrofonumu kapat' : 'Mikrofonumu aç'}
+            className="rounded-full p-1.5"
+            style={{ background: isMicrophoneEnabled ? '#22c55e' : '#ef4444', color: '#fff' }}>
+            <MicIcon muted={!isMicrophoneEnabled} />
+          </button>
+          <button type="button" onClick={handleEnd}
+            className="rounded-lg px-3 py-2 text-xs font-bold"
+            style={{ background: '#ef4444', color: '#fff' }}>
+            Dersi Sonlandır
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
@@ -270,6 +300,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} />}
               <div style={{ width: '100%' }}>
                 <ChessBoard fen={room.fen} interactive onPieceDrop={handleDrop} boardOrientation="white"
+                  hideNotation={!screen.notation}
                   onArrowsChange={room.sendArrows} onMarksChange={room.sendMarks} />
               </div>
             </div>
@@ -282,6 +313,8 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               onChange={(fen) => room.resetBoard(fen)}
               onTurnChange={() => {}}
               paletteLayout="split"
+              onArrowsChange={room.sendArrows}
+              onMarksChange={room.sendMarks}
             />
           )}
 
@@ -291,7 +324,8 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
                   tahtayı günceller" — bu, ANA (sol sütun) tahta; salt-okunur
                   (Anlatım Tahtası'nda taş oynanmaz, sadece hazır konumlar
                   gösterilir). */}
-              <ChessBoard fen={room.fen} boardOrientation="white" />
+              <ChessBoard fen={room.fen} boardOrientation="white" hideNotation={!screen.notation}
+                onArrowsChange={room.sendArrows} onMarksChange={room.sendMarks} />
 
               <div className="t-card p-3 space-y-3">
                 {calismalarTab === undefined && <p className="text-xs t-muted">Çalışmalar sekmesi yükleniyor…</p>}
@@ -352,11 +386,11 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
             <p className="text-xs font-bold uppercase tracking-widest t-muted">Anlatım Ortamı</p>
             <div className="grid grid-cols-2 gap-1.5">
               <ModeButton label="Analiz Tahtası" active={hostViewMode === 'analiz'}
-                onClick={() => setHostViewMode('analiz')} />
+                onClick={() => switchMode('analiz')} />
               <ModeButton label="Konum Tahtası" active={hostViewMode === 'konum'}
-                onClick={() => setHostViewMode('konum')} />
+                onClick={() => switchMode('konum')} />
               <ModeButton label="Anlatım Tahtası" active={hostViewMode === 'anlatim'}
-                onClick={() => setHostViewMode('anlatim')} />
+                onClick={() => switchMode('anlatim')} />
             </div>
           </div>
 
@@ -451,6 +485,20 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               <ScreenToggle label="Değerlendirme" on={screen.evalBar} onClick={() => toggleScreen('evalBar')} />
             </div>
           </div>
+
+          {usage && (
+            <div className="t-card p-3 space-y-1">
+              <p className="text-xs font-bold uppercase tracking-widest t-muted">LiveKit Kotası (tahmini)</p>
+              <p className="text-sm font-bold">
+                Bu ay ~{usage.estimated_minutes} dk / {usage.free_tier_minutes} dk
+              </p>
+              <p className="text-[11px] t-muted">
+                Bu sayı odanın açık kaldığı süreye dayanır — LiveKit gerçek kotayı
+                katılımcı başına bağlantı dakikası sayar, bu yüzden birden çok
+                sporcu katılan derslerde gerçek kullanım bu rakamdan yüksek olabilir.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

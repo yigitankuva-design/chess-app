@@ -21,20 +21,28 @@ const mocks = vi.hoisted(() => ({
   endLiveLesson: vi.fn(),
   admitLiveLessonParticipant: vi.fn(),
   fetchClassStudents: vi.fn(),
+  fetchLiveLessonUsageEstimate: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('@/lib/liveLessonsApi', () => ({
   fetchLiveLesson: mocks.fetchLiveLesson,
   startLiveLesson: mocks.startLiveLesson,
   endLiveLesson: mocks.endLiveLesson,
   admitLiveLessonParticipant: mocks.admitLiveLessonParticipant,
+  fetchLiveLessonUsageEstimate: mocks.fetchLiveLessonUsageEstimate,
 }));
 vi.mock('@/lib/homeworkApi', () => ({ fetchClassStudents: mocks.fetchClassStudents }));
 
+const localParticipantMocks = vi.hoisted(() => ({
+  setMicrophoneEnabled: vi.fn(),
+}));
 vi.mock('@livekit/components-react', () => ({
   LiveKitRoom: ({ children }: { children: React.ReactNode }) => <div data-testid="livekit-room">{children}</div>,
   RoomAudioRenderer: () => null,
   VideoTrack: () => null,
   useTracks: () => [],
+  useLocalParticipant: () => ({
+    localParticipant: localParticipantMocks, isMicrophoneEnabled: true,
+  }),
 }));
 vi.mock('livekit-client', () => ({ Track: { Source: { Camera: 'camera' } } }));
 
@@ -55,7 +63,13 @@ vi.mock('@/lib/useLiveLessonRoom', () => ({
   useLiveLessonRoom: () => ({ ...roomState, ...roomActions }),
 }));
 
-vi.mock('@/components/ChessBoard', () => ({ ChessBoard: () => <div data-testid="chess-board" /> }));
+const chessBoardMocks = vi.hoisted(() => ({ lastProps: null as Record<string, unknown> | null }));
+vi.mock('@/components/ChessBoard', () => ({
+  ChessBoard: (props: Record<string, unknown>) => {
+    chessBoardMocks.lastProps = props;
+    return <div data-testid="chess-board" />;
+  },
+}));
 
 // Madde 2026-09-16 (Antrenör Ekranı, Faz B): Konum Tahtası + değerlendirme
 // çubuğu için gerçek Stockfish worker'ı/gerçek BoardEditor'ı test etmiyoruz
@@ -70,12 +84,18 @@ vi.mock('@/lib/chess/stockfish', () => ({
   StockfishEngine: vi.fn().mockImplementation(() => stockfishMocks),
 }));
 
+const boardEditorMocks = vi.hoisted(() => ({ lastProps: null as Record<string, unknown> | null }));
 vi.mock('@/components/BoardEditor', () => ({
-  BoardEditor: ({ onChange }: { onChange: (fen: string) => void }) => (
-    <div data-testid="board-editor">
-      <button type="button" onClick={() => onChange('KONUM_FEN')}>BoardEditor değişti</button>
-    </div>
-  ),
+  BoardEditor: (props: { onChange: (fen: string) => void }) => {
+    boardEditorMocks.lastProps = props;
+    return (
+      <div data-testid="board-editor">
+        <button type="button" onClick={() => props.onChange('KONUM_FEN')}>BoardEditor değişti</button>
+      </div>
+    );
+  },
+  START_FEN: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  EMPTY_FEN: '8/8/8/8/8/8/8/8 w - - 0 1',
 }));
 
 // Madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası" — Düzey/Konu/
@@ -150,6 +170,7 @@ beforeEach(() => {
   mocks.fetchLiveLesson.mockResolvedValue(LESSON);
   mocks.fetchClassStudents.mockResolvedValue(STUDENTS);
   mocks.startLiveLesson.mockResolvedValue({ token: 't', livekit_url: 'wss://x' });
+  mocks.fetchLiveLessonUsageEstimate.mockResolvedValue(null);
   customTabsMocks.listCustomTabs.mockResolvedValue([
     { id: 9, order_index: 1, label: 'Çalışmalar', emoji: '⭐', kind: 'antrenor_calismalar' },
   ]);
@@ -286,6 +307,93 @@ it('Ekran Ayarları "Değerlendirme" kapatılınca çubuk kaybolur', async () =>
   expect(screen.queryByRole('meter', { name: 'Değerlendirme çubuğu' })).not.toBeInTheDocument();
 });
 
+it('madde 2026-09-17 (madde 8): Notasyon kapatılınca ChessBoard\'a hideNotation=true geçer', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTestId('chess-board'));
+  expect(chessBoardMocks.lastProps?.hideNotation).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Notasyon' }));
+  await waitFor(() => expect(chessBoardMocks.lastProps?.hideNotation).toBe(true));
+});
+
+it('madde 2026-09-17 (madde 5a): Analiz Tahtası\'nda ChessBoard\'a onArrowsChange/onMarksChange geçer', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTestId('chess-board'));
+  expect(chessBoardMocks.lastProps?.onArrowsChange).toBe(roomActions.sendArrows);
+  expect(chessBoardMocks.lastProps?.onMarksChange).toBe(roomActions.sendMarks);
+});
+
+it('madde 2026-09-17 (madde 5): "Konum Tahtası"nda BoardEditor\'a onArrowsChange/onMarksChange geçer', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTestId('chess-board'));
+  fireEvent.click(screen.getByText('Konum Tahtası'));
+  expect(boardEditorMocks.lastProps?.onArrowsChange).toBe(roomActions.sendArrows);
+  expect(boardEditorMocks.lastProps?.onMarksChange).toBe(roomActions.sendMarks);
+});
+
+describe('madde 2026-09-17 (madde 4): Anlatım Ortamları birbirinden bağımsız', () => {
+  it('Analiz\'den Konum\'a geçince resetBoard START_FEN ile çağrılır', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Konum Tahtası'));
+    expect(roomActions.resetBoard).toHaveBeenCalledWith(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    );
+  });
+
+  it('Anlatım\'a geçince resetBoard EMPTY_FEN ile çağrılır', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    expect(roomActions.resetBoard).toHaveBeenCalledWith('8/8/8/8/8/8/8/8 w - - 0 1');
+    await waitFor(() => screen.getByTestId('accordion'));
+  });
+
+  it('aynı moda tekrar basınca resetBoard TEKRAR çağrılmaz', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    roomActions.resetBoard.mockClear();
+    fireEvent.click(screen.getByText('Analiz Tahtası'));
+    expect(roomActions.resetBoard).not.toHaveBeenCalled();
+  });
+
+  it('Anlatım\'dan çıkıp tekrar girince önceki Alt Konu seçimi sıfırlanır', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByTestId('accordion'));
+    fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
+    expect(screen.getByTestId('alt-konu-walkthrough')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Analiz Tahtası'));
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByTestId('accordion'));
+    expect(screen.queryByTestId('alt-konu-walkthrough')).not.toBeInTheDocument();
+  });
+});
+
+describe('madde 2026-09-17 (madde 9): antrenörün kendi mikrofonu', () => {
+  it('mikrofon ikonu tıklanınca setMicrophoneEnabled çağrılır', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByText('Açılış Dersi'));
+    fireEvent.click(screen.getByTitle('Mikrofonumu kapat'));
+    expect(localParticipantMocks.setMicrophoneEnabled).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('madde 2026-09-17 (madde 6): LiveKit kotası (tahmini)', () => {
+  it('tahmin geldiğinde kart gösterilir', async () => {
+    mocks.fetchLiveLessonUsageEstimate.mockResolvedValue({ estimated_minutes: 120, free_tier_minutes: 5000 });
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByText(/120 dk \/ 5000 dk/));
+  });
+
+  it('tahmin gelmezse kart hiç gösterilmez', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    expect(screen.queryByText('LiveKit Kotası (tahmini)')).not.toBeInTheDocument();
+  });
+});
+
 describe('madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası"', () => {
   it('moda geçince Çalışmalar sekmesi çekilir, Düzey/Konu ağacı (accordion) görünür', async () => {
     render(<DerslerCanliHostPage />);
@@ -297,6 +405,9 @@ describe('madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası"', () 
     // Bu modda ana tahta salt-okunur olarak KALIR (adım geçişleri onu günceller).
     expect(screen.getByTestId('chess-board')).toBeInTheDocument();
     expect(screen.queryByTestId('board-editor')).not.toBeInTheDocument();
+    // Madde 2026-09-17 (madde 5a): Anlatım Tahtası'nda da ok/işaret yayını çalışır.
+    expect(chessBoardMocks.lastProps?.onArrowsChange).toBe(roomActions.sendArrows);
+    expect(chessBoardMocks.lastProps?.onMarksChange).toBe(roomActions.sendMarks);
   });
 
   it('Çalışmalar sekmesi bulunamazsa uyarı gösterir', async () => {
