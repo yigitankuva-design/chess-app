@@ -35,6 +35,11 @@ class User(Base):
     # NULLABLE (mevcut hesaplarda boş; KURAL #3) — boşsa sabit 🎓 rozeti
     # gösterilmeye devam eder.
     photo_data_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Madde 2026-09-17 (Canlı Ders Oluştur sayfası): antrenörün "Canlı
+    # Dersler" kartına yüklediği MARKA/logo görseli — photo_data_url
+    # (kişisel kimlik fotoğrafı) ile KARIŞTIRILMASIN, ayrı bir kavram.
+    # AYNI desen (data:image/...;base64,..., dosya depolama YOK).
+    live_lesson_logo_data_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Madde 2026-09-09 (Üyelik Girişi Yenileme, AŞAMA 1): yeni "Kayıt Ol"
     # formunun eklediği alanlar — hepsi NULLABLE (mevcut hesaplarda boş;

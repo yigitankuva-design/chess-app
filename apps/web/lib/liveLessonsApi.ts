@@ -142,6 +142,42 @@ export async function fetchLiveLessonUsageEstimate(): Promise<LiveLessonUsageEst
   }
 }
 
+/** Madde 2026-09-17 (Canlı Ders Oluştur sayfası): antrenörün "Canlı
+ *  Dersler" kartına yüklediği logo — `/teacher/me/photo` (kişisel
+ *  kimlik fotoğrafı) ile AYNI desen, ama AYRI bir alan. */
+export async function fetchLiveLessonLogo(): Promise<string | null> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/me/live-lesson-logo`, { headers: authHeaders() });
+    if (!r.ok) return null;
+    const body = await r.json();
+    return body.logo_data_url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function uploadLiveLessonLogo(dataUrl: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/me/live-lesson-logo`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify({ logo_data_url: dataUrl }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteLiveLessonLogo(): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/teacher/me/live-lesson-logo`, {
+      method: 'DELETE', headers: authHeaders(),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 export type JoinRequestResult =
   | { status: 'pending' }
   | { status: 'admitted'; token: string; livekit_url: string }

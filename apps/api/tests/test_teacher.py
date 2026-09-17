@@ -397,3 +397,60 @@ async def test_teacher_photo_upload_requires_teacher_role(client):
         "/teacher/me/photo", headers=auth(parent_token), json={"photo_data_url": TINY_PNG},
     )
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_madde_canli_ders_logo_yukler_ve_geri_okur(client):
+    """Madde 2026-09-17 (Canlı Ders Oluştur sayfası): antrenör "Canlı
+    Dersler" kartına logo yükler — POST/GET /teacher/me/live-lesson-logo,
+    photo_data_url'dan (kişisel fotoğraf) TAMAMEN AYRI bir alan."""
+    token = await _teacher_signup(client, "logo_teach@t.com")
+
+    r = await client.get("/teacher/me/live-lesson-logo", headers=auth(token))
+    assert r.status_code == 200
+    assert r.json()["logo_data_url"] is None
+
+    r = await client.post(
+        "/teacher/me/live-lesson-logo", headers=auth(token), json={"logo_data_url": TINY_PNG},
+    )
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+
+    r = await client.get("/teacher/me/live-lesson-logo", headers=auth(token))
+    assert r.json()["logo_data_url"] == TINY_PNG
+
+
+@pytest.mark.asyncio
+async def test_madde_canli_ders_logo_silinince_null_doner(client):
+    token = await _teacher_signup(client, "logo_del@t.com")
+    await client.post(
+        "/teacher/me/live-lesson-logo", headers=auth(token), json={"logo_data_url": TINY_PNG},
+    )
+    r = await client.delete("/teacher/me/live-lesson-logo", headers=auth(token))
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+
+    r = await client.get("/teacher/me/live-lesson-logo", headers=auth(token))
+    assert r.json()["logo_data_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_madde_canli_ders_logo_gecersiz_data_uri_reddedilir(client):
+    token = await _teacher_signup(client, "logo_bad@t.com")
+    r = await client.post(
+        "/teacher/me/live-lesson-logo", headers=auth(token), json={"logo_data_url": "not-an-image"},
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_madde_canli_ders_logo_antrenor_olmayan_rol_reddedilir(client):
+    parent_token = await _parent_signup(client, "logo_parent@t.com")
+    r = await client.post(
+        "/teacher/me/live-lesson-logo", headers=auth(parent_token), json={"logo_data_url": TINY_PNG},
+    )
+    assert r.status_code == 403
+    r = await client.get("/teacher/me/live-lesson-logo", headers=auth(parent_token))
+    assert r.status_code == 403
+    r = await client.delete("/teacher/me/live-lesson-logo", headers=auth(parent_token))
+    assert r.status_code == 403

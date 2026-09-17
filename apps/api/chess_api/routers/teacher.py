@@ -349,6 +349,47 @@ async def upload_teacher_photo(
     return {"ok": True}
 
 
+@router.get("/me/live-lesson-logo")
+async def get_live_lesson_logo(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Madde 2026-09-17 (Canlı Ders Oluştur sayfası): antrenörün "Canlı
+    Dersler" kartına yüklediği logo — POST /teacher/me/photo ile AYNI
+    desen, ama AYRI alan (User.live_lesson_logo_data_url)."""
+    _ensure_teacher(current)
+    return {"logo_data_url": current.live_lesson_logo_data_url}
+
+
+class UploadLiveLessonLogoRequest(BaseModel):
+    logo_data_url: str = Field(min_length=1, max_length=400_000)
+
+
+@router.post("/me/live-lesson-logo")
+async def upload_live_lesson_logo(
+    payload: UploadLiveLessonLogoRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_teacher(current)
+    if not payload.logo_data_url.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="Invalid image data URL")
+    current.live_lesson_logo_data_url = payload.logo_data_url
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/me/live-lesson-logo")
+async def delete_live_lesson_logo(
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_teacher(current)
+    current.live_lesson_logo_data_url = None
+    await db.commit()
+    return {"ok": True}
+
+
 @router.get("/students/{child_id}/profile-summary")
 async def student_profile_summary(
     child_id: int,
