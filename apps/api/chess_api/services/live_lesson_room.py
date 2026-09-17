@@ -31,6 +31,16 @@ class LiveLessonRoom:
         # öğrencinin şu an susturulmuş olduğunu tutan durum — önceden YOKTU,
         # susturma tek yönlü ("hep True") olduğu için gerek duyulmamıştı.
         self.muted_child_ids: set[int] = set()
+        # Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): turuncu↔
+        # mavi durumdaki öğrenciler (istek YAPMIŞ ya da şu an konuşuyor —
+        # ikisi de aynı mavi renk, ayrım aşağıdaki iki alanla tutuluyor).
+        self.hand_raised_ids: set[int] = set()
+        # Şu an "söz hakkı verilmiş" (mikrofon kademesi aktif) öğrenci —
+        # None ise kimseye verilmemiş.
+        self.floor_child_id: int | None = None
+        # floor_child_id verilirken DİĞER öğrencilerin o ANKİ susturma
+        # durumunun anlık görüntüsü — tur bitince buna göre geri yüklenir.
+        self.pre_floor_muted_ids: set[int] | None = None
 
     def join_host(self, sender: Sender) -> int:
         conn_id = self._next_conn_id

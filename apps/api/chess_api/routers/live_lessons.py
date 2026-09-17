@@ -345,6 +345,37 @@ def _payload_from_token(token: str) -> dict | None:
         return None
 
 
+async def _end_floor(lesson_id: int, room) -> None:
+    """Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): mevcut söz
+    hakkı sahibinin turunu bitirir — diğer öğrencilerin mikrofonlarını
+    `grant_floor` ÖNCESİ durumlarına geri yükler. Hem sporcu kendi ikonuna
+    tekrar basınca (raise_hand, raised=False) hem antrenör başka birine
+    `grant_floor` çağırıp ÖNCEKİ sahibinin turunu örtük olarak bitirdiğinde
+    çağrılır."""
+    ending_child = room.floor_child_id
+    if ending_child is None:
+        return
+    prior_muted = room.pre_floor_muted_ids or set()
+    for cid in list(room.participants.keys()):
+        if cid == ending_child:
+            continue
+        should_be_muted = cid in prior_muted
+        if should_be_muted == (cid in room.muted_child_ids):
+            continue
+        await mute_child_microphone(lesson_id, cid, muted=should_be_muted)
+        if should_be_muted:
+            room.muted_child_ids.add(cid)
+        else:
+            room.muted_child_ids.discard(cid)
+        await room.send_to_child(cid, {"type": "muted", "muted": should_be_muted})
+    room.hand_raised_ids.discard(ending_child)
+    room.floor_child_id = None
+    room.pre_floor_muted_ids = None
+    await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
+    await room.send_to_host({"type": "hand_state_changed", "child_id": ending_child, "raised": False})
+    await room.send_to_child(ending_child, {"type": "hand_state_changed", "child_id": ending_child, "raised": False})
+
+
 async def _handle_ws_message(lesson_id: int, room, is_host: bool, child_id: int | None, msg: dict) -> None:
     """`live_lesson_ws`'in mesaj dispatch'i — AYRI fonksiyona çıkarıldı ki
     testler gerçek eşzamanlı WebSocket bağlantısı AÇMADAN (TestClient tek
@@ -397,11 +428,50 @@ async def _handle_ws_message(lesson_id: int, room, is_host: bool, child_id: int 
     elif mtype == "marks" and is_host:
         await room.broadcast({"type": "marks", "marks": msg.get("marks", {})})
     elif mtype == "raise_hand" and not is_host:
-        # Madde 2026-09-16: sporcunun genel "dikkatini istiyorum" isteği
-        # (taş yetkisi/ses açma/soru sorma gibi tüm nedenleri kapsar,
-        # bkz. Zafer'in netleştirmesi) — SADECE host'a gider, kalıcı
-        # kaydedilmez, host bildirime tıklayınca kendi ekranında kapanır.
-        await room.send_to_host({"type": "hand_raised", "child_id": child_id})
+        # Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2):
+        # sporcunun genel "dikkatini istiyorum" isteği (taş yetkisi/ses
+        # açma/soru sorma gibi tüm nedenleri kapsar). Turuncu↔mavi bir
+        # anahtar — sporcu KENDİSİ açar/kapatır (host zorla kapatamaz).
+        # Kapatma, eğer bu sporcu o an söz hakkı sahibiyse (floor_child_id)
+        # diğer öğrencilerin mikrofonlarını da geri yükler (_end_floor).
+        raised = bool(msg.get("raised", True))
+        if raised:
+            room.hand_raised_ids.add(child_id)
+            await room.send_to_host({"type": "hand_state_changed", "child_id": child_id, "raised": True})
+            await room.send_to_child(child_id, {"type": "hand_state_changed", "child_id": child_id, "raised": True})
+        elif room.floor_child_id == child_id:
+            await _end_floor(lesson_id, room)
+        else:
+            room.hand_raised_ids.discard(child_id)
+            await room.send_to_host({"type": "hand_state_changed", "child_id": child_id, "raised": False})
+            await room.send_to_child(child_id, {"type": "hand_state_changed", "child_id": child_id, "raised": False})
+    elif mtype == "grant_floor" and is_host:
+        # Antrenör KENDİ ekranında mavi (istek yapmış) bir sporcunun
+        # ikonuna tıklar: diğer TÜM bağlı sporcuların mikrofonu kapanır
+        # (önceki durumları pre_floor_muted_ids'e kaydedilir), söz isteyen
+        # sporcunun mikrofonu kapalıysa otomatik açılır, SADECE o sporcuya
+        # sesli anons tetikleyecek "floor_granted" gider.
+        target = msg.get("child_id")
+        if target in room.hand_raised_ids:
+            if room.floor_child_id is not None and room.floor_child_id != target:
+                await _end_floor(lesson_id, room)
+            room.floor_child_id = target
+            room.pre_floor_muted_ids = set(room.muted_child_ids) - {target}
+            for cid in list(room.participants.keys()):
+                if cid == target or cid in room.muted_child_ids:
+                    continue
+                await mute_child_microphone(lesson_id, cid, muted=True)
+                room.muted_child_ids.add(cid)
+                await room.send_to_child(cid, {"type": "muted", "muted": True})
+            if target in room.muted_child_ids:
+                await mute_child_microphone(lesson_id, target, muted=False)
+                room.muted_child_ids.discard(target)
+                await room.send_to_child(target, {"type": "muted", "muted": False})
+            await room.send_to_host({"type": "mute_state_changed", "muted_child_ids": list(room.muted_child_ids)})
+            async with get_session_factory()() as db:
+                c = await db.get(ChildProfile, target)
+                name = c.public_name if c else "Sporcu"
+            await room.send_to_child(target, {"type": "floor_granted", "name": name})
     elif mtype == "chat_message":
         text = (msg.get("text") or "").strip()[:500]
         if not text:
@@ -472,6 +542,7 @@ async def live_lesson_ws(websocket: WebSocket, lesson_id: int, token: str = Quer
         "type": "lesson_state", "fen": room.fen, "san_history": room.san_history,
         "controller_child_id": room.controller_child_id,
         "muted_child_ids": list(room.muted_child_ids),
+        "hand_raised_ids": list(room.hand_raised_ids),
     })
     if not is_host:
         await room.broadcast({"type": "participant_joined", "child_id": child_id})
@@ -485,6 +556,9 @@ async def live_lesson_ws(websocket: WebSocket, lesson_id: int, token: str = Quer
             room.leave_host(conn_id)
         else:
             room.leave_participant(child_id, conn_id)
+            if room.floor_child_id == child_id:
+                await _end_floor(lesson_id, room)
+            room.hand_raised_ids.discard(child_id)
             await room.broadcast({"type": "participant_left", "child_id": child_id})
     except Exception:
         logger.exception("live_lesson_ws error")

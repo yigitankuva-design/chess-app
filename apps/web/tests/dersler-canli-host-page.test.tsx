@@ -42,13 +42,13 @@ const roomState = vi.hoisted(() => ({
   connected: true, fen: 'FEN', sanHistory: [] as string[], controllerChildId: null as number | null,
   connectedChildIds: [11] as number[], pendingRequests: [] as { childId: number; name: string }[],
   chatMessages: [] as { from: string; text: string; isHost: boolean }[], lessonEnded: false, muted: false,
-  mutedChildIds: new Set<number>(), handRaises: [] as number[],
+  mutedChildIds: new Set<number>(), handRaisedIds: new Set<number>(),
   arrows: [] as { from: string; to: string; color: string }[], marks: {} as Record<string, string>,
 }));
 const roomActions = vi.hoisted(() => ({
   sendMove: vi.fn(), grantControl: vi.fn(), revokeControl: vi.fn(), resetBoard: vi.fn(),
-  muteChild: vi.fn(), muteAll: vi.fn(), raiseHand: vi.fn(), sendChat: vi.fn(),
-  dismissPendingRequest: vi.fn(), dismissHandRaise: vi.fn(),
+  muteChild: vi.fn(), muteAll: vi.fn(), raiseHand: vi.fn(), grantFloor: vi.fn(), sendChat: vi.fn(),
+  dismissPendingRequest: vi.fn(),
   sendArrows: vi.fn(), sendMarks: vi.fn(),
 }));
 vi.mock('@/lib/useLiveLessonRoom', () => ({
@@ -144,7 +144,7 @@ beforeEach(() => {
   roomState.controllerChildId = null;
   roomState.chatMessages = [];
   roomState.mutedChildIds = new Set();
-  roomState.handRaises = [];
+  roomState.handRaisedIds = new Set();
   roomState.arrows = [];
   roomState.marks = {};
   mocks.fetchLiveLesson.mockResolvedValue(LESSON);
@@ -209,12 +209,22 @@ it('"Hepsini Kapat" tüm katılımcıları susturur', async () => {
   expect(roomActions.muteAll).toHaveBeenCalled();
 });
 
-it('"söz hakkı istiyor" bildirimi öğrenci adıyla görünür ve tıklayınca kapanır', async () => {
-  roomState.handRaises = [11];
+it('madde 2026-09-17 ("Söz Hakkı İstiyor" v2): istek yokken ikon turuncu ve devre dışı', async () => {
   render(<DerslerCanliHostPage />);
-  await waitFor(() => screen.getByText('Ali söz hakkı istiyor'));
-  fireEvent.click(screen.getByText('Ali söz hakkı istiyor'));
-  expect(roomActions.dismissHandRaise).toHaveBeenCalledWith(11);
+  await waitFor(() => screen.getByTitle('Söz hakkı istemiyor'));
+  expect(screen.getByTitle('Söz hakkı istemiyor')).toBeDisabled();
+  fireEvent.click(screen.getByTitle('Söz hakkı istemiyor'));
+  expect(roomActions.grantFloor).not.toHaveBeenCalled();
+});
+
+it('madde 2026-09-17: sporcu söz istediğinde ikon+isim mavi olur, tıklayınca grantFloor çağrılır', async () => {
+  roomState.handRaisedIds = new Set([11]);
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTitle('Söz hakkı ver'));
+  expect(screen.getByTitle('Söz hakkı ver')).not.toBeDisabled();
+  expect(screen.getByText('Ali')).toHaveStyle({ color: '#2563eb' });
+  fireEvent.click(screen.getByTitle('Söz hakkı ver'));
+  expect(roomActions.grantFloor).toHaveBeenCalledWith(11);
 });
 
 it('katılım isteği kabul/red edilince ilgili API çağrılır ve istek kaldırılır', async () => {

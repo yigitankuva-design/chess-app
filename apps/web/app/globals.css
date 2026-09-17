@@ -255,21 +255,18 @@ body {
   .qa-attention { outline-width: 3px; }
 }
 
-/* Madde 2026-09-16 (Antrenör Ekranı, Faz A): "söz hakkı istiyor" — sporcu
-   dikkat isteği gönderince host'un el ikonu sağa-sola sallanır. */
-.hand-raise-shake {
-  display: inline-block;
-  animation: hand-raise-shake 1.1s ease-in-out infinite;
+/* Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): mavi duruma
+   geçen öğrenci isminin (host ekranı) ve söz-hakkı ikonunun nice-to-have
+   yanıp-sönme efekti. */
+.request-floor-blink {
+  animation: request-floor-blink 1.2s ease-in-out infinite;
 }
-@keyframes hand-raise-shake {
-  0%, 100% { transform: translateX(0) rotate(0); }
-  20%      { transform: translateX(-3px) rotate(-8deg); }
-  40%      { transform: translateX(3px) rotate(8deg); }
-  60%      { transform: translateX(-3px) rotate(-6deg); }
-  80%      { transform: translateX(3px) rotate(6deg); }
+@keyframes request-floor-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hand-raise-shake { animation: none; }
+  .request-floor-blink { animation: none; }
 }
 
 /* Text helpers */

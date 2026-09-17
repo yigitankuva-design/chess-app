@@ -15,7 +15,7 @@ import { BOARD_COLORS } from '@/lib/boardColors';
 import { pieceSetUris } from '@/lib/pieceSets';
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
-import { useSquareAnnotations } from '@/lib/chess/useSquareAnnotations';
+import { useSquareAnnotations, annotationStyleFor } from '@/lib/chess/useSquareAnnotations';
 import type { AnnotationColor } from '@/lib/chess/useSquareAnnotations';
 import { useBoardArrows } from '@/lib/chess/useBoardArrows';
 import type { BoardArrow } from '@/lib/chess/useBoardArrows';
@@ -57,6 +57,12 @@ interface ChessBoardProps {
    *  sendMarks). Verilmezse davranış ETKİLENMEZ. */
   onArrowsChange?: (arrows: BoardArrow[]) => void;
   onMarksChange?: (marks: Record<string, AnnotationColor>) => void;
+  /** Madde 2026-09-17 (Sporcu Ekranı): canlı derste antrenörden gelen
+   *  ok/daire işaretleri — tahtanın KENDİ (bu bileşendeki pointer ile
+   *  çizilen) ok/işaretleriyle BİRLEŞTİRİLİR. Verilmezse davranış
+   *  ETKİLENMEZ. */
+  externalArrows?: BoardArrow[];
+  externalMarks?: Record<string, AnnotationColor>;
 }
 
 export function ChessBoard({
@@ -76,6 +82,8 @@ export function ChessBoard({
   hideNotation = false,
   onArrowsChange,
   onMarksChange,
+  externalArrows,
+  externalMarks,
 }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
@@ -104,6 +112,12 @@ export function ChessBoard({
   // etkisi yok.
   useEffect(() => { onArrowsChange?.(arrows); }, [arrows, onArrowsChange]);
   useEffect(() => { onMarksChange?.(marks); }, [marks, onMarksChange]);
+
+  // Madde 2026-09-17 (Sporcu Ekranı): canlı derste antrenörden gelen
+  // ok/daire işaretleri KENDİ (pointer ile çizilen) işaretlerimizle
+  // BİRLEŞTİRİLİR — verilmezse (`externalArrows`/`externalMarks` yok)
+  // davranış tamamen ETKİLENMEZ.
+  const allArrows = externalArrows ? [...arrows, ...externalArrows] : arrows;
 
   // Clear selection when FEN changes (after a move)
   useEffect(() => {
@@ -305,6 +319,9 @@ export function ChessBoard({
   for (const [sq, style] of Object.entries(annotationStyles)) {
     squareStyles[sq] = { ...squareStyles[sq], ...style };
   }
+  for (const [sq, color] of Object.entries(externalMarks ?? {})) {
+    squareStyles[sq] = { ...squareStyles[sq], ...annotationStyleFor(color) };
+  }
 
   const { ranks, files } = coordLabels(boardOrientation);
   const coordFontSize = 'clamp(11px, 3.2vw, 15px)';
@@ -389,7 +406,7 @@ export function ChessBoard({
           />
 
           {/* Ok katmani: taslarin USTUNDE ama tiklamayi ENGELLEMEZ. */}
-          {arrows.length > 0 && (
+          {allArrows.length > 0 && (
             <svg
               aria-hidden="true"
               viewBox="0 0 8 8"
@@ -398,14 +415,14 @@ export function ChessBoard({
               style={{ pointerEvents: 'none' }}
             >
               <defs>
-                {arrows.map((a, i) => (
+                {allArrows.map((a, i) => (
                   <marker key={i} id={`bsa-ok-${i}`} markerWidth="3.2" markerHeight="3.2"
                     refX="2.2" refY="1.6" orient="auto">
                     <path d="M0,0 L3.2,1.6 L0,3.2 z" fill={a.color} />
                   </marker>
                 ))}
               </defs>
-              {arrows.map((a, i) => {
+              {allArrows.map((a, i) => {
                 const l = arrowLine(a.from, a.to, boardOrientation);
                 if (!l) return null;
                 return (

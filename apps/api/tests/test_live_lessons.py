@@ -465,10 +465,13 @@ async def test_mute_all_tum_katilimcilari_susturur():
 
 
 @pytest.mark.asyncio
-async def test_raise_hand_sadece_hosta_gider_ogrencilere_gitmez():
-    """Madde 2026-09-16: "söz hakkı istiyor" — sporcunun genel dikkat
-    isteği (Zafer'in netleştirmesi: taş yetkisi/ses açma/soru sorma gibi
-    tüm nedenleri kapsar) SADECE host'a gitmeli, diğer öğrencilere DEĞİL."""
+async def test_raise_hand_acar_kapatir_sadece_hosta_ve_kendine_gider():
+    """Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): sporcu
+    kendi ikonuna basınca (raised=True) turuncudan maviye geçer, host'a
+    VE kendisine `hand_state_changed` gider (diğer öğrencilere gitmez).
+    Henüz söz hakkı VERİLMEDİYSE (floor_child_id boş) kendi ikonuna
+    tekrar basması (raised=False) SADECE kendi isteğini iptal eder —
+    kimsenin mikrofonuna dokunulmaz."""
     from chess_api.routers.live_lessons import _handle_ws_message
 
     room = get_room(999006, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -477,10 +480,112 @@ async def test_raise_hand_sadece_hosta_gider_ogrencilere_gitmez():
     room.join_participant(11, s1)
     room.join_participant(22, s2)
 
-    await _handle_ws_message(999006, room, False, 11, {"type": "raise_hand"})
-    assert host.messages[-1] == {"type": "hand_raised", "child_id": 11}
-    assert all(m["type"] != "hand_raised" for m in s1.messages)
-    assert all(m["type"] != "hand_raised" for m in s2.messages)
+    await _handle_ws_message(999006, room, False, 11, {"type": "raise_hand", "raised": True})
+    assert room.hand_raised_ids == {11}
+    assert host.messages[-1] == {"type": "hand_state_changed", "child_id": 11, "raised": True}
+    assert s1.messages[-1] == {"type": "hand_state_changed", "child_id": 11, "raised": True}
+    assert all(m["type"] != "hand_state_changed" for m in s2.messages)
+
+    await _handle_ws_message(999006, room, False, 11, {"type": "raise_hand", "raised": False})
+    assert room.hand_raised_ids == set()
+    assert host.messages[-1] == {"type": "hand_state_changed", "child_id": 11, "raised": False}
+    assert room.muted_child_ids == set()  # kimsenin mikrofonuna dokunulmadı
+
+
+@pytest.mark.asyncio
+async def test_grant_floor_digerlerini_susturur_hedefi_acar_ve_sadece_ona_anons_gonderir(client):
+    """Madde 2026-09-17: antrenör mavi bir sporcunun ikonuna tıklayınca
+    (grant_floor) diğer TÜM bağlı sporcuların mikrofonu kapanır (önceden
+    açık olan da dahil), söz isteyen sporcunun mikrofonu kapalıysa
+    otomatik açılır, SADECE ona "floor_granted" (isim dahil) gider."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    ttok, _ = await _teacher(client, "hoca-floor1@t.com")
+    class_id, child_ids, _ = await _class_with_students(client, ttok, n=2)
+    c11, c22 = child_ids
+
+    room = get_room(999008, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1, s2 = _FakeSender(), _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(c11, s1)
+    room.join_participant(c22, s2)
+    room.muted_child_ids.add(c11)  # söz isteyen ÖNCEDEN susturulmuş olsun
+
+    await _handle_ws_message(999008, room, False, c11, {"type": "raise_hand", "raised": True})
+    await _handle_ws_message(999008, room, True, None, {"type": "grant_floor", "child_id": c11})
+
+    assert room.muted_child_ids == {c22}  # c11 açıldı, c22 (önceden açıktı) kapandı
+    assert s2.messages[-1] == {"type": "muted", "muted": True}
+    assert s1.messages[-2] == {"type": "muted", "muted": False}
+    assert s1.messages[-1] == {"type": "floor_granted", "name": "Sporcu0"}
+    assert all(m["type"] != "floor_granted" for m in s2.messages)
+    assert all(m["type"] != "floor_granted" for m in host.messages)
+
+
+@pytest.mark.asyncio
+async def test_soz_hakki_biterken_diger_sporcularin_mikrofonlari_ONCEKI_duruma_doner():
+    """Madde 2026-09-17: konuşan sporcu kendi ikonuna tekrar basınca
+    (raised=False) diğerlerinin mikrofonu grant ÖNCESİ duruma döner —
+    kapalıydı kapalı kalır, açıktı tekrar açılır."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999009, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1, s2, s3 = _FakeSender(), _FakeSender(), _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)  # söz isteyecek
+    room.join_participant(22, s2)  # grant öncesi zaten kapalı
+    room.join_participant(33, s3)  # grant öncesi açık
+    room.muted_child_ids.add(22)
+
+    await _handle_ws_message(999009, room, False, 11, {"type": "raise_hand", "raised": True})
+    await _handle_ws_message(999009, room, True, None, {"type": "grant_floor", "child_id": 11})
+    assert room.muted_child_ids == {22, 33}  # 33 da kapandı
+
+    await _handle_ws_message(999009, room, False, 11, {"type": "raise_hand", "raised": False})
+    assert room.muted_child_ids == {22}  # 33 geri açıldı, 22 kapalı kaldı
+    assert s3.messages[-1] == {"type": "muted", "muted": False}
+    assert room.hand_raised_ids == set()
+    assert host.messages[-1] == {"type": "hand_state_changed", "child_id": 11, "raised": False}
+    assert room.floor_child_id is None
+
+
+@pytest.mark.asyncio
+async def test_baskasina_grant_floor_verilince_oncekinin_turu_otomatik_biter():
+    """İki sporcu arka arkaya söz isterse antrenör ikinciye grant_floor
+    çağırdığında ÖNCEKİNİN turu (ve mikrofon geri yüklemesi) örtük olarak
+    biter — iki sporcu aynı anda "aktif" kalmaz."""
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999010, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1, s2 = _FakeSender(), _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+    room.join_participant(22, s2)
+
+    await _handle_ws_message(999010, room, False, 11, {"type": "raise_hand", "raised": True})
+    await _handle_ws_message(999010, room, True, None, {"type": "grant_floor", "child_id": 11})
+    assert room.floor_child_id == 11
+    assert room.muted_child_ids == {22}
+
+    await _handle_ws_message(999010, room, False, 22, {"type": "raise_hand", "raised": True})
+    await _handle_ws_message(999010, room, True, None, {"type": "grant_floor", "child_id": 22})
+    assert room.floor_child_id == 22
+    assert 11 not in room.hand_raised_ids  # öncekinin isteği de kapandı
+    assert room.muted_child_ids == {11}
+
+
+@pytest.mark.asyncio
+async def test_soz_istemeyen_sporcuya_grant_floor_yoksayilir():
+    from chess_api.routers.live_lessons import _handle_ws_message
+
+    room = get_room(999011, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    host, s1 = _FakeSender(), _FakeSender()
+    room.join_host(host)
+    room.join_participant(11, s1)
+
+    await _handle_ws_message(999011, room, True, None, {"type": "grant_floor", "child_id": 11})
+    assert room.floor_child_id is None
+    assert s1.messages == []
 
 
 @pytest.mark.asyncio

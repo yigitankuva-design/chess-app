@@ -24,6 +24,17 @@ function colorForModifiers(ctrl: boolean, alt: boolean): AnnotationColor {
   return 'green';
 }
 
+/** Madde 2026-09-17 (Sporcu Ekranı): tek bir renk için çember stilini
+ *  hesaplar — hook'un kendi döngüsü VE `ChessBoard`'un canlı derste
+ *  antrenörden gelen (`externalMarks`) işaretleri çizmesi AYNI fonksiyonu
+ *  kullanır (kod tekrarı olmasın). */
+export function annotationStyleFor(color: AnnotationColor): CSSProperties {
+  return {
+    boxShadow: `inset 0 0 0 ${RING_WIDTH_PX}px ${COLORS[color]}`,
+    borderRadius: '50%',
+  };
+}
+
 /**
  * Sağ-tık ile kare renklendirme — Zafer Hoca ve sporcunun tahtada hesap
  * yaparken odaklanmak için kullandığı TAMAMEN GEÇİCİ bir görsel araç.
@@ -84,10 +95,7 @@ export function useSquareAnnotations(resetKey: unknown): {
   for (const [sq, color] of Object.entries(marks)) {
     // backgroundColor VERILMEZ: karenin kendi zemin rengi korunur, üstüne
     // yalnızca çember biner.
-    squareStyles[sq] = {
-      boxShadow: `inset 0 0 0 ${RING_WIDTH_PX}px ${COLORS[color]}`,
-      borderRadius: '50%',
-    };
+    squareStyles[sq] = annotationStyleFor(color);
   }
 
   const clearAnnotations = useCallback(() => setMarks({}), []);

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Square } from 'chess.js';
-import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from '@livekit/components-react';
 import { useAuth } from '@/lib/auth-context';
 import { ChessBoard } from '@/components/ChessBoard';
 import {
@@ -21,6 +21,15 @@ const POLL_INTERVAL_MS = 2000;
  * POLL ile kontrol edilir) LiveKit'e SADECE SES ile bağlanır — kamera/
  * ekran paylaşımı arayüzü hiç YOK. İstediği an "Dersten Ayrıl" ile çıkıp
  * "Derse Katıl"a tekrar basarak girebilir.
+ *
+ * Madde 2026-09-17 (Sporcu Ekranı): "Canlı Ders" kartı ile "Dersten Ayrıl"
+ * arasında 3 durum ikonu — El (antrenör kontrolünde, salt-okunur taş
+ * oynatma yetkisi göstergesi), Mikrofon (antrenör susturmadıysa sporcu
+ * kendi kendine aç/kapa yapabilir, saf LiveKit istemci çağrısı), "Söz
+ * Hakkı İstiyor" (turuncu↔mavi, tam akış useLiveLessonRoom.ts'te). Telefon
+ * HER ZAMAN dikey düzeni kullanır (fiziksel yatay olsa bile); tablet
+ * yatayken tahta solda, ikon+sohbet sütunu sağda (Tailwind `md:landscape:`
+ * + `order-*` — tek JSX bloğu, iki panel için de aynı kod).
  */
 export default function DerslerCanliJoinPage() {
   const params = useParams<{ id: string }>();
@@ -111,12 +120,44 @@ export default function DerslerCanliJoinPage() {
   );
 }
 
+function HandIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M8 11V6a2 2 0 1 1 4 0v5M12 11V4a2 2 0 1 1 4 0v7M16 12V7a2 2 0 1 1 4 0v6c0 4-2 8-7 8h-1c-3.2 0-5-1.3-7-4.2l-1.6-2.4a1.6 1.6 0 0 1 2.5-1.9L8 12"
+        strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MicIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="9" y="2" width="6" height="11" rx="3" />
+      <path d="M5 10v1a7 7 0 0 0 14 0v-1" strokeLinecap="round" />
+      <line x1="12" y1="18" x2="12" y2="22" strokeLinecap="round" />
+      {muted && <line x1="4" y1="3" x2="20" y2="21" strokeLinecap="round" />}
+    </svg>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 9a3 3 0 1 1 4 2.83c-.6.24-1 .85-1 1.5V14" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="12" y1="17.5" x2="12" y2="17.51" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+
 function StudentRoomInner({ lessonId, ownChildId, onLeft }: {
   lessonId: number; ownChildId: number | null; onLeft: () => void;
 }) {
   const router = useRouter();
   const room = useLiveLessonRoom(lessonId, false);
+  const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
   const canMove = ownChildId !== null && room.controllerChildId === ownChildId;
+  const handRaised = ownChildId !== null && room.handRaisedIds.has(ownChildId);
 
   function handleDrop(from: Square, to: Square): boolean {
     if (!canMove) return false;
@@ -129,14 +170,34 @@ function StudentRoomInner({ lessonId, ownChildId, onLeft }: {
     onLeft();
   }
 
+  function toggleMic() {
+    if (room.muted) return; // antrenör susturdu — kendi kendine açamaz
+    localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+  }
+
   useEffect(() => {
     if (room.lessonEnded) {
       router.push('/bildirimler');
     }
   }, [room.lessonEnded, router]);
 
+  // Madde 2026-09-17: antrenör söz hakkı verince (SADECE bu sporcuya gelen
+  // "floor_granted") tarayıcının kendi sesli okuma özelliğiyle (ücretsiz,
+  // cihazda) anons çalar — kimseye duyulmaz, sadece bu cihazda.
+  useEffect(() => {
+    if (!room.floorAnnouncement || typeof window === 'undefined' || !window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(
+      `${room.floorAnnouncement.name}, söz hakkı senin, konuşabilirsin`,
+    );
+    u.lang = 'tr-TR';
+    window.speechSynthesis.speak(u);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.floorAnnouncement]);
+
+  const micOn = !room.muted && isMicrophoneEnabled;
+
   return (
-    <main className="px-4 pt-6 pb-12 max-w-xl mx-auto space-y-4">
+    <main className="px-4 pt-6 pb-12 max-w-xl md:landscape:max-w-4xl mx-auto">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-extrabold t-premium">Canlı Ders</h1>
         <button type="button" onClick={handleLeave}
@@ -146,18 +207,42 @@ function StudentRoomInner({ lessonId, ownChildId, onLeft }: {
         </button>
       </div>
 
-      {room.muted && (
-        <p className="text-xs text-center" style={{ color: '#f43f5e' }}>Antrenörün seni sustur.</p>
-      )}
       {canMove && (
-        <p className="text-xs text-center font-bold" style={{ color: 'var(--t-accent)' }}>
+        <p className="text-xs text-center font-bold mt-4" style={{ color: 'var(--t-accent)' }}>
           Taş oynatma sırası sende!
         </p>
       )}
 
-      <ChessBoard fen={room.fen} interactive={canMove} onPieceDrop={handleDrop} boardOrientation="white" />
+      <div className="flex flex-col md:landscape:flex-row gap-4 mt-4">
+        <div className="md:landscape:flex-1 min-w-0">
+          <ChessBoard fen={room.fen} interactive={canMove} onPieceDrop={handleDrop} boardOrientation="white"
+            externalArrows={room.arrows} externalMarks={room.marks} />
+        </div>
 
-      <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
+        <div className="flex flex-col gap-3 md:landscape:w-64 md:landscape:flex-shrink-0">
+          <div className="flex flex-row md:landscape:flex-col justify-center gap-3">
+            <div className="order-1 md:landscape:order-3 rounded-full p-2.5"
+              title={canMove ? 'Taş oynatma yetkin var' : 'Taş oynatma yetkin yok'}
+              style={{ background: canMove ? '#22c55e' : '#ef4444', color: '#fff' }}>
+              <HandIcon />
+            </div>
+            <button type="button" onClick={toggleMic} disabled={room.muted}
+              className="order-2 rounded-full p-2.5 disabled:cursor-not-allowed"
+              title={room.muted ? 'Antrenör seni sustur' : (micOn ? 'Mikrofonu kapat' : 'Mikrofonu aç')}
+              style={{ background: micOn ? '#22c55e' : '#ef4444', color: '#fff' }}>
+              <MicIcon muted={!micOn} />
+            </button>
+            <button type="button" onClick={() => room.raiseHand(!handRaised)}
+              className={`order-3 md:landscape:order-1 rounded-full p-2.5 ${handRaised ? 'request-floor-blink' : ''}`}
+              title={handRaised ? 'Söz hakkı isteğini iptal et' : 'Söz hakkı iste'}
+              style={{ background: handRaised ? '#2563eb' : '#f97316', color: '#fff' }}>
+              <QuestionIcon />
+            </button>
+          </div>
+
+          <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
+        </div>
+      </div>
     </main>
   );
 }

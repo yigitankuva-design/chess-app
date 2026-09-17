@@ -39,10 +39,16 @@ interface State {
   /** Madde 2026-09-16 (Antrenör Ekranı, Faz A): SADECE host tarafında —
    *  hangi öğrencilerin şu an susturulmuş olduğu (ikon rengi için). */
   mutedChildIds: Set<number>;
-  /** Madde 2026-09-16: "söz hakkı istiyor" — sporcunun tıkladığı, host'a
-   *  giden genel dikkat-çekme isteği. Kalıcı DEĞİL, host bildirime
-   *  tıklayınca `dismissHandRaise` ile yerel olarak kapanır. */
-  handRaises: number[];
+  /** Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): turuncu↔mavi
+   *  durumdaki öğrenci id'leri — sporcu KENDİSİ açar/kapatır (host zorla
+   *  kapatamaz, sadece `grantFloor` ile "söz hakkı verir"). Sunucu
+   *  otoritesi (`room.hand_raised_ids`), reconnect'te `lesson_state` ile
+   *  gelir. */
+  handRaisedIds: Set<number>;
+  /** SADECE söz hakkı VERİLEN sporcunun kendi bağlantısına gelir — cihazda
+   *  sesli anons tetiklemek için. `nonce` aynı isimle art arda gelse bile
+   *  useEffect'in yeniden tetiklenmesini garanti eder. */
+  floorAnnouncement: { name: string; nonce: number } | null;
   /** Madde 2026-09-16 (Antrenör Ekranı, Faz B): antrenörün tahtada çizdiği
    *  ok/daire işaretleri — SADECE yayın amaçlı, kalıcı değil (fen değişince
    *  istemci tarafında otomatik temizlenir, bkz. useBoardArrows/
@@ -55,7 +61,8 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
   const [state, setState] = useState<State>({
     connected: false, fen: START_FEN, sanHistory: [], controllerChildId: null,
     connectedChildIds: [], pendingRequests: [], chatMessages: [], lessonEnded: false,
-    muted: false, mutedChildIds: new Set(), handRaises: [], arrows: [], marks: {},
+    muted: false, mutedChildIds: new Set(), handRaisedIds: new Set(), floorAnnouncement: null,
+    arrows: [], marks: {},
   });
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -80,6 +87,7 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
             sanHistory: (msg.san_history as string[]) ?? [],
             controllerChildId: (msg.controller_child_id as number | null) ?? null,
             mutedChildIds: new Set((msg.muted_child_ids as number[]) ?? []),
+            handRaisedIds: new Set((msg.hand_raised_ids as number[]) ?? []),
           }));
           break;
         case 'participant_joined':
@@ -112,10 +120,17 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
         case 'mute_state_changed':
           setState((s) => ({ ...s, mutedChildIds: new Set((msg.muted_child_ids as number[]) ?? []) }));
           break;
-        case 'hand_raised':
+        case 'hand_state_changed':
+          setState((s) => {
+            const next = new Set(s.handRaisedIds);
+            if (msg.raised) next.add(msg.child_id as number);
+            else next.delete(msg.child_id as number);
+            return { ...s, handRaisedIds: next };
+          });
+          break;
+        case 'floor_granted':
           setState((s) => ({
-            ...s, handRaises: s.handRaises.includes(msg.child_id as number)
-              ? s.handRaises : [...s.handRaises, msg.child_id as number],
+            ...s, floorAnnouncement: { name: msg.name as string, nonce: (s.floorAnnouncement?.nonce ?? 0) + 1 },
           }));
           break;
         case 'arrows':
@@ -158,15 +173,13 @@ export function useLiveLessonRoom(lessonId: number | null, isHost: boolean) {
     resetBoard: (fen?: string) => send({ type: 'reset_board', fen }),
     muteChild: (childId: number, muted = true) => send({ type: 'mute', child_id: childId, muted }),
     muteAll: () => send({ type: 'mute_all' }),
-    raiseHand: () => send({ type: 'raise_hand' }),
+    raiseHand: (raised: boolean) => send({ type: 'raise_hand', raised }),
+    grantFloor: (childId: number) => send({ type: 'grant_floor', child_id: childId }),
     sendArrows: (arrows: BoardArrow[]) => send({ type: 'arrows', arrows }),
     sendMarks: (marks: Record<string, AnnotationColor>) => send({ type: 'marks', marks }),
     sendChat: (text: string) => send({ type: 'chat_message', text }),
     dismissPendingRequest: (childId: number) => setState((s) => ({
       ...s, pendingRequests: s.pendingRequests.filter((p) => p.childId !== childId),
-    })),
-    dismissHandRaise: (childId: number) => setState((s) => ({
-      ...s, handRaises: s.handRaises.filter((id) => id !== childId),
     })),
   };
 }

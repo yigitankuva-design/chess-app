@@ -54,6 +54,14 @@ const EVAL_MOVETIME_MS = 800;
  * unmount olup ses/görüntü bağlantısı kopardı) gömülü bir modalde açılır —
  * bkz. `OdevGonderInner` (odev-gonder/page.tsx'ten route-bağımsız hale
  * getirildi).
+ *
+ * Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): Faz A'daki
+ * "sallanan el + dismiss edilebilir banner" tasarımı KALDIRILDI — yerine
+ * katılımcı satırındaki 3. ikon (turuncu↔mavi) geldi. Antrenör mavi
+ * ikona tıklarsa (`grantFloor`) sunucu diğer TÜM öğrencileri susturur,
+ * söz isteyeni açar, sadece ona sesli anons tetikler; sporcu kendi
+ * ikonuna tekrar basınca herkesin mikrofonu ÖNCEKİ duruma döner (bkz.
+ * backend `_end_floor`).
  */
 export default function DerslerCanliHostPage() {
   const router = useRouter();
@@ -116,6 +124,18 @@ function HandIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M8 11V6a2 2 0 1 1 4 0v5M12 11V4a2 2 0 1 1 4 0v7M16 12V7a2 2 0 1 1 4 0v6c0 4-2 8-7 8h-1c-3.2 0-5-1.3-7-4.2l-1.6-2.4a1.6 1.6 0 0 1 2.5-1.9L8 12"
         strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Madde 2026-09-17 (Sporcu Ekranı, "Söz Hakkı İstiyor" v2): katılımcı
+ *  satırındaki 3. ikon — turuncu (istek yok) / mavi (istek var). */
+function QuestionIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 9a3 3 0 1 1 4 2.83c-.6.24-1 .85-1 1.5V14" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="12" y1="17.5" x2="12" y2="17.51" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="9" />
     </svg>
   );
 }
@@ -233,19 +253,6 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
           Dersi Sonlandır
         </button>
       </div>
-
-      {room.handRaises.length > 0 && (
-        <div className="space-y-1.5">
-          {room.handRaises.map((cid) => (
-            <button key={cid} type="button" onClick={() => room.dismissHandRaise(cid)}
-              className="w-full t-card p-2.5 flex items-center gap-2 text-left"
-              style={{ border: '1px solid var(--t-accent)' }}>
-              <span className="hand-raise-shake" style={{ color: 'var(--t-accent)' }}><HandIcon /></span>
-              <span className="text-sm font-bold">{studentName(cid)} söz hakkı istiyor</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
         <div className="space-y-4 min-w-0">
@@ -398,9 +405,13 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               {room.connectedChildIds.map((cid) => {
                 const muted = room.mutedChildIds.has(cid);
                 const controlling = room.controllerChildId === cid;
+                const raised = room.handRaisedIds.has(cid);
                 return (
                   <div key={cid} className="flex items-center justify-between gap-2">
-                    <span className="text-sm truncate">{studentName(cid)}</span>
+                    <span className={`text-sm truncate ${raised ? 'request-floor-blink' : ''}`}
+                      style={{ color: raised ? '#2563eb' : undefined, fontWeight: raised ? 700 : undefined }}>
+                      {studentName(cid)}
+                    </span>
                     <div className="flex gap-1.5 flex-shrink-0">
                       <button type="button" title={controlling ? 'Taş yetkisini al' : 'Taş oynatma yetkisi ver'}
                         onClick={() => (controlling ? room.revokeControl() : room.grantControl(cid))}
@@ -415,6 +426,12 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
                           background: muted ? '#ef4444' : '#22c55e', color: '#fff',
                         }}>
                         <MicIcon muted={muted} />
+                      </button>
+                      <button type="button" title={raised ? 'Söz hakkı ver' : 'Söz hakkı istemiyor'}
+                        disabled={!raised} onClick={() => room.grantFloor(cid)}
+                        className={`rounded-full p-1.5 disabled:cursor-not-allowed ${raised ? 'request-floor-blink' : ''}`}
+                        style={{ background: raised ? '#2563eb' : '#f97316', color: '#fff' }}>
+                        <QuestionIcon />
                       </button>
                     </div>
                   </div>

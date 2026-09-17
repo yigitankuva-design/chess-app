@@ -107,14 +107,31 @@ describe('useLiveLessonRoom', () => {
     expect(result.current.mutedChildIds).toEqual(new Set([5, 8]));
   });
 
-  it('hand_raised handRaises\'e eklenir (tekrar gelirse tekrarlanmaz), dismissHandRaise kaldırır', () => {
+  it('madde 2026-09-17 ("Söz Hakkı İstiyor" v2): hand_state_changed handRaisedIds\'i günceller', () => {
     const { result } = renderHook(() => useLiveLessonRoom(1, true));
-    act(() => latestSocket().emitMessage({ type: 'hand_raised', child_id: 11 }));
-    expect(result.current.handRaises).toEqual([11]);
-    act(() => latestSocket().emitMessage({ type: 'hand_raised', child_id: 11 }));
-    expect(result.current.handRaises).toEqual([11]);
-    act(() => result.current.dismissHandRaise(11));
-    expect(result.current.handRaises).toEqual([]);
+    act(() => latestSocket().emitMessage({ type: 'hand_state_changed', child_id: 11, raised: true }));
+    expect(result.current.handRaisedIds).toEqual(new Set([11]));
+    act(() => latestSocket().emitMessage({ type: 'hand_state_changed', child_id: 22, raised: true }));
+    expect(result.current.handRaisedIds).toEqual(new Set([11, 22]));
+    act(() => latestSocket().emitMessage({ type: 'hand_state_changed', child_id: 11, raised: false }));
+    expect(result.current.handRaisedIds).toEqual(new Set([22]));
+  });
+
+  it('lesson_state hand_raised_ids\'i de okur (reconnect)', () => {
+    const { result } = renderHook(() => useLiveLessonRoom(1, true));
+    act(() => latestSocket().emitMessage({
+      type: 'lesson_state', fen: 'FEN1', san_history: [], controller_child_id: null,
+      muted_child_ids: [], hand_raised_ids: [7, 9],
+    }));
+    expect(result.current.handRaisedIds).toEqual(new Set([7, 9]));
+  });
+
+  it('floor_granted floorAnnouncement\'i set eder, aynı isimle tekrar gelse bile nonce artar', () => {
+    const { result } = renderHook(() => useLiveLessonRoom(1, false));
+    act(() => latestSocket().emitMessage({ type: 'floor_granted', name: 'Defne Hüma' }));
+    expect(result.current.floorAnnouncement).toEqual({ name: 'Defne Hüma', nonce: 1 });
+    act(() => latestSocket().emitMessage({ type: 'floor_granted', name: 'Defne Hüma' }));
+    expect(result.current.floorAnnouncement).toEqual({ name: 'Defne Hüma', nonce: 2 });
   });
 
   it('arrows/marks mesajları durumu günceller, sendArrows/sendMarks doğru JSON gönderir (madde 2026-09-16, Faz B)', () => {
@@ -142,7 +159,7 @@ describe('useLiveLessonRoom', () => {
     expect(result.current.chatMessages).toEqual([{ from: 'Antrenör', text: 'Merhaba', isHost: true }]);
   });
 
-  it('sendMove/grantControl/revokeControl/muteChild/muteAll/raiseHand/sendChat doğru JSON gönderir', () => {
+  it('sendMove/grantControl/revokeControl/muteChild/muteAll/raiseHand/grantFloor/sendChat doğru JSON gönderir', () => {
     const { result } = renderHook(() => useLiveLessonRoom(1, true));
     act(() => latestSocket().emitOpen());
 
@@ -153,7 +170,9 @@ describe('useLiveLessonRoom', () => {
     act(() => result.current.muteChild(5));
     act(() => result.current.muteChild(5, false));
     act(() => result.current.muteAll());
-    act(() => result.current.raiseHand());
+    act(() => result.current.raiseHand(true));
+    act(() => result.current.raiseHand(false));
+    act(() => result.current.grantFloor(11));
     act(() => result.current.sendChat('Selam'));
 
     const sent = latestSocket().sent.map((s) => JSON.parse(s));
@@ -165,7 +184,9 @@ describe('useLiveLessonRoom', () => {
       { type: 'mute', child_id: 5, muted: true },
       { type: 'mute', child_id: 5, muted: false },
       { type: 'mute_all' },
-      { type: 'raise_hand' },
+      { type: 'raise_hand', raised: true },
+      { type: 'raise_hand', raised: false },
+      { type: 'grant_floor', child_id: 11 },
       { type: 'chat_message', text: 'Selam' },
     ]);
   });
