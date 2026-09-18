@@ -41,7 +41,7 @@ export function EvalBar({ scoreCp, mate, showMarker = false }: Props) {
   const whiteRatio = whiteFraction(scoreCp, mate);
   const markerTop = `${(1 - whiteRatio) * 100}%`;
   return (
-    <div style={{ width: 22, position: 'relative', height: '100%' }}>
+    <div style={{ width: 22, position: 'relative', alignSelf: 'stretch' }}>
       <div
         role="meter"
         aria-label="Değerlendirme çubuğu"

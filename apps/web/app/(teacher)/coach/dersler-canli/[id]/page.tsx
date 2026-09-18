@@ -296,7 +296,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_280px_280px] items-start">
+      <div className="grid gap-4 lg:grid-cols-[670px_1fr_1fr] items-start">
         <div className="space-y-4 min-w-0" style={{ maxWidth: 670 }}>
           {hostViewMode === 'analiz' && (
             <div className="flex items-stretch gap-2">
