@@ -6,10 +6,8 @@ import { fetchMyClasses } from '@/lib/homeworkApi';
 import type { TeacherClass } from '@/lib/homeworkApi';
 import {
   fetchMyLiveLessons, createLiveLesson, startLiveLesson, updateLiveLesson, deleteLiveLesson,
-  fetchLiveLessonLogo, uploadLiveLessonLogo, deleteLiveLessonLogo,
 } from '@/lib/liveLessonsApi';
 import type { LiveLesson, LiveLessonJoinMode } from '@/lib/liveLessonsApi';
-import { compressImageToDataUri } from '@/lib/imageCompress';
 
 /**
  * Madde 2026-09-15 (Online Dersler): antrenörün ders listesi + "Yeni Ders
@@ -45,43 +43,8 @@ export default function DerslerCanliPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
   // Madde 2026-09-17 (Canlı Ders Oluştur sayfası yeniden tasarımı):
-  // masaüstü/tablet-yatay düzende sol kutu varsayılan olarak antrenörün
-  // KENDİ yüklediği logoyu gösterir; "Canlı Ders Oluştur" düğmesi bunu
-  // formla değiştirir (toggle).
+  // "Canlı Ders Oluştur" düğmesi formu açıp kapatır (toggle).
   const [showCreateForm, setShowCreateForm] = useState(false);
-  // undefined = henüz çekilmedi, null = yüklenmiş logo yok.
-  const [logoUrl, setLogoUrl] = useState<string | null | undefined>(undefined);
-  const [logoUploading, setLogoUploading] = useState(false);
-  const [logoError, setLogoError] = useState(false);
-
-  useEffect(() => {
-    if (!token || role !== 'teacher') return;
-    fetchLiveLessonLogo().then(setLogoUrl);
-  }, [token, role]);
-
-  async function handleLogoSelected(file: File | undefined) {
-    if (!file) return;
-    setLogoUploading(true);
-    setLogoError(false);
-    try {
-      const dataUrl = await compressImageToDataUri(file);
-      const ok = await uploadLiveLessonLogo(dataUrl);
-      if (ok) {
-        setLogoUrl(dataUrl);
-      } else {
-        setLogoError(true);
-      }
-    } catch {
-      setLogoError(true);
-    } finally {
-      setLogoUploading(false);
-    }
-  }
-
-  async function handleLogoRemove() {
-    const ok = await deleteLiveLessonLogo();
-    if (ok) setLogoUrl(null);
-  }
 
   useEffect(() => {
     if (!token || role !== 'teacher') return;
@@ -172,38 +135,7 @@ export default function DerslerCanliPage() {
             </button>
           </div>
 
-          {!showCreateForm ? (
-            <div className="py-6 flex flex-col items-center justify-center gap-2 min-h-[220px]">
-              {logoUrl === undefined ? (
-                <p className="text-xs t-muted">Yükleniyor…</p>
-              ) : logoUrl ? (
-                <div className="relative">
-                  <img src={logoUrl} alt="Canlı Dersler logosu" className="max-h-40 w-auto mx-auto rounded-lg" />
-                  <button type="button" onClick={handleLogoRemove} title="Logoyu kaldır"
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{ background: '#ef4444', color: '#fff' }}>
-                    ✕
-                  </button>
-                </div>
-              ) : logoUploading ? (
-                <p className="text-xs t-muted">Logo yükleniyor…</p>
-              ) : (
-                <label className="flex flex-col items-center gap-2 cursor-pointer rounded-xl px-6 py-8"
-                  style={{ border: '1px dashed var(--t-border)' }}>
-                  <span className="rounded-full p-3" style={{ background: 'var(--t-surface-2)' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 16V4M12 4l-4 4M12 4l4 4" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                  <span className="text-xs font-bold t-muted">Logo Yükle</span>
-                  <input type="file" accept="image/*" className="hidden" aria-label="Logo yükle"
-                    onChange={(e) => { void handleLogoSelected(e.target.files?.[0]); e.target.value = ''; }} />
-                </label>
-              )}
-              {logoError && <p className="text-xs" style={{ color: '#f43f5e' }}>Logo yüklenemedi, tekrar dene.</p>}
-            </div>
-          ) : (
+          {showCreateForm && (
         <div className="space-y-3">
         <div>
           <label className="text-xs font-bold uppercase tracking-widest t-muted block mb-1">Sınıf</label>

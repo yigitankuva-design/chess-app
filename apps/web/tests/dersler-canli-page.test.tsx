@@ -16,9 +16,6 @@ const mocks = vi.hoisted(() => ({
   updateLiveLesson: vi.fn(),
   deleteLiveLesson: vi.fn(),
   fetchMyClasses: vi.fn(),
-  fetchLiveLessonLogo: vi.fn(),
-  uploadLiveLessonLogo: vi.fn(),
-  deleteLiveLessonLogo: vi.fn(),
 }));
 vi.mock('@/lib/liveLessonsApi', () => ({
   fetchMyLiveLessons: mocks.fetchMyLiveLessons,
@@ -26,20 +23,10 @@ vi.mock('@/lib/liveLessonsApi', () => ({
   startLiveLesson: mocks.startLiveLesson,
   updateLiveLesson: mocks.updateLiveLesson,
   deleteLiveLesson: mocks.deleteLiveLesson,
-  fetchLiveLessonLogo: mocks.fetchLiveLessonLogo,
-  uploadLiveLessonLogo: mocks.uploadLiveLessonLogo,
-  deleteLiveLessonLogo: mocks.deleteLiveLessonLogo,
 }));
 vi.mock('@/lib/homeworkApi', () => ({ fetchMyClasses: mocks.fetchMyClasses }));
-vi.mock('@/lib/imageCompress', () => ({
-  compressImageToDataUri: vi.fn(async () => 'data:image/jpeg;base64,FAKE'),
-}));
 
 import DerslerCanliPage from '@/app/(teacher)/coach/dersler-canli/page';
-
-function makeImageFile(): File {
-  return new File(['fake-image-bytes'], 'logo.png', { type: 'image/png' });
-}
 
 const CLASSES = [{ id: 1, name: 'Sınıf A', join_code: 'X', order_index: 0 }];
 
@@ -49,7 +36,6 @@ beforeEach(() => {
   mockAuth.role = 'teacher';
   mocks.fetchMyLiveLessons.mockResolvedValue([]);
   mocks.fetchMyClasses.mockResolvedValue(CLASSES);
-  mocks.fetchLiveLessonLogo.mockResolvedValue(null);
 });
 
 it('rol antrenör değilse erişim mesajı gösterir', () => {
@@ -58,28 +44,25 @@ it('rol antrenör değilse erişim mesajı gösterir', () => {
   expect(screen.getByText('Bu sayfa yalnızca antrenörler içindir.')).toBeInTheDocument();
 });
 
-describe('madde 2026-09-17: masaüstü/tablet-yatay yeniden tasarım — "Canlı Ders Oluştur" toggle', () => {
-  it('varsayılan açılışta (logo yüklenmemiş) "Logo Yükle" yer tutucusu görünür, form GİZLİDİR', async () => {
+describe('madde 2026-09-19: "Canlı Ders Oluştur" toggle (logo alanı kaldırıldı)', () => {
+  it('varsayılan açılışta form GİZLİDİR', async () => {
     render(<DerslerCanliPage />);
     await waitFor(() => screen.getByText('Canlı Dersler'));
-    await waitFor(() => screen.getByText('Logo Yükle'));
     expect(screen.queryByPlaceholderText('Örn. Açılış Dersi')).not.toBeInTheDocument();
   });
 
-  it('"Canlı Ders Oluştur"a tıklayınca logo alanı kaybolur, form görünür; tekrar tıklayınca form kapanıp geri döner', async () => {
+  it('"Canlı Ders Oluştur"a tıklayınca form görünür; tekrar tıklayınca kapanır', async () => {
     render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByText('Logo Yükle'));
+    await waitFor(() => screen.getByText('Canlı Dersler'));
 
     fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
-    expect(screen.queryByText('Logo Yükle')).not.toBeInTheDocument();
     await waitFor(() => screen.getByPlaceholderText('Örn. Açılış Dersi'));
 
     fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
     expect(screen.queryByPlaceholderText('Örn. Açılış Dersi')).not.toBeInTheDocument();
-    expect(screen.getByText('Logo Yükle')).toBeInTheDocument();
   });
 
-  it('"Canlı Ders Listesi" her iki durumda da (logo/form) görünür', async () => {
+  it('"Canlı Ders Listesi" her iki durumda da (kapalı/açık form) görünür', async () => {
     mocks.fetchMyLiveLessons.mockResolvedValue([{
       id: 1, class_id: 1, title: 'Mevcut Ders', scheduled_at: '2026-09-20T10:00:00',
       duration_minutes: 30, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
@@ -92,52 +75,6 @@ describe('madde 2026-09-17: masaüstü/tablet-yatay yeniden tasarım — "Canlı
     await waitFor(() => screen.getByPlaceholderText('Örn. Açılış Dersi'));
     expect(screen.getByText('Canlı Ders Listesi')).toBeInTheDocument();
     expect(screen.getByText('Mevcut Ders')).toBeInTheDocument();
-  });
-});
-
-describe('madde 2026-09-17: antrenörün kendi logosunu yüklemesi', () => {
-  it('daha önce yüklenmiş logo varsa açılışta gösterilir, "Logo Yükle" görünmez', async () => {
-    mocks.fetchLiveLessonLogo.mockResolvedValue('data:image/png;base64,EXISTING');
-    render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByAltText('Canlı Dersler logosu'));
-    expect(screen.queryByText('Logo Yükle')).not.toBeInTheDocument();
-    expect(screen.getByAltText('Canlı Dersler logosu')).toHaveAttribute('src', 'data:image/png;base64,EXISTING');
-  });
-
-  it('dosya seçilince sıkıştırılıp yüklenir, görsel görünür ve "Logo Yükle" kaybolur', async () => {
-    mocks.uploadLiveLessonLogo.mockResolvedValue(true);
-    render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByText('Logo Yükle'));
-
-    const input = screen.getByLabelText('Logo yükle');
-    fireEvent.change(input, { target: { files: [makeImageFile()] } });
-
-    await waitFor(() => expect(mocks.uploadLiveLessonLogo).toHaveBeenCalledWith('data:image/jpeg;base64,FAKE'));
-    await waitFor(() => screen.getByAltText('Canlı Dersler logosu'));
-    expect(screen.queryByText('Logo Yükle')).not.toBeInTheDocument();
-  });
-
-  it('yükleme başarısız olursa hata mesajı gösterir, yer tutucu kalır', async () => {
-    mocks.uploadLiveLessonLogo.mockResolvedValue(false);
-    render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByText('Logo Yükle'));
-
-    fireEvent.change(screen.getByLabelText('Logo yükle'), { target: { files: [makeImageFile()] } });
-
-    await waitFor(() => screen.getByText('Logo yüklenemedi, tekrar dene.'));
-    expect(screen.getByText('Logo Yükle')).toBeInTheDocument();
-  });
-
-  it('"X" ile logoyu kaldırınca deleteLiveLessonLogo çağrılır, yer tutucuya geri döner', async () => {
-    mocks.fetchLiveLessonLogo.mockResolvedValue('data:image/png;base64,EXISTING');
-    mocks.deleteLiveLessonLogo.mockResolvedValue(true);
-    render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByAltText('Canlı Dersler logosu'));
-
-    fireEvent.click(screen.getByTitle('Logoyu kaldır'));
-    await waitFor(() => expect(mocks.deleteLiveLessonLogo).toHaveBeenCalled());
-    await waitFor(() => screen.getByText('Logo Yükle'));
-    expect(screen.queryByAltText('Canlı Dersler logosu')).not.toBeInTheDocument();
   });
 });
 
