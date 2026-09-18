@@ -35,11 +35,14 @@ vi.mock('@/lib/homeworkApi', () => ({ fetchClassStudents: mocks.fetchClassStuden
 const localParticipantMocks = vi.hoisted(() => ({
   setMicrophoneEnabled: vi.fn(),
 }));
+const trackMocks = vi.hoisted(() => ({
+  tracks: [] as { publication?: { trackSid: string }; participant: { identity: string } }[],
+}));
 vi.mock('@livekit/components-react', () => ({
   LiveKitRoom: ({ children }: { children: React.ReactNode }) => <div data-testid="livekit-room">{children}</div>,
   RoomAudioRenderer: () => null,
-  VideoTrack: () => null,
-  useTracks: () => [],
+  VideoTrack: () => <div data-testid="video-track" />,
+  useTracks: () => trackMocks.tracks,
   useLocalParticipant: () => ({
     localParticipant: localParticipantMocks, isMicrophoneEnabled: true,
   }),
@@ -115,6 +118,7 @@ vi.mock('@/components/custom/NestedSectionAccordion', () => ({
       <button type="button" onClick={() => onSelectAltKonu?.(203)}>Tahtanın Genel Özellikleri</button>
     </div>
   ),
+  isDerslerRoot: (s: { title?: string }) => s.title === 'Dersler',
 }));
 
 vi.mock('@/components/custom/AltKonuWalkthrough', () => ({
@@ -142,10 +146,16 @@ import DerslerCanliHostPage from '@/app/(teacher)/coach/dersler-canli/[id]/page'
 
 const CALISMALAR_TAB = {
   id: 9, label: 'Çalışmalar', emoji: '⭐', kind: 'antrenor_calismalar',
-  sections: [{
-    id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [],
-    practice_positions: [], parent_id: null,
-  }],
+  sections: [
+    {
+      id: 900, order_index: 1, title: 'Dersler', body: '', images: [],
+      practice_positions: [], parent_id: null,
+    },
+    {
+      id: 203, order_index: 1, title: 'Tahtanın Genel Özellikleri', body: '', images: [],
+      practice_positions: [], parent_id: 900,
+    },
+  ],
 };
 
 const LESSON = {
@@ -160,6 +170,7 @@ beforeEach(() => {
   routerPush.mockClear();
   mockAuth.role = 'teacher';
   roomState.fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  trackMocks.tracks = [];
   roomState.pendingRequests = [];
   roomState.connectedChildIds = [11];
   roomState.controllerChildId = null;
@@ -368,6 +379,14 @@ it('madde 2026-09-17 (madde 5): "Konum Tahtası"nda BoardEditor\'a onArrowsChang
   expect(boardEditorMocks.lastProps?.onMarksChange).toBe(roomActions.sendMarks);
 });
 
+it('madde 2026-09-17 (madde 5a): "Anlatım Tahtası"nda da ChessBoard\'a onArrowsChange/onMarksChange geçer', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTestId('chess-board'));
+  fireEvent.click(screen.getByText('Anlatım Tahtası'));
+  expect(chessBoardMocks.lastProps?.onArrowsChange).toBe(roomActions.sendArrows);
+  expect(chessBoardMocks.lastProps?.onMarksChange).toBe(roomActions.sendMarks);
+});
+
 describe('madde 2026-09-17 (madde 4): Anlatım Ortamları birbirinden bağımsız', () => {
   it('Analiz\'den Konum\'a geçince resetBoard START_FEN ile çağrılır', async () => {
     render(<DerslerCanliHostPage />);
@@ -383,7 +402,6 @@ describe('madde 2026-09-17 (madde 4): Anlatım Ortamları birbirinden bağımsı
     await waitFor(() => screen.getByTestId('chess-board'));
     fireEvent.click(screen.getByText('Anlatım Tahtası'));
     expect(roomActions.resetBoard).toHaveBeenCalledWith('8/8/8/8/8/8/8/8 w - - 0 1');
-    await waitFor(() => screen.getByTestId('accordion'));
   });
 
   it('aynı moda tekrar basınca resetBoard TEKRAR çağrılmaz', async () => {
@@ -394,15 +412,15 @@ describe('madde 2026-09-17 (madde 4): Anlatım Ortamları birbirinden bağımsı
     expect(roomActions.resetBoard).not.toHaveBeenCalled();
   });
 
-  it('Anlatım\'dan çıkıp tekrar girince önceki Alt Konu seçimi sıfırlanır', async () => {
+  it('Anlatım\'a girince önceki Alt Konu seçimi sıfırlanır ("Dersler" kartı bağımsız kalır)', async () => {
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByTestId('chess-board'));
-    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByText('Dersler'));
+    fireEvent.click(screen.getByText('Dersler'));
     await waitFor(() => screen.getByTestId('accordion'));
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
     expect(screen.getByTestId('alt-konu-walkthrough')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Analiz Tahtası'));
     fireEvent.click(screen.getByText('Anlatım Tahtası'));
     await waitFor(() => screen.getByTestId('accordion'));
     expect(screen.queryByTestId('alt-konu-walkthrough')).not.toBeInTheDocument();
@@ -495,34 +513,42 @@ describe('madde 2026-09-18 (madde 2): Notasyon kartı tahtayla hizalı', () => {
   });
 });
 
-describe('madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası"', () => {
-  it('moda geçince Çalışmalar sekmesi çekilir, Düzey/Konu ağacı (accordion) görünür', async () => {
+describe('madde 2026-09-16 (Faz C) + 2026-09-18 (madde 3): "Dersler" hızlı erişim kartı (3. sütun)', () => {
+  it('sayfa açılışında Çalışmalar sekmesi çekilir (mod BEKLENMEZ), "Dersler" kartına tıklanınca Düzey/Konu ağacı (accordion) açılır', async () => {
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByTestId('chess-board'));
-
-    fireEvent.click(screen.getByText('Anlatım Tahtası'));
     await waitFor(() => expect(customTabsMocks.listCustomTabs).toHaveBeenCalled());
+    expect(screen.queryByTestId('accordion')).not.toBeInTheDocument();
+
+    await waitFor(() => screen.getByText('Dersler'));
+    fireEvent.click(screen.getByText('Dersler'));
     await waitFor(() => screen.getByTestId('accordion'));
-    // Bu modda ana tahta salt-okunur olarak KALIR (adım geçişleri onu günceller).
+    // Bu kart Anlatım Ortamı modundan BAĞIMSIZ — hâlâ Analiz Tahtası'ndayız.
     expect(screen.getByTestId('chess-board')).toBeInTheDocument();
     expect(screen.queryByTestId('board-editor')).not.toBeInTheDocument();
-    // Madde 2026-09-17 (madde 5a): Anlatım Tahtası'nda da ok/işaret yayını çalışır.
-    expect(chessBoardMocks.lastProps?.onArrowsChange).toBe(roomActions.sendArrows);
-    expect(chessBoardMocks.lastProps?.onMarksChange).toBe(roomActions.sendMarks);
   });
 
-  it('Çalışmalar sekmesi bulunamazsa uyarı gösterir', async () => {
+  it('"Dersler" kök bölümü yoksa (Çalışmalar sekmesinde tanımlı değilse) kart hiç görünmez', async () => {
+    customTabsMocks.getCustomTab.mockResolvedValue({ ...CALISMALAR_TAB, sections: [] });
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    await waitFor(() => expect(customTabsMocks.listCustomTabs).toHaveBeenCalled());
+    expect(screen.queryByText('Dersler')).not.toBeInTheDocument();
+  });
+
+  it('Çalışmalar sekmesi hiç bulunamazsa kart görünmez (sessizce yok sayılır)', async () => {
     customTabsMocks.listCustomTabs.mockResolvedValue([]);
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByTestId('chess-board'));
-    fireEvent.click(screen.getByText('Anlatım Tahtası'));
-    await waitFor(() => screen.getByText('Çalışmalar sekmesi bulunamadı.'));
+    await waitFor(() => expect(customTabsMocks.listCustomTabs).toHaveBeenCalled());
+    expect(screen.queryByText('Dersler')).not.toBeInTheDocument();
   });
 
   it('Alt Konu seçilince AltKonuWalkthrough görünür (accordion kaybolur); adım değişince resetBoard çağrılır; "Geri" ile listeye dönülür', async () => {
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByTestId('chess-board'));
-    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByText('Dersler'));
+    fireEvent.click(screen.getByText('Dersler'));
     await waitFor(() => screen.getByTestId('accordion'));
 
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
@@ -540,7 +566,8 @@ describe('madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası"', () 
   it('"Ödev Gönder" tetiklenince gömülü panel açılır (sectionId doğru), "Kapat" ile kapanır', async () => {
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByTestId('chess-board'));
-    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    await waitFor(() => screen.getByText('Dersler'));
+    fireEvent.click(screen.getByText('Dersler'));
     await waitFor(() => screen.getByTestId('accordion'));
     fireEvent.click(screen.getByText('Tahtanın Genel Özellikleri'));
 
@@ -551,4 +578,47 @@ describe('madde 2026-09-16 (Antrenör Ekranı, Faz C): "Anlatım Tahtası"', () 
     fireEvent.click(screen.getByText('Kapat'));
     expect(screen.queryByTestId('odev-gonder-inner')).not.toBeInTheDocument();
   });
+});
+
+describe('madde 2026-09-18 (madde 1): Kamera 3 Anlatım Ortamı modunda da AYNI konumda', () => {
+  beforeEach(() => {
+    trackMocks.tracks = [{ publication: { trackSid: 't1' }, participant: { identity: 'p1' } }];
+  });
+
+  it('Analiz Tahtası modunda kamera görünür', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    expect(screen.getByTestId('video-track')).toBeInTheDocument();
+  });
+
+  it('Konum Tahtası modunda da kamera görünür', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Konum Tahtası'));
+    expect(screen.getByTestId('video-track')).toBeInTheDocument();
+  });
+
+  it('Anlatım Tahtası modunda da kamera görünür', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Anlatım Tahtası'));
+    expect(screen.getByTestId('video-track')).toBeInTheDocument();
+  });
+
+  it('Ekran Ayarları\'ndan "Kamera" kapatılınca video kaybolur (altındaki kartlar yukarı kayar)', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    expect(screen.getByTestId('video-track')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Kamera'));
+    expect(screen.queryByTestId('video-track')).not.toBeInTheDocument();
+  });
+});
+
+it('madde 2026-09-18 (madde 2): Anlatım Tahtası modunda da değerlendirme çubuğu görünür', async () => {
+  render(<DerslerCanliHostPage />);
+  await waitFor(() => screen.getByTestId('chess-board'));
+  await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
+
+  fireEvent.click(screen.getByText('Anlatım Tahtası'));
+  await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
 });

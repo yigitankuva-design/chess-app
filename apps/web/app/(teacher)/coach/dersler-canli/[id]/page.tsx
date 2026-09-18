@@ -10,12 +10,14 @@ import { BoardEditor, EMPTY_FEN, START_FEN } from '@/components/BoardEditor';
 import { EvalBar } from '@/components/analiz/EvalBar';
 import { StockfishEngine } from '@/lib/chess/stockfish';
 import { scoreForWhite } from '@/lib/chess/analysisFormat';
-import { NestedSectionAccordion } from '@/components/custom/NestedSectionAccordion';
+import { NestedSectionAccordion, isDerslerRoot } from '@/components/custom/NestedSectionAccordion';
 import { AltKonuWalkthrough } from '@/components/custom/AltKonuWalkthrough';
 import { OdevGonderInner } from '@/components/OdevGonderInner';
 import { listCustomTabs, getCustomTab } from '@/lib/customTabsApi';
 import type { CustomTabDetail } from '@/lib/customTabsApi';
 import { isAntrenorCalismalarTab } from '@/lib/customTabs/calismalarTab';
+import { PathNode } from '@/components/ui/neumorphic';
+import { renderSectionIcon } from '@/lib/customTabs/levelBadge';
 import {
   fetchLiveLesson, startLiveLesson, endLiveLesson, admitLiveLessonParticipant,
   fetchLiveLessonUsageEstimate,
@@ -166,10 +168,12 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   const evalRequestRef = useRef(0);
   const [scoreCp, setScoreCp] = useState<number | null>(null);
   const [mate, setMate] = useState<number | null>(null);
-  // Madde 2026-09-16 (Faz C): antrenörün "Çalışmalar" sekmesi — undefined =
-  // henüz çekilmedi, null = bulunamadı. "Anlatım Tahtası" moduna İLK
-  // geçişte tembel (lazy) yüklenir.
+  // Madde 2026-09-16 (Faz C) + 2026-09-18 (madde 3): antrenörün "Çalışmalar"
+  // sekmesi — undefined = henüz çekilmedi, null = bulunamadı. Artık 3.
+  // sütunda, Anlatım Ortamı modundan BAĞIMSIZ, kalıcı bir "Dersler" hızlı
+  // erişim kartı olarak sayfa açılışında çekilir.
   const [calismalarTab, setCalismalarTab] = useState<CustomTabDetail | null | undefined>(undefined);
+  const [calismalarOpen, setCalismalarOpen] = useState(false);
   const [selectedAltKonuId, setSelectedAltKonuId] = useState<number | null>(null);
   const [odevGonderSectionId, setOdevGonderSectionId] = useState<number | null>(null);
   // Madde 2026-09-17 (madde 6): LiveKit'in ücretsiz kotasına göre KABA
@@ -205,7 +209,6 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   }
 
   useEffect(() => {
-    if (hostViewMode !== 'anlatim' || calismalarTab !== undefined) return;
     (async () => {
       const tabs = await listCustomTabs();
       const found = tabs.find((t) => isAntrenorCalismalarTab(t));
@@ -213,16 +216,16 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
       const detail = await getCustomTab(found.id);
       setCalismalarTab(detail);
     })();
-  }, [hostViewMode, calismalarTab]);
+  }, []);
 
-  // Madde 2026-09-16 (Faz B) + 2026-09-18: değerlendirme çubuğu Analiz
-  // Tahtası'nda VE Konum Tahtası'nda çalışır (açıkken). Konum Tahtası'nda taş
+  // Madde 2026-09-16 (Faz B) + 2026-09-18: değerlendirme çubuğu her 3
+  // Anlatım Ortamı modunda da çalışır (açıkken). Konum Tahtası'nda taş
   // dizerken ara adımlarda tahta geçici olarak geçersiz/eksik olabilir (örn.
   // şahsız) — chess.js'in ZATEN kabul etmediği bu durumlarda motora hiç
   // sorulmaz (skor eskisi gibi kalmaz, temizlenir). Antrenörün TARAYICISINDA
   // hesaplanır, sporcuya YAYINLANMAZ.
   useEffect(() => {
-    if ((hostViewMode !== 'analiz' && hostViewMode !== 'konum') || !screen.evalBar) return;
+    if (!screen.evalBar) return;
     const requestId = ++evalRequestRef.current;
     try {
       new Chess(room.fen);
@@ -250,6 +253,11 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   function studentName(id: number): string {
     return students.find((s) => s.id === id)?.display_name ?? `#${id}`;
   }
+
+  // Madde 2026-09-18 (madde 3): "Çalışmalar" sekmesinin İÇİNDEKİ "Dersler"
+  // kök bölümü — 3. sütundaki hızlı erişim kartı SADECE bu bölüme bağlanır
+  // (Sınıflarım/Canlı Ders Oluştur gibi diğer kök bölümler burada GÖSTERİLMEZ).
+  const derslerSection = calismalarTab?.sections.find(isDerslerRoot);
 
   function handleDrop(from: Square, to: Square): boolean {
     // Madde: v1'de terfi seçici YOK (ekran tasarımı sonraya bırakıldı) —
@@ -336,45 +344,16 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
           )}
 
           {hostViewMode === 'anlatim' && (
-            <>
-              {/* Madde 2026-09-16 (Faz C): "numaralı adım geçişleri ana
-                  tahtayı günceller" — bu, ANA (sol sütun) tahta; salt-okunur
-                  (Anlatım Tahtası'nda taş oynanmaz, sadece hazır konumlar
-                  gösterilir). */}
-              <ChessBoard fen={room.fen} boardOrientation="white" hideNotation={!screen.notation}
-                onArrowsChange={room.sendArrows} onMarksChange={room.sendMarks} />
-
-              <div className="t-card p-3 space-y-3">
-                {calismalarTab === undefined && <p className="text-xs t-muted">Çalışmalar sekmesi yükleniyor…</p>}
-                {calismalarTab === null && <p className="text-xs t-muted">Çalışmalar sekmesi bulunamadı.</p>}
-                {calismalarTab && selectedAltKonuId == null && (
-                  <NestedSectionAccordion
-                    tabId={calismalarTab.id} sections={calismalarTab.sections} parentId={null} depth={0}
-                    onSelectAltKonu={setSelectedAltKonuId}
-                  />
-                )}
-                {calismalarTab && selectedAltKonuId != null && (() => {
-                  const section = calismalarTab.sections.find((s) => s.id === selectedAltKonuId);
-                  if (!section) return <p className="text-xs t-muted">Bölüm bulunamadı.</p>;
-                  return (
-                    <div className="space-y-3">
-                      <button type="button" onClick={() => setSelectedAltKonuId(null)}
-                        className="text-xs t-muted underline">← Konu listesine dön</button>
-                      <AltKonuWalkthrough
-                        pool={section.position_pool ?? []}
-                        sourceSectionId={section.id}
-                        sourceSectionTitle={section.title}
-                        sourceTabId={calismalarTab.id}
-                        linkedLessonStepId={section.linked_lesson_step_id ?? null}
-                        hideBoard
-                        onStepChange={(fen) => room.resetBoard(fen)}
-                        onSendHomework={() => setOdevGonderSectionId(section.id)}
-                      />
-                    </div>
-                  );
-                })()}
+            // Madde 2026-09-16 (Faz C): "numaralı adım geçişleri ana tahtayı
+            // günceller" — bu, ANA (sol sütun) tahta; salt-okunur (Anlatım
+            // Tahtası'nda taş oynanmaz, sadece hazır konumlar gösterilir).
+            <div className="flex items-stretch gap-2">
+              {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} showMarker />}
+              <div style={{ width: '100%', marginLeft: 50 }}>
+                <ChessBoard fen={room.fen} boardOrientation="white" hideNotation={!screen.notation}
+                  onArrowsChange={room.sendArrows} onMarksChange={room.sendMarks} />
               </div>
-            </>
+            </div>
           )}
 
           {screen.notation && (
@@ -504,7 +483,10 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
         </div>
 
         <div className="space-y-4">
-          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
+          {/* Madde 2026-09-18 (madde 1): kamera artık 3 Anlatım Ortamı
+              modunda da AYNI konumda — kapalıyken alttaki kartlar (koşullu
+              render + dikey istif sayesinde) otomatik yukarı kayar. */}
+          {screen.camera && cameraTracks.length > 0 && (
             <div className="grid grid-cols-1 gap-2">
               {cameraTracks.map((t) => (
                 <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
@@ -524,6 +506,57 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
                 katılımcı başına bağlantı dakikası sayar, bu yüzden birden çok
                 sporcu katılan derslerde gerçek kullanım bu rakamdan yüksek olabilir.
               </p>
+            </div>
+          )}
+
+          {/* Madde 2026-09-18 (madde 3): "Çalışmalar" ağacı tahtanın ALTINDAN
+              buraya taşındı — SADECE "Dersler" kök bölümüne kısayol, tıklanınca
+              açılır (Sınıflarım/Canlı Ders Oluştur gibi diğer kök bölümler
+              burada YOK — erişim kolaylığı için sadece "Dersler"). */}
+          {calismalarTab === undefined && (
+            <div className="t-card p-3">
+              <p className="text-xs t-muted">Dersler yükleniyor…</p>
+            </div>
+          )}
+          {calismalarTab && derslerSection && (
+            <div className="t-card p-3 space-y-3">
+              {selectedAltKonuId == null && (
+                <PathNode
+                  icon={renderSectionIcon(derslerSection.emoji)}
+                  label={derslerSection.title}
+                  active={calismalarOpen}
+                  size={40}
+                  tint="var(--t-text-1)"
+                  onClick={() => setCalismalarOpen((o) => !o)}
+                />
+              )}
+              {calismalarOpen && selectedAltKonuId == null && (
+                <NestedSectionAccordion
+                  tabId={calismalarTab.id} sections={calismalarTab.sections} parentId={derslerSection.id} depth={1}
+                  inDersler
+                  onSelectAltKonu={setSelectedAltKonuId}
+                />
+              )}
+              {selectedAltKonuId != null && (() => {
+                const section = calismalarTab.sections.find((s) => s.id === selectedAltKonuId);
+                if (!section) return <p className="text-xs t-muted">Bölüm bulunamadı.</p>;
+                return (
+                  <div className="space-y-3">
+                    <button type="button" onClick={() => setSelectedAltKonuId(null)}
+                      className="text-xs t-muted underline">← Konu listesine dön</button>
+                    <AltKonuWalkthrough
+                      pool={section.position_pool ?? []}
+                      sourceSectionId={section.id}
+                      sourceSectionTitle={section.title}
+                      sourceTabId={calismalarTab.id}
+                      linkedLessonStepId={section.linked_lesson_step_id ?? null}
+                      hideBoard
+                      onStepChange={(fen) => room.resetBoard(fen)}
+                      onSendHomework={() => setOdevGonderSectionId(section.id)}
+                    />
+                  </div>
+                );
+              })()}
             </div>
           )}
 

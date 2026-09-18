@@ -21,7 +21,7 @@ const DERSLER_TITLE = 'Dersler';
 const DERSLER_ROOT_KIND = 'dersler_root';
 const ALT_KONU_DEPTH = 3;
 
-function isDerslerRoot(s: CustomTabSection): boolean {
+export function isDerslerRoot(s: CustomTabSection): boolean {
   return s.section_kind === DERSLER_ROOT_KIND || s.title === DERSLER_TITLE;
 }
 
