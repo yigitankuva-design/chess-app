@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 /** Madde 2026-09-15 (Online Dersler): antrenörün ders odası. LiveKit'in
  *  gerçek video/ses hattı test edilmiyor (`LiveKitRoom`/`RoomAudioRenderer`/
@@ -394,6 +394,66 @@ describe('madde 2026-09-17 (madde 6): LiveKit kotası (tahmini)', () => {
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByTestId('chess-board'));
     expect(screen.queryByText('LiveKit Kotası (tahmini)')).not.toBeInTheDocument();
+  });
+});
+
+describe('madde 2026-09-18 (madde 3): "LiveKit Kotası" Ekran Ayarları düğmesi', () => {
+  it('düğmeye tıklayınca kota kartı gizlenir, tekrar tıklayınca geri gelir', async () => {
+    mocks.fetchLiveLessonUsageEstimate.mockResolvedValue({ estimated_minutes: 120, free_tier_minutes: 5000 });
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByText(/120 dk \/ 5000 dk/));
+
+    fireEvent.click(screen.getByRole('button', { name: 'LiveKit Kotası' }));
+    expect(screen.queryByText(/120 dk \/ 5000 dk/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'LiveKit Kotası' }));
+    await waitFor(() => screen.getByText(/120 dk \/ 5000 dk/));
+  });
+});
+
+describe('madde 2026-09-18 (madde 4): kota sayısı periyodik güncellenir', () => {
+  it('60 saniyede bir fetchLiveLessonUsageEstimate tekrar çağrılır', async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.fetchLiveLessonUsageEstimate.mockResolvedValue({ estimated_minutes: 120, free_tier_minutes: 5000 });
+      render(<DerslerCanliHostPage />);
+      await vi.waitFor(() => expect(mocks.fetchLiveLessonUsageEstimate).toHaveBeenCalledTimes(1));
+
+      mocks.fetchLiveLessonUsageEstimate.mockResolvedValue({ estimated_minutes: 145, free_tier_minutes: 5000 });
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+        await Promise.resolve();
+      });
+      await vi.waitFor(() => expect(screen.getByText(/145 dk \/ 5000 dk/)).toBeInTheDocument());
+      expect(mocks.fetchLiveLessonUsageEstimate).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('madde 2026-09-18 (madde 5): Katılımcılar kartı 3. sütuna taşındı', () => {
+  it('Katılımcılar, LiveKit Kotası ile Sohbet ARASINDA görünür', async () => {
+    mocks.fetchLiveLessonUsageEstimate.mockResolvedValue({ estimated_minutes: 120, free_tier_minutes: 5000 });
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByText(/120 dk \/ 5000 dk/));
+
+    const kotaEl = screen.getByText('LiveKit Kotası (tahmini)');
+    const katilimcilarEl = screen.getByText(/Katılımcılar \(/);
+    const sohbetEl = screen.getByText('Sohbet');
+    // DOM sırası: Kota önce, Katılımcılar sonra, Sohbet en son gelmeli.
+    expect(kotaEl.compareDocumentPosition(katilimcilarEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(katilimcilarEl.compareDocumentPosition(sohbetEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('madde 2026-09-18 (madde 2): Notasyon kartı tahtayla hizalı', () => {
+  it('sütun 1 konteyneri maxWidth: 670 stiline sahip', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    const notasyonHeading = screen.getByText('Notasyon', { selector: 'p.mb-2' });
+    const column = notasyonHeading.closest<HTMLElement>('div.space-y-4');
+    expect(column).toHaveStyle({ maxWidth: '670px' });
   });
 });
 

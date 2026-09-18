@@ -146,6 +146,8 @@ interface ScreenSettings {
   camera: boolean;
   notation: boolean;
   evalBar: boolean;
+  /** Madde 2026-09-18 (madde 3): sağdaki "LiveKit Kotası" kartını gösterip gizler. */
+  kota: boolean;
 }
 
 type HostViewMode = 'analiz' | 'konum' | 'anlatim';
@@ -156,7 +158,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
   const room = useLiveLessonRoom(lessonId, true);
   const cameraTracks = useTracks([Track.Source.Camera]);
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
-  const [screen, setScreen] = useState<ScreenSettings>({ camera: true, notation: true, evalBar: true });
+  const [screen, setScreen] = useState<ScreenSettings>({ camera: true, notation: true, evalBar: true, kota: true });
   const [panelHeight, setPanelHeight] = useState<number | null>(null);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [hostViewMode, setHostViewMode] = useState<HostViewMode>('analiz');
@@ -176,7 +178,17 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
 
   useEffect(() => () => { engineRef.current?.destroy(); }, []);
 
-  useEffect(() => { fetchLiveLessonUsageEstimate().then(setUsage); }, []);
+  // Madde 2026-09-18 (madde 4): backend zaten devam eden dersler için
+  // (ended_at ?? now) - started_at hesaplıyor — yani şu anki oturumun
+  // süresi ZATEN dahil. Sadece bir kere çekersek ekranda donuk kalır;
+  // periyodik yeniden çekerek "canlı artan" bir toplam gösteriyoruz.
+  useEffect(() => {
+    fetchLiveLessonUsageEstimate().then(setUsage);
+    const interval = setInterval(() => {
+      fetchLiveLessonUsageEstimate().then(setUsage);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Madde 2026-09-17 (madde 4): "Anlatım Ortamları" birbirinden bağımsız —
   // mod değişince tahta o modun kendi varsayılanına sıfırlanır, bir önceki
@@ -285,7 +297,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_280px_280px] items-start">
-        <div className="space-y-4 min-w-0">
+        <div className="space-y-4 min-w-0" style={{ maxWidth: 670 }}>
           {hostViewMode === 'analiz' && (
             <div className="flex items-stretch gap-2">
               {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} showMarker />}
@@ -410,6 +422,44 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
             </div>
           )}
 
+          <div className="t-card p-3 space-y-2">
+            <p className="text-xs font-bold uppercase tracking-widest t-muted">Ekran Ayarları</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <ScreenToggle label="Kamera" on={screen.camera} onClick={() => toggleScreen('camera')} />
+              <ScreenToggle label="Notasyon" on={screen.notation} onClick={() => toggleScreen('notation')} />
+              <ScreenToggle label="Değerlendirme" on={screen.evalBar} onClick={() => toggleScreen('evalBar')} />
+              <ScreenToggle label="LiveKit Kotası" on={screen.kota} onClick={() => toggleScreen('kota')} />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
+            <div className="grid grid-cols-1 gap-2">
+              {cameraTracks.map((t) => (
+                <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
+                  className="rounded-lg w-full aspect-video object-cover" />
+              ))}
+            </div>
+          )}
+
+          {screen.kota && usage && (
+            <div className="t-card p-3 space-y-1">
+              <p className="text-xs font-bold uppercase tracking-widest t-muted">LiveKit Kotası (tahmini)</p>
+              <p className="text-sm font-bold">
+                Bu ay ~{usage.estimated_minutes} dk / {usage.free_tier_minutes} dk
+              </p>
+              <p className="text-[11px] t-muted">
+                Bu sayı odanın açık kaldığı süreye dayanır — LiveKit gerçek kotayı
+                katılımcı başına bağlantı dakikası sayar, bu yüzden birden çok
+                sporcu katılan derslerde gerçek kullanım bu rakamdan yüksek olabilir.
+              </p>
+            </div>
+          )}
+
+          {/* Madde 2026-09-18 (madde 5): Katılımcılar kartı Kamera/LiveKit
+              Kotası ile AYNI sütuna taşındı — biri kapanınca altındaki kart
+              doğal olarak yukarı kayar (koşullu render + dikey istif). */}
           <div className="t-card p-3 space-y-2 flex flex-col" style={panelHeight ? { height: panelHeight } : undefined}>
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-bold uppercase tracking-widest t-muted">
@@ -465,40 +515,6 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               className="mx-auto w-10 h-1.5 rounded-full cursor-ns-resize flex-shrink-0"
               style={{ background: 'var(--t-border)' }} />
           </div>
-
-          <div className="t-card p-3 space-y-2">
-            <p className="text-xs font-bold uppercase tracking-widest t-muted">Ekran Ayarları</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              <ScreenToggle label="Kamera" on={screen.camera} onClick={() => toggleScreen('camera')} />
-              <ScreenToggle label="Notasyon" on={screen.notation} onClick={() => toggleScreen('notation')} />
-              <ScreenToggle label="Değerlendirme" on={screen.evalBar} onClick={() => toggleScreen('evalBar')} />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
-            <div className="grid grid-cols-1 gap-2">
-              {cameraTracks.map((t) => (
-                <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
-                  className="rounded-lg w-full aspect-video object-cover" />
-              ))}
-            </div>
-          )}
-
-          {usage && (
-            <div className="t-card p-3 space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest t-muted">LiveKit Kotası (tahmini)</p>
-              <p className="text-sm font-bold">
-                Bu ay ~{usage.estimated_minutes} dk / {usage.free_tier_minutes} dk
-              </p>
-              <p className="text-[11px] t-muted">
-                Bu sayı odanın açık kaldığı süreye dayanır — LiveKit gerçek kotayı
-                katılımcı başına bağlantı dakikası sayar, bu yüzden birden çok
-                sporcu katılan derslerde gerçek kullanım bu rakamdan yüksek olabilir.
-              </p>
-            </div>
-          )}
 
           <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
         </div>
