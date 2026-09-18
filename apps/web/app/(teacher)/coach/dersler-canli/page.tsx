@@ -42,9 +42,6 @@ export default function DerslerCanliPage() {
   const [err, setErr] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  // Madde 2026-09-17 (Canlı Ders Oluştur sayfası yeniden tasarımı):
-  // "Canlı Ders Oluştur" düğmesi formu açıp kapatır (toggle).
-  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     if (!token || role !== 'teacher') return;
@@ -128,15 +125,9 @@ export default function DerslerCanliPage() {
         <div className="flex-1 min-w-0 rounded-xl p-4 space-y-3" style={{ border: '2px solid var(--t-accent)' }}>
           <div className="flex items-center justify-between gap-2">
             <h1 className="text-xl font-extrabold t-premium">Canlı Dersler</h1>
-            <button type="button" onClick={() => setShowCreateForm((v) => !v)}
-              className="rounded-lg px-3 py-2 text-xs font-bold flex-shrink-0"
-              style={{ background: 'var(--t-accent)', color: 'var(--t-accent-fg)' }}>
-              Canlı Ders Oluştur
-            </button>
           </div>
 
-          {showCreateForm && (
-        <div className="space-y-3">
+          <div className="space-y-3">
         <div>
           <label className="text-xs font-bold uppercase tracking-widest t-muted block mb-1">Sınıf</label>
           {classes === null ? (
@@ -205,7 +196,6 @@ export default function DerslerCanliPage() {
           {busy ? 'Oluşturuluyor…' : 'Dersi Oluştur'}
         </button>
         </div>
-          )}
         </div>
 
         <div className="flex-1 min-w-0 rounded-xl p-4 space-y-2" style={{ border: '2px solid var(--t-accent)' }}>

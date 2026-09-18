@@ -44,45 +44,27 @@ it('rol antrenör değilse erişim mesajı gösterir', () => {
   expect(screen.getByText('Bu sayfa yalnızca antrenörler içindir.')).toBeInTheDocument();
 });
 
-describe('madde 2026-09-19: "Canlı Ders Oluştur" toggle (logo alanı kaldırıldı)', () => {
-  it('varsayılan açılışta form GİZLİDİR', async () => {
-    render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByText('Canlı Dersler'));
-    expect(screen.queryByPlaceholderText('Örn. Açılış Dersi')).not.toBeInTheDocument();
-  });
+it('madde 2026-09-19: sayfa açılır açılmaz oluşturma formu (toggle olmadan) görünür', async () => {
+  render(<DerslerCanliPage />);
+  await waitFor(() => screen.getByText('Canlı Dersler'));
+  expect(screen.getByPlaceholderText('Örn. Açılış Dersi')).toBeInTheDocument();
+  expect(screen.queryByText('Canlı Ders Oluştur')).not.toBeInTheDocument();
+});
 
-  it('"Canlı Ders Oluştur"a tıklayınca form görünür; tekrar tıklayınca kapanır', async () => {
-    render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByText('Canlı Dersler'));
-
-    fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
-    await waitFor(() => screen.getByPlaceholderText('Örn. Açılış Dersi'));
-
-    fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
-    expect(screen.queryByPlaceholderText('Örn. Açılış Dersi')).not.toBeInTheDocument();
-  });
-
-  it('"Canlı Ders Listesi" her iki durumda da (kapalı/açık form) görünür', async () => {
-    mocks.fetchMyLiveLessons.mockResolvedValue([{
-      id: 1, class_id: 1, title: 'Mevcut Ders', scheduled_at: '2026-09-20T10:00:00',
-      duration_minutes: 30, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
-    }]);
-    render(<DerslerCanliPage />);
-    await waitFor(() => screen.getByText('Mevcut Ders'));
-    expect(screen.getByText('Canlı Ders Listesi')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
-    await waitFor(() => screen.getByPlaceholderText('Örn. Açılış Dersi'));
-    expect(screen.getByText('Canlı Ders Listesi')).toBeInTheDocument();
-    expect(screen.getByText('Mevcut Ders')).toBeInTheDocument();
-  });
+it('"Canlı Ders Listesi" form ile birlikte görünür', async () => {
+  mocks.fetchMyLiveLessons.mockResolvedValue([{
+    id: 1, class_id: 1, title: 'Mevcut Ders', scheduled_at: '2026-09-20T10:00:00',
+    duration_minutes: 30, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
+  }]);
+  render(<DerslerCanliPage />);
+  await waitFor(() => screen.getByText('Mevcut Ders'));
+  expect(screen.getByText('Canlı Ders Listesi')).toBeInTheDocument();
+  expect(screen.getByPlaceholderText('Örn. Açılış Dersi')).toBeInTheDocument();
 });
 
 it('sınıf yoksa uyarır, dersi yoksa "Henüz bir ders oluşturmadın." gösterir', async () => {
   mocks.fetchMyClasses.mockResolvedValue([]);
   render(<DerslerCanliPage />);
-  await waitFor(() => screen.getByText('Canlı Ders Oluştur'));
-  fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
   await waitFor(() => screen.getByText('Henüz sınıfın yok. Önce bir sınıf oluştur.'));
   expect(screen.getByText('Henüz bir ders oluşturmadın.')).toBeInTheDocument();
 });
@@ -93,7 +75,6 @@ it('ders oluşturma — doğru payload ile createLiveLesson çağırır, listeye
     duration_minutes: 45, join_mode: 'auto', status: 'scheduled', started_at: null, ended_at: null,
   });
   render(<DerslerCanliPage />);
-  fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
   await waitFor(() => screen.getByText('Sınıf A'));
 
   fireEvent.change(screen.getByPlaceholderText('Örn. Açılış Dersi'), { target: { value: 'Açılış Dersi' } });
@@ -109,7 +90,6 @@ it('ders oluşturma — doğru payload ile createLiveLesson çağırır, listeye
 
 it('başlık boşsa dersi oluşturamaz, hata gösterir', async () => {
   render(<DerslerCanliPage />);
-  fireEvent.click(screen.getByText('Canlı Ders Oluştur'));
   await waitFor(() => screen.getByText('Sınıf A'));
   fireEvent.click(screen.getByText('Dersi Oluştur'));
   await waitFor(() => screen.getByText('Ders başlığı gir.'));
