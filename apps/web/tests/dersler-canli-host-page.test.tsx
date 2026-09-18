@@ -432,28 +432,31 @@ describe('madde 2026-09-18 (madde 4): kota sayısı periyodik güncellenir', () 
   });
 });
 
-describe('madde 2026-09-18 (madde 5): Katılımcılar kartı 3. sütuna taşındı', () => {
-  it('Katılımcılar, LiveKit Kotası ile Sohbet ARASINDA görünür', async () => {
+describe('madde 2026-09-18 (düzeltme turu): Katılımcılar kartı 2. sütuna (Ekran Ayarları altına) taşındı', () => {
+  it('Katılımcılar, Ekran Ayarları ile AYNI sütunda ve ondan hemen sonra görünür', async () => {
     mocks.fetchLiveLessonUsageEstimate.mockResolvedValue({ estimated_minutes: 120, free_tier_minutes: 5000 });
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByText(/120 dk \/ 5000 dk/));
 
-    const kotaEl = screen.getByText('LiveKit Kotası (tahmini)');
+    const ekranAyarlariEl = screen.getByText('Ekran Ayarları');
     const katilimcilarEl = screen.getByText(/Katılımcılar \(/);
     const sohbetEl = screen.getByText('Sohbet');
-    // DOM sırası: Kota önce, Katılımcılar sonra, Sohbet en son gelmeli.
-    expect(kotaEl.compareDocumentPosition(katilimcilarEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // DOM sırası: Ekran Ayarları önce (2. sütun), Katılımcılar sonra (AYNI sütun), Sohbet en son (3. sütun).
+    expect(ekranAyarlariEl.compareDocumentPosition(katilimcilarEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(katilimcilarEl.compareDocumentPosition(sohbetEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const column2 = ekranAyarlariEl.closest<HTMLElement>('div.space-y-4');
+    expect(column2).toContainElement(katilimcilarEl);
   });
 });
 
 describe('madde 2026-09-18 (madde 2): Notasyon kartı tahtayla hizalı', () => {
-  it('sütun 1 konteyneri maxWidth: 670 stiline sahip', async () => {
+  it('sütun 1 konteyneri maxWidth: 720 stiline sahip', async () => {
     render(<DerslerCanliHostPage />);
     await waitFor(() => screen.getByTestId('chess-board'));
     const notasyonHeading = screen.getByText('Notasyon', { selector: 'p.mb-2' });
     const column = notasyonHeading.closest<HTMLElement>('div.space-y-4');
-    expect(column).toHaveStyle({ maxWidth: '670px' });
+    expect(column).toHaveStyle({ maxWidth: '720px' });
   });
 });
 

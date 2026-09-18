@@ -64,12 +64,12 @@ export function EvalBar({ scoreCp, mate, showMarker = false }: Props) {
             style={{ top: markerTop, right: -6, transform: 'translateY(-50%)' }}
           >
             <div style={{
-              width: 10, height: 10, background: '#3b82f6',
+              width: 14, height: 14, background: '#3b82f6',
               transform: 'rotate(45deg)', border: '1px solid #1a1a1a',
             }} />
           </div>
           <span
-            className="absolute text-xs font-bold font-mono whitespace-nowrap transition-all duration-300"
+            className="absolute text-sm font-bold font-mono whitespace-nowrap transition-all duration-300"
             style={{ top: markerTop, left: '100%', marginLeft: 10, transform: 'translateY(-50%)', color: '#3b82f6' }}
           >
             {markerLabel(scoreCp, mate)}

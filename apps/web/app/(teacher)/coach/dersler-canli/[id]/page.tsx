@@ -296,12 +296,12 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[670px_1fr_1fr] items-start">
-        <div className="space-y-4 min-w-0" style={{ maxWidth: 670 }}>
+      <div className="grid gap-4 lg:grid-cols-[720px_1fr_1fr] items-start">
+        <div className="space-y-4 min-w-0" style={{ maxWidth: 720 }}>
           {hostViewMode === 'analiz' && (
             <div className="flex items-stretch gap-2">
               {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} showMarker />}
-              <div style={{ width: '100%' }}>
+              <div style={{ width: '100%', marginLeft: 50 }}>
                 <ChessBoard fen={room.fen} interactive onPieceDrop={handleDrop} boardOrientation="white"
                   hideNotation={!screen.notation}
                   onArrowsChange={room.sendArrows} onMarksChange={room.sendMarks} />
@@ -431,35 +431,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               <ScreenToggle label="LiveKit Kotası" on={screen.kota} onClick={() => toggleScreen('kota')} />
             </div>
           </div>
-        </div>
 
-        <div className="space-y-4">
-          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
-            <div className="grid grid-cols-1 gap-2">
-              {cameraTracks.map((t) => (
-                <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
-                  className="rounded-lg w-full aspect-video object-cover" />
-              ))}
-            </div>
-          )}
-
-          {screen.kota && usage && (
-            <div className="t-card p-3 space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest t-muted">LiveKit Kotası (tahmini)</p>
-              <p className="text-sm font-bold">
-                Bu ay ~{usage.estimated_minutes} dk / {usage.free_tier_minutes} dk
-              </p>
-              <p className="text-[11px] t-muted">
-                Bu sayı odanın açık kaldığı süreye dayanır — LiveKit gerçek kotayı
-                katılımcı başına bağlantı dakikası sayar, bu yüzden birden çok
-                sporcu katılan derslerde gerçek kullanım bu rakamdan yüksek olabilir.
-              </p>
-            </div>
-          )}
-
-          {/* Madde 2026-09-18 (madde 5): Katılımcılar kartı Kamera/LiveKit
-              Kotası ile AYNI sütuna taşındı — biri kapanınca altındaki kart
-              doğal olarak yukarı kayar (koşullu render + dikey istif). */}
           <div className="t-card p-3 space-y-2 flex flex-col" style={panelHeight ? { height: panelHeight } : undefined}>
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-bold uppercase tracking-widest t-muted">
@@ -515,6 +487,31 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
               className="mx-auto w-10 h-1.5 rounded-full cursor-ns-resize flex-shrink-0"
               style={{ background: 'var(--t-border)' }} />
           </div>
+        </div>
+
+        <div className="space-y-4">
+          {screen.camera && cameraTracks.length > 0 && hostViewMode === 'analiz' && (
+            <div className="grid grid-cols-1 gap-2">
+              {cameraTracks.map((t) => (
+                <VideoTrack key={t.publication?.trackSid ?? t.participant.identity} trackRef={t}
+                  className="rounded-lg w-full aspect-video object-cover" />
+              ))}
+            </div>
+          )}
+
+          {screen.kota && usage && (
+            <div className="t-card p-3 space-y-1">
+              <p className="text-xs font-bold uppercase tracking-widest t-muted">LiveKit Kotası (tahmini)</p>
+              <p className="text-sm font-bold">
+                Bu ay ~{usage.estimated_minutes} dk / {usage.free_tier_minutes} dk
+              </p>
+              <p className="text-[11px] t-muted">
+                Bu sayı odanın açık kaldığı süreye dayanır — LiveKit gerçek kotayı
+                katılımcı başına bağlantı dakikası sayar, bu yüzden birden çok
+                sporcu katılan derslerde gerçek kullanım bu rakamdan yüksek olabilir.
+              </p>
+            </div>
+          )}
 
           <ChatPanel messages={room.chatMessages} onSend={room.sendChat} />
         </div>
