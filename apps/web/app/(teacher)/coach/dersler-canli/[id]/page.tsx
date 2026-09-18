@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import type { Square } from 'chess.js';
+import { Chess, type Square } from 'chess.js';
 import { LiveKitRoom, RoomAudioRenderer, VideoTrack, useTracks, useLocalParticipant } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth-context';
@@ -215,13 +215,22 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
     })();
   }, [hostViewMode, calismalarTab]);
 
-  // Madde 2026-09-16 (Faz B): değerlendirme çubuğu — SADECE Analiz Tahtası
-  // modunda ve açıkken çalışır (Konum Tahtası modunda tahta geçersiz/eksik
-  // pozisyonlar içerebilir, motora göndermenin anlamı yok). Antrenörün
-  // TARAYICISINDA hesaplanır, sporcuya YAYINLANMAZ.
+  // Madde 2026-09-16 (Faz B) + 2026-09-18: değerlendirme çubuğu Analiz
+  // Tahtası'nda VE Konum Tahtası'nda çalışır (açıkken). Konum Tahtası'nda taş
+  // dizerken ara adımlarda tahta geçici olarak geçersiz/eksik olabilir (örn.
+  // şahsız) — chess.js'in ZATEN kabul etmediği bu durumlarda motora hiç
+  // sorulmaz (skor eskisi gibi kalmaz, temizlenir). Antrenörün TARAYICISINDA
+  // hesaplanır, sporcuya YAYINLANMAZ.
   useEffect(() => {
-    if (hostViewMode !== 'analiz' || !screen.evalBar) return;
+    if ((hostViewMode !== 'analiz' && hostViewMode !== 'konum') || !screen.evalBar) return;
     const requestId = ++evalRequestRef.current;
+    try {
+      new Chess(room.fen);
+    } catch {
+      setScoreCp(null);
+      setMate(null);
+      return;
+    }
     (async () => {
       if (!engineRef.current) {
         const eng = new StockfishEngine();
@@ -310,15 +319,20 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
           )}
 
           {hostViewMode === 'konum' && (
-            <BoardEditor
-              fen={room.fen}
-              turn={room.fen.split(' ')[1] === 'b' ? 'b' : 'w'}
-              onChange={(fen) => room.resetBoard(fen)}
-              onTurnChange={() => {}}
-              paletteLayout="split"
-              onArrowsChange={room.sendArrows}
-              onMarksChange={room.sendMarks}
-            />
+            <div className="flex items-stretch gap-2">
+              {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} showMarker />}
+              <div style={{ width: '100%', marginLeft: 50 }}>
+                <BoardEditor
+                  fen={room.fen}
+                  turn={room.fen.split(' ')[1] === 'b' ? 'b' : 'w'}
+                  onChange={(fen) => room.resetBoard(fen)}
+                  onTurnChange={() => {}}
+                  paletteLayout="right"
+                  onArrowsChange={room.sendArrows}
+                  onMarksChange={room.sendMarks}
+                />
+              </div>
+            </div>
           )}
 
           {hostViewMode === 'anlatim' && (

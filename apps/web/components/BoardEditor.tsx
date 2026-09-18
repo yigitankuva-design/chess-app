@@ -92,9 +92,14 @@ interface Props {
   /** Madde 2026-08-25: 'split' verilirse taş paleti tahtanın SOLUNDA tek
    *  sütun yerine, beyaz taşlar tahtanın ÜSTÜNDE / siyah taşlar ALTINDA iki
    *  ayrı sırada gösterilir — Antrenör/Dersler Konum Havuzu'nun görsel
-   *  referansındaki düzen. Verilmezse (varsayılan 'side') eski davranış
-   *  AYNEN korunur — diğer tüm kullanım yerleri etkilenmez (KURAL #3). */
-  paletteLayout?: 'side' | 'split';
+   *  referansındaki düzen. Madde 2026-09-18: 'right' verilirse taş paleti
+   *  ('side' ile AYNI 2 sütunlu ızgara — beyaz solda/siyah sağda, tür
+   *  sırasına göre) tahtanın SAĞINDA gösterilir, Hamle Sırası düğmeleri
+   *  vurgusuz (siyah düğmeyle AYNI stil) render edilir — Antrenörün Canlı
+   *  Ders "Konum Tahtası" ekranının görsel referansı. Verilmezse (varsayılan
+   *  'side') eski davranış AYNEN korunur — diğer tüm kullanım yerleri
+   *  etkilenmez (KURAL #3). */
+  paletteLayout?: 'side' | 'split' | 'right';
   /** Madde 2026-09-17 (madde 5): antrenörün Konum Tahtası'nda çizdiği
    *  ok/daire işaretlerini canlı derste sporcuya yayınlamak için —
    *  `ChessBoard.tsx`'teki AYNI prop deseni. Verilmezse davranış
@@ -196,14 +201,15 @@ export function BoardEditor({
     <div className="space-y-3">
       {/* Madde 2026-08-27 (2): Konum Havuzu'nda ('split') bu ipucu satırı
           KALDIRILDI — diğer kullanım yerlerinde ('side') AYNEN kalır. */}
-      {paletteLayout !== 'split' && (
+      {paletteLayout === 'side' && (
         <p className="text-xs n-muted text-center">
           Taşı tahtaya <b>sürükle</b> veya paletten seçip kareye <b>tıkla</b> · eklenen taşı silmek için üstüne <b>tıkla</b>
         </p>
       )}
       {(() => {
-        // Madde 2026-08-27 (3): 'split' modunda taşlar %40 BÜYÜTÜLDÜ (36px → 50px).
-        const pieceSize = paletteLayout === 'split' ? 50 : 36;
+        // Madde 2026-08-27 (3) / 2026-09-18: 'split' ve 'right' modunda taşlar
+        // %40 BÜYÜTÜLDÜ (36px → 50px).
+        const pieceSize = paletteLayout === 'split' || paletteLayout === 'right' ? 50 : 36;
         const paletteItem = (p: { code: string; label: string }) => {
           const selected = selectedPaletteKey === p.code;
           return (
@@ -299,18 +305,33 @@ export function BoardEditor({
           );
         }
 
+        const fullPalette = (
+          <div className="flex flex-col gap-1 shrink-0">
+            <div
+              className="grid gap-1"
+              style={{ gridTemplateRows: 'repeat(6, 1fr)', gridAutoFlow: 'column' }}
+              aria-label="Taş paleti"
+            >
+              {PIECE_PALETTE.map(paletteItem)}
+            </div>
+          </div>
+        );
+
+        if (paletteLayout === 'right') {
+          // Madde 2026-09-18: taş paleti tahtanın SAĞINDA — Antrenörün Canlı
+          // Ders "Konum Tahtası" ekranı, dış konteynerin genişliğine göre esner.
+          return (
+            <div className="flex items-start gap-2 w-full">
+              {board}
+              {fullPalette}
+            </div>
+          );
+        }
+
         return (
           <div className="flex items-start gap-2" style={{ maxWidth: 440 }}>
             {/* Sol taş paleti — sürüklenebilir taşlar */}
-            <div className="flex flex-col gap-1 shrink-0">
-              <div
-                className="grid gap-1"
-                style={{ gridTemplateRows: 'repeat(6, 1fr)', gridAutoFlow: 'column' }}
-                aria-label="Taş paleti"
-              >
-                {PIECE_PALETTE.map(paletteItem)}
-              </div>
-            </div>
+            {fullPalette}
             {board}
           </div>
         );
@@ -326,6 +347,24 @@ export function BoardEditor({
             className={`px-3 py-1 rounded-lg text-xs border ${turn === 'w' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-[color:var(--t-border)] text-[color:var(--t-text-1)]'}`}>Beyaz</button>
           <button type="button" onClick={() => setTurn('b')}
             className={`px-3 py-1 rounded-lg text-xs border ${turn === 'b' ? 'border-cyan-400 bg-cyan-400/15 text-cyan-200' : 'border-[color:var(--t-border)] text-[color:var(--t-text-1)]'}`}>Siyah</button>
+          <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
+            className="px-3 py-1.5 rounded-lg text-xs border bg-[color:var(--t-surface-2)] text-[color:var(--t-text-1)] border-[color:var(--t-border)] hover:opacity-80 transition-opacity">
+            Başlangıç konumu
+          </button>
+          <button type="button" onClick={() => onChange(mapToFen({}, turn))}
+            className="px-3 py-1.5 rounded-lg text-xs border bg-[color:var(--t-surface-2)] text-[color:var(--t-text-1)] border-[color:var(--t-border)] hover:opacity-80 transition-opacity">
+            Tahtayı temizle
+          </button>
+        </div>
+      ) : paletteLayout === 'right' ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs n-muted">Hamle sırası:</span>
+          {/* Madde 2026-09-18 (madde 3): Beyaz/Siyah düğmeleri her zaman AYNI
+              (vurgusuz) stilde — aktif tarafa özel mavi vurgu KALDIRILDI. */}
+          <button type="button" onClick={() => setTurn('w')}
+            className="px-3 py-1 rounded-lg text-xs border border-[color:var(--t-border)] text-[color:var(--t-text-1)]">Beyaz</button>
+          <button type="button" onClick={() => setTurn('b')}
+            className="px-3 py-1 rounded-lg text-xs border border-[color:var(--t-border)] text-[color:var(--t-text-1)]">Siyah</button>
           <button type="button" onClick={() => onChange(mapToFen(fenToMap(START_FEN), turn))}
             className="px-3 py-1.5 rounded-lg text-xs border bg-[color:var(--t-surface-2)] text-[color:var(--t-text-1)] border-[color:var(--t-border)] hover:opacity-80 transition-opacity">
             Başlangıç konumu

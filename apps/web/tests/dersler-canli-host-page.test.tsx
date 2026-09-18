@@ -47,7 +47,7 @@ vi.mock('@livekit/components-react', () => ({
 vi.mock('livekit-client', () => ({ Track: { Source: { Camera: 'camera' } } }));
 
 const roomState = vi.hoisted(() => ({
-  connected: true, fen: 'FEN', sanHistory: [] as string[], controllerChildId: null as number | null,
+  connected: true, fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', sanHistory: [] as string[], controllerChildId: null as number | null,
   connectedChildIds: [11] as number[], pendingRequests: [] as { childId: number; name: string }[],
   chatMessages: [] as { from: string; text: string; isHost: boolean }[], lessonEnded: false, muted: false,
   mutedChildIds: new Set<number>(), handRaisedIds: new Set<number>(),
@@ -159,6 +159,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   routerPush.mockClear();
   mockAuth.role = 'teacher';
+  roomState.fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   roomState.pendingRequests = [];
   roomState.connectedChildIds = [11];
   roomState.controllerChildId = null;
@@ -301,6 +302,40 @@ it('"Konum Tahtası"na geçince BoardEditor görünür, tahta kaybolur; onChange
   // Analiz moduna dönünce değerlendirme efekti tekrar tetiklenir — testin
   // sonunda act() dışında çözülmesin diye bekliyoruz.
   await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
+});
+
+describe('madde 2026-09-18 (bug fix turu): Konum Tahtası düzenlemeleri', () => {
+  it('madde 1: Konum Tahtası modunda da değerlendirme çubuğu görünür', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
+
+    fireEvent.click(screen.getByText('Konum Tahtası'));
+    expect(screen.getByTestId('board-editor')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
+  });
+
+  it('madde 2: BoardEditor "right" taş paleti düzeniyle render edilir', async () => {
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    await waitFor(() => expect(screen.getByRole('meter', { name: 'Değerlendirme çubuğu' })).toHaveAttribute('aria-valuenow', '76'));
+
+    fireEvent.click(screen.getByText('Konum Tahtası'));
+    await waitFor(() => expect(screen.getByTestId('board-editor')).toBeInTheDocument());
+    expect(boardEditorMocks.lastProps?.paletteLayout).toBe('right');
+  });
+
+  it('geçersiz (chess.js tarafından kabul edilmeyen) FEN\'de değerlendirme çubuğu numarasız kalır', async () => {
+    roomState.fen = '8/8/8/8/8/8/8/8 w - - 0 1';
+    render(<DerslerCanliHostPage />);
+    await waitFor(() => screen.getByTestId('chess-board'));
+    fireEvent.click(screen.getByText('Konum Tahtası'));
+    await waitFor(() => expect(screen.getByTestId('board-editor')).toBeInTheDocument());
+    const meter = screen.getByRole('meter', { name: 'Değerlendirme çubuğu' });
+    // Şahsız konum chess.js tarafından reddedilir — motora hiç sorulmaz,
+    // çubuk nötr (%50) kalır.
+    expect(meter).toHaveAttribute('aria-valuenow', '50');
+  });
 });
 
 it('Ekran Ayarları "Değerlendirme" kapatılınca çubuk kaybolur', async () => {
