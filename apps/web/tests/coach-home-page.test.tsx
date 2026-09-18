@@ -74,6 +74,17 @@ describe('Antrenör Paneli — /coach (sporcu Hızlı Erişim kopyası)', () => 
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it('madde 2026-09-18 (Yatay Mod): kart ızgarası masaüstünde 4 sütuna geçer, konteyner genişler', async () => {
+    render(<CoachHomePage />);
+    await screen.findByText('Maç Yap');
+    const mac = screen.getByText('Maç Yap');
+    const grid = mac.closest('.grid');
+    expect(grid).toHaveClass('grid-cols-2');
+    expect(grid).toHaveClass('lg:grid-cols-4');
+    const main = document.getElementById('main-content');
+    expect(main).toHaveClass('lg:max-w-6xl');
+  });
+
   it('özel sekmeler (ör. mevcut "Antrenör Dosyası" sekmesi) de sporcu sayfasındaki AYNI kaynaktan gelip görünür', async () => {
     render(<CoachHomePage />);
     await waitFor(() => screen.getByText('Antrenör Dosyası'));
