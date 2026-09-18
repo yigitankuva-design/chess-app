@@ -276,6 +276,9 @@ it('madde 2026-09-16 (Antrenör Ekranı, Faz B): varsayılan Analiz Tahtası mod
   // aynı zamanda efektin act() dışında çözülmesini engelliyor.
   await waitFor(() => expect(meter).toHaveAttribute('aria-valuenow', '76'));
   expect(screen.queryByTestId('board-editor')).not.toBeInTheDocument();
+  // Madde 2026-09-18: antrenör ekranında showMarker açık — mavi işaretleyici
+  // + değer etiketi görünür (mock scoreCp=200 → "+2,0").
+  expect(screen.getByText('+2,0')).toBeInTheDocument();
 });
 
 it('"Konum Tahtası"na geçince BoardEditor görünür, tahta kaybolur; onChange resetBoard çağırır', async () => {

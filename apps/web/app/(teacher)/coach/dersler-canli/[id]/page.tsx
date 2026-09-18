@@ -288,7 +288,7 @@ function HostRoomInner({ lessonId, lesson, students, onEnded }: {
         <div className="space-y-4 min-w-0">
           {hostViewMode === 'analiz' && (
             <div className="flex items-stretch gap-2">
-              {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} />}
+              {screen.evalBar && <EvalBar scoreCp={scoreCp} mate={mate} showMarker />}
               <div style={{ width: '100%' }}>
                 <ChessBoard fen={room.fen} interactive onPieceDrop={handleDrop} boardOrientation="white"
                   hideNotation={!screen.notation}
