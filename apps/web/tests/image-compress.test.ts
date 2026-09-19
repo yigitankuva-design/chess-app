@@ -56,4 +56,34 @@ describe('compressImageToDataUri', () => {
     const file = new File(['x'], 'test.jpg', { type: 'image/jpeg' });
     await expect(compressImageToDataUri(file, 400_000)).rejects.toThrow();
   });
+
+  describe('format: "png" (madde 2026-09-19, ikon şeffaflığı)', () => {
+    it('PNG kayıpsız olduğu için kalite yerine kenar uzunluğunu küçülterek dener', async () => {
+      const widths: number[] = [];
+      let call = 0;
+      HTMLCanvasElement.prototype.toDataURL = vi.fn(function (this: HTMLCanvasElement, type?: string) {
+        call += 1;
+        widths.push(this.width);
+        expect(type).toBe('image/png');
+        const size = call === 1 ? 200_000 : 50_000;
+        return 'data:image/png;base64,' + 'A'.repeat(size);
+      }) as unknown as typeof HTMLCanvasElement.prototype.toDataURL;
+
+      const file = new File(['x'], 'icon.png', { type: 'image/png' });
+      const result = await compressImageToDataUri(file, 100_000, 240, 'png');
+
+      expect(result.startsWith('data:image/png;base64,')).toBe(true);
+      expect(widths.length).toBeGreaterThan(1);
+      // İkinci deneme daha küçük kenar uzunluğuyla çizilmiş olmalı.
+      expect(widths[1]).toBeLessThan(widths[0]);
+    });
+
+    it('6 denemede de sığmazsa hata fırlatır (JPEG kalite düşürme YOK)', async () => {
+      HTMLCanvasElement.prototype.toDataURL = vi.fn(
+        () => 'data:image/png;base64,' + 'A'.repeat(999_999),
+      ) as unknown as typeof HTMLCanvasElement.prototype.toDataURL;
+      const file = new File(['x'], 'icon.png', { type: 'image/png' });
+      await expect(compressImageToDataUri(file, 100_000, 240, 'png')).rejects.toThrow();
+    });
+  });
 });

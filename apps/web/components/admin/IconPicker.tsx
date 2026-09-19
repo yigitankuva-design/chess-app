@@ -30,14 +30,16 @@ export function IconPicker({
 
   /** Madde 2026-09-19 (Özel İkon Yükleme): admin kendi görselini (Gemini
    *  vb. ile ürettiği illüstrasyon) yükleyebilir — emoji havuzuyla AYNI
-   *  alana (data URL olarak) yazılır. Küçük gösterileceği için agresif
+   *  alana (data URL olarak) yazılır. PNG olarak saklanır (JPEG DEĞİL) —
+   *  şeffaf arka plan korunsun diye (Zafer'in isteği: koyu temalarda
+   *  şeffaflık beyaza düşmesin). Küçük gösterileceği için agresif
    *  sıkıştırılır (photo/logo yüklemelerinden çok daha küçük boyut). */
   async function handleUpload(file: File | undefined) {
     if (!file) return;
     setUploading(true);
     setUploadErr(false);
     try {
-      const uri = await compressImageToDataUri(file, 60_000, 240);
+      const uri = await compressImageToDataUri(file, 120_000, 240, 'png');
       onChange(uri);
       setOpen(false);
     } catch {

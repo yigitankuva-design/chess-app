@@ -56,7 +56,7 @@ describe('IconPicker — özel görsel yükleme (madde 2026-09-19)', () => {
     const input = screen.getByLabelText('İkon seç').parentElement!.querySelector('input[type="file"]')!;
     fireEvent.change(input, { target: { files: [file] } });
 
-    await waitFor(() => expect(vi.mocked(compressImageToDataUri)).toHaveBeenCalledWith(file, 60_000, 240));
+    await waitFor(() => expect(vi.mocked(compressImageToDataUri)).toHaveBeenCalledWith(file, 120_000, 240, 'png'));
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('data:image/jpeg;base64,FAKEICON'));
     expect(screen.queryByText('🖼️ Kendi Görselini Yükle')).not.toBeInTheDocument();
   });
