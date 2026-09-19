@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export type ChessThemeId = 'classic' | 'night' | 'neon' | 'sakin';
+export type ChessThemeId = 'classic' | 'night' | 'neon' | 'sakin' | 'kagit' | 'mercan' | 'erik';
 
 export interface ChessTheme {
   id: ChessThemeId;
@@ -84,6 +84,54 @@ export const CHESS_THEMES: ChessTheme[] = [
     accentLight:  '#E8935A',
     textColor:    '#F6F2EA',
     cardBg:       'rgba(43, 36, 32, 0.97)',
+  },
+  {
+    id: 'kagit',
+    name: 'Kağıt',
+    emoji: '📄',
+    description: 'Sade, açık gri-beyaz tema — indigo vurgu',
+    lightSquare: '#F2F1EE',
+    darkSquare:  '#C8C4E4',
+    highlightColor: 'rgba(79, 70, 229, 0.35)',
+    selectedColor:  'rgba(79, 70, 229, 0.5)',
+    lastMoveColor:  'rgba(79, 70, 229, 0.28)',
+    boardBg:    '#1F1F1D',
+    accentColor:  '#4F46E5',
+    accentLight:  '#6D63F0',
+    textColor:    '#1F1F1D',
+    cardBg:       'rgba(255, 255, 255, 0.97)',
+  },
+  {
+    id: 'mercan',
+    name: 'Mercan',
+    emoji: '🪸',
+    description: 'Açık krem zemin, canlı mercan-kırmızı vurgu',
+    lightSquare: '#FBEEE6',
+    darkSquare:  '#D98564',
+    highlightColor: 'rgba(226, 96, 63, 0.35)',
+    selectedColor:  'rgba(226, 96, 63, 0.5)',
+    lastMoveColor:  'rgba(226, 96, 63, 0.3)',
+    boardBg:    '#2E2019',
+    accentColor:  '#E2603F',
+    accentLight:  '#EA8468',
+    textColor:    '#2E2019',
+    cardBg:       'rgba(255, 255, 255, 0.97)',
+  },
+  {
+    id: 'erik',
+    name: 'Erik',
+    emoji: '🍷',
+    description: 'Koyu bordo-mor tema, fuşya vurgu',
+    lightSquare: '#5A4050',
+    darkSquare:  '#2E1C26',
+    highlightColor: 'rgba(194, 71, 126, 0.5)',
+    selectedColor:  'rgba(194, 71, 126, 0.45)',
+    lastMoveColor:  'rgba(194, 71, 126, 0.35)',
+    boardBg:    '#120A0E',
+    accentColor:  '#C2477E',
+    accentLight:  '#D97BA0',
+    textColor:    '#ECDFE4',
+    cardBg:       '#26161D',
   },
 ];
 

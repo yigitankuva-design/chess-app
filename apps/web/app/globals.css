@@ -138,6 +138,90 @@ body {
   --t-glow:      transparent;
 }
 
+/* KAĞIT — sade, açık gri-beyaz tema, indigo vurgu (2026-09-19). */
+[data-chess-theme='kagit'] {
+  --t-bg:        #F7F7F5;
+  --t-surface:   #FFFFFF;
+  --t-surface-2: #EEEEEC;
+  --t-border:    #D4D4D0;
+  --t-text-1:    #1F1F1D;
+  --t-text-2:    #6B6B66;
+  --t-accent:    #4F46E5;
+  --t-accent-dk: #3F37C9;
+  --t-accent-fg: #FFFFFF;
+  --t-nav-bg:    #1F1F1D;
+  --t-nav-text:  #9A9A94;
+  --t-nav-act:   #F7F7F5;
+  --t-ok-bg:     #E8F3E5;
+  --t-ok-bd:     #3D7A4F;
+  --t-ok-text:   #2C5C3B;
+  --t-err-bg:    #FBE6E4;
+  --t-err-bd:    #C0392B;
+  --t-err-text:  #8F2C20;
+  --t-info-bg:   #E8ECFB;
+  --t-info-bd:   #4F46E5;
+  --t-info-text: #3F37C9;
+  --t-prog-bg:   #E2E2DE;
+  --t-prog-fill: #4F46E5;
+  --t-glow:      transparent;
+}
+
+/* MERCAN — açık krem zemin, canlı mercan-kırmızı vurgu (2026-09-19). */
+[data-chess-theme='mercan'] {
+  --t-bg:        #FDF6F2;
+  --t-surface:   #FFFFFF;
+  --t-surface-2: #F7EBE4;
+  --t-border:    #E8CFC0;
+  --t-text-1:    #2E2019;
+  --t-text-2:    #8A6F60;
+  --t-accent:    #E2603F;
+  --t-accent-dk: #BF4A2C;
+  --t-accent-fg: #FFFFFF;
+  --t-nav-bg:    #2E2019;
+  --t-nav-text:  #B39D8C;
+  --t-nav-act:   #FDF6F2;
+  --t-ok-bg:     #E6F3E0;
+  --t-ok-bd:     #4C8B5F;
+  --t-ok-text:   #2F5C3D;
+  --t-err-bg:    #FDE3DE;
+  --t-err-bd:    #C24B3F;
+  --t-err-text:  #8F3327;
+  --t-info-bg:   #E3EEF8;
+  --t-info-bd:   #2F6FB0;
+  --t-info-text: #1D4ED8;
+  --t-prog-bg:   #ECDCCF;
+  --t-prog-fill: #E2603F;
+  --t-glow:      transparent;
+}
+
+/* ERİK — koyu bordo-mor tema, fuşya vurgu (2026-09-19). */
+[data-chess-theme='erik'] {
+  --t-bg:        #1A0F14;
+  --t-surface:   #26161D;
+  --t-surface-2: #301C25;
+  --t-border:    #4D2C38;
+  --t-text-1:    #ECDFE4;
+  --t-text-2:    #A3838F;
+  --t-accent:    #C2477E;
+  --t-accent-dk: #9E3565;
+  --t-accent-fg: #FFFFFF;
+  --t-nav-bg:    #120A0E;
+  --t-nav-text:  #8A6A76;
+  --t-nav-act:   #ECDFE4;
+  --t-ok-bg:     #233318;
+  --t-ok-bd:     #93B455;
+  --t-ok-text:   #B8D97A;
+  --t-err-bg:    #33141A;
+  --t-err-bd:    #C9596E;
+  --t-err-text:  #F28FA0;
+  --t-info-bg:   #1A2733;
+  --t-info-bd:   #4A8FC9;
+  --t-info-text: #8FC0E8;
+  --t-prog-bg:   #3A2530;
+  --t-prog-fill: #C2477E;
+  --t-glow:      transparent;
+}
+
 
 /* ═══════════════════════════════════════════
    UTILITY CLASSES

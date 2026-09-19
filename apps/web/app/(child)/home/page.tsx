@@ -401,7 +401,7 @@ export default function ChildHomePage() {
        2026-09-02: Zafer'in isteğiyle bu parlama (neon ışık) SADECE Neon
        temasında görünsün diye tab'ın kendi rengi yerine --t-glow kullanılır
        — o değişken sadece Neon temasında gerçek bir renk taşır (bkz.
-       app/globals.css [data-chess-theme='neon']), diğer 3 temada
+       app/globals.css [data-chess-theme='neon']), diğer 6 temada
        transparent'tır; yani drop-shadow orada RENDER OLUR ama görünmez. */
     const contentStyle: React.CSSProperties = lit
       ? { color, opacity: 1, filter: `drop-shadow(0 0 5px var(--t-glow))` }
