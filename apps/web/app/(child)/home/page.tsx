@@ -435,7 +435,7 @@ export default function ChildHomePage() {
   }
 
   return (
-    <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl mx-auto space-y-8">
+    <main id="main-content" className="px-4 pt-5 pb-12 max-w-2xl lg:max-w-6xl mx-auto space-y-8">
       {athleteName && (
         <div className="flex items-center gap-3">
           <span className="text-2xl">🏅</span>
@@ -459,8 +459,10 @@ export default function ChildHomePage() {
           Sporcu Paneli
         </p>
 
-        {/* Sekmeler — admin sırasına göre; aynı anda yalnızca biri açık */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        {/* Sekmeler — admin sırasına göre; aynı anda yalnızca biri açık.
+            Madde 2026-09-19: antrenör panelindeki (coach/page.tsx) Yatay Mod
+            ızgarasıyla AYNI — masaüstünde 4 sütun, mobil 2 sütun değişmedi. */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-4">
           {orderedTabs.map((key) => {
             // Madde 1 (2026-08-19): admin ikon havuzundan seçtiyse (L.icons.X)
             // o kullanılır; seçmediyse eski sabit çizgi-ikona düşer.
