@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ICON_POOL } from '@/lib/iconPool';
-import { LEVEL_CODES, LEVEL_CODE_LABELS, LEVEL_CODE_COLORS, renderSectionIcon } from '@/lib/customTabs/levelBadge';
+import { LEVEL_CODES, LEVEL_CODE_LABELS, LEVEL_CODE_COLORS, renderSectionIcon, isImageIcon } from '@/lib/customTabs/levelBadge';
+import { compressImageToDataUri } from '@/lib/imageCompress';
 
 interface Props {
   value?: string | null;
@@ -23,6 +24,29 @@ export function IconPicker({
   value, onChange, size = 36, ariaLabel = 'İkon seç', showLevelBadges = false,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** Madde 2026-09-19 (Özel İkon Yükleme): admin kendi görselini (Gemini
+   *  vb. ile ürettiği illüstrasyon) yükleyebilir — emoji havuzuyla AYNI
+   *  alana (data URL olarak) yazılır. Küçük gösterileceği için agresif
+   *  sıkıştırılır (photo/logo yüklemelerinden çok daha küçük boyut). */
+  async function handleUpload(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setUploadErr(false);
+    try {
+      const uri = await compressImageToDataUri(file, 60_000, 240);
+      onChange(uri);
+      setOpen(false);
+    } catch {
+      setUploadErr(true);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div className="relative inline-block">
       <button
@@ -56,6 +80,32 @@ export function IconPicker({
               boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
             }}
           >
+            <div className="pb-2 mb-2 border-b border-white/10">
+              <input
+                ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { void handleUpload(e.target.files?.[0]); e.target.value = ''; }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full text-xs font-bold rounded-lg px-2 py-1.5 text-cyan-300 hover:bg-white/10 disabled:opacity-50"
+                style={{ border: '1px dashed rgba(34,211,238,0.5)' }}
+              >
+                {uploading ? 'Yükleniyor…' : '🖼️ Kendi Görselini Yükle'}
+              </button>
+              {uploadErr && <p className="text-[0.65rem] text-rose-400 mt-1 px-1">Görsel yüklenemedi, tekrar dene.</p>}
+              {isImageIcon(value) && (
+                <button
+                  type="button"
+                  onClick={() => { onChange(''); setOpen(false); }}
+                  className="w-full text-xs font-bold rounded-lg px-2 py-1.5 mt-1 text-white/50 hover:bg-white/10"
+                >
+                  Görseli kaldır (emoji havuzuna dön)
+                </button>
+              )}
+            </div>
+
             {showLevelBadges && (
               <>
                 <p className="px-1 pb-1 text-[0.65rem] font-bold uppercase tracking-widest text-white/40">

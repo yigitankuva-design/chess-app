@@ -21,6 +21,7 @@ import { fetchNotifications } from '@/lib/notificationsApi';
 import { CustomTabPanel } from '@/components/custom/CustomTabPanel';
 import { AnalizPanel } from '@/components/analiz/AnalizPanel';
 import { raised, pressed, PathNode, Branch, SH_LIGHT, VerticalDivider } from '@/components/ui/neumorphic';
+import { renderTabIcon } from '@/lib/customTabs/levelBadge';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -467,11 +468,11 @@ export default function ChildHomePage() {
             // Madde 1 (2026-08-19): admin ikon havuzundan seçtiyse (L.icons.X)
             // o kullanılır; seçmediyse eski sabit çizgi-ikona düşer.
             const meta = {
-              play:    { icon: L.icons.play || <IconSwords s={45} />, label: L.features.play,    color: QUICK_ACCESS_ACCENT },
-              lessons: { icon: L.icons.lessons || <IconBook s={45} />, label: L.features.lessons, color: QUICK_ACCESS_ACCENT },
+              play:    { icon: renderTabIcon(L.icons.play, <IconSwords s={45} />), label: L.features.play,    color: QUICK_ACCESS_ACCENT },
+              lessons: { icon: renderTabIcon(L.icons.lessons, <IconBook s={45} />), label: L.features.lessons, color: QUICK_ACCESS_ACCENT },
               // Madde 2026-09-01 (1): Analiz Et diğer sekmelerle AYNI akordiyona katılır.
-              analiz:  { icon: L.icons.analiz || <IconAnalyst s={45} />, label: L.features.analiz, color: QUICK_ACCESS_ACCENT },
-              eglence: { icon: L.icons.eglence || <IconPuzzle s={45} />, label: L.features.eglence, color: QUICK_ACCESS_ACCENT },
+              analiz:  { icon: renderTabIcon(L.icons.analiz, <IconAnalyst s={45} />), label: L.features.analiz, color: QUICK_ACCESS_ACCENT },
+              eglence: { icon: renderTabIcon(L.icons.eglence, <IconPuzzle s={45} />), label: L.features.eglence, color: QUICK_ACCESS_ACCENT },
             }[key];
             return (
               <FeatureTab
@@ -490,7 +491,7 @@ export default function ChildHomePage() {
               deep-link doğası gereği). Kırmızı rozet = görünür + henüz
               ziyaret edilmemiş bildirim sayısı. */}
           <FeatureTab
-            icon="🔔" label="Bildirimler" color={QUICK_ACCESS_ACCENT}
+            icon={renderTabIcon(L.icons.bildirimler, '🔔')} label="Bildirimler" color={QUICK_ACCESS_ACCENT}
             ledOn={openTab === null} href="/bildirimler" badge={unreadCount}
           />
 
@@ -501,7 +502,7 @@ export default function ChildHomePage() {
           {customTabs.map((ct) => (
             <FeatureTab
               key={ct.id}
-              icon={ct.emoji}
+              icon={renderTabIcon(ct.emoji, ct.emoji)}
               label={ct.label}
               color={QUICK_ACCESS_ACCENT}
               active={openTab === ct.id} ledOn={openTab === ct.id || openTab === null}

@@ -3,9 +3,8 @@
  * kademeli düşürerek (0.9 → 0.5) maxBytes altına indirir. Hiçbiri sığmazsa hata fırlatır
  * — bozuk/aşırı büyük veri sessizce kaydedilmez.
  */
-export async function compressImageToDataUri(file: File, maxBytes = 400_000): Promise<string> {
+export async function compressImageToDataUri(file: File, maxBytes = 400_000, maxDim = 800): Promise<string> {
   const img = await loadImage(file);
-  const maxDim = 800;
   const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
   const w = Math.round(img.width * scale);
   const h = Math.round(img.height * scale);

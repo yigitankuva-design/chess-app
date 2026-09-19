@@ -140,8 +140,11 @@ export default function AdminTabsPage() {
     reload();
   }
 
-  /** Madde 1 (2026-08-19): 4 sabit sekmeden birinin ikonu değişir. */
-  async function saveTabIcon(key: TabKey, emoji: string) {
+  /** Madde 1 (2026-08-19): 4 sabit sekmeden birinin ikonu değişir.
+   *  Madde 2026-09-19: `bildirimler` de aynı `icons` objesinde yaşadığı
+   *  için (TabKey'de OLMASA da) imza gevşetildi — ayrı bir fonksiyon
+   *  yazıp kopyalamak yerine tek yerde kalsın. */
+  async function saveTabIcon(key: TabKey | 'bildirimler', emoji: string) {
     const next = { ...icons, [key]: emoji };
     setIcons(next);
     const token = getToken();
@@ -606,6 +609,19 @@ export default function AdminTabsPage() {
         Değişiklikler anında yansır.
       </p>
       {msg && <p className="text-sm text-cyan-300 mb-4">{msg}</p>}
+
+      {/* Madde 2026-09-19 (Özel İkon Yükleme): Bildirimler sabit bir sistem
+          kartı — sırası/görünürlüğü değişmez, ama ikonu (emoji ya da özel
+          görsel) diğerleri gibi özelleştirilebilsin diye ayrı bir satır. */}
+      <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">Bildirimler kartı</p>
+      <div className="neon-card p-4 mb-8 flex items-center gap-3">
+        <IconPicker
+          value={icons.bildirimler || '🔔'}
+          onChange={(emoji) => saveTabIcon('bildirimler', emoji)}
+          ariaLabel="Bildirimler ikonunu değiştir"
+        />
+        <p className="text-sm n-muted">Sporcu ve antrenör panelindeki sabit &quot;Bildirimler&quot; kartının ikonu.</p>
+      </div>
 
       {/* ── Ekranda görünen sekmeler ── */}
       <p className="text-xs font-bold n-muted uppercase tracking-widest mb-2">
