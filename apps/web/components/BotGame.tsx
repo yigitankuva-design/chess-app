@@ -147,6 +147,10 @@ export function BotGame({
   const [studentName, setStudentName] = useState(() => getAthleteName() || 'Sen');
   const [studentAvatar] = useState(() => getSavedAvatar());
   const [thinking, setThinking] = useState(false);
+  /** Madde 2026-09-19 (bot hamle etmeme hatasi): motor zaman asimina
+   *  ugrar/hata verirse true olur — sira botta kalir, "Tekrar Dene"
+   *  butonu ayni hamleyi tekrar hesaplatir (bkz. makeBotMove). */
+  const [botError, setBotError] = useState(false);
   const [status, setStatus] = useState<'loading' | 'playing' | 'over'>('loading');
   const [resultText, setResultText] = useState<string>('');
   /** Pratik modunda (practiceActions) geri bildirim kartı için — win/draw/loss,
@@ -224,21 +228,8 @@ export function BotGame({
 
       // Kayıttan devam ediliyorsa açılış hamlesi zaten oynanmıştır.
       if (!cancelled && movesRef.current.length === 0 && chessRef.current.turn() === botColor) {
-        setThinking(true);
-        try {
-          const uci = await pickBotMove(chessRef.current.fen());
-          if (uci) {
-            chessRef.current.move({
-              from: uci.slice(0, 2) as Square,
-              to: uci.slice(2, 4) as Square,
-              promotion: 'q',
-            });
-            setFen(chessRef.current.fen());
-            await persistMove(uci);
-            if (!cancelled) checkMoveLimit();
-          }
-        } catch { /* motor hatasi oyunu kilitlemez */ }
-        if (!cancelled) setThinking(false);
+        await makeBotMove();
+        if (!cancelled) checkMoveLimit();
       }
     })();
     return () => {
@@ -288,6 +279,47 @@ export function BotGame({
     }
     const mv = await eng.bestMove(fen, depth);
     return mv && mv !== '(none)' ? mv : undefined;
+  }
+
+  /**
+   * Madde 2026-09-19 (bot hamle etmeme hatasi): botun hamlesini hesaplayip
+   * tahtaya uygular. Motor zaman asimina ugrar/hata verirse (StockfishEngine
+   * artik `(none)`/`[]` ile "cozer", sonsuza kadar beklemez) sira DEGISTIRILMEZ,
+   * `botError` true olur — sporcu "Tekrar Dene" butonuyla AYNI fonksiyonu
+   * tekrar cagirabilir. Hem ilk hamle efekti hem `applyStudentMove` hem de
+   * "Tekrar Dene" butonu bu TEK fonksiyonu kullanir (davranis tek yerde).
+   */
+  async function makeBotMove(): Promise<boolean> {
+    setThinking(true);
+    setBotError(false);
+    const chess = chessRef.current;
+    let botUci: string | undefined;
+    try {
+      botUci = await pickBotMove(chess.fen());
+    } catch {
+      botUci = undefined;
+    }
+    let moved = false;
+    if (botUci) {
+      try {
+        chess.move({
+          from: botUci.slice(0, 2) as Square,
+          to: botUci.slice(2, 4) as Square,
+          promotion: promotionFromUci(botUci),
+        });
+        setFen(chess.fen());
+        playMoveSound();
+        if (tc) {
+          if (botColor === 'w') setWhiteTime((t) => t + tc.increment);
+          else setBlackTime((t) => t + tc.increment);
+        }
+        await persistMove(botUci);
+        moved = true;
+      } catch { /* ignore */ }
+    }
+    if (!moved) setBotError(true);
+    setThinking(false);
+    return moved;
   }
 
   /** Oyunun o anki durumunu sekmeye yazar. Her hamleden sonra çağrılır. */
@@ -447,28 +479,10 @@ export function BotGame({
       if (chess.isGameOver()) { finish(); return; }
       if (checkMoveLimit()) return;
 
-      setThinking(true);
-      const botUci = await pickBotMove(chess.fen());
-      if (botUci) {
-        try {
-          // Motor ata da terfi edebilir; UCI'deki harf neyse o uygulanir.
-          chess.move({
-            from: botUci.slice(0, 2) as Square,
-            to: botUci.slice(2, 4) as Square,
-            promotion: promotionFromUci(botUci),
-          });
-          setFen(chess.fen());
-          playMoveSound(); // madde 2: botun hamlesinde de aynı ses.
-          if (tc) {
-            if (botColor === 'w') setWhiteTime((t) => t + tc.increment);
-            else setBlackTime((t) => t + tc.increment);
-          }
-          await persistMove(botUci);
-        } catch { /* ignore */ }
-      }
-      setThinking(false);
+      const botMoved = await makeBotMove();
       if (chess.isGameOver()) { finish(); return; }
       if (checkMoveLimit()) return;
+      if (!botMoved) return; // motor basarisiz oldu, sira hala botta — premove cozme.
 
       // Madde 5: sıra sporcuya geldi — ön-hamle varsa şimdi oynanır.
       // Geçersizse SESSİZCE iptal edilir (uyarı yok, sıra sporcuda kalır).
@@ -577,6 +591,24 @@ export function BotGame({
     </>
   );
 
+  /** Madde 2026-09-19 (bot hamle etmeme hatasi): motor yanit vermeyince
+   *  gosterilen kart — "Dusunuyor..." ekraninda sessizce takili kalmak
+   *  yerine sporcu neyin oldugunu gorur ve tek tikla tekrar dener. */
+  const botErrorCard = botError ? (
+    <div className="text-center space-y-2">
+      <p className="text-sm font-bold" style={{ color: '#f43f5e' }}>Bot yanıt vermedi.</p>
+      <button
+        type="button"
+        onClick={() => void makeBotMove()}
+        disabled={thinking}
+        className="rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-50"
+        style={{ background: 'var(--t-accent)', color: 'var(--t-accent-fg)' }}
+      >
+        {thinking ? 'Deneniyor…' : 'Tekrar Dene'}
+      </button>
+    </div>
+  ) : null;
+
   // Pratik Yap akışları (Kazanç Konumu / Oyunsonu / Açılış) — 5 dairesel
   // eylem kartı + renkli geri bildirim (madde 2026-09-03 (3): Konumu Yeniden
   // Tekrar Et / İpucu Göster / Terk Et / Tahtanın Yönünü Değiştir / Farklı
@@ -619,14 +651,14 @@ export function BotGame({
         // Madde 2026-09-06 (üçüncü tur/4): moveLimit dolunca kazandın/kaybettin
         // kartı YERİNE ilerleme analizi gösterilir (madde 2026-09-04 (2)'deki
         // "Analiz Et" ile AYNI feedbackOverride mekanizması).
-        feedbackOverride={limitReached ? (
+        feedbackOverride={botErrorCard ?? (limitReached ? (
           <MoveLimitAnalysisSummary
             evalByPly={practiceEvalByPly}
             progress={practiceProgress}
             totalPly={(moveLimit ?? 0) * 2}
             studentColor={studentColor}
           />
-        ) : undefined}
+        ) : undefined)}
         extra={extra}
       />
     );
@@ -676,7 +708,7 @@ export function BotGame({
       // Madde 2026-09-04 (2): "Analiz Et" tıklanınca geri bildirim kartının
       // (kazandın/kaybettin) YERİNE analiz özeti gelir — extra'da AYRI bir
       // yerde (notasyonun altında) değil.
-      feedbackOverride={showAnalysis ? (
+      feedbackOverride={botErrorCard ?? (showAnalysis ? (
         <div className="space-y-2">
           <MatchAnalysisSummary
             summary={gameSummary}
@@ -691,7 +723,7 @@ export function BotGame({
             startFen={startFen}
           />
         </div>
-      ) : undefined}
+      ) : undefined)}
       extra={extra}
     />
   );

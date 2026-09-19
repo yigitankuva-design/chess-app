@@ -23,6 +23,13 @@ export class StockfishEngine {
       const line = typeof e.data === 'string' ? e.data : (e.data?.data ?? '');
       this.listeners.forEach((l) => l(line));
     };
+    /* Madde 2026-09-19 (bot hamle etmeme hatasi): worker script yuklenemezse
+       (agi hatasi, bozuk dosya) ya da calisirken cokerse onceden hicbir
+       hata yakalanmiyordu — bestMove() sonsuza kadar beklerdi. Artik
+       bu olay da (asagidaki timeout'la birlikte) cagiran tarafa yansir. */
+    this.worker.onerror = () => {
+      this.listeners.forEach((l) => l('bestmove (none)'));
+    };
     this.send('uci');
     if (multiThread) {
       // Çoğu cihazda 1-4 çekirdek arası makul bir denge — UI thread'ini
@@ -46,11 +53,28 @@ export class StockfishEngine {
     this.send(`setoption name Skill Level value ${clamped}`);
   }
 
-  /** Resolve best move (UCI) for a FEN. depth kept low for kid-friendly speed. */
-  async bestMove(fen: string, depth = 8): Promise<string> {
+  /**
+   * Resolve best move (UCI) for a FEN. depth kept low for kid-friendly speed.
+   * Madde 2026-09-19 (bot hamle etmeme hatasi): motor herhangi bir sebeple
+   * (worker cokmesi, WASM yuklenememesi) yanit vermezse bu Promise eskiden
+   * SONSUZA KADAR beklerdi — sporcu "Dusunuyor..." ekraninda takili
+   * kalirdi. Artik `timeoutMs` sonunda '(none)' ile cozulur, cagiran taraf
+   * (BotGame.tsx) bunu hata olarak isleyip "Tekrar Dene" gosterir.
+   */
+  async bestMove(fen: string, depth = 8, timeoutMs = 15_000): Promise<string> {
     return new Promise((resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this.listeners = this.listeners.filter((l) => l !== listener);
+        resolve('(none)');
+      }, timeoutMs);
       const listener = (line: string) => {
         if (line.startsWith('bestmove')) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           const parts = line.split(' ');
           const mv = parts[1];
           this.listeners = this.listeners.filter((l) => l !== listener);
@@ -67,10 +91,19 @@ export class StockfishEngine {
    * Stockfish'in MultiPV özelliğiyle birden fazla aday hamle ister.
    * Dönen dizi güç sırasına göredir (0. indeks = en iyi hamle).
    * Kasıtlı hata (blunder) mekanizması için kullanılır — bkz. lib/play/blunder.ts.
+   * Madde 2026-09-19: `bestMove` ile AYNI zaman aşımı güvencesi — bkz. orada.
    */
-  async bestMoveCandidates(fen: string, depth = 8, multiPv = 4): Promise<string[]> {
+  async bestMoveCandidates(fen: string, depth = 8, multiPv = 4, timeoutMs = 15_000): Promise<string[]> {
     return new Promise((resolve) => {
       const candidates = new Map<number, string>();
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this.listeners = this.listeners.filter((l) => l !== listener);
+        this.send('setoption name MultiPV value 1');
+        resolve([]);
+      }, timeoutMs);
       const listener = (line: string) => {
         if (line.startsWith('info') && line.includes(' pv ')) {
           const mpvMatch = line.match(/multipv (\d+)/);
@@ -79,6 +112,9 @@ export class StockfishEngine {
             candidates.set(Number(mpvMatch[1]), pvMatch[1]);
           }
         } else if (line.startsWith('bestmove')) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           this.listeners = this.listeners.filter((l) => l !== listener);
           this.send('setoption name MultiPV value 1');
           const ordered = Array.from(candidates.keys())
@@ -108,13 +144,25 @@ export class StockfishEngine {
    * Madde 2026-09-05: opsiyonel `movetimeMs` eklendi — `analyzeMultiPv`'deki
    * AYNI güvenlik deseni (derinlik TEK BAŞINA sınır değil, bu süre dolunca da
    * durur) — karmaşık bir pozisyon zayıf bir cihazda UI'ı süresiz kilitlemesin.
+   * Madde 2026-09-19: bu SADECE motorun KENDİ arama süresini sınırlar — motor
+   * hiç yanıt vermezse (worker cökmesi/hata) hâlâ sonsuza kadar beklenirdi.
+   * "İpucu Göster"/"Beraberlik Teklif Et" (BotGame.tsx) bu fonksiyonu
+   * `finally` ile sarmalıyor ama Promise hiç ÇÖZÜLMEZSE `finally` de
+   * çalışmaz — o yüzden burada da watchdogTimeoutMs eklendi.
    */
   async analyze(
-    fen: string, depth = 20, movetimeMs?: number,
+    fen: string, depth = 20, movetimeMs?: number, watchdogTimeoutMs = 15_000,
   ): Promise<{ bestMove: string | null; scoreCp: number | null; mate: number | null }> {
     return new Promise((resolve) => {
       let scoreCp: number | null = null;
       let mate: number | null = null;
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this.listeners = this.listeners.filter((l) => l !== listener);
+        resolve({ bestMove: null, scoreCp: null, mate: null });
+      }, watchdogTimeoutMs);
       const listener = (line: string) => {
         if (line.startsWith('info') && line.includes(' score ')) {
           const cpMatch = line.match(/score cp (-?\d+)/);
@@ -122,6 +170,9 @@ export class StockfishEngine {
           if (mateMatch) { mate = Number(mateMatch[1]); scoreCp = null; }
           else if (cpMatch) { scoreCp = Number(cpMatch[1]); mate = null; }
         } else if (line.startsWith('bestmove')) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           this.listeners = this.listeners.filter((l) => l !== listener);
           const mv = line.split(' ')[1];
           resolve({ bestMove: mv && mv !== '(none)' ? mv : null, scoreCp, mate });
